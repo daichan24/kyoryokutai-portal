@@ -26,7 +26,7 @@ async function main() {
     },
   });
 
-  const member = await prisma.user.create({
+  const member1 = await prisma.user.create({
     data: {
       name: '田中太郎',
       email: 'member@test.com',
@@ -40,6 +40,34 @@ async function main() {
     },
   });
 
+  const member2 = await prisma.user.create({
+    data: {
+      name: '山田花子',
+      email: 'member2@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '総務課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#8B5CF6',
+    },
+  });
+
+  const member3 = await prisma.user.create({
+    data: {
+      name: '鈴木次郎',
+      email: 'member3@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '観光課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#EC4899',
+    },
+  });
+
   const support = await prisma.user.create({
     data: {
       name: '坂本一志',
@@ -50,7 +78,24 @@ async function main() {
     },
   });
 
-  console.log('✅ Created users:', { master: master.email, member: member.email, support: support.email });
+  const government = await prisma.user.create({
+    data: {
+      name: '役場担当者',
+      email: 'government@test.com',
+      password: hashedPassword,
+      role: 'GOVERNMENT',
+      avatarColor: '#06B6D4',
+    },
+  });
+
+  console.log('✅ Created users:', {
+    master: master.email,
+    member1: member1.email,
+    member2: member2.email,
+    member3: member3.email,
+    support: support.email,
+    government: government.email,
+  });
 
   // Create locations
   const locations = await Promise.all([
@@ -73,7 +118,7 @@ async function main() {
 
   await prisma.schedule.create({
     data: {
-      userId: member.id,
+      userId: member1.id,
       date: today,
       startTime: '09:00',
       endTime: '17:00',
@@ -84,7 +129,20 @@ async function main() {
     },
   });
 
-  console.log('✅ Created sample schedule');
+  await prisma.schedule.create({
+    data: {
+      userId: member2.id,
+      date: today,
+      startTime: '10:00',
+      endTime: '16:00',
+      locationText: '役場',
+      activityDescription: '会議参加',
+      freeNote: '月次報告の準備',
+      isPending: false,
+    },
+  });
+
+  console.log('✅ Created sample schedules');
 
   console.log('🎉 Seed completed successfully!');
 }

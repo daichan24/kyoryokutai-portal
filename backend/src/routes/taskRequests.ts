@@ -9,7 +9,7 @@ router.use(authenticate);
 
 // バリデーションスキーマ
 const createTaskRequestSchema = z.object({
-  requestedTo: z.string(),
+  requesteeId: z.string(),
   requestTitle: z.string().min(1),
   requestDescription: z.string().min(1),
   deadline: z.string().optional(),
@@ -116,7 +116,7 @@ router.post('/', authorize('SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, re
     const taskRequest = await prisma.taskRequest.create({
       data: {
         requestedBy: req.user!.id,
-        requestedTo: data.requestedTo,
+        requestedTo: data.requesteeId,
         requestTitle: data.requestTitle,
         requestDescription: data.requestDescription,
         deadline: data.deadline ? new Date(data.deadline) : null,
@@ -135,7 +135,7 @@ router.post('/', authorize('SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, re
       select: { name: true },
     });
     await notifyTaskRequest(
-      data.requestedTo,
+      data.requesteeId,
       requester?.name || 'Unknown',
       data.requestTitle,
       taskRequest.id

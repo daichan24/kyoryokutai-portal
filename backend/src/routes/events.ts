@@ -98,6 +98,77 @@ router.post('/', async (req: AuthRequest, res) => {
   }
 });
 
+// イベント更新
+router.put('/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const data = eventSchema.parse(req.body);
+
+    // 作成者のみ編集可能
+    const event = await prisma.event.findUnique({
+      where: { id },
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (event.createdBy !== req.user!.id && req.user!.role !== 'MASTER') {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const updated = await prisma.event.update({
+      where: { id },
+      data: {
+        eventName: data.eventName,
+        eventType: data.eventType,
+        date: new Date(data.date),
+        locationText: data.locationText || data.location,
+        description: data.description,
+        projectId: data.projectId,
+      },
+      include: { creator: true, project: true },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error('Update event error:', error);
+    res.status(500).json({ error: 'Failed to update event' });
+  }
+});
+
+// イベント削除
+router.delete('/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    // 作成者のみ削除可能
+    const event = await prisma.event.findUnique({
+      where: { id },
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (event.createdBy !== req.user!.id && req.user!.role !== 'MASTER') {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    await prisma.event.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error('Delete event error:', error);
+    res.status(500).json({ error: 'Failed to delete event' });
+  }
+});
+
 // イベント参加登録
 router.post('/:id/participate', async (req: AuthRequest, res) => {
   try {
