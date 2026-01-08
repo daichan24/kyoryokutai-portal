@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: kyoryokutai-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kyoryokutai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kyoryokutai-backend
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@database:5432/kyoryokutai
+      JWT_SECRET: your-secret-key-change-in-production
+      NODE_ENV: development
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      database:
+        condition: service_healthy
+    command: sh -c "npm run migrate:dev && npm run seed && npm run dev"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kyoryokutai-frontend
+    environment:
+      VITE_API_URL: http://localhost:3001
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    command: npm run dev
+
+volumes:
+  postgres_data:

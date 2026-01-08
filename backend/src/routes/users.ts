@@ -1,0 +1,152 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import bcrypt from 'bcrypt';
+import prisma from '../lib/prisma';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+
+const router = Router();
+
+router.use(authenticate);
+
+const updateUserSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  password: z.string().min(6).optional(),
+  role: z.enum(['MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT']).optional(),
+  missionType: z.enum(['FREE', 'MISSION']).optional(),
+  department: z.string().optional(),
+  termStart: z.string().optional(),
+  termEnd: z.string().optional(),
+  avatarColor: z.string().optional(),
+});
+
+router.get('/', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'), async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        missionType: true,
+        department: true,
+        termStart: true,
+        termEnd: true,
+        avatarColor: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(users);
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
+router.get('/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user!.role !== 'MASTER' && req.user!.role !== 'SUPPORT' && req.user!.id !== id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        missionType: true,
+        department: true,
+        termStart: true,
+        termEnd: true,
+        avatarColor: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+router.put('/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user!.role !== 'MASTER' && req.user!.id !== id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const data = updateUserSchema.parse(req.body);
+
+    const updateData: any = { ...data };
+
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    if (data.termStart) {
+      updateData.termStart = new Date(data.termStart);
+    }
+
+    if (data.termEnd) {
+      updateData.termEnd = new Date(data.termEnd);
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        missionType: true,
+        department: true,
+        termStart: true,
+        termEnd: true,
+        avatarColor: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.json(user);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+router.delete('/:id', authorize('MASTER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+export default router;

@@ -1,0 +1,46 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# 依存関係のインストール
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci
+
+# アプリケーションコードのコピー
+COPY . .
+
+# Prismaクライアントの生成
+RUN npx prisma generate
+
+# TypeScriptのビルド
+RUN npm run build
+
+# 本番用イメージ
+FROM node:20-alpine
+
+WORKDIR /app
+
+# 本番用依存関係のみインストール
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --only=production && npm cache clean --force
+
+# ビルド成果物とPrismaクライアントをコピー
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# 非rootユーザーで実行
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+USER nodejs
+
+EXPOSE 3001
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+CMD ["npm", "start"]
+
