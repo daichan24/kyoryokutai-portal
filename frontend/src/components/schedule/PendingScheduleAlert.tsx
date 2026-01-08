@@ -19,13 +19,16 @@ export function PendingScheduleAlert({ userId }: PendingScheduleAlertProps) {
 
   const loadPendingSchedules = async () => {
     try {
-      const allSchedules = await api.get<Schedule[]>(`/api/schedules?userId=${userId}`);
+      const response = await api.get<Schedule[]>(`/api/schedules?userId=${userId}`);
+      const data = response.data;
+      const allSchedules = Array.isArray(data) ? data : [];
       const pending = allSchedules.filter(
         (s) => s.isPending && new Date(s.date) < new Date()
       );
       setPendingSchedules(pending);
     } catch (error) {
       console.error('Failed to load pending schedules:', error);
+      setPendingSchedules([]);
     }
   };
 
@@ -54,7 +57,7 @@ export function PendingScheduleAlert({ userId }: PendingScheduleAlertProps) {
           </p>
 
           <div className="space-y-2 mb-3">
-            {pendingSchedules.slice(0, 3).map((schedule) => (
+            {Array.isArray(pendingSchedules) && pendingSchedules.slice(0, 3).map((schedule) => (
               <div
                 key={schedule.id}
                 className="bg-white rounded p-2 text-sm border border-yellow-200"

@@ -20,10 +20,11 @@ export const WeeklyReport: React.FC = () => {
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const data = await api.get<WeeklyReportType[]>('/api/weekly-reports');
-      setReports(data);
+      const response = await api.get<WeeklyReportType[]>('/api/weekly-reports');
+      setReports(response.data || []);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
+      setReports([]);
     } finally {
       setLoading(false);
     }

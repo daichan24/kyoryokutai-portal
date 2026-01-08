@@ -25,10 +25,13 @@ export const Dashboard: React.FC = () => {
         endDate: formatDate(end),
       });
 
-      const data = await api.get<Schedule[]>(`/api/schedules?${params}`);
-      setSchedules(data);
+      const response = await api.get<Schedule[]>(`/api/schedules?${params}`);
+      const data = response.data;
+      // 配列であることを確認
+      setSchedules(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
+      setSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -107,16 +110,16 @@ export const Dashboard: React.FC = () => {
           </p>
         ) : (
           <div className="space-y-3">
-            {schedules.slice(0, 5).map((schedule) => (
+            {Array.isArray(schedules) && schedules.slice(0, 5).map((schedule) => (
               <div
                 key={schedule.id}
                 className="flex items-start space-x-4 p-4 border border-border rounded-lg hover:bg-gray-50"
               >
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                  style={{ backgroundColor: schedule.user?.avatarColor }}
+                  style={{ backgroundColor: schedule.user?.avatarColor || '#6B7280' }}
                 >
-                  {schedule.user?.name.charAt(0)}
+                  {schedule.user?.name?.charAt(0) || '?'}
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">

@@ -45,10 +45,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const fetchLocations = async () => {
     try {
-      const data = await api.get<Location[]>('/api/locations');
-      setLocations(data);
+      const response = await api.get<Location[]>('/api/locations');
+      setLocations(response.data || []);
     } catch (error) {
       console.error('Failed to fetch locations:', error);
+      setLocations([]);
     }
   };
 

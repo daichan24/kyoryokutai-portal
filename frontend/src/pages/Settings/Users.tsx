@@ -14,10 +14,11 @@ export const UsersSettings: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const data = await api.get<User[]>('/api/users');
-      setUsers(data);
+      const response = await api.get<User[]>('/api/users');
+      setUsers(response.data || []);
     } catch (error) {
       console.error('Failed to fetch users:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }

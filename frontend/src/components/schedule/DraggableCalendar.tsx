@@ -17,9 +17,10 @@ export function DraggableCalendar({ schedules, onScheduleMove }: DraggableCalend
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i));
 
   const getSchedulesForDay = (date: Date) => {
+    if (!Array.isArray(schedules)) return [];
     return schedules
-      .filter((s) => isSameDay(new Date(s.date), date))
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      .filter((s) => s && s.date && isSameDay(new Date(s.date), date))
+      .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -117,7 +118,7 @@ export function DraggableCalendar({ schedules, onScheduleMove }: DraggableCalend
                                 <div className="flex items-center gap-1 text-gray-600">
                                   <Clock className="w-3 h-3" />
                                   <span>
-                                    {schedule.startTime.slice(0, 5)} - {schedule.endTime.slice(0, 5)}
+                                    {typeof schedule.startTime === 'string' ? schedule.startTime.slice(0, 5) : schedule.startTime} - {typeof schedule.endTime === 'string' ? schedule.endTime.slice(0, 5) : schedule.endTime}
                                   </span>
                                 </div>
 

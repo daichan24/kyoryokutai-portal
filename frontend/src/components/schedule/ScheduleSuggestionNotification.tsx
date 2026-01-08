@@ -22,10 +22,11 @@ export function ScheduleSuggestionNotification({
 
   const loadSuggestions = async () => {
     try {
-      const data = await api.get<ScheduleSuggestion[]>('/api/schedule-suggestions/pending');
-      setSuggestions(data);
+      const response = await api.get<ScheduleSuggestion[]>('/api/schedule-suggestions/pending');
+      setSuggestions(response.data || []);
     } catch (error) {
       console.error('Failed to load suggestions:', error);
+      setSuggestions([]);
     }
   };
 

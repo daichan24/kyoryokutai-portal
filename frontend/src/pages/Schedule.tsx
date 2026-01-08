@@ -33,8 +33,9 @@ export const Schedule: React.FC = () => {
         startDate: formatDate(weekDates[0]),
         endDate: formatDate(weekDates[6]),
       });
-      const data = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
-      setSchedules(data.data);
+      const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
+      const data = response.data;
+      setSchedules(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
     } finally {

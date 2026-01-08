@@ -16,10 +16,11 @@ export function NotificationBell() {
 
   const loadNotifications = async () => {
     try {
-      const data = await api.get<Notification[]>('/api/notifications?isRead=false');
-      setNotifications(data);
+      const response = await api.get<Notification[]>('/api/notifications?isRead=false');
+      setNotifications(response.data || []);
     } catch (error) {
       console.error('Failed to load notifications:', error);
+      setNotifications([]);
     }
   };
 
