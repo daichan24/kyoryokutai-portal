@@ -34,7 +34,7 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     data: {
       month,
       createdBy,
-      memberSheets,
+      memberSheets: memberSheets as any,
     },
   });
 }

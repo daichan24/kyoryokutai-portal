@@ -9,8 +9,9 @@ router.use(authenticate);
 const eventSchema = z.object({
   eventName: z.string().min(1),
   eventType: z.enum(['TOWN_OFFICIAL', 'TEAM', 'OTHER']),
-  eventDate: z.string(),
+  date: z.string(),
   location: z.string().optional(),
+  locationText: z.string().optional(),
   description: z.string().optional(),
   maxParticipants: z.number().optional(),
   projectId: z.string().optional(),
@@ -24,19 +25,19 @@ router.get('/', async (req: AuthRequest, res) => {
 
     if (eventType) where.eventType = eventType;
     if (upcoming === 'true') {
-      where.eventDate = { gte: new Date() };
+      where.date = { gte: new Date() };
     }
 
     const events = await prisma.event.findMany({
       where,
       include: {
-        user: { select: { id: true, name: true, avatarColor: true } },
+        creator: { select: { id: true, name: true, avatarColor: true } },
         project: { select: { id: true, projectName: true } },
         participations: {
           include: { user: { select: { id: true, name: true } } },
         },
       },
-      orderBy: { eventDate: 'desc' },
+      orderBy: { date: 'desc' },
     });
 
     res.json(events);
@@ -52,7 +53,7 @@ router.get('/:id', async (req, res) => {
     const event = await prisma.event.findUnique({
       where: { id: req.params.id },
       include: {
-        user: true,
+        creator: true,
         project: true,
         participations: { include: { user: true } },
       },
@@ -76,16 +77,15 @@ router.post('/', async (req: AuthRequest, res) => {
 
     const event = await prisma.event.create({
       data: {
-        userId: req.user!.id,
+        createdBy: req.user!.id,
         eventName: data.eventName,
         eventType: data.eventType,
-        eventDate: new Date(data.eventDate),
-        location: data.location,
+        date: new Date(data.date),
+        locationText: data.locationText || data.location,
         description: data.description,
-        maxParticipants: data.maxParticipants,
         projectId: data.projectId,
       },
-      include: { user: true, project: true },
+      include: { creator: true, project: true },
     });
 
     res.status(201).json(event);
@@ -171,7 +171,7 @@ router.get('/points/summary/:userId?', async (req: AuthRequest, res) => {
       where: {
         userId,
         event: {
-          eventDate: {
+          date: {
             gte: new Date(`${year}-01-01`),
             lte: new Date(`${year}-12-31`),
           },

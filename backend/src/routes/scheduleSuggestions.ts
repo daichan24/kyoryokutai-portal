@@ -44,10 +44,10 @@ router.post('/with-suggestions', async (req: AuthRequest, res) => {
     const data = createWithSuggestionsSchema.parse(req.body);
 
     const result = await createScheduleWithSuggestions(
-      req.user!.id,
       {
         ...data.schedule,
         date: new Date(data.schedule.date),
+        userId: req.user!.id,
       },
       data.suggestToUserIds
     );

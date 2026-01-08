@@ -1,4 +1,5 @@
 services:
+  # バックエンド（Web Service）
   - type: web
     name: kyoryokutai-backend
     env: node
@@ -15,5 +16,14 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: FRONTEND_URL
+        sync: false
+
+  # フロントエンド（Static Site）
+  - type: static
+    name: kyoryokutai-frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_URL
         sync: false
 

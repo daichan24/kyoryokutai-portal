@@ -9,8 +9,6 @@ import {
 } from '../services/progressCalculator';
 import {
   recalculateMidGoalWeights,
-  recalculateSubGoalWeights,
-  recalculateTaskWeights,
 } from '../services/weightCalculator';
 
 const router = Router();

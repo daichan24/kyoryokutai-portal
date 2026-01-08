@@ -9,14 +9,17 @@ export async function createScheduleWithSuggestions(
 ) {
   // 1. 予定作成
   const schedule = await prisma.schedule.create({
-    data: scheduleData,
+    data: {
+      ...scheduleData,
+      createdBy: scheduleData.createdBy || 'MANUAL',
+    },
   });
 
   // 2. 各ユーザーに提案作成
-  for (const userId of suggestToUserIds) {
+  for (const suggestToUserId of suggestToUserIds) {
     // 衝突チェック
     const conflicts = await checkScheduleConflicts(
-      userId,
+      suggestToUserId,
       scheduleData.date,
       scheduleData.startTime,
       scheduleData.endTime
@@ -25,8 +28,8 @@ export async function createScheduleWithSuggestions(
     await prisma.scheduleSuggestion.create({
       data: {
         scheduleId: schedule.id,
-        suggestedTo: userId,
-        conflictingSchedules: conflicts.length > 0 ? conflicts.map((c) => c.id) : null,
+        suggestedTo: suggestToUserId,
+        conflictingSchedules: conflicts.length > 0 ? (conflicts.map((c) => c.id) as any) : null,
       },
     });
   }
@@ -86,13 +89,14 @@ export async function respondToSuggestion(
 
   // ACCEPTEDの場合、予定をコピー
   if (status === 'ACCEPTED') {
-    const { id, createdAt, updatedAt, userId, ...scheduleData } = suggestion.schedule;
+    const { id, createdAt, updatedAt, userId, recurrenceRule, ...scheduleData } = suggestion.schedule;
 
     await prisma.schedule.create({
       data: {
         ...scheduleData,
         userId: suggestion.suggestedTo,
         createdBy: 'MANUAL',
+        recurrenceRule: recurrenceRule as any,
       },
     });
   }
@@ -122,6 +126,46 @@ export async function getPendingSchedules(userId: string) {
     },
     orderBy: {
       date: 'desc',
+    },
+  });
+}
+
+/**
+ * 保留中の提案を取得
+ */
+export async function getPendingSuggestions(userId: string) {
+  return await prisma.scheduleSuggestion.findMany({
+    where: {
+      suggestedTo: userId,
+      status: 'PENDING',
+    },
+    include: {
+      schedule: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatarColor: true,
+            },
+          },
+          location: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              projectName: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
     },
   });
 }

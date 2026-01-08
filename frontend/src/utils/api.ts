@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -7,7 +7,9 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
+}) as AxiosInstance & {
+  setToken: (token: string | null) => void;
+};
 
 api.interceptors.request.use(
   (config) => {
@@ -32,3 +34,12 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// setTokenメソッドを追加
+api.setToken = (token: string | null) => {
+  if (token) {
+    localStorage.setItem('token', token);
+  } else {
+    localStorage.removeItem('token');
+  }
+};

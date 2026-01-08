@@ -130,9 +130,13 @@ router.post('/', authorize('SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, re
     });
 
     // 通知を送信
+    const requester = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { name: true },
+    });
     await notifyTaskRequest(
       data.requestedTo,
-      req.user!.name,
+      requester?.name || 'Unknown',
       data.requestTitle,
       taskRequest.id
     );

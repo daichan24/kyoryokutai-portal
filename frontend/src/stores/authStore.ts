@@ -31,8 +31,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         email,
         password,
       });
-      api.setToken(response.token);
-      set({ user: response.user, isAuthenticated: true, isLoading: false });
+      api.setToken(response.data.token);
+      set({ user: response.data.user, isAuthenticated: true, isLoading: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Login failed',
@@ -46,8 +46,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.post<AuthResponse>('/api/auth/register', data);
-      api.setToken(response.token);
-      set({ user: response.user, isAuthenticated: true, isLoading: false });
+      api.setToken(response.data.token);
+      set({ user: response.data.user, isAuthenticated: true, isLoading: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Registration failed',
@@ -72,8 +72,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       api.setToken(token);
-      const user = await api.get<User>('/api/auth/me');
-      set({ user, isAuthenticated: true, isLoading: false });
+      const response = await api.get<User>('/api/auth/me');
+      set({ user: response.data, isAuthenticated: true, isLoading: false });
     } catch (error) {
       api.setToken(null);
       set({ user: null, isAuthenticated: false, isLoading: false });
