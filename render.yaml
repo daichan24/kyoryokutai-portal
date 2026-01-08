@@ -19,7 +19,7 @@ services:
         sync: false
 
   # フロントエンド（Static Site）
-  - type: static
+  - type: static_site
     name: kyoryokutai-frontend
     buildCommand: npm install && npm run build
     publishPath: dist
