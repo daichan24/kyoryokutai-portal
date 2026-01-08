@@ -43,3 +43,9 @@
     "typescript": "^5.4.5"
   }
 }
+"scripts": {
+  "migrate:deploy": "...",
+  "start": "...",
+  "build": "..."
+}
+
