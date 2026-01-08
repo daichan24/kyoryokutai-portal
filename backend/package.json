@@ -42,10 +42,10 @@
     "tsx": "^4.7.2",
     "typescript": "^5.4.5"
   }
-}
-"scripts": {
+  "scripts": {
   "migrate:deploy": "...",
   "start": "...",
   "build": "..."
 }
 
+}
