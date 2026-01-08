@@ -4,7 +4,8 @@ services:
     name: kyoryokutai-backend
     env: node
     plan: starter
-    buildCommand: npm install && npm run build && npx prisma generate
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm run migrate:deploy && npm start
     envVars:
       - key: NODE_ENV
@@ -21,9 +22,9 @@ services:
   # フロントエンド（Static Site）
   - type: static_site
     name: kyoryokutai-frontend
+    rootDir: frontend
     buildCommand: npm install && npm run build
     publishPath: dist
     envVars:
       - key: VITE_API_URL
         sync: false
-
