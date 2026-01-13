@@ -5,8 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && prisma migrate deploy && tsc",
-    "start": "node dist/index.js",
+    "build": "prisma generate && tsc",
+    "start": "npx prisma migrate deploy && node dist/index.js",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
