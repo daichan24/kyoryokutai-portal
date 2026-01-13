@@ -129,15 +129,15 @@ router.get('/', async (req: AuthRequest, res) => {
   try {
     // DB実体確認: 生SQLで現在のDB名とrole列の存在を確認
     try {
-      const dbNameResult = await prisma.$queryRaw<Array<{ db: string }>>`
-        SELECT current_database() as db;
-      `;
+      const dbNameResult = await prisma.$queryRaw<Array<{ db: string }>>(
+        Prisma.sql`SELECT current_database() as db;`
+      );
       console.log('🔵 [API] Current Database:', dbNameResult[0]?.db || 'N/A');
 
-      const roleColumnResult = await prisma.$queryRaw<Array<{ column_name: string }>>`
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name='Contact' AND column_name='role';
-      `;
+      const roleColumnResult = await prisma.$queryRaw<Array<{ column_name: string }>>(
+        Prisma.sql`SELECT column_name FROM information_schema.columns
+        WHERE table_name='Contact' AND column_name='role';`
+      );
       const roleColumnExists = roleColumnResult.length > 0;
       console.log('🔵 [API] Contact.role column exists:', roleColumnExists, `(${roleColumnResult.length} row(s))`);
     } catch (sqlError) {
