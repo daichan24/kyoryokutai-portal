@@ -25,7 +25,10 @@ import { startCronJobs } from './jobs';
 dotenv.config();
 
 // DATABASE_URLの情報をログ出力（資格情報は出さない）
-const dbUrl = process.env.DATABASE_URL;
+const dbUrl = process.env.DATABASE_URL || '';
+const dbHostDb = dbUrl.split('@')[1]?.split('?')[0] || 'N/A';
+console.log('🔵 [STARTUP] DB_URL_HOST_DB:', dbHostDb);
+
 if (dbUrl) {
   try {
     const url = new URL(dbUrl);

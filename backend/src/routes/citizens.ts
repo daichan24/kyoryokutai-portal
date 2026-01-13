@@ -44,6 +44,23 @@ router.post('/', async (req: AuthRequest, res) => {
   console.log('🔵 [API] リクエストボディ:', req.body);
 
   try {
+    // DB実体確認: 生SQLで現在のDB名とrole列の存在を確認
+    try {
+      const dbNameResult = await prisma.$queryRaw<Array<{ db: string }>>`
+        SELECT current_database() as db;
+      `;
+      console.log('🔵 [API] Current Database:', dbNameResult[0]?.db || 'N/A');
+
+      const roleColumnResult = await prisma.$queryRaw<Array<{ column_name: string }>>`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name='Contact' AND column_name='role';
+      `;
+      const roleColumnExists = roleColumnResult.length > 0;
+      console.log('🔵 [API] Contact.role column exists:', roleColumnExists, `(${roleColumnResult.length} row(s))`);
+    } catch (sqlError) {
+      console.error('⚠️ [API] SQL check error:', sqlError);
+    }
+
     // バリデーション（データの形式チェック）
     const data = citizenSchema.parse(req.body);
     console.log('✅ [API] バリデーション成功:', data);
@@ -109,6 +126,23 @@ router.get('/', async (req: AuthRequest, res) => {
   console.log('🔵 [API] GET /api/citizens リクエスト受信');
 
   try {
+    // DB実体確認: 生SQLで現在のDB名とrole列の存在を確認
+    try {
+      const dbNameResult = await prisma.$queryRaw<Array<{ db: string }>>`
+        SELECT current_database() as db;
+      `;
+      console.log('🔵 [API] Current Database:', dbNameResult[0]?.db || 'N/A');
+
+      const roleColumnResult = await prisma.$queryRaw<Array<{ column_name: string }>>`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name='Contact' AND column_name='role';
+      `;
+      const roleColumnExists = roleColumnResult.length > 0;
+      console.log('🔵 [API] Contact.role column exists:', roleColumnExists, `(${roleColumnResult.length} row(s))`);
+    } catch (sqlError) {
+      console.error('⚠️ [API] SQL check error:', sqlError);
+    }
+
     // DBアクセス: Prismaを使ってContactテーブルから取得
     const contacts = await prisma.contact.findMany({
       include: {
