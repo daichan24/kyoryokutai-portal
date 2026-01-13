@@ -5,8 +5,10 @@
 RenderのBackend Serviceの **Start Command** を以下に設定してください：
 
 ```bash
-echo "RUN MIGRATE" && node -e "console.log('DB_URL_HOST_DB:', (process.env.DATABASE_URL||'').split('@')[1]?.split('?')[0])" && npx prisma migrate deploy && echo "MIGRATE DONE" && npm start
+echo "RUN MIGRATE" && node -e "console.log('DB_URL_HOST_DB:', (process.env.DATABASE_URL||'').split('@')[1]?.split('?')[0])" && npx prisma migrate deploy 2>&1 && echo "MIGRATE DONE" && npm start
 ```
+
+**注意**: `2>&1` を追加して、migrate deployの詳細な出力（Applying migration / No pending migrations等）をログに表示します。
 
 **注意**: Root Directoryが`backend`に設定されているため、`cd backend`は不要です。
 

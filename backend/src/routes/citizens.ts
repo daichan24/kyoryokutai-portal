@@ -35,6 +35,11 @@ const citizenSchema = z.object({
  * 5. 成功時は200 + JSON、失敗時は400を返す
  */
 router.post('/', async (req: AuthRequest, res) => {
+  // DB接続先の確認（host/db部分のみ）
+  const dbUrl = process.env.DATABASE_URL || '';
+  const dbHostDb = dbUrl.split('@')[1]?.split('?')[0] || 'N/A';
+  console.log('🔵 [API] POST /api/citizens - DB_URL_HOST_DB:', dbHostDb);
+  
   console.log('🔵 [API] POST /api/citizens リクエスト受信');
   console.log('🔵 [API] リクエストボディ:', req.body);
 
@@ -96,6 +101,11 @@ router.post('/', async (req: AuthRequest, res) => {
  * 4. ステータス（在籍中/任期終了）を計算して返す
  */
 router.get('/', async (req: AuthRequest, res) => {
+  // DB接続先の確認（host/db部分のみ）
+  const dbUrl = process.env.DATABASE_URL || '';
+  const dbHostDb = dbUrl.split('@')[1]?.split('?')[0] || 'N/A';
+  console.log('🔵 [API] GET /api/citizens - DB_URL_HOST_DB:', dbHostDb);
+  
   console.log('🔵 [API] GET /api/citizens リクエスト受信');
 
   try {
