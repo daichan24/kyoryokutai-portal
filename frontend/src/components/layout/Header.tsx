@@ -14,6 +14,9 @@ export const Header: React.FC = () => {
             <h1 className="text-xl font-bold text-primary">
               長沼町地域おこし協力隊ポータル
             </h1>
+            <span className="ml-4 text-xs text-gray-500">
+              BUILD: {new Date().toISOString().split('T')[0]}-{Math.floor(Date.now() / 1000) % 10000}
+            </span>
           </div>
 
           <div className="flex items-center space-x-4">
