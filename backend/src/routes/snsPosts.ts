@@ -77,6 +77,33 @@ router.post('/', async (req: AuthRequest, res) => {
   }
 });
 
+// SNS投稿削除
+router.delete('/:id', async (req: AuthRequest, res) => {
+  try {
+    const post = await prisma.sNSPost.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!post) {
+      return res.status(404).json({ error: 'SNS投稿が見つかりません' });
+    }
+
+    // 自分の投稿のみ削除可能（MEMBERの場合）
+    if (req.user!.role === 'MEMBER' && post.userId !== req.user!.id) {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    await prisma.sNSPost.delete({
+      where: { id: req.params.id },
+    });
+
+    res.json({ message: '削除しました' });
+  } catch (error) {
+    console.error('Delete SNS post error:', error);
+    res.status(500).json({ error: 'SNS投稿の削除に失敗しました' });
+  }
+});
+
 // 未投稿者一覧
 router.get('/unpublished', async (req, res) => {
   try {

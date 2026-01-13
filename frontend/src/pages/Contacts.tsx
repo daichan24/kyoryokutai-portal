@@ -123,10 +123,7 @@ export const Contacts: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">町民データベース (TEST123)</h1>
-          <p className="text-xs text-gray-500 mt-1">
-            ENV: {import.meta.env.DEV ? 'local' : 'render'}
-          </p>
+               <h1 className="text-2xl font-bold text-gray-900">町民データベース</h1>
         </div>
         <Button onClick={handleCreateContact} data-testid="citizens-new">
           <Plus className="h-4 w-4 mr-2" />

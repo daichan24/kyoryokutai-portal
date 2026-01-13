@@ -8,52 +8,52 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  name          String
-  email         String   @unique
-  password      String
-  role          Role     @default(MEMBER)
+  id       String @id @default(uuid())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(MEMBER)
 
   // 協力隊属性
-  missionType   MissionType?
-  department    String?
-  termStart     DateTime?
-  termEnd       DateTime?
+  missionType MissionType?
+  department  String?
+  termStart   DateTime?
+  termEnd     DateTime?
 
   // カスタマイズ
-  avatarColor   String   @default("#3B82F6")
+  avatarColor String @default("#3B82F6")
 
   // Phase 1 Relations
   schedules     Schedule[]
   weeklyReports WeeklyReport[]
 
   // Phase 2 Relations
-  goals                  Goal[]
-  projects               Project[]
-  projectMemberships     ProjectMember[]
-  projectTasks           ProjectTask[]        @relation("TaskAssignee")
-  events                 Event[]
-  eventParticipations    EventParticipation[]
-  snsPosts               SNSPost[]
-  monthlyReports         MonthlyReport[]      @relation("MonthlyReportCreator")
-  supportRecords         SupportRecord[]
-  contacts               Contact[]
-  contactHistories       ContactHistory[]
+  goals               Goal[]
+  projects            Project[]
+  projectMemberships  ProjectMember[]
+  projectTasks        ProjectTask[]        @relation("TaskAssignee")
+  events              Event[]
+  eventParticipations EventParticipation[]
+  snsPosts            SNSPost[]
+  monthlyReports      MonthlyReport[]      @relation("MonthlyReportCreator")
+  supportRecords      SupportRecord[]
+  contacts            Contact[]
+  contactHistories    ContactHistory[]
 
   // Phase 3 Relations
-  scheduleSuggestions    ScheduleSuggestion[]
+  scheduleSuggestions ScheduleSuggestion[]
 
   // Phase 4 Relations
-  taskRequestsSent       TaskRequest[]        @relation("TaskRequester")
-  taskRequestsReceived   TaskRequest[]        @relation("TaskRequestee")
-  inspections            Inspection[]
-  personalModeEnabled    Boolean              @default(false)
-  personalProjects       PersonalProject[]
-  personalSchedules      PersonalSchedule[]
-  notifications          Notification[]
+  taskRequestsSent     TaskRequest[]      @relation("TaskRequester")
+  taskRequestsReceived TaskRequest[]      @relation("TaskRequestee")
+  inspections          Inspection[]
+  personalModeEnabled  Boolean            @default(false)
+  personalProjects     PersonalProject[]
+  personalSchedules    PersonalSchedule[]
+  notifications        Notification[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Role {
@@ -73,37 +73,37 @@ enum MissionType {
 // ========================================
 
 model Schedule {
-  id                    String   @id @default(uuid())
-  userId                String
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  date                  DateTime @db.Date
-  startTime             String
-  endTime               String
+  date      DateTime @db.Date
+  startTime String
+  endTime   String
 
-  locationId            String?
-  location              Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  locationText          String?
+  locationId   String?
+  location     Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationText String?
 
-  projectId             String?
-  project               Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  activityDescription   String   @db.Text
-  participants          String[] // User IDの配列
-  freeNote              String?  @db.Text
+  activityDescription String   @db.Text
+  participants        String[] // User IDの配列
+  freeNote            String?  @db.Text
 
-  isTemplate            Boolean  @default(false)
-  recurrenceRule        Json?    // { type: 'daily|weekly|monthly', interval: 1, endDate: Date }
-  isPending             Boolean  @default(false)
-  isAutoExtracted       Boolean  @default(false) // 月次報告自動抽出フラグ
+  isTemplate      Boolean @default(false)
+  recurrenceRule  Json? // { type: 'daily|weekly|monthly', interval: 1, endDate: Date }
+  isPending       Boolean @default(false)
+  isAutoExtracted Boolean @default(false) // 月次報告自動抽出フラグ
 
-  createdBy             CreatedBy @default(MANUAL)
+  createdBy CreatedBy @default(MANUAL)
 
-  scheduleProgress      ScheduleProgress[]
-  suggestions           ScheduleSuggestion[]
+  scheduleProgress ScheduleProgress[]
+  suggestions      ScheduleSuggestion[]
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId, date])
   @@index([projectId])
@@ -117,32 +117,32 @@ enum CreatedBy {
 }
 
 model Location {
-  id        String   @id @default(uuid())
-  name      String
-  order     Int      @default(0)
-  isActive  Boolean  @default(true)
+  id       String  @id @default(uuid())
+  name     String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
 
-  schedules  Schedule[]
-  events     Event[]
+  schedules Schedule[]
+  events    Event[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model WeeklyReport {
-  id                  String   @id @default(uuid())
-  userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  week                String
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  week   String
 
-  thisWeekActivities  Json
-  nextWeekPlan        String?  @db.Text
-  note                String?  @db.Text
+  thisWeekActivities Json
+  nextWeekPlan       String? @db.Text
+  note               String? @db.Text
 
-  submittedAt         DateTime?
+  submittedAt DateTime?
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, week])
 }
@@ -152,85 +152,85 @@ model WeeklyReport {
 // ========================================
 
 model Goal {
-  id                String         @id @default(uuid())
-  userId            String
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  goalName          String
-  goalType          GoalType       @default(PRIMARY)
-  targetPercentage  Int            @default(100)
+  goalName         String
+  goalType         GoalType @default(PRIMARY)
+  targetPercentage Int      @default(100)
 
-  approvalStatus    ApprovalStatus @default(DRAFT)
-  approvalComment   String?        @db.Text
-  approvedBy        String?
-  approvedAt        DateTime?
+  approvalStatus  ApprovalStatus @default(DRAFT)
+  approvalComment String?        @db.Text
+  approvedBy      String?
+  approvedAt      DateTime?
 
-  midGoals          MidGoal[]
-  projects          Project[]
+  midGoals MidGoal[]
+  projects Project[]
 
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
 }
 
 model MidGoal {
-  id            String         @id @default(uuid())
-  goalId        String
-  goal          Goal           @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  goalId String
+  goal   Goal   @relation(fields: [goalId], references: [id], onDelete: Cascade)
 
-  name          String
-  weight        Int
-  weightMethod  WeightMethod   @default(MANUAL)
-  startDate     DateTime?      @db.Date
-  endDate       DateTime?      @db.Date
-  order         Int            @default(0)
+  name         String
+  weight       Int
+  weightMethod WeightMethod @default(MANUAL)
+  startDate    DateTime?    @db.Date
+  endDate      DateTime?    @db.Date
+  order        Int          @default(0)
 
-  subGoals      SubGoal[]
+  subGoals SubGoal[]
 
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([goalId])
 }
 
 model SubGoal {
-  id            String       @id @default(uuid())
-  midGoalId     String
-  midGoal       MidGoal      @relation(fields: [midGoalId], references: [id], onDelete: Cascade)
+  id        String  @id @default(uuid())
+  midGoalId String
+  midGoal   MidGoal @relation(fields: [midGoalId], references: [id], onDelete: Cascade)
 
-  name          String
-  weight        Int
-  weightMethod  WeightMethod @default(MANUAL)
-  startDate     DateTime?    @db.Date
-  endDate       DateTime?    @db.Date
-  order         Int          @default(0)
+  name         String
+  weight       Int
+  weightMethod WeightMethod @default(MANUAL)
+  startDate    DateTime?    @db.Date
+  endDate      DateTime?    @db.Date
+  order        Int          @default(0)
 
-  tasks         GoalTask[]
+  tasks GoalTask[]
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([midGoalId])
 }
 
 model GoalTask {
-  id            String       @id @default(uuid())
-  subGoalId     String
-  subGoal       SubGoal      @relation(fields: [subGoalId], references: [id], onDelete: Cascade)
+  id        String  @id @default(uuid())
+  subGoalId String
+  subGoal   SubGoal @relation(fields: [subGoalId], references: [id], onDelete: Cascade)
 
-  name          String
-  weight        Int
-  progress      Int          @default(0)
-  phase         Phase        @default(PREPARATION)
-  startDate     DateTime?    @db.Date
-  endDate       DateTime?    @db.Date
-  order         Int          @default(0)
+  name      String
+  weight    Int
+  progress  Int       @default(0)
+  phase     Phase     @default(PREPARATION)
+  startDate DateTime? @db.Date
+  endDate   DateTime? @db.Date
+  order     Int       @default(0)
 
   scheduleProgress ScheduleProgress[]
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([subGoalId])
 }
@@ -265,50 +265,50 @@ enum ApprovalStatus {
 // ========================================
 
 model Project {
-  id                String         @id @default(uuid())
-  userId            String
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  projectName       String
-  description       String?        @db.Text
-  startDate         DateTime?      @db.Date
-  endDate           DateTime?      @db.Date
-  phase             Phase          @default(PREPARATION)
+  projectName String
+  description String?   @db.Text
+  startDate   DateTime? @db.Date
+  endDate     DateTime? @db.Date
+  phase       Phase     @default(PREPARATION)
 
-  goalId            String?
-  goal              Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  goalId String?
+  goal   Goal?   @relation(fields: [goalId], references: [id], onDelete: SetNull)
 
-  approvalStatus    ApprovalStatus @default(DRAFT)
-  approvalComment   String?        @db.Text
-  approvedBy        String?
-  approvedAt        DateTime?
+  approvalStatus  ApprovalStatus @default(DRAFT)
+  approvalComment String?        @db.Text
+  approvedBy      String?
+  approvedAt      DateTime?
 
-  tags              String[]
+  tags String[]
 
-  members           ProjectMember[]
-  tasks             ProjectTask[]
-  schedules         Schedule[]
-  events            Event[]
-  contactHistories  ContactHistory[]
-  taskRequests      TaskRequest[]    // Phase 4
-  inspections       Inspection[]     // Phase 4
+  members          ProjectMember[]
+  tasks            ProjectTask[]
+  schedules        Schedule[]
+  events           Event[]
+  contactHistories ContactHistory[]
+  taskRequests     TaskRequest[] // Phase 4
+  inspections      Inspection[] // Phase 4
 
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([goalId])
 }
 
 model ProjectMember {
-  id          String      @id @default(uuid())
-  projectId   String
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        MemberRole  @default(SUPPORT)
+  id        String     @id @default(uuid())
+  projectId String
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      MemberRole @default(SUPPORT)
 
-  createdAt   DateTime    @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([projectId, userId])
   @@index([projectId])
@@ -316,22 +316,22 @@ model ProjectMember {
 }
 
 model ProjectTask {
-  id            String   @id @default(uuid())
-  projectId     String
-  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  taskName      String
-  progress      Int      @default(0)
-  assignedTo    String?
-  assignee      User?    @relation("TaskAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
-  deadline      DateTime? @db.Date
-  order         Int      @default(0)
+  taskName   String
+  progress   Int       @default(0)
+  assignedTo String?
+  assignee   User?     @relation("TaskAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  deadline   DateTime? @db.Date
+  order      Int       @default(0)
 
   scheduleProgress ScheduleProgress[]
-  taskRequest      TaskRequest?  // Phase 4: タスク依頼との紐付け
+  taskRequest      TaskRequest? // Phase 4: タスク依頼との紐付け
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([projectId])
   @@index([assignedTo])
@@ -343,20 +343,20 @@ enum MemberRole {
 }
 
 model ScheduleProgress {
-  id              String       @id @default(uuid())
-  scheduleId      String
-  schedule        Schedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  scheduleId String
+  schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
-  goalTaskId      String?
-  goalTask        GoalTask?    @relation(fields: [goalTaskId], references: [id], onDelete: Cascade)
+  goalTaskId String?
+  goalTask   GoalTask? @relation(fields: [goalTaskId], references: [id], onDelete: Cascade)
 
-  projectTaskId   String?
-  projectTask     ProjectTask? @relation(fields: [projectTaskId], references: [id], onDelete: Cascade)
+  projectTaskId String?
+  projectTask   ProjectTask? @relation(fields: [projectTaskId], references: [id], onDelete: Cascade)
 
-  progressBefore  Int
-  progressAfter   Int
+  progressBefore Int
+  progressAfter  Int
 
-  createdAt       DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   @@index([scheduleId])
   @@index([goalTaskId])
@@ -368,34 +368,34 @@ model ScheduleProgress {
 // ========================================
 
 model Event {
-  id                  String              @id @default(uuid())
-  eventName           String
-  eventType           EventType           @default(OTHER)
-  date                DateTime            @db.Date
-  startTime           String?
-  endTime             String?
+  id        String    @id @default(uuid())
+  eventName String
+  eventType EventType @default(OTHER)
+  date      DateTime  @db.Date
+  startTime String?
+  endTime   String?
 
-  locationId          String?
-  location            Location?           @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  locationText        String?
-  description         String?             @db.Text
+  locationId   String?
+  location     Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationText String?
+  description  String?   @db.Text
 
-  participationPoint  Float               @default(1.0)
-  preparationPoint    Float               @default(0.5)
+  participationPoint Float @default(1.0)
+  preparationPoint   Float @default(0.5)
 
-  projectId           String?
-  project             Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  surveyEnabled       Boolean             @default(false)
-  surveyQuestions     Json?
+  surveyEnabled   Boolean @default(false)
+  surveyQuestions Json?
 
-  createdBy           String
-  creator             User                @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdBy String
+  creator   User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
-  participations      EventParticipation[]
+  participations EventParticipation[]
 
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([eventType, date])
   @@index([createdBy])
@@ -404,17 +404,17 @@ model Event {
 }
 
 model EventParticipation {
-  id                 String            @id @default(uuid())
-  eventId            String
-  event              Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  userId             String
-  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  participationType  ParticipationType @default(PARTICIPATION)
-  pointEarned        Float             @default(0)
-  surveyResponse     Json?
+  participationType ParticipationType @default(PARTICIPATION)
+  pointEarned       Float             @default(0)
+  surveyResponse    Json?
 
-  createdAt          DateTime          @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([eventId, userId])
   @@index([eventId])
@@ -438,17 +438,17 @@ enum ParticipationType {
 // ========================================
 
 model SNSPost {
-  id         String    @id @default(uuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  week       String
-  postDate   DateTime? @db.Date
-  postType   PostType?
-  isPosted   Boolean   @default(false)
+  week     String
+  postDate DateTime? @db.Date
+  postType PostType?
+  isPosted Boolean   @default(false)
 
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, week])
   @@index([userId, week])
@@ -465,40 +465,40 @@ enum PostType {
 // ========================================
 
 model MonthlyReport {
-  id              String          @id @default(uuid())
-  month           String
-  createdBy       String
-  creator         User            @relation("MonthlyReportCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  id        String @id @default(uuid())
+  month     String
+  createdBy String
+  creator   User   @relation("MonthlyReportCreator", fields: [createdBy], references: [id], onDelete: Cascade)
 
-  coverRecipient  String          @default("長沼町長 斎藤良彦様")
-  coverSender     String          @default("一般社団法人まおいのはこ 代表理事 坂本一志")
+  coverRecipient String @default("長沼町長 斎藤良彦様")
+  coverSender    String @default("一般社団法人まおいのはこ 代表理事 坂本一志")
 
-  memberSheets    Json
+  memberSheets Json
 
-  submittedAt     DateTime?
+  submittedAt DateTime?
 
-  supportRecords  SupportRecord[]
+  supportRecords SupportRecord[]
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([month])
 }
 
 model SupportRecord {
-  id               String        @id @default(uuid())
-  monthlyReportId  String
-  monthlyReport    MonthlyReport @relation(fields: [monthlyReportId], references: [id], onDelete: Cascade)
+  id              String        @id @default(uuid())
+  monthlyReportId String
+  monthlyReport   MonthlyReport @relation(fields: [monthlyReportId], references: [id], onDelete: Cascade)
 
-  userId           String
-  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  supportDate      DateTime      @db.Date
-  supportContent   String        @db.Text
-  supportBy        String
+  supportDate    DateTime @db.Date
+  supportContent String   @db.Text
+  supportBy      String
 
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([monthlyReportId])
   @@index([userId])
@@ -509,31 +509,31 @@ model SupportRecord {
 // ========================================
 
 model Contact {
-  id            String           @id @default(uuid())
-  name          String
-  organization  String?
-  title         String?
-  contactInfo   String?
-  memo          String?          @db.Text
-  tags          String[]
+  id           String   @id @default(uuid())
+  name         String
+  organization String?
+  title        String?
+  contactInfo  String?
+  memo         String?  @db.Text
+  tags         String[]
 
   // 協力隊メンバー情報（新規追加）
-  role          String?          // '現役' | 'OB' | 'サポート' | '役場'
-  startYear     Int?             // 任期開始年
-  endYear       Int?             // 任期終了年
+  role      String? // '現役' | 'OB' | 'サポート' | '役場'
+  startYear Int? // 任期開始年
+  endYear   Int? // 任期終了年
 
   // 新規追加フィールド
-  category      String?          // ジャンル
-  relatedMembers String[]         // 関わった協力隊（User IDの配列）
-  relationshipType String?        // 関わり方: '協力的' | '要注意' | '未知' | '未登録'
+  category         String? // ジャンル
+  relatedMembers   String[] // 関わった協力隊（User IDの配列）
+  relationshipType String? // 関わり方: '協力的' | '要注意' | '未知' | '未登録'
 
-  createdBy     String
-  creator       User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdBy String
+  creator   User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
-  histories     ContactHistory[]
+  histories ContactHistory[]
 
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([createdBy])
   @@index([category])
@@ -541,20 +541,20 @@ model Contact {
 }
 
 model ContactHistory {
-  id         String   @id @default(uuid())
-  contactId  String
-  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  id        String  @id @default(uuid())
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  date       DateTime @db.Date
-  content    String   @db.Text
+  date    DateTime @db.Date
+  content String   @db.Text
 
-  projectId  String?
-  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([contactId])
   @@index([userId])
@@ -566,17 +566,17 @@ model ContactHistory {
 // ========================================
 
 model ScheduleSuggestion {
-  id                   String              @id @default(uuid())
-  scheduleId           String
-  schedule             Schedule            @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  suggestedTo          String
-  user                 User                @relation(fields: [suggestedTo], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  scheduleId  String
+  schedule    Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  suggestedTo String
+  user        User     @relation(fields: [suggestedTo], references: [id], onDelete: Cascade)
 
-  status               SuggestionStatus    @default(PENDING)
-  conflictingSchedules Json?               // 衝突する予定のID配列
+  status               SuggestionStatus @default(PENDING)
+  conflictingSchedules Json? // 衝突する予定のID配列
 
-  createdAt            DateTime            @default(now())
-  respondedAt          DateTime?
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
 
   @@unique([scheduleId, suggestedTo])
   @@index([suggestedTo, status])
@@ -606,28 +606,28 @@ model SystemConfig {
 // ========================================
 
 model TaskRequest {
-  id                  String         @id @default(uuid())
-  requestedBy         String
-  requester           User           @relation("TaskRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
-  requestedTo         String
-  requestee           User           @relation("TaskRequestee", fields: [requestedTo], references: [id], onDelete: Cascade)
+  id          String @id @default(uuid())
+  requestedBy String
+  requester   User   @relation("TaskRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
+  requestedTo String
+  requestee   User   @relation("TaskRequestee", fields: [requestedTo], references: [id], onDelete: Cascade)
 
-  requestTitle        String
-  requestDescription  String         @db.Text
-  deadline            DateTime?      @db.Date
+  requestTitle       String
+  requestDescription String    @db.Text
+  deadline           DateTime? @db.Date
 
-  projectId           String?
-  project             Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  approvalStatus      ApprovalStatus @default(PENDING)
-  approvalNote        String?        @db.Text
-  approvedAt          DateTime?
+  approvalStatus ApprovalStatus @default(PENDING)
+  approvalNote   String?        @db.Text
+  approvedAt     DateTime?
 
-  createdTaskId       String?        @unique
-  createdTask         ProjectTask?   @relation(fields: [createdTaskId], references: [id], onDelete: SetNull)
+  createdTaskId String?      @unique
+  createdTask   ProjectTask? @relation(fields: [createdTaskId], references: [id], onDelete: SetNull)
 
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([requestedBy])
   @@index([requestedTo])
@@ -639,25 +639,25 @@ model TaskRequest {
 // ========================================
 
 model Inspection {
-  id                  String   @id @default(uuid())
-  userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  date                DateTime @db.Date
-  destination         String
-  purpose             String   @db.Text
-  participants        String[]
+  date         DateTime @db.Date
+  destination  String
+  purpose      String   @db.Text
+  participants String[]
 
-  inspectionPurpose   String   @db.Text
-  inspectionContent   String   @db.Text
-  reflection          String   @db.Text
-  futureAction        String   @db.Text
+  inspectionPurpose String @db.Text
+  inspectionContent String @db.Text
+  reflection        String @db.Text
+  futureAction      String @db.Text
 
-  projectId           String?
-  project             Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([date])
@@ -668,57 +668,57 @@ model Inspection {
 // ========================================
 
 model PersonalProject {
-  id            String              @id @default(uuid())
-  userId        String
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  projectName   String
-  description   String?             @db.Text
-  startDate     DateTime?           @db.Date
-  endDate       DateTime?           @db.Date
-  phase         Phase               @default(PREPARATION)
+  projectName String
+  description String?   @db.Text
+  startDate   DateTime? @db.Date
+  endDate     DateTime? @db.Date
+  phase       Phase     @default(PREPARATION)
 
-  tasks         PersonalTask[]
-  schedules     PersonalSchedule[]
+  tasks     PersonalTask[]
+  schedules PersonalSchedule[]
 
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
 }
 
 model PersonalTask {
-  id              String          @id @default(uuid())
-  projectId       String
-  project         PersonalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id        String          @id @default(uuid())
+  projectId String
+  project   PersonalProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  taskName        String
-  progress        Int             @default(0)
-  deadline        DateTime?       @db.Date
-  order           Int             @default(0)
+  taskName String
+  progress Int       @default(0)
+  deadline DateTime? @db.Date
+  order    Int       @default(0)
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([projectId])
 }
 
 model PersonalSchedule {
-  id                    String          @id @default(uuid())
-  userId                String
-  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  date                  DateTime        @db.Date
-  startTime             String
-  endTime               String
+  date      DateTime @db.Date
+  startTime String
+  endTime   String
 
-  projectId             String?
-  project               PersonalProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+  project   PersonalProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
-  activityDescription   String          @db.Text
+  activityDescription String @db.Text
 
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId, date])
 }
@@ -728,19 +728,19 @@ model PersonalSchedule {
 // ========================================
 
 model Notification {
-  id          String             @id @default(uuid())
-  userId      String
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  type        NotificationType
-  title       String
-  message     String             @db.Text
-  link        String?
+  type    NotificationType
+  title   String
+  message String           @db.Text
+  link    String?
 
-  isRead      Boolean            @default(false)
-  readAt      DateTime?
+  isRead Boolean   @default(false)
+  readAt DateTime?
 
-  createdAt   DateTime           @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId, isRead])
   @@index([createdAt])

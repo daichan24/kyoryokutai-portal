@@ -18,7 +18,8 @@ interface SNSPost {
 
 export const SNSPosts: React.FC = () => {
   const queryClient = useQueryClient();
-  const [newWeek, setNewWeek] = useState('');
+  const [postDate, setPostDate] = useState('');
+  const [postType, setPostType] = useState<'STORY' | 'FEED' | ''>('');
 
   const { data: posts, isLoading } = useQuery<SNSPost[]>({
     queryKey: ['sns-posts'],
@@ -40,6 +41,15 @@ export const SNSPosts: React.FC = () => {
     }
   });
 
+  const deletePostMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      return api.delete(`/api/sns-posts/${postId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sns-posts'] });
+    }
+  });
+
   const handlePostCheck = (week: string, postType: 'STORY' | 'FEED', checked: boolean) => {
     updatePostMutation.mutate({
       week,
@@ -52,18 +62,34 @@ export const SNSPosts: React.FC = () => {
   };
 
   const handleCreatePost = () => {
-    if (!newWeek.trim()) {
-      alert('週を入力してください（例: 2024-W01）');
+    if (!postDate || !postType) {
+      alert('投稿日と投稿種別を選択してください');
       return;
     }
+    
+    // 日付から週を計算（YYYY-WW形式）
+    const date = new Date(postDate);
+    const year = date.getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const days = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+    const week = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+    const weekStr = `${year}-W${week.toString().padStart(2, '0')}`;
+    
     updatePostMutation.mutate({
-      week: newWeek.trim(),
+      week: weekStr,
       data: {
-        isPosted: false,
-        postType: undefined
+        postDate: postDate,
+        postType: postType as 'STORY' | 'FEED',
+        isPosted: true
       }
     });
-    setNewWeek('');
+    setPostDate('');
+    setPostType('');
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('この投稿履歴を削除しますか？')) return;
+    deletePostMutation.mutate(postId);
   };
 
   // 現在の週（YYYY-WW形式、ISO週番号）
@@ -107,21 +133,23 @@ export const SNSPosts: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">SNS投稿管理</h1>
         <div className="flex gap-2">
           <input
-            type="text"
-            value={newWeek}
-            onChange={(e) => setNewWeek(e.target.value)}
-            placeholder="週を入力（例: 2024-W01）"
+            type="date"
+            value={postDate}
+            onChange={(e) => setPostDate(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleCreatePost();
-              }
-            }}
           />
-          <Button onClick={handleCreatePost}>
+          <select
+            value={postType}
+            onChange={(e) => setPostType(e.target.value as typeof postType)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">投稿種別を選択</option>
+            <option value="STORY">ストーリーズ</option>
+            <option value="FEED">フィード</option>
+          </select>
+          <Button onClick={handleCreatePost} disabled={!postDate || !postType}>
             <Plus className="h-4 w-4 mr-2" />
-            新規作成
+            追加
           </Button>
         </div>
       </div>
@@ -172,52 +200,54 @@ export const SNSPosts: React.FC = () => {
         )}
       </div>
 
-      {/* 週ごとの履歴 */}
+      {/* 投稿履歴（日付順） */}
       <div className="space-y-4">
         <h2 className="font-semibold text-lg text-gray-900">投稿履歴</h2>
         
-        {postsByWeek && Object.entries(postsByWeek)
-          .sort(([a], [b]) => b.localeCompare(a))
-          .map(([week, weekPosts]: [string, SNSPost[]]) => {
-            const storyPost = weekPosts.find((p: SNSPost) => p.postType === 'STORY' || p.postType === 'BOTH');
-            const feedPost = weekPosts.find((p: SNSPost) => p.postType === 'FEED' || p.postType === 'BOTH');
-
-            return (
-              <div key={week} className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="font-medium mb-3 text-gray-900">{week}</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                    <span className="text-sm text-gray-700">ストーリーズ</span>
-                    <input
-                      type="checkbox"
-                      checked={storyPost?.isPosted || false}
-                      onChange={(e) => handlePostCheck(week, 'STORY', e.target.checked)}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                    <span className="text-sm text-gray-700">フィード投稿</span>
-                    <input
-                      type="checkbox"
-                      checked={feedPost?.isPosted || false}
-                      onChange={(e) => handlePostCheck(week, 'FEED', e.target.checked)}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                  </label>
+        {posts && posts.length > 0 ? (
+          <div className="space-y-3">
+            {posts
+              .filter((p: SNSPost) => p.postDate)
+              .sort((a: SNSPost, b: SNSPost) => {
+                const dateA = a.postDate ? new Date(a.postDate).getTime() : 0;
+                const dateB = b.postDate ? new Date(b.postDate).getTime() : 0;
+                return dateB - dateA; // 新しい順
+              })
+              .map((post: SNSPost) => (
+                <div key={post.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-gray-900">
+                        {post.postDate ? format(new Date(post.postDate), 'yyyy年M月d日') : '日付不明'}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        post.postType === 'STORY' ? 'bg-purple-100 text-purple-800' :
+                        post.postType === 'FEED' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {post.postType === 'STORY' ? 'ストーリーズ' :
+                         post.postType === 'FEED' ? 'フィード' :
+                         post.postType === 'BOTH' ? '両方' : '不明'}
+                      </span>
+                      {post.user && (
+                        <span className="text-xs text-gray-500">({post.user.name})</span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeletePost(post.id)}
+                    className="text-red-600 hover:text-red-800 text-sm px-3 py-1 border border-red-300 rounded hover:bg-red-50"
+                  >
+                    削除
+                  </button>
                 </div>
-
-                <div className="mt-3 pt-3 border-t flex gap-4 text-xs text-gray-500">
-                  {storyPost?.postDate && (
-                    <span>ストーリーズ: {format(new Date(storyPost.postDate), 'M/d HH:mm')}</span>
-                  )}
-                  {feedPost?.postDate && (
-                    <span>フィード: {format(new Date(feedPost.postDate), 'M/d HH:mm')}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            投稿履歴がありません
+          </div>
+        )}
       </div>
     </div>
   );

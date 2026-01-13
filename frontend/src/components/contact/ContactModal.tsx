@@ -103,9 +103,11 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
       console.log('✅ [UI] API呼び出し成功');
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [UI] API呼び出し失敗:', error);
-      alert('保存に失敗しました');
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.details || error?.message || '保存に失敗しました';
+      console.error('❌ [UI] エラー詳細:', error?.response?.data);
+      alert(`保存に失敗しました: ${typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage)}`);
     } finally {
       setLoading(false);
     }

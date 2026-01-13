@@ -88,6 +88,45 @@ async function main() {
     },
   });
 
+  // P1: テストユーザー追加（協力隊2名+役場1名）
+  const testMember1 = await prisma.user.create({
+    data: {
+      name: '佐藤太郎',
+      email: 'sato.taro@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '企画課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#EF4444',
+    },
+  });
+
+  const testMember2 = await prisma.user.create({
+    data: {
+      name: '鈴木花子',
+      email: 'suzuki.hanako@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'MISSION',
+      department: '総務課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#10B981',
+    },
+  });
+
+  const testGovernment = await prisma.user.create({
+    data: {
+      name: '田中一郎',
+      email: 'tanaka.ichiro@test.com',
+      password: hashedPassword,
+      role: 'GOVERNMENT',
+      avatarColor: '#F59E0B',
+    },
+  });
+
   console.log('✅ Created users:', {
     master: master.email,
     member1: member1.email,
@@ -95,6 +134,9 @@ async function main() {
     member3: member3.email,
     support: support.email,
     government: government.email,
+    testMember1: testMember1.email,
+    testMember2: testMember2.email,
+    testGovernment: testGovernment.email,
   });
 
   // Create locations

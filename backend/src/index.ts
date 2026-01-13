@@ -18,6 +18,7 @@ import eventsRoutes from './routes/events';
 import snsPostsRoutes from './routes/snsPosts';
 import contactsRoutes from './routes/contacts';
 import citizensRoutes from './routes/citizens';
+import monthlyReportsRoutes from './routes/monthlyReports';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -72,6 +73,7 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/sns-posts', snsPostsRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/citizens', citizensRoutes); // 町民（協力隊メンバー）データベース用API
+app.use('/api/monthly-reports', monthlyReportsRoutes);
 
 // Error handler
 app.use(errorHandler);

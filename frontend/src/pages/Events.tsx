@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
+import { EventModal } from '../components/event/EventModal';
 
 interface Event {
   id: string;
@@ -18,6 +19,9 @@ interface Event {
 
 export const Events: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: events, isLoading } = useQuery<Event[]>({
     queryKey: ['events'],
@@ -61,7 +65,14 @@ export const Events: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">イベント管理</h1>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+        <button 
+          onClick={() => {
+            console.log('🔵 [UI] 新規イベントボタンがクリックされました');
+            setSelectedEvent(null);
+            setIsModalOpen(true);
+          }}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+        >
           + 新規イベント
         </button>
       </div>
@@ -106,6 +117,21 @@ export const Events: React.FC = () => {
         <div className="text-center py-12 text-gray-500">
           イベントがありません
         </div>
+      )}
+
+      {isModalOpen && (
+        <EventModal
+          event={selectedEvent}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedEvent(null);
+          }}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ['events'] });
+            setIsModalOpen(false);
+            setSelectedEvent(null);
+          }}
+        />
       )}
     </div>
   );

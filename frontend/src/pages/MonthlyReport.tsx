@@ -1,5 +1,5 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -15,6 +15,8 @@ interface MonthlyReport {
 }
 
 export const MonthlyReport: React.FC = () => {
+  const [isCreating, setIsCreating] = useState(false);
+  const queryClient = useQueryClient();
   const { data: reports, isLoading, error } = useQuery<MonthlyReport[]>({
     queryKey: ['monthly-reports'],
     queryFn: async () => {
@@ -75,8 +77,28 @@ export const MonthlyReport: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">月次報告</h1>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-          + 新規作成
+        <button 
+          onClick={async () => {
+            console.log('🔵 [UI] 月次報告新規作成ボタンがクリックされました');
+            setIsCreating(true);
+            try {
+              const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+              const response = await api.post('/api/monthly-reports', {
+                month: currentMonth,
+              });
+              console.log('✅ [UI] 月次報告作成成功:', response.data);
+              queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+            } catch (error: any) {
+              console.error('❌ [UI] 月次報告作成失敗:', error);
+              alert(`月次報告の作成に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
+            } finally {
+              setIsCreating(false);
+            }
+          }}
+          disabled={isCreating}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isCreating ? '作成中...' : '+ 新規作成'}
         </button>
       </div>
 
