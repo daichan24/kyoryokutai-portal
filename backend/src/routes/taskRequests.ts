@@ -108,14 +108,27 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// タスク依頼作成（サポート・役場のみ）
-router.post('/', authorize('SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, res) => {
+// タスク依頼作成（MASTER, SUPPORT, GOVERNMENT, MEMBER 全員可能）
+router.post('/', async (req: AuthRequest, res) => {
   try {
+    // 認可チェック: MASTER, SUPPORT, GOVERNMENT, MEMBER 全員可能
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const allowedRoles: Role[] = ['MASTER', 'SUPPORT', 'GOVERNMENT', 'MEMBER'];
+    if (!allowedRoles.includes(req.user.role)) {
+      console.log(`❌ [AUTH] POST /api/task-requests: Role ${req.user.role} is not allowed`);
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    console.log(`✅ [AUTH] POST /api/task-requests: User ${req.user.email} (${req.user.role}) is allowed`);
+
     const data = createTaskRequestSchema.parse(req.body);
 
     const taskRequest = await prisma.taskRequest.create({
       data: {
-        requestedBy: req.user!.id,
+        requestedBy: req.user.id,
         requestedTo: data.requesteeId,
         requestTitle: data.requestTitle,
         requestDescription: data.requestDescription,
