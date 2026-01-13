@@ -1,12 +1,29 @@
 import React, { useEffect, useState } from 'react';
+import { Plus, X } from 'lucide-react';
 import { api } from '../../utils/api';
 import { User } from '../../types';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { formatDate } from '../../utils/date';
+import { Button } from '../../components/common/Button';
+import { Input } from '../../components/common/Input';
+import { useAuthStore } from '../../stores/authStore';
 
 export const UsersSettings: React.FC = () => {
+  const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'MEMBER' as 'MASTER' | 'MEMBER' | 'SUPPORT' | 'GOVERNMENT',
+    department: '',
+    termStart: '',
+    termEnd: '',
+  });
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -24,9 +41,48 @@ export const UsersSettings: React.FC = () => {
     }
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setFormLoading(true);
+
+    try {
+      await api.post<User>('/api/admin/users', formData);
+      setIsModalOpen(false);
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        role: 'MEMBER',
+        department: '',
+        termStart: '',
+        termEnd: '',
+      });
+      await fetchUsers(); // 一覧を再取得
+    } catch (error: any) {
+      console.error('Failed to create user:', error);
+      const errorMessage = error.response?.data?.error || 'ユーザーの作成に失敗しました';
+      const errorDetails = error.response?.data?.details;
+      setFormError(errorDetails ? JSON.stringify(errorDetails, null, 2) : errorMessage);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  // 管理者（MASTER / SUPPORT）のみが新規作成ボタンを表示
+  const canCreateUser = currentUser?.role === 'MASTER' || currentUser?.role === 'SUPPORT';
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">ユーザー管理</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">ユーザー管理</h1>
+        {canCreateUser && (
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規ユーザー追加
+          </Button>
+        )}
+      </div>
 
       {loading ? (
         <LoadingSpinner />
@@ -88,6 +144,119 @@ export const UsersSettings: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* 新規ユーザー作成モーダル */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-900">新規ユーザー追加</h2>
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setFormError(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+              {formError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  <p className="text-sm">{formError}</p>
+                </div>
+              )}
+
+              <Input
+                label="名前 *"
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+
+              <Input
+                label="メールアドレス *"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
+
+              <Input
+                label="パスワード *"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+                minLength={6}
+              />
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  役割 *
+                </label>
+                <select
+                  value={formData.role}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      role: e.target.value as 'MASTER' | 'MEMBER' | 'SUPPORT' | 'GOVERNMENT',
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  required
+                >
+                  <option value="MEMBER">MEMBER（協力隊）</option>
+                  <option value="GOVERNMENT">GOVERNMENT（役場）</option>
+                  <option value="SUPPORT">SUPPORT（サポート）</option>
+                  <option value="MASTER">MASTER（管理者）</option>
+                </select>
+              </div>
+
+              <Input
+                label="部署"
+                type="text"
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              />
+
+              <Input
+                label="任期開始日"
+                type="date"
+                value={formData.termStart}
+                onChange={(e) => setFormData({ ...formData, termStart: e.target.value })}
+              />
+
+              <Input
+                label="任期終了日"
+                type="date"
+                value={formData.termEnd}
+                onChange={(e) => setFormData({ ...formData, termEnd: e.target.value })}
+              />
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setFormError(null);
+                  }}
+                  disabled={formLoading}
+                >
+                  キャンセル
+                </Button>
+                <Button type="submit" disabled={formLoading}>
+                  {formLoading ? '作成中...' : '作成'}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

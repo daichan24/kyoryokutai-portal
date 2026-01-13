@@ -88,9 +88,11 @@ async function main() {
     },
   });
 
-  // P1: テストユーザー追加（協力隊2名+役場1名）
-  const testMember1 = await prisma.user.create({
-    data: {
+  // P1: テストユーザー追加（協力隊2名+役場1名）- upsertで安全に追加
+  const testMember1 = await prisma.user.upsert({
+    where: { email: 'sato.taro@test.com' },
+    update: {},
+    create: {
       name: '佐藤太郎',
       email: 'sato.taro@test.com',
       password: hashedPassword,
@@ -103,8 +105,10 @@ async function main() {
     },
   });
 
-  const testMember2 = await prisma.user.create({
-    data: {
+  const testMember2 = await prisma.user.upsert({
+    where: { email: 'suzuki.hanako@test.com' },
+    update: {},
+    create: {
       name: '鈴木花子',
       email: 'suzuki.hanako@test.com',
       password: hashedPassword,
@@ -117,8 +121,10 @@ async function main() {
     },
   });
 
-  const testGovernment = await prisma.user.create({
-    data: {
+  const testGovernment = await prisma.user.upsert({
+    where: { email: 'tanaka.ichiro@test.com' },
+    update: {},
+    create: {
       name: '田中一郎',
       email: 'tanaka.ichiro@test.com',
       password: hashedPassword,
