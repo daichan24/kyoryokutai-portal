@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { notifyTaskRequest } from '../services/notificationService';
+import type { Role } from '@prisma/client';
 
 const router = Router();
 router.use(authenticate);
