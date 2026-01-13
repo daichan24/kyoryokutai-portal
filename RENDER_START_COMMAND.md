@@ -41,9 +41,21 @@ MIGRATE DONE
 
 **重要**: 
 - `RUN MIGRATE` が表示されること
-- `DB_URL_HOST_DB` が表示されること（host:port/dbname形式）
-- `Applying migration` または `No pending migrations` が表示されること
+- `DB_URL_HOST_DB` が表示されること（host:port/dbname形式）← **migrate時のDB**
+- `Applying migration` または `No pending migrations` が表示されること（詳細出力全体を確認）
 - `MIGRATE DONE` が表示されること
+
+### 1-2. API実行時のDB接続確認
+
+API実行時（GET/POST `/api/citizens`）のログで以下を確認：
+
+```
+🔵 [API] GET /api/citizens - DB_URL_HOST_DB: xxxxx:5432/xxxxx
+```
+
+**重要**: 
+- migrate時の`DB_URL_HOST_DB`と、API実行時の`DB_URL_HOST_DB`が**一致していること**
+- 一致しない場合、Renderの環境変数`DATABASE_URL`が複数サービス（backend / job / preview等）でズレている可能性
 
 ### 2. DB接続情報の確認
 
@@ -84,9 +96,15 @@ curl -X POST https://your-backend.onrender.com/api/citizens \
 
 ### "No pending migrations" と出るのにP2022エラーが継続する場合
 
-- **重要**: `DB_URL_HOST_DB` で表示されたDBと、実際のDBサービスが不一致の可能性
-- RenderのDBサービスの接続情報と、`DB_URL_HOST_DB`の値を比較
-- DATABASE_URL環境変数を修正して、正しいDBを参照するように設定
+- **重要**: migrate時の`DB_URL_HOST_DB`と、API実行時の`DB_URL_HOST_DB`を比較
+- **不一致の場合**: Renderの環境変数`DATABASE_URL`が複数サービス（backend / job / preview等）でズレている
+  - Backend Serviceの環境変数`DATABASE_URL`を確認
+  - 他のサービス（Job、Preview等）の`DATABASE_URL`と一致しているか確認
+  - すべてのサービスで同じDBを参照するように修正
+- **一致している場合**: migrate deployの詳細出力（`2>&1`で表示される全体）を確認
+  - `Applying migration` が表示されているか
+  - エラーメッセージがないか
+  - 実際にmigrationが適用されているか
 
 ### P2022エラーが継続する場合
 
