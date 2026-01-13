@@ -24,6 +24,21 @@ import { startCronJobs } from './jobs';
 
 dotenv.config();
 
+// DATABASE_URLの情報をログ出力（資格情報は出さない）
+const dbUrl = process.env.DATABASE_URL;
+if (dbUrl) {
+  try {
+    const url = new URL(dbUrl);
+    console.log('🔵 [DB] Database Host:', url.hostname);
+    console.log('🔵 [DB] Database Name:', url.pathname.replace('/', '') || 'default');
+    console.log('🔵 [DB] Database Port:', url.port || '5432 (default)');
+  } catch (error) {
+    console.log('⚠️ [DB] Failed to parse DATABASE_URL');
+  }
+} else {
+  console.log('⚠️ [DB] DATABASE_URL is not set');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
