@@ -1,8 +1,11 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { InspectionModal } from '../components/inspection/InspectionModal';
+import { Button } from '../components/common/Button';
+import { Plus } from 'lucide-react';
 
 interface Inspection {
   id: string;
@@ -19,6 +22,9 @@ interface Inspection {
 }
 
 export const Inspections: React.FC = () => {
+  const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const { data: inspections, isLoading } = useQuery<Inspection[]>({
     queryKey: ['inspections'],
     queryFn: async () => {
@@ -46,6 +52,19 @@ export const Inspections: React.FC = () => {
     }
   };
 
+  const handleCreateInspection = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleSaved = () => {
+    queryClient.invalidateQueries({ queryKey: ['inspections'] });
+    handleCloseModal();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -58,9 +77,10 @@ export const Inspections: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">視察記録</h1>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-          + 新規視察記録
-        </button>
+        <Button onClick={handleCreateInspection}>
+          <Plus className="h-4 w-4 mr-2" />
+          新規視察記録
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -110,6 +130,13 @@ export const Inspections: React.FC = () => {
         <div className="text-center py-12 text-gray-500">
           視察記録がありません
         </div>
+      )}
+
+      {isModalOpen && (
+        <InspectionModal
+          onClose={handleCloseModal}
+          onSaved={handleSaved}
+        />
       )}
     </div>
   );

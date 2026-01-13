@@ -2,24 +2,18 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 interface Event {
   id: string;
   eventName: string;
   eventType: 'TOWN_OFFICIAL' | 'TEAM' | 'OTHER';
-  eventDate: string;
-  location?: string;
+  date: string;
+  startTime?: string;
+  endTime?: string;
   description?: string;
-  maxParticipants?: number;
-  user: { id: string; name: string; avatarColor?: string };
-  project?: { id: string; projectName: string };
-  participations: Array<{
-    id: string;
-    participationType: 'PARTICIPATION' | 'PREPARATION';
-    pointEarned: number;
-    user: { id: string; name: string };
-  }>;
+  participationPoint: number;
+  preparationPoint: number;
+  participations: any[];
 }
 
 export const Events: React.FC = () => {
@@ -58,7 +52,7 @@ export const Events: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <LoadingSpinner />
+        <div className="text-gray-500">読み込み中...</div>
       </div>
     );
   }
@@ -97,14 +91,8 @@ export const Events: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {format(new Date(event.eventDate), 'yyyy年M月d日')}
-                  {event.location && ` - ${event.location}`}
+                  {format(new Date(event.date), 'yyyy年M月d日')}
                 </div>
-                {event.participations.length > 0 && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    参加者: {event.participations.length}名
-                  </div>
-                )}
               </div>
             </div>
             {event.description && (

@@ -3,6 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { ProjectModal } from '../components/project/ProjectModal';
+import { Button } from '../components/common/Button';
+import { Plus } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -22,6 +25,8 @@ export const Projects: React.FC = () => {
   const queryClient = useQueryClient();
   const [filterPhase, setFilterPhase] = useState<string>('all');
   const [filterApproval, setFilterApproval] = useState<string>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ['projects'],
@@ -50,6 +55,26 @@ export const Projects: React.FC = () => {
     if (confirm(`このプロジェクトを${status === 'APPROVED' ? '承認' : '差し戻し'}しますか？`)) {
       approveMutation.mutate({ id, status });
     }
+  };
+
+  const handleCreateProject = () => {
+    setSelectedProject(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditProject = (project: Project) => {
+    setSelectedProject(project);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedProject(null);
+  };
+
+  const handleSaved = () => {
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    handleCloseModal();
   };
 
   const getPhaseLabel = (phase: string) => {
@@ -104,9 +129,10 @@ export const Projects: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">プロジェクト管理</h1>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-          + 新規プロジェクト
-        </button>
+        <Button onClick={handleCreateProject}>
+          <Plus className="h-4 w-4 mr-2" />
+          新規プロジェクト
+        </Button>
       </div>
 
       <div className="flex gap-4">
@@ -174,7 +200,10 @@ export const Projects: React.FC = () => {
               <span className={`text-xs px-2 py-1 rounded-full ${getApprovalColor(project.approvalStatus)}`}>
                 {getApprovalLabel(project.approvalStatus)}
               </span>
-              <button className="text-sm text-blue-600 hover:underline">
+              <button
+                onClick={() => handleEditProject(project)}
+                className="text-sm text-blue-600 hover:underline"
+              >
                 詳細 →
               </button>
             </div>
@@ -204,6 +233,14 @@ export const Projects: React.FC = () => {
         <div className="text-center py-12 text-gray-500">
           プロジェクトがありません
         </div>
+      )}
+
+      {isModalOpen && (
+        <ProjectModal
+          project={selectedProject}
+          onClose={handleCloseModal}
+          onSaved={handleSaved}
+        />
       )}
     </div>
   );

@@ -1,0 +1,249 @@
+import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
+import { api } from '../../utils/api';
+import { formatDate } from '../../utils/date';
+import { Button } from '../common/Button';
+import { Input } from '../common/Input';
+
+interface Event {
+  id: string;
+  eventName: string;
+  eventType: 'TOWN_OFFICIAL' | 'TEAM' | 'OTHER';
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  locationText?: string;
+  description?: string;
+  maxParticipants?: number;
+  projectId?: string;
+}
+
+interface Project {
+  id: string;
+  projectName: string;
+}
+
+interface EventModalProps {
+  event?: Event | null;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+export const EventModal: React.FC<EventModalProps> = ({
+  event,
+  onClose,
+  onSaved,
+}) => {
+  const [eventName, setEventName] = useState('');
+  const [eventType, setEventType] = useState<'TOWN_OFFICIAL' | 'TEAM' | 'OTHER'>('TEAM');
+  const [date, setDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [locationText, setLocationText] = useState('');
+  const [description, setDescription] = useState('');
+  const [maxParticipants, setMaxParticipants] = useState<number | undefined>();
+  const [projectId, setProjectId] = useState('');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchProjects();
+
+    if (event) {
+      setEventName(event.eventName);
+      setEventType(event.eventType);
+      setDate(formatDate(new Date(event.date)));
+      setStartTime(event.startTime || '');
+      setEndTime(event.endTime || '');
+      setLocationText(event.locationText || '');
+      setDescription(event.description || '');
+      setMaxParticipants(event.maxParticipants);
+      setProjectId(event.projectId || '');
+    } else {
+      setDate(formatDate(new Date()));
+    }
+  }, [event]);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await api.get<Project[]>('/api/projects');
+      setProjects(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      setProjects([]);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const data = {
+        eventName,
+        eventType,
+        date,
+        locationText: locationText || undefined,
+        description: description || undefined,
+        maxParticipants: maxParticipants || undefined,
+        projectId: projectId || undefined,
+      };
+
+      if (event) {
+        await api.put(`/api/events/${event.id}`, data);
+      } else {
+        await api.post('/api/events', data);
+      }
+
+      onSaved();
+    } catch (error) {
+      console.error('Failed to save event:', error);
+      alert('保存に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!event || !confirm('このイベントを削除しますか？')) return;
+
+    try {
+      await api.delete(`/api/events/${event.id}`);
+      onSaved();
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      alert('削除に失敗しました');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">
+            {event ? 'イベント編集' : 'イベント作成'}
+          </h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <Input
+            label="イベント名"
+            type="text"
+            value={eventName}
+            onChange={(e) => setEventName(e.target.value)}
+            required
+            placeholder="イベント名を入力"
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              イベントタイプ
+            </label>
+            <select
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value as typeof eventType)}
+              className="w-full px-3 py-2 border border-border rounded-md"
+              required
+            >
+              <option value="TOWN_OFFICIAL">町主催</option>
+              <option value="TEAM">協力隊主催</option>
+              <option value="OTHER">その他</option>
+            </select>
+          </div>
+
+          <Input
+            label="日付"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="開始時刻（任意）"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+            <Input
+              label="終了時刻（任意）"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
+          </div>
+
+          <Input
+            label="場所"
+            type="text"
+            value={locationText}
+            onChange={(e) => setLocationText(e.target.value)}
+            placeholder="場所を入力"
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              説明
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-border rounded-md"
+              placeholder="イベントの説明を入力"
+            />
+          </div>
+
+          <Input
+            label="最大参加者数（任意）"
+            type="number"
+            min="1"
+            value={maxParticipants?.toString() || ''}
+            onChange={(e) => setMaxParticipants(e.target.value ? Number(e.target.value) : undefined)}
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              関連プロジェクト（任意）
+            </label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md"
+            >
+              <option value="">選択しない</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.projectName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-between pt-4">
+            <div>
+              {event && (
+                <Button type="button" variant="danger" onClick={handleDelete}>
+                  削除
+                </Button>
+              )}
+            </div>
+            <div className="flex space-x-3">
+              <Button type="button" variant="outline" onClick={onClose}>
+                キャンセル
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? '保存中...' : '保存'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+

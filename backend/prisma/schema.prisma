@@ -517,6 +517,16 @@ model Contact {
   memo          String?          @db.Text
   tags          String[]
 
+  // 協力隊メンバー情報（新規追加）
+  role          String?          // '現役' | 'OB' | 'サポート' | '役場'
+  startYear     Int?             // 任期開始年
+  endYear       Int?             // 任期終了年
+
+  // 新規追加フィールド
+  category      String?          // ジャンル
+  relatedMembers String[]         // 関わった協力隊（User IDの配列）
+  relationshipType String?        // 関わり方: '協力的' | '要注意' | '未知' | '未登録'
+
   createdBy     String
   creator       User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
@@ -526,6 +536,8 @@ model Contact {
   updatedAt     DateTime         @updatedAt
 
   @@index([createdBy])
+  @@index([category])
+  @@index([relationshipType])
 }
 
 model ContactHistory {

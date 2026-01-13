@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { GoalModal } from '../components/goal/GoalModal';
+import { MidGoalModal } from '../components/goal/MidGoalModal';
+import { SubGoalModal } from '../components/goal/SubGoalModal';
+import { GoalTaskModal } from '../components/goal/GoalTaskModal';
+import { Button } from '../components/common/Button';
+import { Plus } from 'lucide-react';
 
 interface Goal {
   id: string;
@@ -37,9 +43,23 @@ interface Task {
 }
 
 export const Goals: React.FC = () => {
+  const queryClient = useQueryClient();
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
   const [expandedMidGoals, setExpandedMidGoals] = useState<Set<string>>(new Set());
   const [expandedSubGoals, setExpandedSubGoals] = useState<Set<string>>(new Set());
+  
+  // モーダル状態
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [isMidGoalModalOpen, setIsMidGoalModalOpen] = useState(false);
+  const [isSubGoalModalOpen, setIsSubGoalModalOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  
+  // 選択状態
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [selectedGoalId, setSelectedGoalId] = useState<string>('');
+  const [selectedMidGoalId, setSelectedMidGoalId] = useState<string>('');
+  const [selectedSubGoalId, setSelectedSubGoalId] = useState<string>('');
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const { data: goals, isLoading } = useQuery<Goal[]>({
     queryKey: ['goals'],
@@ -86,6 +106,55 @@ export const Goals: React.FC = () => {
     return 'bg-gray-300';
   };
 
+  const handleCreateGoal = () => {
+    setSelectedGoal(null);
+    setIsGoalModalOpen(true);
+  };
+
+  const handleEditGoal = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setIsGoalModalOpen(true);
+  };
+
+  const handleCreateMidGoal = (goalId: string) => {
+    setSelectedGoalId(goalId);
+    setIsMidGoalModalOpen(true);
+  };
+
+  const handleCreateSubGoal = (midGoalId: string) => {
+    setSelectedMidGoalId(midGoalId);
+    setIsSubGoalModalOpen(true);
+  };
+
+  const handleCreateTask = (subGoalId: string) => {
+    setSelectedSubGoalId(subGoalId);
+    setSelectedTask(null);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleUpdateTaskProgress = (task: Task, subGoalId: string) => {
+    setSelectedTask(task);
+    setSelectedSubGoalId(subGoalId);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleCloseModals = () => {
+    setIsGoalModalOpen(false);
+    setIsMidGoalModalOpen(false);
+    setIsSubGoalModalOpen(false);
+    setIsTaskModalOpen(false);
+    setSelectedGoal(null);
+    setSelectedGoalId('');
+    setSelectedMidGoalId('');
+    setSelectedSubGoalId('');
+    setSelectedTask(null);
+  };
+
+  const handleSaved = () => {
+    queryClient.invalidateQueries({ queryKey: ['goals'] });
+    handleCloseModals();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -99,9 +168,10 @@ export const Goals: React.FC = () => {
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">起業準備進捗管理</h1>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-          + 新規目標
-        </button>
+        <Button onClick={handleCreateGoal}>
+          <Plus className="h-4 w-4 mr-2" />
+          新規目標
+        </Button>
       </div>
 
       {/* 目標一覧 */}
@@ -113,6 +183,18 @@ export const Goals: React.FC = () => {
               className="p-5 cursor-pointer hover:bg-gray-50 transition-colors"
               onClick={() => toggleGoal(goal.id)}
             >
+              <div className="flex justify-end mb-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditGoal(goal);
+                  }}
+                >
+                  編集
+                </Button>
+              </div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <button className="text-gray-400 hover:text-gray-600">
@@ -142,6 +224,16 @@ export const Goals: React.FC = () => {
             {/* 中目標一覧 */}
             {expandedGoals.has(goal.id) && (
               <div className="bg-gray-50 px-5 pb-5">
+                <div className="mb-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCreateMidGoal(goal.id)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    中目標を追加
+                  </Button>
+                </div>
                 {goal.midGoals.map((midGoal) => (
                   <div key={midGoal.id} className="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
                     {/* 中目標ヘッダー */}
@@ -174,6 +266,16 @@ export const Goals: React.FC = () => {
                     {/* 小目標一覧 */}
                     {expandedMidGoals.has(midGoal.id) && (
                       <div className="bg-gray-50 px-4 pb-4">
+                        <div className="mb-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCreateSubGoal(midGoal.id)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            小目標を追加
+                          </Button>
+                        </div>
                         {midGoal.subGoals.map((subGoal) => (
                           <div key={subGoal.id} className="mt-3 bg-white border border-gray-200 rounded-lg overflow-hidden">
                             {/* 小目標ヘッダー */}
@@ -206,11 +308,30 @@ export const Goals: React.FC = () => {
                             {/* タスク一覧 */}
                             {expandedSubGoals.has(subGoal.id) && (
                               <div className="bg-gray-50 px-3 pb-3">
+                                <div className="mb-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleCreateTask(subGoal.id)}
+                                  >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    タスクを追加
+                                  </Button>
+                                </div>
                                 {subGoal.tasks.map((task) => (
                                   <div key={task.id} className="mt-2 p-2 bg-white border border-gray-200 rounded">
                                     <div className="flex items-center justify-between">
                                       <span className="text-sm text-gray-700">{task.name}</span>
-                                      <span className="text-sm font-medium text-gray-900">{task.progress}%</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-gray-900">{task.progress}%</span>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleUpdateTaskProgress(task, subGoal.id)}
+                                        >
+                                          進捗更新
+                                        </Button>
+                                      </div>
                                     </div>
                                     {task.deadline && (
                                       <div className="text-xs text-gray-500 mt-1">
@@ -238,6 +359,40 @@ export const Goals: React.FC = () => {
         <div className="text-center py-12 text-gray-500">
           目標がまだ設定されていません
         </div>
+      )}
+
+      {/* モーダル */}
+      {isGoalModalOpen && (
+        <GoalModal
+          goal={selectedGoal}
+          onClose={handleCloseModals}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {isMidGoalModalOpen && selectedGoalId && (
+        <MidGoalModal
+          goalId={selectedGoalId}
+          onClose={handleCloseModals}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {isSubGoalModalOpen && selectedMidGoalId && (
+        <SubGoalModal
+          midGoalId={selectedMidGoalId}
+          onClose={handleCloseModals}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {isTaskModalOpen && selectedSubGoalId && (
+        <GoalTaskModal
+          subGoalId={selectedSubGoalId}
+          task={selectedTask}
+          onClose={handleCloseModals}
+          onSaved={handleSaved}
+        />
       )}
     </div>
   );

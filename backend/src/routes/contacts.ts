@@ -13,6 +13,10 @@ const contactSchema = z.object({
   contactInfo: z.string().optional(),
   memo: z.string().optional(),
   tags: z.array(z.string()).default([]),
+  // 協力隊メンバー情報（新規追加）
+  role: z.enum(['現役', 'OB', 'サポート', '役場']).optional(),
+  startYear: z.number().int().min(2000).max(2100).optional(),
+  endYear: z.number().int().min(2000).max(2100).optional(),
 });
 
 const historySchema = z.object({
@@ -100,6 +104,9 @@ router.post('/', async (req: AuthRequest, res) => {
         contactInfo: data.contactInfo,
         memo: data.memo,
         tags: data.tags,
+        role: data.role || null,
+        startYear: data.startYear || null,
+        endYear: data.endYear || null,
       },
       include: { creator: true },
     });
@@ -128,6 +135,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
         contactInfo: data.contactInfo,
         memo: data.memo,
         tags: data.tags,
+        role: data.role || null,
+        startYear: data.startYear || null,
+        endYear: data.endYear || null,
       },
       include: { creator: true },
     });

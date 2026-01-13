@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { Button } from '../components/common/Button';
+import { Plus } from 'lucide-react';
 
 interface SNSPost {
   id: string;
@@ -16,6 +18,7 @@ interface SNSPost {
 
 export const SNSPosts: React.FC = () => {
   const queryClient = useQueryClient();
+  const [newWeek, setNewWeek] = useState('');
 
   const { data: posts, isLoading } = useQuery<SNSPost[]>({
     queryKey: ['sns-posts'],
@@ -46,6 +49,21 @@ export const SNSPosts: React.FC = () => {
         postType: checked ? postType : undefined
       }
     });
+  };
+
+  const handleCreatePost = () => {
+    if (!newWeek.trim()) {
+      alert('週を入力してください（例: 2024-W01）');
+      return;
+    }
+    updatePostMutation.mutate({
+      week: newWeek.trim(),
+      data: {
+        isPosted: false,
+        postType: undefined
+      }
+    });
+    setNewWeek('');
   };
 
   // 現在の週（YYYY-WW形式、ISO週番号）
@@ -85,43 +103,66 @@ export const SNSPosts: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">SNS投稿管理</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">SNS投稿管理</h1>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newWeek}
+            onChange={(e) => setNewWeek(e.target.value)}
+            placeholder="週を入力（例: 2024-W01）"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCreatePost();
+              }
+            }}
+          />
+          <Button onClick={handleCreatePost}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規作成
+          </Button>
+        </div>
+      </div>
 
       {/* 今週の投稿状況 */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
-        <h2 className="font-semibold mb-3 text-gray-900">今週の投稿</h2>
+        <h2 className="font-semibold mb-3 text-gray-900">今週の投稿 ({currentWeek})</h2>
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <label className="bg-white rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-gray-50">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-700">ストーリーズ</span>
-              {thisWeekStory?.isPosted ? (
-                <span className="text-green-600 text-xl">✓</span>
-              ) : (
-                <span className="text-red-600 text-xl">✗</span>
-              )}
+              <input
+                type="checkbox"
+                checked={thisWeekStory?.isPosted || false}
+                onChange={(e) => handlePostCheck(currentWeek, 'STORY', e.target.checked)}
+                className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
             </div>
             {thisWeekStory?.postDate && (
               <div className="text-xs text-gray-500">
                 {format(new Date(thisWeekStory.postDate), 'M/d HH:mm')}
               </div>
             )}
-          </div>
+          </label>
 
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <label className="bg-white rounded-lg p-4 border border-gray-200 cursor-pointer hover:bg-gray-50">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-700">フィード投稿</span>
-              {thisWeekFeed?.isPosted ? (
-                <span className="text-green-600 text-xl">✓</span>
-              ) : (
-                <span className="text-red-600 text-xl">✗</span>
-              )}
+              <input
+                type="checkbox"
+                checked={thisWeekFeed?.isPosted || false}
+                onChange={(e) => handlePostCheck(currentWeek, 'FEED', e.target.checked)}
+                className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
             </div>
             {thisWeekFeed?.postDate && (
               <div className="text-xs text-gray-500">
                 {format(new Date(thisWeekFeed.postDate), 'M/d HH:mm')}
               </div>
             )}
-          </div>
+          </label>
         </div>
 
         {(!thisWeekStory?.isPosted || !thisWeekFeed?.isPosted) && (

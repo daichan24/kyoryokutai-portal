@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
+import { Button } from '../components/common/Button';
+import { Plus } from 'lucide-react';
 
 interface TaskRequest {
   id: string;
@@ -21,6 +24,7 @@ interface TaskRequest {
 export const TaskRequests: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: requests, isLoading } = useQuery({
     queryKey: ['task-requests'],
@@ -47,6 +51,19 @@ export const TaskRequests: React.FC = () => {
     if (status === 'REJECTED' && !note) return;
     
     respondMutation.mutate({ id, status, note: note || undefined });
+  };
+
+  const handleCreateRequest = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleSaved = () => {
+    queryClient.invalidateQueries({ queryKey: ['task-requests'] });
+    handleCloseModal();
   };
 
   const receivedRequests = requests?.filter(r => r.requestee.id === user?.id);
@@ -84,9 +101,10 @@ export const TaskRequests: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">タスク依頼</h1>
         {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
-          <button className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-            + 新規依頼
-          </button>
+          <Button onClick={handleCreateRequest}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規依頼
+          </Button>
         )}
       </div>
 
@@ -193,6 +211,13 @@ export const TaskRequests: React.FC = () => {
             )}
           </div>
         </section>
+      )}
+
+      {isModalOpen && (
+        <TaskRequestModal
+          onClose={handleCloseModal}
+          onSaved={handleSaved}
+        />
       )}
     </div>
   );
