@@ -5,10 +5,13 @@
 RenderのBackend Serviceの **Start Command** を以下に設定してください：
 
 ```bash
-echo "RUN MIGRATE" && node -e "console.log('DB_URL_HOST_DB:', (process.env.DATABASE_URL||'').split('@')[1]?.split('?')[0])" && npx prisma migrate deploy 2>&1 && echo "MIGRATE DONE" && npm start
+echo "RUN MIGRATE" && node -e "console.log('DB_URL_HOST_DB:', (process.env.DATABASE_URL||'').split('@')[1]?.split('?')[0])" && echo "=== MIGRATE STATUS ===" && npx prisma migrate status 2>&1 && echo "=== MIGRATE DEPLOY ===" && npx prisma migrate deploy 2>&1 && echo "MIGRATE DONE" && npm start
 ```
 
-**注意**: `2>&1` を追加して、migrate deployの詳細な出力（Applying migration / No pending migrations等）をログに表示します。
+**注意**: 
+- `npx prisma migrate status` で現在のmigration適用状況を確認
+- `npx prisma migrate deploy` で未適用のmigrationを適用
+- `2>&1` で詳細な出力（Applying migration / No pending migrations等）をログに表示
 
 **注意**: Root Directoryが`backend`に設定されているため、`cd backend`は不要です。
 
@@ -30,6 +33,24 @@ echo "RUN MIGRATE" && node -e "console.log('DB_URL_HOST_DB:', (process.env.DATAB
 ```
 RUN MIGRATE
 DB_URL_HOST_DB: xxxxx:5432/xxxxx
+=== MIGRATE STATUS ===
+Database schema is up to date!
+1 migration found in prisma/migrations
+1 migration applied to database
+
+Following migrations have been applied:
+migrations/
+  └─ 20260108010924_init/
+      └─ migration.sql
+
+Following migrations have not yet been applied:
+migrations/
+  └─ 20260112202610_add_citizen_fields/
+      └─ migration.sql
+  └─ 20260112214352_add_contact_fields/
+      └─ migration.sql
+
+=== MIGRATE DEPLOY ===
 Prisma schema loaded from prisma/schema.prisma
 Datasource "db": PostgreSQL database "xxxxx", schema "public" at "xxxxx:5432"
 ...
@@ -39,10 +60,43 @@ Applying migration `20260112214352_add_contact_fields`
 MIGRATE DONE
 ```
 
+または、すべてのmigrationが適用済みの場合：
+
+```
+RUN MIGRATE
+DB_URL_HOST_DB: xxxxx:5432/xxxxx
+=== MIGRATE STATUS ===
+Database schema is up to date!
+3 migrations found in prisma/migrations
+3 migrations applied to database
+
+Following migrations have been applied:
+migrations/
+  └─ 20260108010924_init/
+      └─ migration.sql
+  └─ 20260112202610_add_citizen_fields/
+      └─ migration.sql
+  └─ 20260112214352_add_contact_fields/
+      └─ migration.sql
+
+=== MIGRATE DEPLOY ===
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "xxxxx", schema "public" at "xxxxx:5432"
+No pending migrations to apply.
+...
+MIGRATE DONE
+```
+
 **重要**: 
 - `RUN MIGRATE` が表示されること
 - `DB_URL_HOST_DB` が表示されること（host:port/dbname形式）← **migrate時のDB**
-- `Applying migration` または `No pending migrations` が表示されること（詳細出力全体を確認）
+- `=== MIGRATE STATUS ===` で現在の適用状況を確認
+  - `20260108010924_init` が適用されているか
+  - `20260112202610_add_citizen_fields`（role追加）が適用されているか
+  - `20260112214352_add_contact_fields` が適用されているか
+- `=== MIGRATE DEPLOY ===` で未適用のmigrationが適用される
+  - `Applying migration` が表示されるか
+  - `No pending migrations` が表示されるか（詳細出力全体を確認）
 - `MIGRATE DONE` が表示されること
 
 ### 1-2. API実行時のDB接続確認
@@ -96,15 +150,19 @@ curl -X POST https://your-backend.onrender.com/api/citizens \
 
 ### "No pending migrations" と出るのにP2022エラーが継続する場合
 
-- **重要**: migrate時の`DB_URL_HOST_DB`と、API実行時の`DB_URL_HOST_DB`を比較
-- **不一致の場合**: Renderの環境変数`DATABASE_URL`が複数サービス（backend / job / preview等）でズレている
-  - Backend Serviceの環境変数`DATABASE_URL`を確認
-  - 他のサービス（Job、Preview等）の`DATABASE_URL`と一致しているか確認
-  - すべてのサービスで同じDBを参照するように修正
-- **一致している場合**: migrate deployの詳細出力（`2>&1`で表示される全体）を確認
-  - `Applying migration` が表示されているか
-  - エラーメッセージがないか
-  - 実際にmigrationが適用されているか
+- **重要**: `=== MIGRATE STATUS ===` の出力を確認
+  - `20260112202610_add_citizen_fields`（role追加）が "Following migrations have been applied" に含まれているか
+  - 含まれていない場合、`=== MIGRATE DEPLOY ===` で適用されるはず
+- **migrate statusで適用済みなのにP2022が続く場合**:
+  - migrate時の`DB_URL_HOST_DB`と、API実行時の`DB_URL_HOST_DB`を比較
+  - **不一致の場合**: Renderの環境変数`DATABASE_URL`が複数サービス（backend / job / preview等）でズレている
+    - Backend Serviceの環境変数`DATABASE_URL`を確認
+    - 他のサービス（Job、Preview等）の`DATABASE_URL`と一致しているか確認
+    - すべてのサービスで同じDBを参照するように修正
+  - **一致している場合**: `_prisma_migrations`テーブルの不整合の可能性
+    - migrate statusの出力全文を確認
+    - 実際のDBに`role`列が存在するか確認（Prisma Studio等）
+    - 必要に応じて、正しいDBに対して手動でmigrationを再適用
 
 ### P2022エラーが継続する場合
 
