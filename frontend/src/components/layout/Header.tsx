@@ -5,6 +5,7 @@ import { Button } from '../common/Button';
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuthStore();
+  const version = import.meta.env.VITE_BUILD_ID || 'dev-local';
 
   return (
     <header className="bg-white border-b border-border shadow-sm">
@@ -15,7 +16,7 @@ export const Header: React.FC = () => {
               長沼町地域おこし協力隊ポータル
             </h1>
             <span className="ml-4 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              BUILD: {new Date().toISOString().split('T')[0]}-{Math.floor(Date.now() / 1000) % 10000}
+              VER: {version}
             </span>
           </div>
 
