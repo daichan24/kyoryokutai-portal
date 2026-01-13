@@ -16,11 +16,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
-      <footer className="bg-white border-t border-border px-4 py-2">
-        <div className="max-w-7xl mx-auto text-xs text-gray-500 text-center">
-          ENV: {env} | {new Date().toLocaleString('ja-JP')}
-        </div>
-      </footer>
     </div>
   );
 };
