@@ -1,4 +1,4 @@
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 const JST_TIMEZONE = 'Asia/Tokyo';
 
@@ -16,7 +16,7 @@ const JST_TIMEZONE = 'Asia/Tokyo';
  */
 export function getCurrentWeekBoundary(): { weekStart: Date; weekEnd: Date; weekKey: string } {
   const now = new Date();
-  const nowJST = utcToZonedTime(now, JST_TIMEZONE);
+  const nowJST = toZonedTime(now, JST_TIMEZONE);
   
   // 月曜日を取得（0=日曜, 1=月曜, ...）
   const dayOfWeek = nowJST.getDay();
@@ -37,8 +37,8 @@ export function getCurrentWeekBoundary(): { weekStart: Date; weekEnd: Date; week
   nextMonday9amJST.setDate(monday9amJST.getDate() + 7);
   
   // UTCに変換
-  const weekStart = zonedTimeToUtc(monday9amJST, JST_TIMEZONE);
-  const weekEnd = zonedTimeToUtc(nextMonday9amJST, JST_TIMEZONE);
+  const weekStart = fromZonedTime(monday9amJST, JST_TIMEZONE);
+  const weekEnd = fromZonedTime(nextMonday9amJST, JST_TIMEZONE);
   
   // 週のキーを生成（YYYY-WW形式）
   const year = monday9amJST.getFullYear();
@@ -54,7 +54,7 @@ export function getCurrentWeekBoundary(): { weekStart: Date; weekEnd: Date; week
  * 指定日時が属する週の境界を取得
  */
 export function getWeekBoundaryForDate(date: Date): { weekStart: Date; weekEnd: Date; weekKey: string } {
-  const dateJST = utcToZonedTime(date, JST_TIMEZONE);
+  const dateJST = toZonedTime(date, JST_TIMEZONE);
   
   const dayOfWeek = dateJST.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -71,8 +71,8 @@ export function getWeekBoundaryForDate(date: Date): { weekStart: Date; weekEnd: 
   const nextMonday9amJST = new Date(monday9amJST);
   nextMonday9amJST.setDate(monday9amJST.getDate() + 7);
   
-  const weekStart = zonedTimeToUtc(monday9amJST, JST_TIMEZONE);
-  const weekEnd = zonedTimeToUtc(nextMonday9amJST, JST_TIMEZONE);
+  const weekStart = fromZonedTime(monday9amJST, JST_TIMEZONE);
+  const weekEnd = fromZonedTime(nextMonday9amJST, JST_TIMEZONE);
   
   const year = monday9amJST.getFullYear();
   const startOfYear = new Date(year, 0, 1);

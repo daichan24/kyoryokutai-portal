@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
+import { PostType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getCurrentWeekBoundary, getWeekBoundaryForDate } from '../utils/weekBoundary';
 
@@ -159,6 +160,7 @@ router.post('/', async (req: AuthRequest, res) => {
       if (zodError instanceof z.ZodError) {
         console.log('[API] Validation error, trying legacy schema:', zodError.errors);
         const legacyData = snsPostLegacySchema.parse(req.body);
+        const legacyPostType: PostType = legacyData.postType || 'STORY';
         const post = await prisma.sNSPost.upsert({
           where: {
             userId_week: {
@@ -168,14 +170,14 @@ router.post('/', async (req: AuthRequest, res) => {
           },
           update: {
             postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-            postType: legacyData.postType,
+            postType: legacyData.postType ? (legacyData.postType as PostType) : undefined,
             isPosted: legacyData.isPosted,
           },
           create: {
             userId: req.user!.id,
             week: legacyData.week,
             postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-            postType: legacyData.postType,
+            postType: legacyPostType,
             isPosted: legacyData.isPosted,
             postedAt: legacyData.postDate ? new Date(legacyData.postDate) : new Date(),
           },
