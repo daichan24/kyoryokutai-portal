@@ -9,9 +9,11 @@ router.use(authenticate);
 
 // 新スキーマ（詳細入力対応）
 const snsPostCreateSchema = z.object({
-  postedAt: z.string(), // ISO日時文字列
-  postType: z.enum(['STORY', 'FEED']),
-  url: z.string().url().optional().or(z.literal('')),
+  postedAt: z.string(), // ISO日時文字列（必須）
+  postType: z.enum(['STORY', 'FEED']), // 必須
+  url: z.string().optional().refine((val) => !val || val === '' || z.string().url().safeParse(val).success, {
+    message: 'Invalid URL format',
+  }),
   theme: z.string().max(200).optional(),
   followerDelta: z.number().int().min(0).optional(),
   views: z.number().int().min(0).optional(),
@@ -85,6 +87,8 @@ router.get('/', async (req: AuthRequest, res) => {
  * 
  * クエリパラメータ:
  * - userId: 特定ユーザー（省略時は自分）
+ * 
+ * 注意: このエンドポイントは /:id より前に定義する必要がある（ルーティング順序）
  */
 router.get('/weekly-status', async (req: AuthRequest, res) => {
   try {
@@ -125,6 +129,7 @@ router.get('/weekly-status', async (req: AuthRequest, res) => {
  */
 router.post('/', async (req: AuthRequest, res) => {
   try {
+    console.log('[API] POST /api/sns-posts body:', JSON.stringify(req.body));
     // 新スキーマで試行
     try {
       const data = snsPostCreateSchema.parse(req.body);
@@ -147,10 +152,12 @@ router.post('/', async (req: AuthRequest, res) => {
         include: { user: true },
       });
 
+      console.log('[API] SNS post created:', post.id);
       return res.json(post);
     } catch (zodError) {
       // 旧スキーマで試行（後方互換性）
       if (zodError instanceof z.ZodError) {
+        console.log('[API] Validation error, trying legacy schema:', zodError.errors);
         const legacyData = snsPostLegacySchema.parse(req.body);
         const post = await prisma.sNSPost.upsert({
           where: {
@@ -181,9 +188,10 @@ router.post('/', async (req: AuthRequest, res) => {
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      console.error('[API] Validation error:', error.errors);
+      return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
-    console.error('Create SNS post error:', error);
+    console.error('[API] Create SNS post error:', error);
     res.status(500).json({ error: 'Failed to create SNS post' });
   }
 });

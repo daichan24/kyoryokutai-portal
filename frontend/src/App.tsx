@@ -10,6 +10,7 @@ import { Schedule } from './pages/Schedule';
 import { WeeklyReport } from './pages/WeeklyReport';
 import { UsersSettings } from './pages/Settings/Users';
 import { LocationsSettings } from './pages/Settings/Locations';
+import { ProfileSettings } from './pages/Settings/Profile';
 
 // 既存のインポートの下に追加
 import { Projects } from './pages/Projects';
@@ -110,6 +111,17 @@ const App: React.FC = () => {
         }
       />
 
+      <Route
+        path="/settings/profile"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <ProfileSettings />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+
       {/* Phase 2 */}
       <Route
         path="/goals"
@@ -197,6 +209,17 @@ const App: React.FC = () => {
               <MonthlyReport />
             </Layout>
           </RoleProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/nudges"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <Nudges />
+            </Layout>
+          </PrivateRoute>
         }
       />
     </Routes>

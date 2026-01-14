@@ -75,13 +75,36 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       const data: any = {
         postedAt: postedAtDateTime.toISOString(),
         postType,
-        url: url.trim() || undefined,
-        theme: theme.trim() || undefined,
-        followerDelta: followerDelta ? parseInt(followerDelta, 10) : undefined,
-        views: views ? parseInt(views, 10) : undefined,
-        likes: likes ? parseInt(likes, 10) : undefined,
-        note: note.trim() || undefined,
       };
+
+      // 任意項目は値がある場合のみ追加
+      if (url.trim()) {
+        data.url = url.trim();
+      }
+      if (theme.trim()) {
+        data.theme = theme.trim();
+      }
+      if (followerDelta && followerDelta !== '') {
+        const delta = parseInt(followerDelta, 10);
+        if (!isNaN(delta)) {
+          data.followerDelta = delta;
+        }
+      }
+      if (views && views !== '') {
+        const v = parseInt(views, 10);
+        if (!isNaN(v)) {
+          data.views = v;
+        }
+      }
+      if (likes && likes !== '') {
+        const l = parseInt(likes, 10);
+        if (!isNaN(l)) {
+          data.likes = l;
+        }
+      }
+      if (note.trim()) {
+        data.note = note.trim();
+      }
 
       if (post) {
         await api.put(`/api/sns-posts/${post.id}`, data);

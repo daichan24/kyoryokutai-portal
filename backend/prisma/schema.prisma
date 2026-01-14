@@ -59,6 +59,10 @@ model User {
   // SNSリンク（JSON配列: [{ platform: "instagram", url: "..." }, ...]）
   snsLinks             Json?
 
+  // 協力隊催促関連
+  nudgeDocumentsUpdated NudgeDocument[] @relation("NudgeUpdater")
+  nudgeRevisions        NudgeRevision[] @relation("NudgeRevisionUpdater")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

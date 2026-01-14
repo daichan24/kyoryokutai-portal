@@ -28,6 +28,7 @@ export const Sidebar: React.FC = () => {
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
     { to: '/reports/weekly', icon: FileText, label: '週次報告' },
     { to: '/events', icon: CalendarDays, label: 'イベント' },
+    { to: '/nudges', icon: FileText, label: '協力隊催促' },
   ];
 
   // MEMBER専用のメニュー（自分のデータのみ）
@@ -81,7 +82,14 @@ export const Sidebar: React.FC = () => {
     return 'ユーザー情報';
   };
 
-  const userMenuItems: Array<{ to: string; icon: typeof Users; label: string }> = [];
+  const userMenuItems: Array<{ to: string; icon: typeof Users | typeof Settings; label: string }> = [];
+  
+  // プロフィール設定（全ユーザー）
+  userMenuItems.push({
+    to: '/settings/profile',
+    icon: Settings,
+    label: 'プロフィール設定',
+  });
   
   // MEMBER/SUPPORT/GOVERNMENT もユーザー情報を見れるようにする
   if (user?.role === 'MASTER' || user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') {

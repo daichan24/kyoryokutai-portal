@@ -14,30 +14,35 @@ interface WeeklyStatus {
 export const WeeklyStatusAlert: React.FC = () => {
   const { user } = useAuthStore();
 
-  const { data: status, isLoading } = useQuery<WeeklyStatus>({
+  const { data: status, isLoading, error } = useQuery<WeeklyStatus>({
     queryKey: ['sns-weekly-status', user?.id],
     queryFn: async () => {
       const response = await api.get('/api/sns-posts/weekly-status');
       return response.data;
     },
     refetchInterval: 60000, // 1分ごとに更新
+    retry: 1,
   });
 
-  if (isLoading || !status) {
-    return null;
-  }
+  // エラー時も表示（暫定で未完扱い）
+  const hasStory = status?.hasStory ?? false;
+  const hasFeed = status?.hasFeed ?? false;
+  const hasError = !!error;
 
   // 4パターンのメッセージを判定
   let message = '';
   let variant: 'success' | 'warning' | 'error' = 'success';
 
-  if (!status.hasStory && !status.hasFeed) {
+  if (hasError) {
+    message = '週次ステータスの取得に失敗しました（暫定: 未完了扱い）';
+    variant = 'error';
+  } else if (!hasStory && !hasFeed) {
     message = '今週のストーリーズとフィード投稿が完了していません';
     variant = 'error';
-  } else if (!status.hasStory) {
+  } else if (!hasStory) {
     message = '今週のストーリーズが完了していません';
     variant = 'warning';
-  } else if (!status.hasFeed) {
+  } else if (!hasFeed) {
     message = '今週のフィード投稿が完了していません';
     variant = 'warning';
   } else {
