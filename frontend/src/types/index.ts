@@ -15,6 +15,15 @@ export interface User {
   updatedAt?: string;
 }
 
+export interface ScheduleParticipant {
+  id: string;
+  scheduleId: string;
+  userId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  respondedAt?: string;
+  user?: User;
+}
+
 export interface Schedule {
   id: string;
   userId: string;
@@ -26,6 +35,7 @@ export interface Schedule {
   activityDescription: string;
   freeNote?: string;
   isPending: boolean;
+  scheduleParticipants?: ScheduleParticipant[];
   createdAt: string;
   updatedAt: string;
 }
