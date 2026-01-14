@@ -51,6 +51,7 @@ model User {
   personalProjects     PersonalProject[]
   personalSchedules    PersonalSchedule[]
   notifications        Notification[]
+  scheduleParticipants ScheduleParticipant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -89,7 +90,7 @@ model Schedule {
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   activityDescription String   @db.Text
-  participants        String[] // User IDの配列
+  participants        String[] // User IDの配列（後方互換性のため残す）
   freeNote            String?  @db.Text
 
   isTemplate      Boolean @default(false)
@@ -101,6 +102,7 @@ model Schedule {
 
   scheduleProgress ScheduleProgress[]
   suggestions      ScheduleSuggestion[]
+  scheduleParticipants ScheduleParticipant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -361,6 +363,33 @@ model ScheduleProgress {
   @@index([scheduleId])
   @@index([goalTaskId])
   @@index([projectTaskId])
+}
+
+// ========================================
+// スケジュール参加者（共同作業）
+// ========================================
+
+model ScheduleParticipant {
+  id          String            @id @default(uuid())
+  scheduleId  String
+  userId      String
+  status      ParticipantStatus @default(PENDING)
+  respondedAt DateTime?
+  schedule    Schedule          @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scheduleId, userId])
+  @@index([scheduleId])
+  @@index([userId, status])
+}
+
+enum ParticipantStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // ========================================
@@ -755,4 +784,7 @@ enum NotificationType {
   SNS_REMINDER
   PENDING_SCHEDULE
   EVENT_REMINDER
+  SCHEDULE_INVITE
+  SCHEDULE_INVITE_APPROVED
+  SCHEDULE_INVITE_REJECTED
 }

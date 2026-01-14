@@ -8,7 +8,10 @@ type NotificationType =
   | 'WEEKLY_REMINDER'
   | 'SNS_REMINDER'
   | 'PENDING_SCHEDULE'
-  | 'EVENT_REMINDER';
+  | 'EVENT_REMINDER'
+  | 'SCHEDULE_INVITE'
+  | 'SCHEDULE_INVITE_APPROVED'
+  | 'SCHEDULE_INVITE_REJECTED';
 
 /**
  * 通知作成
@@ -107,5 +110,62 @@ export async function notifyPendingSchedules(userId: string, count: number) {
     '進捗未更新のスケジュールがあります',
     `${count}件のスケジュールの進捗が未更新です。進捗を更新してください。`,
     '/schedules'
+  );
+}
+
+/**
+ * スケジュール招待通知を作成
+ */
+export async function notifyScheduleInvite(
+  invitedUserId: string,
+  inviterName: string,
+  scheduleTitle: string,
+  scheduleId: string,
+  startAt: Date,
+  endAt: Date
+) {
+  const startAtStr = startAt.toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return await createNotification(
+    invitedUserId,
+    'SCHEDULE_INVITE',
+    'スケジュールへの招待',
+    `${inviterName}さんから「${scheduleTitle}」への招待が届きました（${startAtStr}）`,
+    `/schedule/${scheduleId}`
+  );
+}
+
+/**
+ * スケジュール招待承認通知を作成（作成者へ）
+ */
+export async function notifyScheduleInviteApproved(
+  creatorUserId: string,
+  participantName: string,
+  scheduleTitle: string,
+  scheduleId: string
+) {
+  return await createNotification(
+    creatorUserId,
+    'SCHEDULE_INVITE_APPROVED',
+    'スケジュール招待が承認されました',
+    `${participantName}さんが「${scheduleTitle}」への参加を承認しました`,
+    `/schedule/${scheduleId}`
+  );
+}
+
+/**
+ * スケジュール招待却下通知を作成（作成者へ）
+ */
+export async function notifyScheduleInviteRejected(
+  creatorUserId: string,
+  participantName: string,
+  scheduleTitle: string,
+  scheduleId: string
+) {
+  return await createNotification(
+    creatorUserId,
+    'SCHEDULE_INVITE_REJECTED',
+    'スケジュール招待が却下されました',
+    `${participantName}さんが「${scheduleTitle}」への参加を却下しました`,
+    `/schedule/${scheduleId}`
   );
 }
