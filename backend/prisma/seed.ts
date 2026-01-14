@@ -15,10 +15,10 @@ async function main() {
   // Hash password
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // ユーザーをupsertで作成（既存ユーザーは更新しない、新規のみ作成）
+  // 1. マスター
   const master = await prisma.user.upsert({
     where: { email: 'master@test.com' },
-    update: {}, // 既存ユーザーは更新しない
+    update: { name: '佐藤大地' }, // 既存ユーザーの名前を更新
     create: {
       name: '佐藤大地',
       email: 'master@test.com',
@@ -28,11 +28,62 @@ async function main() {
     },
   });
 
-  const member1 = await prisma.user.upsert({
-    where: { email: 'member@test.com' },
+  // 2. サポート（3名）
+  const support1 = await prisma.user.upsert({
+    where: { email: 'support@test.com' },
+    update: { name: '坂本一志' }, // 既存ユーザーの名前を更新
+    create: {
+      name: '坂本一志',
+      email: 'support@test.com',
+      password: hashedPassword,
+      role: 'SUPPORT',
+      avatarColor: '#F59E0B',
+    },
+  });
+
+  const support2 = await prisma.user.upsert({
+    where: { email: 'masuda.kenji@test.com' },
     update: {},
     create: {
-      name: '田中太郎',
+      name: '増田健司',
+      email: 'masuda.kenji@test.com',
+      password: hashedPassword,
+      role: 'SUPPORT',
+      avatarColor: '#F97316',
+    },
+  });
+
+  // 3. 行政（2名）
+  const government1 = await prisma.user.upsert({
+    where: { email: 'government@test.com' },
+    update: { name: '高田和孝' }, // 既存ユーザーの名前を更新
+    create: {
+      name: '高田和孝',
+      email: 'government@test.com',
+      password: hashedPassword,
+      role: 'GOVERNMENT',
+      avatarColor: '#06B6D4',
+    },
+  });
+
+  const government2 = await prisma.user.upsert({
+    where: { email: 'makino.shiori@test.com' },
+    update: {},
+    create: {
+      name: '牧野栞里',
+      email: 'makino.shiori@test.com',
+      password: hashedPassword,
+      role: 'GOVERNMENT',
+      avatarColor: '#8B5CF6',
+    },
+  });
+
+  // 4. メンバー（11名）
+  const member1 = await prisma.user.upsert({
+    where: { email: 'member@test.com' },
+    update: { name: '江藤誠洋' }, // 既存ユーザーの名前を更新
+    create: {
+      name: '江藤誠洋',
       email: 'member@test.com',
       password: hashedPassword,
       role: 'MEMBER',
@@ -46,9 +97,9 @@ async function main() {
 
   const member2 = await prisma.user.upsert({
     where: { email: 'member2@test.com' },
-    update: {},
+    update: { name: '徳留正也' }, // 既存ユーザーの名前を更新
     create: {
-      name: '山田花子',
+      name: '徳留正也',
       email: 'member2@test.com',
       password: hashedPassword,
       role: 'MEMBER',
@@ -62,9 +113,9 @@ async function main() {
 
   const member3 = await prisma.user.upsert({
     where: { email: 'member3@test.com' },
-    update: {},
+    update: { name: '有馬圭亮' }, // 既存ユーザーの名前を更新
     create: {
-      name: '鈴木次郎',
+      name: '有馬圭亮',
       email: 'member3@test.com',
       password: hashedPassword,
       role: 'MEMBER',
@@ -76,37 +127,12 @@ async function main() {
     },
   });
 
-  const support = await prisma.user.upsert({
-    where: { email: 'support@test.com' },
+  const member4 = await prisma.user.upsert({
+    where: { email: 'okada.ayaka@test.com' },
     update: {},
     create: {
-      name: '坂本一志',
-      email: 'support@test.com',
-      password: hashedPassword,
-      role: 'SUPPORT',
-      avatarColor: '#F59E0B',
-    },
-  });
-
-  const government = await prisma.user.upsert({
-    where: { email: 'government@test.com' },
-    update: {},
-    create: {
-      name: '役場担当者',
-      email: 'government@test.com',
-      password: hashedPassword,
-      role: 'GOVERNMENT',
-      avatarColor: '#06B6D4',
-    },
-  });
-
-  // P1: テストユーザー追加（協力隊2名+役場1名）- upsertで安全に追加
-  const testMember1 = await prisma.user.upsert({
-    where: { email: 'sato.taro@test.com' },
-    update: {},
-    create: {
-      name: '佐藤太郎',
-      email: 'sato.taro@test.com',
+      name: '岡田彩葵',
+      email: 'okada.ayaka@test.com',
       password: hashedPassword,
       role: 'MEMBER',
       missionType: 'FREE',
@@ -117,15 +143,63 @@ async function main() {
     },
   });
 
-  const testMember2 = await prisma.user.upsert({
-    where: { email: 'suzuki.hanako@test.com' },
+  const member5 = await prisma.user.upsert({
+    where: { email: 'kanayama.masahiro@test.com' },
     update: {},
     create: {
-      name: '鈴木花子',
-      email: 'suzuki.hanako@test.com',
+      name: '金山真大',
+      email: 'kanayama.masahiro@test.com',
       password: hashedPassword,
       role: 'MEMBER',
-      missionType: 'MISSION',
+      missionType: 'FREE',
+      department: '総務課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#F59E0B',
+    },
+  });
+
+  const member6 = await prisma.user.upsert({
+    where: { email: 'sou.guanyu@test.com' },
+    update: {},
+    create: {
+      name: '曹冠宇',
+      email: 'sou.guanyu@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '観光課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#06B6D4',
+    },
+  });
+
+  const member7 = await prisma.user.upsert({
+    where: { email: 'ogawa.sayaka@test.com' },
+    update: {},
+    create: {
+      name: '小川紗綾佳',
+      email: 'ogawa.sayaka@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '企画課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#8B5CF6',
+    },
+  });
+
+  const member8 = await prisma.user.upsert({
+    where: { email: 'kanematsu.seigo@test.com' },
+    update: {},
+    create: {
+      name: '兼松成伍',
+      email: 'kanematsu.seigo@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'FREE',
       department: '総務課',
       termStart: new Date('2024-04-01'),
       termEnd: new Date('2027-03-31'),
@@ -133,28 +207,73 @@ async function main() {
     },
   });
 
-  const testGovernment = await prisma.user.upsert({
-    where: { email: 'tanaka.ichiro@test.com' },
+  const member9 = await prisma.user.upsert({
+    where: { email: 'tanaka.natsuko@test.com' },
     update: {},
     create: {
-      name: '田中一郎',
-      email: 'tanaka.ichiro@test.com',
+      name: '田中奈都子',
+      email: 'tanaka.natsuko@test.com',
       password: hashedPassword,
-      role: 'GOVERNMENT',
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '観光課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#EC4899',
+    },
+  });
+
+  const member10 = await prisma.user.upsert({
+    where: { email: 'maeno.sumire@test.com' },
+    update: {},
+    create: {
+      name: '前野寿美麗',
+      email: 'maeno.sumire@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '企画課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
+      avatarColor: '#EF4444',
+    },
+  });
+
+  const member11 = await prisma.user.upsert({
+    where: { email: 'nakamura.kurumi@test.com' },
+    update: {},
+    create: {
+      name: '中村来実',
+      email: 'nakamura.kurumi@test.com',
+      password: hashedPassword,
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '総務課',
+      termStart: new Date('2024-04-01'),
+      termEnd: new Date('2027-03-31'),
       avatarColor: '#F59E0B',
     },
   });
 
-  console.log('✅ Created users:', {
-    master: master.email,
-    member1: member1.email,
-    member2: member2.email,
-    member3: member3.email,
-    support: support.email,
-    government: government.email,
-    testMember1: testMember1.email,
-    testMember2: testMember2.email,
-    testGovernment: testGovernment.email,
+  console.log('✅ Created/Updated users:', {
+    master: master.name,
+    support1: support1.name,
+    support2: support2.name,
+    government1: government1.name,
+    government2: government2.name,
+    members: [
+      member1.name,
+      member2.name,
+      member3.name,
+      member4.name,
+      member5.name,
+      member6.name,
+      member7.name,
+      member8.name,
+      member9.name,
+      member10.name,
+      member11.name,
+    ],
   });
 
   // Create locations
