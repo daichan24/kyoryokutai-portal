@@ -6,18 +6,20 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting seed...');
 
-  // Clear existing data
+  // Clear existing data (スケジュールとレポートのみ)
   await prisma.weeklyReport.deleteMany();
   await prisma.schedule.deleteMany();
   await prisma.location.deleteMany();
-  await prisma.user.deleteMany();
+  // ユーザーは削除しない（既存ユーザーを保持）
 
   // Hash password
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // Create users
-  const master = await prisma.user.create({
-    data: {
+  // ユーザーをupsertで作成（既存ユーザーは更新しない、新規のみ作成）
+  const master = await prisma.user.upsert({
+    where: { email: 'master@test.com' },
+    update: {}, // 既存ユーザーは更新しない
+    create: {
       name: '佐藤大地',
       email: 'master@test.com',
       password: hashedPassword,
@@ -26,8 +28,10 @@ async function main() {
     },
   });
 
-  const member1 = await prisma.user.create({
-    data: {
+  const member1 = await prisma.user.upsert({
+    where: { email: 'member@test.com' },
+    update: {},
+    create: {
       name: '田中太郎',
       email: 'member@test.com',
       password: hashedPassword,
@@ -40,8 +44,10 @@ async function main() {
     },
   });
 
-  const member2 = await prisma.user.create({
-    data: {
+  const member2 = await prisma.user.upsert({
+    where: { email: 'member2@test.com' },
+    update: {},
+    create: {
       name: '山田花子',
       email: 'member2@test.com',
       password: hashedPassword,
@@ -54,8 +60,10 @@ async function main() {
     },
   });
 
-  const member3 = await prisma.user.create({
-    data: {
+  const member3 = await prisma.user.upsert({
+    where: { email: 'member3@test.com' },
+    update: {},
+    create: {
       name: '鈴木次郎',
       email: 'member3@test.com',
       password: hashedPassword,
@@ -68,8 +76,10 @@ async function main() {
     },
   });
 
-  const support = await prisma.user.create({
-    data: {
+  const support = await prisma.user.upsert({
+    where: { email: 'support@test.com' },
+    update: {},
+    create: {
       name: '坂本一志',
       email: 'support@test.com',
       password: hashedPassword,
@@ -78,8 +88,10 @@ async function main() {
     },
   });
 
-  const government = await prisma.user.create({
-    data: {
+  const government = await prisma.user.upsert({
+    where: { email: 'government@test.com' },
+    update: {},
+    create: {
       name: '役場担当者',
       email: 'government@test.com',
       password: hashedPassword,

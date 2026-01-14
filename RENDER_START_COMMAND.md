@@ -5,8 +5,12 @@
 RenderのBackend Serviceの **Start Command** を以下に設定してください：
 
 ```bash
-echo "RUN MIGRATE" && node -e "console.log('DB_URL_HOST_DB:', (process.env.DATABASE_URL||'').split('@')[1]?.split('?')[0])" && echo "=== MIGRATE STATUS ===" && npx prisma migrate status 2>&1 && echo "=== MIGRATE DEPLOY ===" && npx prisma migrate deploy 2>&1 && echo "MIGRATE DONE" && npm start
+echo "RUN MIGRATE" && node -e "console.log('DB_URL_HOST_DB:', (process.env.DATABASE_URL||'').split('@')[1]?.split('?')[0])" && echo "=== MIGRATE STATUS ===" && npx prisma migrate status 2>&1 && echo "=== MIGRATE DEPLOY ===" && npx prisma migrate deploy 2>&1 && echo "MIGRATE DONE" && echo "=== RUN SEED ===" && npm run seed && echo "SEED DONE" && npm start
 ```
+
+**注意**: 
+- `npm run seed` で初期ユーザーデータを投入（既存ユーザーは保持、新規のみ追加）
+- 初回デプロイ時やユーザーが不足している場合に実行される
 
 **注意**: 
 - `npx prisma migrate status` で現在のmigration適用状況を確認
