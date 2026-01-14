@@ -99,6 +99,10 @@ app.use('/api/admin', adminRoutes); // 管理者用API
 app.use('/api/inbox', inboxRoutes); // 受信箱API
 app.use('/api/me/dashboard-config', dashboardConfigRoutes); // ダッシュボード設定API
 
+// ルート登録確認ログ
+console.log('✅ [ROUTES] Registered routes:');
+console.log('  - /api/me/dashboard-config (GET, PUT)');
+
 // Error handler
 app.use(errorHandler);
 

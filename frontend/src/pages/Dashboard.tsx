@@ -76,13 +76,57 @@ export const Dashboard: React.FC = () => {
     refetchInterval: 30000, // 30秒ごとに更新
   });
 
-  // ダッシュボード設定取得
+  // デフォルト設定（role別）
+  const getDefaultConfig = (role: string = 'MEMBER'): DashboardConfig => {
+    const baseWidgets = [
+      { key: 'snsHistory', enabled: true, showAddButton: true, size: 'M' as const, order: 1 },
+      { key: 'taskRequests', enabled: true, showAddButton: false, size: 'L' as const, order: 2 },
+      { key: 'projects', enabled: false, showAddButton: false, size: 'M' as const, order: 3 },
+      { key: 'goals', enabled: false, showAddButton: false, size: 'M' as const, order: 4 },
+    ];
+
+    if (role === 'MEMBER') {
+      return {
+        widgets: [
+          { ...baseWidgets[0], enabled: true, showAddButton: true },
+          { ...baseWidgets[1], enabled: false },
+          { ...baseWidgets[2], enabled: true },
+          { ...baseWidgets[3], enabled: true },
+        ],
+      };
+    } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
+      return {
+        widgets: [
+          { ...baseWidgets[0], enabled: false },
+          { ...baseWidgets[1], enabled: true, showAddButton: true },
+          { ...baseWidgets[2], enabled: true },
+          { ...baseWidgets[3], enabled: false },
+        ],
+      };
+    } else if (role === 'MASTER') {
+      return {
+        widgets: baseWidgets.map((w, i) => ({ ...w, enabled: true, order: i + 1 })),
+      };
+    }
+
+    return { widgets: baseWidgets };
+  };
+
+  // ダッシュボード設定取得（エラー時はデフォルト設定でフォールバック）
   const { data: dashboardConfig } = useQuery<DashboardConfig>({
     queryKey: ['dashboard-config'],
     queryFn: async () => {
-      const response = await api.get('/api/me/dashboard-config');
-      return response.data;
+      try {
+        const response = await api.get('/api/me/dashboard-config');
+        return response.data;
+      } catch (error: any) {
+        console.error('[Dashboard] Failed to fetch dashboard config:', error);
+        // エラー時はデフォルト設定を返す（無限ローディングを防ぐ）
+        return getDefaultConfig(user?.role || 'MEMBER');
+      }
     },
+    retry: 1, // リトライは1回のみ
+    staleTime: 30000, // 30秒間キャッシュ
   });
 
   useEffect(() => {

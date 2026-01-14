@@ -61,6 +61,8 @@ const getDefaultConfig = (role: string) => {
  */
 router.get('/', async (req: AuthRequest, res) => {
   try {
+    console.log('[API] GET /api/me/dashboard-config user:', req.user?.id, req.user?.role);
+    
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
       select: {
@@ -70,6 +72,7 @@ router.get('/', async (req: AuthRequest, res) => {
     });
 
     if (!user) {
+      console.error('[API] User not found:', req.user?.id);
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -78,10 +81,13 @@ router.get('/', async (req: AuthRequest, res) => {
       ? (user.dashboardConfigJson as any)
       : getDefaultConfig(user.role);
 
+    console.log('[API] Returning config for role:', user.role, 'hasCustomConfig:', !!user.dashboardConfigJson);
     res.json(config);
   } catch (error) {
-    console.error('Get dashboard config error:', error);
-    res.status(500).json({ error: 'Failed to get dashboard config' });
+    console.error('[API] Get dashboard config error:', error);
+    // エラー時もデフォルト設定を返す（500ではなく200で返す）
+    const defaultConfig = getDefaultConfig(req.user?.role || 'MEMBER');
+    res.json(defaultConfig);
   }
 });
 
@@ -91,6 +97,8 @@ router.get('/', async (req: AuthRequest, res) => {
  */
 router.put('/', async (req: AuthRequest, res) => {
   try {
+    console.log('[API] PUT /api/me/dashboard-config user:', req.user?.id, req.user?.role);
+    
     const data = dashboardConfigSchema.parse(req.body);
 
     const user = await prisma.user.update({
@@ -103,12 +111,14 @@ router.put('/', async (req: AuthRequest, res) => {
       },
     });
 
+    console.log('[API] Dashboard config saved successfully');
     res.json(user.dashboardConfigJson);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('[API] Validation error:', error.errors);
       return res.status(400).json({ error: 'Invalid config format', details: error.errors });
     }
-    console.error('Update dashboard config error:', error);
+    console.error('[API] Update dashboard config error:', error);
     res.status(500).json({ error: 'Failed to update dashboard config' });
   }
 });
