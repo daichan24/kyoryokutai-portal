@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "build:version": "node -e \"const {execSync} = require('child_process'); try { const hash = execSync('git rev-parse --short HEAD', {encoding: 'utf-8'}).trim(); const ts = new Date().toISOString().replace(/[-:T]/g,'').split('.')[0].slice(0,14); process.stdout.write(hash + '-' + ts); } catch(e) { const ts = new Date().toISOString().replace(/[-:T]/g,'').split('.')[0].slice(0,14); process.stdout.write(ts); }\" | xargs -I {} sh -c 'VITE_BUILD_ID={} vite build'",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
