@@ -29,12 +29,23 @@ router.get('/login-hints', async (req, res) => {
     });
 
     // 固定パスワード（開発用の表示のみ）
-    const loginHints = users.map((user) => ({
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      password: 'password123', // 固定表示（実際のDBには平文保存していない）
-    }));
+    // マスターの情報は伏せる
+    const loginHints = users.map((user) => {
+      if (user.role === 'MASTER') {
+        return {
+          name: '***',
+          email: '***',
+          role: user.role,
+          password: '***',
+        };
+      }
+      return {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        password: 'password123', // 固定表示（実際のDBには平文保存していない）
+      };
+    });
 
     res.json(loginHints);
   } catch (error) {

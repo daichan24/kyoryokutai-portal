@@ -15,10 +15,10 @@ async function main() {
   // Hash password
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // 1. マスター
+  // 1. マスター（メールアドレスはmaster@test.comのまま）
   const master = await prisma.user.upsert({
     where: { email: 'master@test.com' },
-    update: { name: '佐藤大地' }, // 既存ユーザーの名前を更新
+    update: { name: '佐藤大地' },
     create: {
       name: '佐藤大地',
       email: 'master@test.com',
@@ -28,13 +28,13 @@ async function main() {
     },
   });
 
-  // 2. サポート（3名）
+  // 2. サポート（2名）
   const support1 = await prisma.user.upsert({
-    where: { email: 'support@test.com' },
-    update: { name: '坂本一志' }, // 既存ユーザーの名前を更新
+    where: { email: 'sakamoto.isshi@test.com' },
+    update: { name: '坂本一志' },
     create: {
       name: '坂本一志',
-      email: 'support@test.com',
+      email: 'sakamoto.isshi@test.com',
       password: hashedPassword,
       role: 'SUPPORT',
       avatarColor: '#F59E0B',
@@ -43,7 +43,7 @@ async function main() {
 
   const support2 = await prisma.user.upsert({
     where: { email: 'masuda.kenji@test.com' },
-    update: {},
+    update: { name: '増田健司' },
     create: {
       name: '増田健司',
       email: 'masuda.kenji@test.com',
@@ -53,22 +53,10 @@ async function main() {
     },
   });
 
-  // 3. 行政（2名）
+  // 3. 行政（1名 - 高田和孝を削除、牧野栞里のみ）
   const government1 = await prisma.user.upsert({
-    where: { email: 'government@test.com' },
-    update: { name: '高田和孝' }, // 既存ユーザーの名前を更新
-    create: {
-      name: '高田和孝',
-      email: 'government@test.com',
-      password: hashedPassword,
-      role: 'GOVERNMENT',
-      avatarColor: '#06B6D4',
-    },
-  });
-
-  const government2 = await prisma.user.upsert({
     where: { email: 'makino.shiori@test.com' },
-    update: {},
+    update: { name: '牧野栞里' },
     create: {
       name: '牧野栞里',
       email: 'makino.shiori@test.com',
@@ -78,13 +66,13 @@ async function main() {
     },
   });
 
-  // 4. メンバー（11名）
+  // 4. メンバー（11名 - メールアドレスを名前ベースに変更）
   const member1 = await prisma.user.upsert({
-    where: { email: 'member@test.com' },
-    update: { name: '江藤誠洋' }, // 既存ユーザーの名前を更新
+    where: { email: 'eto.seiyo@test.com' },
+    update: { name: '江藤誠洋' },
     create: {
       name: '江藤誠洋',
-      email: 'member@test.com',
+      email: 'eto.seiyo@test.com',
       password: hashedPassword,
       role: 'MEMBER',
       missionType: 'FREE',
@@ -96,11 +84,11 @@ async function main() {
   });
 
   const member2 = await prisma.user.upsert({
-    where: { email: 'member2@test.com' },
-    update: { name: '徳留正也' }, // 既存ユーザーの名前を更新
+    where: { email: 'tokudome.masaya@test.com' },
+    update: { name: '徳留正也' },
     create: {
       name: '徳留正也',
-      email: 'member2@test.com',
+      email: 'tokudome.masaya@test.com',
       password: hashedPassword,
       role: 'MEMBER',
       missionType: 'FREE',
@@ -112,11 +100,11 @@ async function main() {
   });
 
   const member3 = await prisma.user.upsert({
-    where: { email: 'member3@test.com' },
-    update: { name: '有馬圭亮' }, // 既存ユーザーの名前を更新
+    where: { email: 'arima.keisuke@test.com' },
+    update: { name: '有馬圭亮' },
     create: {
       name: '有馬圭亮',
-      email: 'member3@test.com',
+      email: 'arima.keisuke@test.com',
       password: hashedPassword,
       role: 'MEMBER',
       missionType: 'FREE',
@@ -129,7 +117,7 @@ async function main() {
 
   const member4 = await prisma.user.upsert({
     where: { email: 'okada.ayaka@test.com' },
-    update: {},
+    update: { name: '岡田彩葵' },
     create: {
       name: '岡田彩葵',
       email: 'okada.ayaka@test.com',
@@ -145,7 +133,7 @@ async function main() {
 
   const member5 = await prisma.user.upsert({
     where: { email: 'kanayama.masahiro@test.com' },
-    update: {},
+    update: { name: '金山真大' },
     create: {
       name: '金山真大',
       email: 'kanayama.masahiro@test.com',
@@ -161,7 +149,7 @@ async function main() {
 
   const member6 = await prisma.user.upsert({
     where: { email: 'sou.guanyu@test.com' },
-    update: {},
+    update: { name: '曹冠宇' },
     create: {
       name: '曹冠宇',
       email: 'sou.guanyu@test.com',
@@ -177,7 +165,7 @@ async function main() {
 
   const member7 = await prisma.user.upsert({
     where: { email: 'ogawa.sayaka@test.com' },
-    update: {},
+    update: { name: '小川紗綾佳' },
     create: {
       name: '小川紗綾佳',
       email: 'ogawa.sayaka@test.com',
@@ -193,7 +181,7 @@ async function main() {
 
   const member8 = await prisma.user.upsert({
     where: { email: 'kanematsu.seigo@test.com' },
-    update: {},
+    update: { name: '兼松成伍' },
     create: {
       name: '兼松成伍',
       email: 'kanematsu.seigo@test.com',
@@ -209,7 +197,7 @@ async function main() {
 
   const member9 = await prisma.user.upsert({
     where: { email: 'tanaka.natsuko@test.com' },
-    update: {},
+    update: { name: '田中奈都子' },
     create: {
       name: '田中奈都子',
       email: 'tanaka.natsuko@test.com',
@@ -225,7 +213,7 @@ async function main() {
 
   const member10 = await prisma.user.upsert({
     where: { email: 'maeno.sumire@test.com' },
-    update: {},
+    update: { name: '前野寿美麗' },
     create: {
       name: '前野寿美麗',
       email: 'maeno.sumire@test.com',
@@ -241,7 +229,7 @@ async function main() {
 
   const member11 = await prisma.user.upsert({
     where: { email: 'nakamura.kurumi@test.com' },
-    update: {},
+    update: { name: '中村来実' },
     create: {
       name: '中村来実',
       email: 'nakamura.kurumi@test.com',
@@ -256,11 +244,10 @@ async function main() {
   });
 
   console.log('✅ Created/Updated users:', {
-    master: master.name,
+    master: '***',
     support1: support1.name,
     support2: support2.name,
     government1: government1.name,
-    government2: government2.name,
     members: [
       member1.name,
       member2.name,
