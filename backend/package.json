@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
-    "start:prod": "echo 'RUN MIGRATE' && npx prisma migrate deploy && echo 'MIGRATE DONE' && node dist/index.js",
+    "start:prod": "echo 'RUN MIGRATE' && npx prisma migrate deploy && echo 'MIGRATE DONE' && if [ \"$RUN_SEED\" = \"true\" ]; then echo '=== RUN SEED ===' && npm run seed && echo 'SEED DONE'; fi && node dist/index.js",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
