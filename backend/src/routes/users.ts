@@ -31,19 +31,14 @@ router.get('/', authorize('MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT'), async (r
     }
 
     // roleフィルター（認可ルールより優先されるが、MASTER除外は維持）
-    if (role) {
+    if (role && typeof role === 'string') {
       // MASTER以外のユーザーがMASTERをフィルターしようとした場合は無視
       if (req.user!.role !== 'MASTER' && role === 'MASTER') {
         // MASTER以外はMASTERを取得できないため、空配列を返す
         return res.json([]);
       }
-      // 既存のwhere条件とマージ
-      if (where.role && typeof where.role === 'object' && where.role.not) {
-        // MASTER除外 + role指定の場合
-        where.role = role as string;
-      } else if (!where.role) {
-        where.role = role as string;
-      }
+      // roleフィルターを適用（MASTER除外条件を上書き）
+      where.role = role;
     }
 
     const users = await prisma.user.findMany({
