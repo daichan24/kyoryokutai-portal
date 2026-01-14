@@ -106,6 +106,7 @@ export const MonthlyReport: React.FC = () => {
         >
           {isCreating ? '作成中...' : '+ 新規作成'}
         </button>
+        )}
       </div>
 
       <div className="space-y-4">
