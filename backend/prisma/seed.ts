@@ -21,6 +21,7 @@ async function main() {
     'sato.taro@test.com', // 佐藤太郎
     'suzuki.hanako@test.com', // 鈴木花子
     'tanaka.ichiro@test.com', // 田中一郎
+    'takada@test.com', // 追加: takada@test.comを削除
   ];
   
   // 高田和孝が複数いる場合、古いメールアドレスの方を削除
