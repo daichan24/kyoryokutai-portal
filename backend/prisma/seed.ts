@@ -10,7 +10,40 @@ async function main() {
   await prisma.weeklyReport.deleteMany();
   await prisma.schedule.deleteMany();
   await prisma.location.deleteMany();
-  // ユーザーは削除しない（既存ユーザーを保持）
+  
+  // 不要なユーザーを削除（古いメールアドレスやリストにないユーザー）
+  const emailsToDelete = [
+    'member@test.com',
+    'member2@test.com',
+    'member3@test.com',
+    'support@test.com',
+    'government@test.com',
+    'sato.taro@test.com', // 佐藤太郎
+    'suzuki.hanako@test.com', // 鈴木花子
+    'tanaka.ichiro@test.com', // 田中一郎
+  ];
+  
+  // 高田和孝が複数いる場合、古いメールアドレスの方を削除
+  const oldTakadaEmail = 'government@test.com'; // デフォルトでいた方
+  
+  for (const email of emailsToDelete) {
+    await prisma.user.deleteMany({
+      where: { email },
+    });
+  }
+  
+  // 高田和孝が古いメールアドレスで存在する場合は削除
+  const oldTakada = await prisma.user.findFirst({
+    where: { 
+      email: oldTakadaEmail,
+      name: { contains: '高田' }
+    },
+  });
+  if (oldTakada) {
+    await prisma.user.delete({
+      where: { id: oldTakada.id },
+    });
+  }
 
   // Hash password
   const hashedPassword = await bcrypt.hash('password123', 10);
@@ -53,8 +86,20 @@ async function main() {
     },
   });
 
-  // 3. 行政（1名 - 高田和孝を削除、牧野栞里のみ）
+  // 3. 行政（2名）
   const government1 = await prisma.user.upsert({
+    where: { email: 'takada.kazutaka@test.com' },
+    update: { name: '高田和孝' },
+    create: {
+      name: '高田和孝',
+      email: 'takada.kazutaka@test.com',
+      password: hashedPassword,
+      role: 'GOVERNMENT',
+      avatarColor: '#06B6D4',
+    },
+  });
+
+  const government2 = await prisma.user.upsert({
     where: { email: 'makino.shiori@test.com' },
     update: { name: '牧野栞里' },
     create: {
@@ -248,6 +293,7 @@ async function main() {
     support1: support1.name,
     support2: support2.name,
     government1: government1.name,
+    government2: government2.name,
     members: [
       member1.name,
       member2.name,
