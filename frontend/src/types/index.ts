@@ -203,7 +203,10 @@ export type NotificationType =
   | 'WEEKLY_REMINDER'
   | 'SNS_REMINDER'
   | 'PENDING_SCHEDULE'
-  | 'EVENT_REMINDER';
+  | 'EVENT_REMINDER'
+  | 'SCHEDULE_INVITE'
+  | 'SCHEDULE_INVITE_APPROVED'
+  | 'SCHEDULE_INVITE_REJECTED';
 
 export interface Notification {
   id: string;

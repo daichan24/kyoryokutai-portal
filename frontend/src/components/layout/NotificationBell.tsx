@@ -6,7 +6,7 @@ import { Notification } from '@/types';
 import { api } from '@/utils/api';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { Bell, Check } from 'lucide-react';
+import { Bell, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function NotificationBell() {
@@ -43,10 +43,34 @@ export function NotificationBell() {
   };
 
   const handleNotificationClick = async (notification: Notification) => {
+    // SCHEDULE_INVITEの場合はクリックでリンクに移動しない（ボタンで操作）
+    if (notification.type === 'SCHEDULE_INVITE') {
+      return;
+    }
     await markAsRead(notification.id);
     setIsOpen(false);
     if (notification.link) {
       navigate(notification.link);
+    }
+  };
+
+  const handleScheduleInviteResponse = async (notification: Notification, decision: 'APPROVED' | 'REJECTED') => {
+    try {
+      // linkからscheduleIdを抽出（例: /schedule/123）
+      const scheduleId = notification.link?.split('/').pop();
+      if (!scheduleId) {
+        alert('スケジュールIDが見つかりません');
+        return;
+      }
+
+      await api.post(`/api/schedules/${scheduleId}/respond`, { decision });
+      await markAsRead(notification.id);
+      await loadNotifications();
+      // スケジュールページをリロードするために通知
+      window.dispatchEvent(new CustomEvent('schedule-updated'));
+    } catch (error) {
+      console.error('Failed to respond to schedule invite:', error);
+      alert('応答に失敗しました');
     }
   };
 
@@ -77,6 +101,12 @@ export function NotificationBell() {
         return '⏳';
       case 'EVENT_REMINDER':
         return '🎉';
+      case 'SCHEDULE_INVITE':
+        return '📅';
+      case 'SCHEDULE_INVITE_APPROVED':
+        return '✅';
+      case 'SCHEDULE_INVITE_REJECTED':
+        return '❌';
       default:
         return '🔔';
     }
@@ -130,8 +160,10 @@ export function NotificationBell() {
                 notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    onClick={() => handleNotificationClick(notification)}
-                    className="p-3 border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => notification.type !== 'SCHEDULE_INVITE' && handleNotificationClick(notification)}
+                    className={`p-3 border-b transition-colors ${
+                      notification.type === 'SCHEDULE_INVITE' ? '' : 'hover:bg-gray-50 cursor-pointer'
+                    }`}
                   >
                     <div className="flex items-start gap-2">
                       <span className="text-2xl">{getNotificationIcon(notification.type)}</span>
@@ -145,8 +177,31 @@ export function NotificationBell() {
                         <p className="text-xs text-gray-400 mt-1">
                           {format(new Date(notification.createdAt), 'M月d日 HH:mm', { locale: ja })}
                         </p>
+                        {notification.type === 'SCHEDULE_INVITE' && (
+                          <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              size="sm"
+                              onClick={() => handleScheduleInviteResponse(notification, 'APPROVED')}
+                              className="flex items-center gap-1 text-xs"
+                            >
+                              <Check className="w-3 h-3" />
+                              承認
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleScheduleInviteResponse(notification, 'REJECTED')}
+                              className="flex items-center gap-1 text-xs"
+                            >
+                              <X className="w-3 h-3" />
+                              却下
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      <Check className="w-4 h-4 text-gray-400" />
+                      {notification.type !== 'SCHEDULE_INVITE' && (
+                        <Check className="w-4 h-4 text-gray-400" />
+                      )}
                     </div>
                   </div>
                 ))

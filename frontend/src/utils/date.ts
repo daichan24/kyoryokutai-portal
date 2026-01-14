@@ -1,4 +1,4 @@
-import { format, startOfWeek, endOfWeek, addDays, parse } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addDays, parse, startOfMonth, endOfMonth, eachDayOfInterval, startOfDay } from 'date-fns';
 import { ja } from 'date-fns/locale/ja';
 
 export const formatDate = (date: Date | string, formatStr: string = 'yyyy-MM-dd'): string => {
@@ -47,4 +47,14 @@ export const isSameDay = (date1: Date | string, date2: Date | string): boolean =
     d1.getMonth() === d2.getMonth() &&
     d1.getDate() === d2.getDate()
   );
+};
+
+export const getMonthDates = (date: Date = new Date()): Date[] => {
+  const start = startOfMonth(date);
+  const end = endOfMonth(date);
+  return eachDayOfInterval({ start, end });
+};
+
+export const getDayDate = (date: Date = new Date()): Date[] => {
+  return [startOfDay(date)];
 };

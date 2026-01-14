@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../../utils/api';
-import { Schedule, Location } from '../../types';
+import { Schedule, Location, User } from '../../types';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { useAuthStore } from '../../stores/authStore';
 
 interface ScheduleModalProps {
   schedule?: Schedule | null;
@@ -27,9 +28,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [freeNote, setFreeNote] = useState('');
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isCollaborative, setIsCollaborative] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const { user: currentUser } = useAuthStore();
 
   useEffect(() => {
     fetchLocations();
+    fetchUsers();
 
     if (schedule) {
       setDate(formatDate(schedule.date));
@@ -38,10 +44,24 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setLocationText(schedule.locationText || '');
       setActivityDescription(schedule.activityDescription);
       setFreeNote(schedule.freeNote || '');
+      // 編集時は参加者選択を無効化（作成者のみ編集可能）
+      setIsCollaborative(false);
     } else if (defaultDate) {
       setDate(formatDate(defaultDate));
     }
   }, [schedule, defaultDate]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get<User[]>('/api/users');
+      // MASTERを除外（招待候補から）
+      const users = (response.data || []).filter(u => u.role !== 'MASTER' && u.id !== currentUser?.id);
+      setAvailableUsers(users);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      setAvailableUsers([]);
+    }
+  };
 
   const fetchLocations = async () => {
     try {
@@ -58,7 +78,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     setLoading(true);
 
     try {
-      const data = {
+      const data: any = {
         date,
         startTime,
         endTime,
@@ -66,6 +86,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         activityDescription,
         freeNote,
       };
+
+      // 新規作成時のみ参加者を追加
+      if (!schedule && isCollaborative && selectedParticipantIds.length > 0) {
+        data.participantsUserIds = selectedParticipantIds;
+      }
 
       if (schedule) {
         await api.put(`/api/schedules/${schedule.id}`, data);
@@ -174,6 +199,66 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               className="w-full px-3 py-2 border border-border rounded-md"
             />
           </div>
+
+          {/* 共同作業（新規作成時のみ） */}
+          {!schedule && (
+            <div className="border-t pt-4">
+              <div className="flex items-center mb-3">
+                <input
+                  type="checkbox"
+                  id="isCollaborative"
+                  checked={isCollaborative}
+                  onChange={(e) => setIsCollaborative(e.target.checked)}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <label htmlFor="isCollaborative" className="ml-2 text-sm font-medium text-gray-700">
+                  共同作業（他メンバーを巻き込む）
+                </label>
+              </div>
+
+              {isCollaborative && (
+                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    参加メンバーを選択
+                  </label>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {availableUsers.map((user) => (
+                      <label
+                        key={user.id}
+                        className="flex items-center p-2 hover:bg-white rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedParticipantIds.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedParticipantIds([...selectedParticipantIds, user.id]);
+                            } else {
+                              setSelectedParticipantIds(selectedParticipantIds.filter(id => id !== user.id));
+                            }
+                          }}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        />
+                        <div className="ml-3 flex items-center">
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2"
+                            style={{ backgroundColor: user.avatarColor }}
+                          >
+                            {user.name.charAt(0)}
+                          </div>
+                          <span className="text-sm text-gray-700">{user.name}</span>
+                          <span className="ml-2 text-xs text-gray-500">({user.role})</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  {availableUsers.length === 0 && (
+                    <p className="text-sm text-gray-500">選択可能なメンバーがいません</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-between pt-4">
             <div>
