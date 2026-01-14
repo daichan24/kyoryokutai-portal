@@ -22,16 +22,11 @@ export const Login: React.FC = () => {
   const [loginHints, setLoginHints] = useState<LoginHint[]>([]);
   const [loadingHints, setLoadingHints] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
-  
-  // 開発環境でのみ表示
-  const showTestAccounts = import.meta.env.VITE_SHOW_TEST_ACCOUNTS === 'true';
 
-  // テストアカウント一覧を取得
+  // テストアカウント一覧を取得（常に表示）
   useEffect(() => {
-    if (showTestAccounts) {
-      fetchLoginHints();
-    }
-  }, [showTestAccounts]);
+    fetchLoginHints();
+  }, []);
 
   const fetchLoginHints = async () => {
     setLoadingHints(true);
@@ -133,9 +128,8 @@ export const Login: React.FC = () => {
 
         </form>
 
-        {/* テストアカウント一覧（開発環境のみ） */}
-        {showTestAccounts && (
-          <div className="mt-8 pt-8 border-t border-gray-200">
+        {/* アカウント一覧 */}
+        <div className="mt-8 pt-8 border-t border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               テストアカウント一覧
             </h3>
@@ -208,7 +202,6 @@ export const Login: React.FC = () => {
               <p className="text-sm text-gray-500">テストアカウントが見つかりませんでした</p>
             )}
           </div>
-        )}
       </div>
     </div>
   );
