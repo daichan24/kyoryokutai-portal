@@ -139,6 +139,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
         termStart: true,
         termEnd: true,
         avatarColor: true,
+        snsLinks: true, // SNSリンクを含める
         createdAt: true,
         updatedAt: true,
       },

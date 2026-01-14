@@ -56,6 +56,9 @@ model User {
   // ダッシュボード設定（JSON）
   dashboardConfigJson  Json?
 
+  // SNSリンク（JSON配列: [{ platform: "instagram", url: "..." }, ...]）
+  snsLinks             Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -474,16 +477,32 @@ model SNSPost {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // 週のキー（YYYY-WW形式、月曜9:00 JST基準で週を判定）
   week     String
+  
+  // 投稿日時（必須。週次判定と履歴表示に使用）
+  postedAt DateTime @db.Timestamptz
+  
+  // 投稿種別（STORY/FEED、BOTHは廃止予定）
+  postType PostType
+  
+  // 以下は任意入力（分析/ブランディング用）
+  url          String?  // 投稿リンク
+  theme        String?  @db.VarChar(200) // 投稿テーマ（タイトル）
+  followerDelta Int?    // フォロワー増減数
+  views        Int?     // 閲覧数（Instagramのリーチ等）
+  likes        Int?     // いいね数
+  note         String?  @db.Text // 備考
+
+  // 後方互換性のため残す（削除予定）
   postDate DateTime? @db.Date
-  postType PostType?
   isPosted Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, week])
   @@index([userId, week])
+  @@index([userId, postedAt])
 }
 
 enum PostType {

@@ -22,6 +22,7 @@ import monthlyReportsRoutes from './routes/monthlyReports';
 import adminRoutes from './routes/admin';
 import inboxRoutes from './routes/inbox';
 import dashboardConfigRoutes from './routes/dashboardConfig';
+import snsLinksRoutes from './routes/snsLinks';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -98,10 +99,12 @@ app.use('/api/monthly-reports', monthlyReportsRoutes);
 app.use('/api/admin', adminRoutes); // 管理者用API
 app.use('/api/inbox', inboxRoutes); // 受信箱API
 app.use('/api/me/dashboard-config', dashboardConfigRoutes); // ダッシュボード設定API
+app.use('/api/me/sns-links', snsLinksRoutes); // SNSリンクAPI
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');
 console.log('  - /api/me/dashboard-config (GET, PUT)');
+console.log('  - /api/me/sns-links (GET, PUT)');
 
 // Error handler
 app.use(errorHandler);
