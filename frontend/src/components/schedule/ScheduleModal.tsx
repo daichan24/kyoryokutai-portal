@@ -200,6 +200,23 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             />
           </div>
 
+          {/* 起票者表示（編集時・詳細表示時） */}
+          {schedule && schedule.user && (
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">起票者</h3>
+              <div className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-200">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                  style={{ backgroundColor: schedule.user.avatarColor || '#6B7280' }}
+                >
+                  {schedule.user.name?.charAt(0) || '?'}
+                </div>
+                <span className="text-sm font-medium text-gray-900">{schedule.user.name}</span>
+                <span className="text-xs text-gray-500">({schedule.user.role})</span>
+              </div>
+            </div>
+          )}
+
           {/* 共同メンバー表示（編集時・詳細表示時） */}
           {schedule && schedule.scheduleParticipants && schedule.scheduleParticipants.length > 0 && (
             <div className="border-t pt-4">
@@ -208,10 +225,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 {/* 承認済みメンバー */}
                 <div>
                   <p className="text-xs font-medium text-gray-600 mb-2">承認済み</p>
-                  {schedule.scheduleParticipants.filter(p => p.status === 'APPROVED').length > 0 ? (
+                  {schedule.scheduleParticipants.filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId).length > 0 ? (
                     <div className="space-y-2">
                       {schedule.scheduleParticipants
-                        .filter(p => p.status === 'APPROVED')
+                        .filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId)
                         .map((participant) => (
                           <div
                             key={participant.id}
@@ -236,10 +253,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 {/* 未承認メンバー */}
                 <div>
                   <p className="text-xs font-medium text-gray-600 mb-2">未承認</p>
-                  {schedule.scheduleParticipants.filter(p => p.status === 'PENDING').length > 0 ? (
+                  {schedule.scheduleParticipants.filter(p => p.status === 'PENDING' && p.userId !== schedule.userId).length > 0 ? (
                     <div className="space-y-2">
                       {schedule.scheduleParticipants
-                        .filter(p => p.status === 'PENDING')
+                        .filter(p => p.status === 'PENDING' && p.userId !== schedule.userId)
                         .map((participant) => (
                           <div
                             key={participant.id}
@@ -263,12 +280,12 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               </div>
 
               {/* 却下メンバー（任意表示） */}
-              {schedule.scheduleParticipants.filter(p => p.status === 'REJECTED').length > 0 && (
+              {schedule.scheduleParticipants.filter(p => p.status === 'REJECTED' && p.userId !== schedule.userId).length > 0 && (
                 <div className="mt-4">
                   <p className="text-xs font-medium text-gray-600 mb-2">却下</p>
                   <div className="space-y-2">
                     {schedule.scheduleParticipants
-                      .filter(p => p.status === 'REJECTED')
+                      .filter(p => p.status === 'REJECTED' && p.userId !== schedule.userId)
                       .map((participant) => (
                         <div
                           key={participant.id}

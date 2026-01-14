@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, FileText, Clock, Inbox, Check, X } from 'lucide-react';
+import { Calendar, FileText, Clock, Inbox, Check, X, Settings } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../utils/api';
 import { Schedule } from '../types';
@@ -8,6 +8,12 @@ import { formatDate, getWeekRange } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DashboardCustomizeModal } from '../components/dashboard/DashboardCustomizeModal';
+import { SNSHistoryWidget } from '../components/dashboard/SNSHistoryWidget';
+import { TaskRequestsWidget } from '../components/dashboard/TaskRequestsWidget';
+import { ProjectsWidget } from '../components/dashboard/ProjectsWidget';
+import { GoalsWidget } from '../components/dashboard/GoalsWidget';
+import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 
 interface InboxData {
   scheduleInvites: Array<{
@@ -40,11 +46,25 @@ interface InboxData {
   }>;
 }
 
+interface WidgetConfig {
+  key: string;
+  enabled: boolean;
+  showAddButton?: boolean;
+  size?: 'S' | 'M' | 'L';
+  order: number;
+}
+
+interface DashboardConfig {
+  widgets: WidgetConfig[];
+}
+
 export const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
+  const [isTaskRequestModalOpen, setIsTaskRequestModalOpen] = useState(false);
 
   // 受信箱データ取得
   const { data: inboxData, isLoading: inboxLoading } = useQuery<InboxData>({
@@ -54,6 +74,15 @@ export const Dashboard: React.FC = () => {
       return response.data;
     },
     refetchInterval: 30000, // 30秒ごとに更新
+  });
+
+  // ダッシュボード設定取得
+  const { data: dashboardConfig } = useQuery<DashboardConfig>({
+    queryKey: ['dashboard-config'],
+    queryFn: async () => {
+      const response = await api.get('/api/me/dashboard-config');
+      return response.data;
+    },
   });
 
   useEffect(() => {
@@ -114,11 +143,46 @@ export const Dashboard: React.FC = () => {
 
   const totalInboxCount = (inboxData?.scheduleInvites?.length || 0) + (inboxData?.taskRequests?.length || 0);
 
+  const renderWidget = (widget: WidgetConfig) => {
+    const commonProps = {
+      showAddButton: widget.showAddButton || false,
+      onAddClick: widget.key === 'taskRequests' ? () => setIsTaskRequestModalOpen(true) : undefined,
+    };
+
+    switch (widget.key) {
+      case 'snsHistory':
+        return <SNSHistoryWidget key={widget.key} {...commonProps} />;
+      case 'taskRequests':
+        return <TaskRequestsWidget key={widget.key} {...commonProps} />;
+      case 'projects':
+        return <ProjectsWidget key={widget.key} {...commonProps} />;
+      case 'goals':
+        return <GoalsWidget key={widget.key} {...commonProps} />;
+      default:
+        return null;
+    }
+  };
+
+  const enabledWidgets = dashboardConfig?.widgets
+    .filter((w) => w.enabled)
+    .sort((a, b) => a.order - b.order) || [];
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">ダッシュボード</h1>
-        <p className="mt-2 text-gray-600">ようこそ、{user?.name}さん</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">ダッシュボード</h1>
+          <p className="mt-2 text-gray-600">ようこそ、{user?.name}さん</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsCustomizeModalOpen(true)}
+          className="flex items-center gap-2"
+        >
+          <Settings className="w-4 h-4" />
+          カスタマイズ
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -395,6 +459,31 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* カスタムウィジェットエリア */}
+      {enabledWidgets.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {enabledWidgets.map((widget) => renderWidget(widget))}
+        </div>
+      )}
+
+      {/* カスタマイズモーダル */}
+      <DashboardCustomizeModal
+        isOpen={isCustomizeModalOpen}
+        onClose={() => setIsCustomizeModalOpen(false)}
+      />
+
+      {/* タスク依頼追加モーダル */}
+      {isTaskRequestModalOpen && (
+        <TaskRequestModal
+          isOpen={isTaskRequestModalOpen}
+          onClose={() => setIsTaskRequestModalOpen(false)}
+          onSaved={() => {
+            setIsTaskRequestModalOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['task-requests'] });
+          }}
+        />
+      )}
     </div>
   );
 };
