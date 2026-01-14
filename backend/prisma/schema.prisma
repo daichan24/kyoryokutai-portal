@@ -53,6 +53,9 @@ model User {
   notifications        Notification[]
   scheduleParticipants ScheduleParticipant[]
 
+  // ダッシュボード設定（JSON）
+  dashboardConfigJson  Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
