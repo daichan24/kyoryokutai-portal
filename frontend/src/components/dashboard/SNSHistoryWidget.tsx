@@ -11,11 +11,13 @@ import { Link, useNavigate } from 'react-router-dom';
 interface SNSPost {
   id: string;
   week: string;
-  postDate?: string | null;
+  postedAt?: string;
+  postDate?: string | null; // 後方互換性
   postType?: 'STORY' | 'FEED' | 'BOTH' | null;
-  isPosted: boolean;
+  isPosted?: boolean; // 後方互換性
   userId: string;
   user?: { id: string; name: string };
+  theme?: string | null;
 }
 
 interface SNSHistoryWidgetProps {
@@ -69,38 +71,42 @@ export const SNSHistoryWidget: React.FC<SNSHistoryWidgetProps> = ({
         <p className="text-sm text-gray-500 text-center py-4">投稿履歴がありません</p>
       ) : (
         <div className="space-y-2">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="flex items-center justify-between p-2 border border-gray-200 rounded hover:bg-gray-50"
-            >
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">{post.week}</p>
-                {post.postDate && (
-                  <p className="text-xs text-gray-500">
-                    {format(new Date(post.postDate), 'M月d日')}
-                  </p>
-                )}
-                {post.postType && (
-                  <span className="text-xs text-gray-500">
-                    {post.postType === 'STORY' ? 'ストーリー' : 
-                     post.postType === 'FEED' ? 'フィード' : '両方'}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {post.isPosted ? (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                    投稿済
-                  </span>
-                ) : (
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                    未投稿
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+          {posts
+            .filter((p) => p.postedAt || p.postDate)
+            .map((post) => {
+              const postDate = post.postedAt || post.postDate;
+              return (
+                <div
+                  key={post.id}
+                  className="flex items-center justify-between p-2 border border-gray-200 rounded hover:bg-gray-50"
+                >
+                  <div className="flex-1">
+                    {post.theme && (
+                      <p className="text-sm font-medium text-gray-900 mb-1">{post.theme}</p>
+                    )}
+                    {postDate && (
+                      <p className="text-xs text-gray-500">
+                        {format(new Date(postDate), 'M月d日')}
+                      </p>
+                    )}
+                    {post.postType && (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded ${
+                          post.postType === 'STORY'
+                            ? 'bg-purple-100 text-purple-800'
+                            : post.postType === 'FEED'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {post.postType === 'STORY' ? 'ストーリー' : 
+                         post.postType === 'FEED' ? 'フィード' : '両方'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
         </div>
       )}
     </div>
