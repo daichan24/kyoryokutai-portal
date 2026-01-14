@@ -14,11 +14,6 @@ const router = Router();
  * 注意: このエンドポイントは router.use(authenticate) の前に配置されているため認証不要
  */
 router.get('/login-hints', async (req, res) => {
-  // 本番環境では403を返す
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({ error: 'This endpoint is not available in production' });
-  }
-
   try {
     // 全ユーザーを取得（name, email, roleのみ）
     const users = await prisma.user.findMany({
