@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Plus } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
 
 interface SNSPost {
   id: string;
@@ -17,14 +18,19 @@ interface SNSPost {
 }
 
 export const SNSPosts: React.FC = () => {
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [postDate, setPostDate] = useState('');
   const [postType, setPostType] = useState<'STORY' | 'FEED' | ''>('');
 
   const { data: posts, isLoading } = useQuery<SNSPost[]>({
-    queryKey: ['sns-posts'],
+    queryKey: ['sns-posts', user?.id],
     queryFn: async () => {
-      const response = await api.get('/api/sns-posts');
+      // MEMBERの場合は自分の投稿のみ、他は全員の投稿
+      const url = user?.role === 'MEMBER' 
+        ? `/api/sns-posts?userId=${user.id}`
+        : '/api/sns-posts';
+      const response = await api.get(url);
       return response.data;
     }
   });

@@ -6,8 +6,10 @@ import { formatDate, parseWeekString } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { WeeklyReportModal } from '../components/report/WeeklyReportModal';
+import { useAuthStore } from '../stores/authStore';
 
 export const WeeklyReport: React.FC = () => {
+  const { user } = useAuthStore();
   const [reports, setReports] = useState<WeeklyReportType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,12 +17,16 @@ export const WeeklyReport: React.FC = () => {
 
   useEffect(() => {
     fetchReports();
-  }, []);
+  }, [user]);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const response = await api.get<WeeklyReportType[]>('/api/weekly-reports');
+      // MEMBERの場合は自分の報告のみ、他は全員の報告
+      const url = user?.role === 'MEMBER' 
+        ? `/api/weekly-reports?userId=${user.id}`
+        : '/api/weekly-reports';
+      const response = await api.get<WeeklyReportType[]>(url);
       setReports(response.data || []);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
@@ -50,14 +56,22 @@ export const WeeklyReport: React.FC = () => {
     handleCloseModal();
   };
 
+  // MEMBERのみ新規作成ボタンを表示（自分の報告のみ作成可能）
+  const canCreate = user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER';
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">週次報告</h1>
-        <Button onClick={handleCreateReport}>
-          <Plus className="h-4 w-4 mr-2" />
-          新規作成
-        </Button>
+        <h1 className="text-3xl font-bold text-gray-900">
+          週次報告
+          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分の報告）</span>}
+        </h1>
+        {canCreate && (
+          <Button onClick={handleCreateReport}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規作成
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -86,6 +100,9 @@ export const WeeklyReport: React.FC = () => {
                     </h3>
                     <p className="text-sm text-gray-600 mt-1">
                       {report.user?.name}
+                      {user?.role !== 'MEMBER' && (
+                        <span className="ml-2 text-xs text-gray-400">（{report.user?.role}）</span>
+                      )}
                     </p>
                   </div>
                   {report.submittedAt && (

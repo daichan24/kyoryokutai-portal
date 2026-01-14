@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ContactModal } from '../components/contact/ContactModal';
 import { ContactHistoryModal } from '../components/contact/ContactHistoryModal';
 import { Button } from '../components/common/Button';
+import { useAuthStore } from '../stores/authStore';
 
 interface Contact {
   id: string;

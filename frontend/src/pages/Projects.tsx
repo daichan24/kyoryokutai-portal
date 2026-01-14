@@ -125,14 +125,22 @@ export const Projects: React.FC = () => {
     );
   }
 
+  // MEMBERのみ新規作成ボタンを表示（自分のプロジェクトのみ作成可能）
+  const canCreate = user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER';
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">プロジェクト管理</h1>
-        <Button onClick={handleCreateProject}>
-          <Plus className="h-4 w-4 mr-2" />
-          新規プロジェクト
-        </Button>
+        <h1 className="text-2xl font-bold text-gray-900">
+          プロジェクト管理
+          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のプロジェクト）</span>}
+        </h1>
+        {canCreate && (
+          <Button onClick={handleCreateProject}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規プロジェクト
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-4">

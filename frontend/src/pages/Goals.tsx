@@ -8,6 +8,7 @@ import { SubGoalModal } from '../components/goal/SubGoalModal';
 import { GoalTaskModal } from '../components/goal/GoalTaskModal';
 import { Button } from '../components/common/Button';
 import { Plus } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
 
 interface Goal {
   id: string;
@@ -43,6 +44,7 @@ interface Task {
 }
 
 export const Goals: React.FC = () => {
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
   const [expandedMidGoals, setExpandedMidGoals] = useState<Set<string>>(new Set());
@@ -62,9 +64,13 @@ export const Goals: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const { data: goals, isLoading } = useQuery<Goal[]>({
-    queryKey: ['goals'],
+    queryKey: ['goals', user?.id],
     queryFn: async () => {
-      const response = await api.get('/api/goals');
+      // MEMBERの場合は自分の目標のみ、他は全員の目標
+      const url = user?.role === 'MEMBER' 
+        ? `/api/goals?userId=${user.id}`
+        : '/api/goals';
+      const response = await api.get(url);
       return response.data;
     }
   });
@@ -167,11 +173,16 @@ export const Goals: React.FC = () => {
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">起業準備進捗管理</h1>
-        <Button onClick={handleCreateGoal}>
-          <Plus className="h-4 w-4 mr-2" />
-          新規目標
-        </Button>
+        <h1 className="text-2xl font-bold text-gray-900">
+          起業準備進捗管理
+          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分の目標）</span>}
+        </h1>
+        {(user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
+          <Button onClick={handleCreateGoal}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規目標
+          </Button>
+        )}
       </div>
 
       {/* 目標一覧 */}

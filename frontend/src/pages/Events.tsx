@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { EventModal } from '../components/event/EventModal';
+import { useAuthStore } from '../stores/authStore';
 
 interface Event {
   id: string;
@@ -18,6 +19,7 @@ interface Event {
 }
 
 export const Events: React.FC = () => {
+  const { user } = useAuthStore();
   const [filterType, setFilterType] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);

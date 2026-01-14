@@ -27,9 +27,13 @@ export const TaskRequests: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: requests, isLoading } = useQuery({
-    queryKey: ['task-requests'],
+    queryKey: ['task-requests', user?.id, user?.role],
     queryFn: async () => {
-      const response = await api.get('/api/task-requests');
+      // MEMBERの場合は自分宛の依頼のみ、他は全員の依頼
+      const url = user?.role === 'MEMBER' 
+        ? `/api/task-requests?requestedTo=${user.id}`
+        : '/api/task-requests';
+      const response = await api.get(url);
       return response.data as TaskRequest[];
     }
   });

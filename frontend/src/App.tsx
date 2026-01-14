@@ -20,6 +20,7 @@ import { TaskRequests } from './pages/TaskRequests';
 import { Inspections } from './pages/Inspections';
 import { Contacts } from './pages/Contacts';
 import { MonthlyReport } from './pages/MonthlyReport';
+import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -101,11 +102,11 @@ const App: React.FC = () => {
       <Route
         path="/settings/locations"
         element={
-          <PrivateRoute>
+          <RoleProtectedRoute allowedRoles={['MASTER']}>
             <Layout>
               <LocationsSettings />
             </Layout>
-          </PrivateRoute>
+          </RoleProtectedRoute>
         }
       />
 
@@ -191,11 +192,11 @@ const App: React.FC = () => {
       <Route
         path="/reports/monthly"
         element={
-          <PrivateRoute>
+          <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT']}>
             <Layout>
               <MonthlyReport />
             </Layout>
-          </PrivateRoute>
+          </RoleProtectedRoute>
         }
       />
     </Routes>

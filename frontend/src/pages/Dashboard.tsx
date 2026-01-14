@@ -15,7 +15,7 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchThisWeekSchedules();
-  }, []);
+  }, [user]);
 
   const fetchThisWeekSchedules = async () => {
     try {
@@ -24,6 +24,11 @@ export const Dashboard: React.FC = () => {
         startDate: formatDate(start),
         endDate: formatDate(end),
       });
+
+      // MEMBERの場合は自分のスケジュールのみ、他は全員のスケジュール
+      if (user?.role === 'MEMBER') {
+        params.append('userId', user.id);
+      }
 
       const response = await api.get<Schedule[]>(`/api/schedules?${params}`);
       const data = response.data;

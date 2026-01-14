@@ -6,8 +6,10 @@ import { formatDate, getWeekDates, isSameDay } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
+import { useAuthStore } from '../stores/authStore';
 
 export const Schedule: React.FC = () => {
+  const { user } = useAuthStore();
   const [schedules, setSchedules] = useState<ScheduleType[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -85,7 +87,10 @@ export const Schedule: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">スケジュール管理</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          スケジュール管理
+          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のスケジュール）</span>}
+        </h1>
         <Button onClick={() => handleCreateSchedule(new Date())}>
           <Plus className="h-4 w-4 mr-2" />
           新規作成

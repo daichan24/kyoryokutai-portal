@@ -22,19 +22,56 @@ import { cn } from '../../utils/cn';
 export const Sidebar: React.FC = () => {
   const { user } = useAuthStore();
 
-  const navItems = [
+  // 全ロール共通のメニュー
+  const commonItems = [
     { to: '/dashboard', icon: Home, label: 'ダッシュボード' },
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
     { to: '/reports/weekly', icon: FileText, label: '週次報告' },
+    { to: '/events', icon: CalendarDays, label: 'イベント' },
+  ];
+
+  // MEMBER専用のメニュー（自分のデータのみ）
+  const memberOnlyItems = [
     { to: '/goals', icon: Target, label: '起業準備進捗' },
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
-    { to: '/events', icon: CalendarDays, label: 'イベント' },
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/contacts', icon: Contact, label: '町民データベース' },
     { to: '/task-requests', icon: UserCheck, label: 'タスク依頼' },
     { to: '/inspections', icon: Eye, label: '視察記録' },
+  ];
+
+  // SUPPORT/GOVERNMENT/MASTER用のメニュー（全データ閲覧可能）
+  const supportGovernmentItems = [
+    { to: '/goals', icon: Target, label: '起業準備進捗' },
+    { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
+    { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
+    { to: '/contacts', icon: Contact, label: '町民データベース' },
+    { to: '/task-requests', icon: UserCheck, label: 'タスク依頼' },
+    { to: '/inspections', icon: Eye, label: '視察記録' },
+  ];
+
+  // SUPPORT/MASTER専用のメニュー
+  const supportMasterItems = [
     { to: '/reports/monthly', icon: FileBarChart, label: '月次報告' },
   ];
+
+  // ロール別にメニューを組み立て
+  const getNavItems = () => {
+    const items = [...commonItems];
+    
+    if (user?.role === 'MEMBER') {
+      items.push(...memberOnlyItems);
+    } else if (user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') {
+      items.push(...supportGovernmentItems);
+      if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
+        items.push(...supportMasterItems);
+      }
+    }
+    
+    return items;
+  };
+
+  const navItems = getNavItems();
 
   // ユーザー管理/情報メニューアイテム（ロール別にラベル変更）
   const getUserMenuLabel = () => {

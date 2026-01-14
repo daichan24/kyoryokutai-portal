@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { useAuthStore } from '../stores/authStore';
 
 interface MonthlyReport {
   id: string;
@@ -15,6 +16,7 @@ interface MonthlyReport {
 }
 
 export const MonthlyReport: React.FC = () => {
+  const { user } = useAuthStore();
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
   const { data: reports, isLoading, error } = useQuery<MonthlyReport[]>({
@@ -73,11 +75,15 @@ export const MonthlyReport: React.FC = () => {
     );
   }
 
+  // SUPPORT/MASTERのみ新規作成ボタンを表示
+  const canCreate = user?.role === 'SUPPORT' || user?.role === 'MASTER';
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">月次報告</h1>
-        <button 
+        {canCreate && (
+          <button 
           onClick={async () => {
             console.log('🔵 [UI] 月次報告新規作成ボタンがクリックされました');
             setIsCreating(true);
