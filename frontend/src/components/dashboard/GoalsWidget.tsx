@@ -3,6 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../utils/api';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import { Button } from '../common/Button';
+import { useAuthStore } from '../../stores/authStore';
 
 interface Goal {
   id: string;
@@ -21,6 +24,7 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
   showAddButton = false,
   onAddClick,
 }) => {
+  const { user } = useAuthStore();
   const { data: goals, isLoading } = useQuery<Goal[]>({
     queryKey: ['goals-widget'],
     queryFn: async () => {
@@ -33,6 +37,14 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
     <div className="bg-white rounded-lg shadow border border-border p-4">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900">目標</h3>
+        {showAddButton && (user?.role === 'MEMBER' || user?.role === 'MASTER') && (
+          <Link to="/goals">
+            <Button size="sm" className="flex items-center gap-1">
+              <Plus className="w-4 h-4" />
+              追加
+            </Button>
+          </Link>
+        )}
       </div>
 
       {isLoading ? (

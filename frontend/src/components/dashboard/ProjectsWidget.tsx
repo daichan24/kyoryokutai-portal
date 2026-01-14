@@ -5,6 +5,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Plus } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Link } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
 
 interface Project {
   id: string;
@@ -23,6 +24,7 @@ export const ProjectsWidget: React.FC<ProjectsWidgetProps> = ({
   showAddButton = false,
   onAddClick,
 }) => {
+  const { user } = useAuthStore();
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ['projects-widget'],
     queryFn: async () => {
@@ -49,11 +51,13 @@ export const ProjectsWidget: React.FC<ProjectsWidgetProps> = ({
     <div className="bg-white rounded-lg shadow border border-border p-4">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900">プロジェクト</h3>
-        {showAddButton && onAddClick && (
-          <Button size="sm" onClick={onAddClick} className="flex items-center gap-1">
-            <Plus className="w-4 h-4" />
-            追加
-          </Button>
+        {showAddButton && (user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'MASTER') && (
+          <Link to="/projects">
+            <Button size="sm" className="flex items-center gap-1">
+              <Plus className="w-4 h-4" />
+              追加
+            </Button>
+          </Link>
         )}
       </div>
 
