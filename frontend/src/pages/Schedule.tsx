@@ -239,25 +239,14 @@ export const Schedule: React.FC = () => {
                   }`}
                 >
                   <div className="text-center mb-2">
-                    {viewMode === 'month' && (
-                      <p className={`text-xs ${dayLabelColor}`}>
-                        {formatDate(date, 'E')}
-                      </p>
-                    )}
-                    {viewMode === 'week' && (
-                      <p className={`text-xs ${dayLabelColor}`}>
-                        {formatDate(date, 'E')}
-                      </p>
-                    )}
-                    <p className={`text-lg font-bold ${dayTextColor}`}>
+                    <p className={`text-xs ${dayLabelColor}`}>
+                      {formatDate(date, 'E')}
+                    </p>
+                    <p className={`text-lg font-bold ${dayTextColor} ${
+                      viewMode === 'month' && formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'opacity-40' : ''
+                    }`}>
                       {formatDate(date, 'd')}
                     </p>
-                    {/* 月表示で前月/翌月の日付は薄く表示 */}
-                    {viewMode === 'month' && (
-                      <p className={`text-xs ${formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'text-gray-300' : ''}`}>
-                        {formatDate(date, 'M') !== formatDate(currentDate, 'M') && '（他月）'}
-                      </p>
-                    )}
                   </div>
 
                   <div className="space-y-2">
