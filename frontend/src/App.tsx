@@ -11,6 +11,8 @@ import { WeeklyReport } from './pages/WeeklyReport';
 import { UsersSettings } from './pages/Settings/Users';
 import { LocationsSettings } from './pages/Settings/Locations';
 import { ProfileSettings } from './pages/Settings/Profile';
+import { Nudges } from './pages/Nudges';
+
 
 // 既存のインポートの下に追加
 import { Projects } from './pages/Projects';
