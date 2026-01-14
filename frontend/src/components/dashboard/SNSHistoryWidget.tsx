@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { Button } from '../common/Button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface SNSPost {
   id: string;
@@ -28,6 +28,7 @@ export const SNSHistoryWidget: React.FC<SNSHistoryWidgetProps> = ({
   onAddClick,
 }) => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
 
   const { data: posts, isLoading } = useQuery<SNSPost[]>({
     queryKey: ['sns-posts-widget', user?.id],
@@ -45,12 +46,20 @@ export const SNSHistoryWidget: React.FC<SNSHistoryWidgetProps> = ({
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900">SNS投稿履歴</h3>
         {showAddButton && (
-          <Link to="/sns-posts">
-            <Button size="sm" className="flex items-center gap-1">
-              <Plus className="w-4 h-4" />
-              追加
-            </Button>
-          </Link>
+          <Button
+            size="sm"
+            className="flex items-center gap-1"
+            onClick={() => {
+              if (onAddClick) {
+                onAddClick();
+              } else {
+                navigate('/sns-posts?add=true');
+              }
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            追加
+          </Button>
         )}
       </div>
 

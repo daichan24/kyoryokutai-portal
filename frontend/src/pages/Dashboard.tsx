@@ -13,7 +13,9 @@ import { SNSHistoryWidget } from '../components/dashboard/SNSHistoryWidget';
 import { TaskRequestsWidget } from '../components/dashboard/TaskRequestsWidget';
 import { ProjectsWidget } from '../components/dashboard/ProjectsWidget';
 import { GoalsWidget } from '../components/dashboard/GoalsWidget';
+import { SNSLinksWidget } from '../components/dashboard/SNSLinksWidget';
 import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
+import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
 
 interface InboxData {
   scheduleInvites: Array<{
@@ -65,6 +67,7 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [isTaskRequestModalOpen, setIsTaskRequestModalOpen] = useState(false);
+  const [isSNSPostModalOpen, setIsSNSPostModalOpen] = useState(false);
 
   // 受信箱データ取得
   const { data: inboxData, isLoading: inboxLoading } = useQuery<InboxData>({
@@ -504,6 +507,9 @@ export const Dashboard: React.FC = () => {
         )}
       </div>
 
+      {/* SNSリンク（固定表示） */}
+      <SNSLinksWidget />
+
       {/* カスタムウィジェットエリア */}
       {enabledWidgets.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -525,6 +531,19 @@ export const Dashboard: React.FC = () => {
           onSaved={() => {
             setIsTaskRequestModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['task-requests'] });
+          }}
+        />
+      )}
+
+      {/* SNS投稿追加モーダル */}
+      {isSNSPostModalOpen && (
+        <SNSPostDetailModal
+          isOpen={isSNSPostModalOpen}
+          onClose={() => setIsSNSPostModalOpen(false)}
+          onSaved={() => {
+            setIsSNSPostModalOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['sns-posts'] });
+            queryClient.invalidateQueries({ queryKey: ['sns-weekly-status'] });
           }}
         />
       )}

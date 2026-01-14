@@ -24,6 +24,7 @@ interface DashboardCustomizeModalProps {
 
 const widgetLabels: Record<string, string> = {
   snsHistory: 'SNS投稿履歴',
+  snsQuickAdd: 'SNS投稿追加',
   taskRequests: 'タスク依頼',
   projects: 'プロジェクト',
   goals: '目標',

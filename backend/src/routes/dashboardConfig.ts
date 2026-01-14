@@ -22,9 +22,10 @@ const dashboardConfigSchema = z.object({
 const getDefaultConfig = (role: string) => {
   const baseWidgets = [
     { key: 'snsHistory', enabled: true, showAddButton: true, size: 'M' as const, order: 1 },
-    { key: 'taskRequests', enabled: true, showAddButton: false, size: 'L' as const, order: 2 },
-    { key: 'projects', enabled: false, showAddButton: false, size: 'M' as const, order: 3 },
-    { key: 'goals', enabled: false, showAddButton: false, size: 'M' as const, order: 4 },
+    { key: 'snsQuickAdd', enabled: false, showAddButton: false, size: 'S' as const, order: 2 },
+    { key: 'taskRequests', enabled: true, showAddButton: false, size: 'L' as const, order: 3 },
+    { key: 'projects', enabled: false, showAddButton: false, size: 'M' as const, order: 4 },
+    { key: 'goals', enabled: false, showAddButton: false, size: 'M' as const, order: 5 },
   ];
 
   // role別のカスタマイズ
