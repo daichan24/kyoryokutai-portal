@@ -1,17 +1,60 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, FileText, Clock } from 'lucide-react';
+import { Calendar, FileText, Clock, Inbox, Check, X } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../utils/api';
 import { Schedule } from '../types';
 import { formatDate, getWeekRange } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+interface InboxData {
+  scheduleInvites: Array<{
+    participantId: string;
+    scheduleId: string;
+    fromUser: { id: string; name: string; avatarColor: string };
+    title: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+    createdAt: string;
+  }>;
+  scheduleResponses: Array<{
+    scheduleId: string;
+    scheduleTitle: string;
+    toUser: { id: string; name: string; avatarColor: string };
+    decision: 'APPROVED' | 'REJECTED';
+    respondedAt: string;
+  }>;
+  taskRequests: Array<{
+    id: string;
+    requester: { id: string; name: string; avatarColor: string };
+    requestTitle: string;
+    requestDescription: string;
+    deadline?: string;
+    project?: { id: string; projectName: string };
+    approvalStatus: string;
+    createdAt: string;
+  }>;
+}
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 受信箱データ取得
+  const { data: inboxData, isLoading: inboxLoading } = useQuery<InboxData>({
+    queryKey: ['inbox'],
+    queryFn: async () => {
+      const response = await api.get('/api/inbox');
+      return response.data;
+    },
+    refetchInterval: 30000, // 30秒ごとに更新
+  });
 
   useEffect(() => {
     fetchThisWeekSchedules();
@@ -42,6 +85,35 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  // スケジュール招待への応答
+  const handleScheduleInviteResponse = async (scheduleId: string, decision: 'APPROVED' | 'REJECTED') => {
+    try {
+      await api.post(`/api/schedules/${scheduleId}/respond`, { decision });
+      queryClient.invalidateQueries({ queryKey: ['inbox'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      window.dispatchEvent(new CustomEvent('schedule-updated'));
+    } catch (error) {
+      console.error('Failed to respond to schedule invite:', error);
+      alert('応答に失敗しました');
+    }
+  };
+
+  // タスク依頼への応答
+  const handleTaskRequestResponse = async (requestId: string, decision: 'APPROVED' | 'REJECTED') => {
+    try {
+      await api.post(`/api/task-requests/${requestId}/respond`, {
+        approvalStatus: decision,
+      });
+      queryClient.invalidateQueries({ queryKey: ['inbox'] });
+      queryClient.invalidateQueries({ queryKey: ['task-requests'] });
+    } catch (error) {
+      console.error('Failed to respond to task request:', error);
+      alert('応答に失敗しました');
+    }
+  };
+
+  const totalInboxCount = (inboxData?.scheduleInvites?.length || 0) + (inboxData?.taskRequests?.length || 0);
+
   return (
     <div className="space-y-6">
       <div>
@@ -49,7 +121,7 @@ export const Dashboard: React.FC = () => {
         <p className="mt-2 text-gray-600">ようこそ、{user?.name}さん</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Link
           to="/schedule"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border"
@@ -95,7 +167,177 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <div className="bg-white p-6 rounded-lg shadow border border-border">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <Inbox className="h-6 w-6 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">受信箱</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {totalInboxCount}件
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* 受信箱セクション */}
+      {totalInboxCount > 0 && (
+        <div className="bg-white rounded-lg shadow border border-border p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">受信箱</h2>
+          
+          {inboxLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <div className="space-y-4">
+              {/* スケジュール招待 */}
+              {inboxData?.scheduleInvites && inboxData.scheduleInvites.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">スケジュール招待</h3>
+                  <div className="space-y-3">
+                    {inboxData.scheduleInvites.map((invite) => (
+                      <div
+                        key={invite.participantId}
+                        className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                                style={{ backgroundColor: invite.fromUser.avatarColor }}
+                              >
+                                {invite.fromUser.name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{invite.fromUser.name}さんからの招待</p>
+                                <p className="text-sm text-gray-600">{invite.title}</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-600 ml-10">
+                              {formatDate(invite.date, 'M月d日(E)')} {invite.startTime} - {invite.endTime}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleScheduleInviteResponse(invite.scheduleId, 'APPROVED')}
+                              className="flex items-center gap-1"
+                            >
+                              <Check className="w-4 h-4" />
+                              承認
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleScheduleInviteResponse(invite.scheduleId, 'REJECTED')}
+                              className="flex items-center gap-1"
+                            >
+                              <X className="w-4 h-4" />
+                              却下
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* スケジュール承認結果 */}
+              {inboxData?.scheduleResponses && inboxData.scheduleResponses.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">承認結果</h3>
+                  <div className="space-y-2">
+                    {inboxData.scheduleResponses.map((response, index) => (
+                      <div
+                        key={`${response.scheduleId}-${response.toUser.id}-${index}`}
+                        className="p-3 border border-gray-200 rounded-lg bg-gray-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                            style={{ backgroundColor: response.toUser.avatarColor }}
+                          >
+                            {response.toUser.name.charAt(0)}
+                          </div>
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">{response.toUser.name}</span>さんが
+                            <span className="font-medium">{response.scheduleTitle}</span>への参加を
+                            <span className={response.decision === 'APPROVED' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                              {response.decision === 'APPROVED' ? '承認' : '却下'}
+                            </span>
+                            しました
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* タスク依頼 */}
+              {inboxData?.taskRequests && inboxData.taskRequests.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">タスク依頼</h3>
+                  <div className="space-y-3">
+                    {inboxData.taskRequests.map((request) => (
+                      <div
+                        key={request.id}
+                        className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                                style={{ backgroundColor: request.requester.avatarColor }}
+                              >
+                                {request.requester.name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{request.requester.name}さんからの依頼</p>
+                                <p className="text-sm text-gray-600">{request.requestTitle}</p>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-600 ml-10">{request.requestDescription}</p>
+                            {request.deadline && (
+                              <p className="text-xs text-gray-500 ml-10 mt-1">
+                                期限: {formatDate(request.deadline, 'M月d日')}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleTaskRequestResponse(request.id, 'APPROVED')}
+                              className="flex items-center gap-1"
+                            >
+                              <Check className="w-4 h-4" />
+                              承認
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleTaskRequestResponse(request.id, 'REJECTED')}
+                              className="flex items-center gap-1"
+                            >
+                              <X className="w-4 h-4" />
+                              却下
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow border border-border p-6">
         <div className="flex justify-between items-center mb-4">

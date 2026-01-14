@@ -20,6 +20,7 @@ import contactsRoutes from './routes/contacts';
 import citizensRoutes from './routes/citizens';
 import monthlyReportsRoutes from './routes/monthlyReports';
 import adminRoutes from './routes/admin';
+import inboxRoutes from './routes/inbox';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -94,6 +95,7 @@ app.use('/api/contacts', contactsRoutes);
 app.use('/api/citizens', citizensRoutes); // 町民（協力隊メンバー）データベース用API
 app.use('/api/monthly-reports', monthlyReportsRoutes);
 app.use('/api/admin', adminRoutes); // 管理者用API
+app.use('/api/inbox', inboxRoutes); // 受信箱API
 
 // Error handler
 app.use(errorHandler);

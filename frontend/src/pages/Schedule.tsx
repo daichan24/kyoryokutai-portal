@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType } from '../types';
-import { formatDate, getWeekDates, getMonthDates, getDayDate, isSameDay } from '../utils/date';
+import { formatDate, getWeekDates, getMonthDates, getDayDate, isSameDay, isHolidayDate, isSunday, isSaturday } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
@@ -15,7 +15,7 @@ export const Schedule: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduleType[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
   const [weekDates, setWeekDates] = useState<Date[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -173,6 +173,22 @@ export const Schedule: React.FC = () => {
           </Button>
         </div>
 
+        {/* 週/月表示のヘッダー（日曜始まり） */}
+        {(viewMode === 'week' || viewMode === 'month') && (
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {['日', '月', '火', '水', '木', '金', '土'].map((day, idx) => (
+              <div
+                key={idx}
+                className={`text-center text-sm font-semibold py-2 ${
+                  idx === 0 ? 'text-red-600' : idx === 6 ? 'text-blue-600' : 'text-gray-700'
+                }`}
+              >
+                {day}
+              </div>
+            ))}
+          </div>
+        )}
+
         {loading ? (
           <LoadingSpinner />
         ) : (
@@ -183,27 +199,65 @@ export const Schedule: React.FC = () => {
           }`}>
             {weekDates.map((date, index) => {
               const daySchedules = getSchedulesForDate(date);
-              const isToday =
-                formatDate(date) === formatDate(new Date());
+              const isToday = formatDate(date) === formatDate(new Date());
+              const isHoliday = isHolidayDate(date);
+              const isSun = isSunday(date);
+              const isSat = isSaturday(date);
+
+              // 色分け: 祝日 > 日曜 > 土曜
+              let dayBgColor = 'bg-white';
+              let dayTextColor = 'text-gray-900';
+              let dayLabelColor = 'text-gray-500';
+
+              if (isHoliday) {
+                dayBgColor = 'bg-red-50';
+                dayTextColor = 'text-red-700';
+                dayLabelColor = 'text-red-600';
+              } else if (isSun) {
+                dayBgColor = 'bg-red-50';
+                dayTextColor = 'text-red-600';
+                dayLabelColor = 'text-red-500';
+              } else if (isSat) {
+                dayBgColor = 'bg-blue-50';
+                dayTextColor = 'text-blue-600';
+                dayLabelColor = 'text-blue-500';
+              }
+
+              // 今日の場合は強調
+              if (isToday) {
+                dayBgColor = 'bg-primary/10 border-primary border-2';
+                dayTextColor = 'text-primary font-bold';
+              }
 
               return (
                 <div
                   key={index}
-                  className={`border border-border rounded-lg p-3 ${
-                    isToday ? 'bg-primary/5 border-primary' : 'bg-white'
-                  } ${
+                  className={`border border-border rounded-lg p-3 ${dayBgColor} ${
                     viewMode === 'day' ? 'min-h-[600px]' :
                     viewMode === 'month' ? 'min-h-[120px]' :
                     'min-h-[200px]'
                   }`}
                 >
                   <div className="text-center mb-2">
-                    <p className="text-xs text-gray-500">
-                      {formatDate(date, 'E')}
-                    </p>
-                    <p className={`text-lg font-bold ${isToday ? 'text-primary' : ''}`}>
+                    {viewMode === 'month' && (
+                      <p className={`text-xs ${dayLabelColor}`}>
+                        {formatDate(date, 'E')}
+                      </p>
+                    )}
+                    {viewMode === 'week' && (
+                      <p className={`text-xs ${dayLabelColor}`}>
+                        {formatDate(date, 'E')}
+                      </p>
+                    )}
+                    <p className={`text-lg font-bold ${dayTextColor}`}>
                       {formatDate(date, 'd')}
                     </p>
+                    {/* 月表示で前月/翌月の日付は薄く表示 */}
+                    {viewMode === 'month' && (
+                      <p className={`text-xs ${formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'text-gray-300' : ''}`}>
+                        {formatDate(date, 'M') !== formatDate(currentDate, 'M') && '（他月）'}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
