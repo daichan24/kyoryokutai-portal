@@ -8,11 +8,15 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { useAuthStore } from '../../stores/authStore';
 
+type RoleFilter = 'MEMBER' | 'GOVERNMENT' | 'SUPPORT' | 'all';
+
 export const UsersSettings: React.FC = () => {
   const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]); // 全ユーザー（フィルター前）
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('MEMBER'); // MEMBER向けの初期フィルター
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,13 +33,34 @@ export const UsersSettings: React.FC = () => {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  // MEMBER向けのroleフィルター適用
+  useEffect(() => {
+    if (currentUser?.role === 'MEMBER' && roleFilter !== 'all') {
+      const filtered = allUsers.filter((user) => user.role === roleFilter);
+      setUsers(filtered);
+    } else {
+      setUsers(allUsers);
+    }
+  }, [roleFilter, allUsers, currentUser?.role]);
+
+  const fetchUsers = async (filterRole?: string) => {
     try {
-      const response = await api.get<User[]>('/api/users');
-      setUsers(response.data || []);
+      const url = filterRole ? `/api/users?role=${filterRole}` : '/api/users';
+      const response = await api.get<User[]>(url);
+      const fetchedUsers = response.data || [];
+      setAllUsers(fetchedUsers);
+      
+      // MEMBER向けの初期フィルター適用
+      if (currentUser?.role === 'MEMBER' && !filterRole && roleFilter !== 'all') {
+        const filtered = fetchedUsers.filter((user) => user.role === roleFilter);
+        setUsers(filtered);
+      } else {
+        setUsers(fetchedUsers);
+      }
     } catch (error) {
       console.error('Failed to fetch users:', error);
       setUsers([]);
+      setAllUsers([]);
     } finally {
       setLoading(false);
     }
@@ -71,11 +96,17 @@ export const UsersSettings: React.FC = () => {
 
   // 管理者（MASTER / SUPPORT）のみが新規作成ボタンを表示
   const canCreateUser = currentUser?.role === 'MASTER' || currentUser?.role === 'SUPPORT';
+  
+  // ページタイトル（ロール別）
+  const pageTitle = currentUser?.role === 'MASTER' ? 'ユーザー管理' : 'ユーザー情報';
+  
+  // MEMBER向けのフィルターUI
+  const showRoleFilter = currentUser?.role === 'MEMBER';
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">ユーザー管理</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{pageTitle}</h1>
         {canCreateUser && (
           <Button onClick={() => setIsModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -83,6 +114,42 @@ export const UsersSettings: React.FC = () => {
           </Button>
         )}
       </div>
+
+      {/* MEMBER向けのroleフィルター */}
+      {showRoleFilter && (
+        <div className="bg-white rounded-lg shadow border border-border p-4">
+          <div className="flex space-x-2">
+            <Button
+              variant={roleFilter === 'MEMBER' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('MEMBER')}
+            >
+              メンバー
+            </Button>
+            <Button
+              variant={roleFilter === 'GOVERNMENT' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('GOVERNMENT')}
+            >
+              行政
+            </Button>
+            <Button
+              variant={roleFilter === 'SUPPORT' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('SUPPORT')}
+            >
+              サポート
+            </Button>
+            <Button
+              variant={roleFilter === 'all' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => setRoleFilter('all')}
+            >
+              すべて
+            </Button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <LoadingSpinner />
