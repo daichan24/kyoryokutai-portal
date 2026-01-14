@@ -131,7 +131,7 @@ export const Login: React.FC = () => {
         {/* アカウント一覧 */}
         <div className="mt-8 pt-8 border-t border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              テストアカウント一覧
+              利用可能なアカウント一覧
             </h3>
             {loadingHints ? (
               <div className="flex justify-center py-4">
@@ -199,7 +199,7 @@ export const Login: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">テストアカウントが見つかりませんでした</p>
+              <p className="text-sm text-gray-500">アカウントが見つかりませんでした</p>
             )}
           </div>
       </div>
