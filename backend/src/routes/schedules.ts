@@ -84,6 +84,9 @@ router.get('/', async (req: AuthRequest, res) => {
       }
     }
 
+    // 作成者かどうかを判定（where条件から）
+    const isCreator = where.userId === currentUserId || (where.OR && where.OR[0]?.userId === currentUserId);
+
     const schedules = await prisma.schedule.findMany({
       where,
       include: {
@@ -98,7 +101,7 @@ router.get('/', async (req: AuthRequest, res) => {
         },
         scheduleParticipants: {
           // 作成者の場合は全参加者を返す、参加者の場合は自分のみ
-          where: where.userId === currentUserId ? undefined : {
+          where: isCreator ? undefined : {
             userId: currentUserId,
           },
           include: {
