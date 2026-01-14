@@ -6,6 +6,49 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
+/**
+ * GET /api/users/login-hints
+ * 開発環境でのみログイン用のテストアカウント一覧を返す
+ * 認証不要、ただし本番環境では403を返す
+ * 
+ * 注意: このエンドポイントは router.use(authenticate) の前に配置されているため認証不要
+ */
+router.get('/login-hints', async (req, res) => {
+  // 本番環境では403を返す
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'This endpoint is not available in production' });
+  }
+
+  try {
+    // 全ユーザーを取得（name, email, roleのみ）
+    const users = await prisma.user.findMany({
+      select: {
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: [
+        { role: 'asc' }, // roleでソート
+        { name: 'asc' }, // 同じrole内では名前でソート
+      ],
+    });
+
+    // 固定パスワード（開発用の表示のみ）
+    const loginHints = users.map((user) => ({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      password: 'password123', // 固定表示（実際のDBには平文保存していない）
+    }));
+
+    res.json(loginHints);
+  } catch (error) {
+    console.error('Get login hints error:', error);
+    res.status(500).json({ error: 'Failed to get login hints' });
+  }
+});
+
+// 認証が必要なルート（この後のルートはすべて認証が必要）
 router.use(authenticate);
 
 const updateUserSchema = z.object({
@@ -167,46 +210,6 @@ router.delete('/:id', authorize('MASTER'), async (req, res) => {
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
-  }
-});
-
-/**
- * GET /api/users/login-hints
- * 開発環境でのみログイン用のテストアカウント一覧を返す
- * 認証不要、ただし本番環境では403を返す
- */
-router.get('/login-hints', async (req, res) => {
-  // 本番環境では403を返す
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({ error: 'This endpoint is not available in production' });
-  }
-
-  try {
-    // 全ユーザーを取得（name, email, roleのみ）
-    const users = await prisma.user.findMany({
-      select: {
-        name: true,
-        email: true,
-        role: true,
-      },
-      orderBy: [
-        { role: 'asc' }, // roleでソート
-        { name: 'asc' }, // 同じrole内では名前でソート
-      ],
-    });
-
-    // 固定パスワード（開発用の表示のみ）
-    const loginHints = users.map((user) => ({
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      password: 'password123', // 固定表示（実際のDBには平文保存していない）
-    }));
-
-    res.json(loginHints);
-  } catch (error) {
-    console.error('Get login hints error:', error);
-    res.status(500).json({ error: 'Failed to get login hints' });
   }
 });
 

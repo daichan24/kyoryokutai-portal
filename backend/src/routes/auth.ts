@@ -7,8 +7,6 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-const router = Router();
-
 const registerSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
