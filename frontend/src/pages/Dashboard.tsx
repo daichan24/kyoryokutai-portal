@@ -357,31 +357,41 @@ export const Dashboard: React.FC = () => {
           </p>
         ) : (
           <div className="space-y-3">
-            {Array.isArray(schedules) && schedules.slice(0, 5).map((schedule) => (
-              <div
-                key={schedule.id}
-                className="flex items-start space-x-4 p-4 border border-border rounded-lg hover:bg-gray-50"
-              >
+            {Array.isArray(schedules) && schedules.slice(0, 5).map((schedule) => {
+              const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
+              return (
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                  style={{ backgroundColor: schedule.user?.avatarColor || '#6B7280' }}
+                  key={schedule.id}
+                  className="flex items-start space-x-4 p-4 border border-border rounded-lg hover:bg-gray-50"
                 >
-                  {schedule.user?.name?.charAt(0) || '?'}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                    style={{ backgroundColor: schedule.user?.avatarColor || '#6B7280' }}
+                  >
+                    {schedule.user?.name?.charAt(0) || '?'}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-gray-900">
+                        {schedule.activityDescription}
+                      </p>
+                      {participantCount > 0 && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                          +{participantCount}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {formatDate(schedule.date, 'M月d日(E)')} {schedule.startTime} -{' '}
+                      {schedule.endTime}
+                    </p>
+                    {schedule.locationText && (
+                      <p className="text-sm text-gray-500">{schedule.locationText}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">
-                    {schedule.activityDescription}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {formatDate(schedule.date, 'M月d日(E)')} {schedule.startTime} -{' '}
-                    {schedule.endTime}
-                  </p>
-                  {schedule.locationText && (
-                    <p className="text-sm text-gray-500">{schedule.locationText}</p>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -250,24 +250,36 @@ export const Schedule: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    {daySchedules.map((schedule) => (
-                      <button
-                        key={schedule.id}
-                        onClick={() => handleEditSchedule(schedule)}
-                        className="w-full text-left p-2 rounded text-xs border border-border hover:bg-gray-50"
-                        style={{
-                          borderLeftWidth: '3px',
-                          borderLeftColor: schedule.user?.avatarColor,
-                        }}
-                      >
-                        <p className="font-medium truncate">
-                          {schedule.activityDescription}
-                        </p>
-                        <p className="text-gray-600">
-                          {schedule.startTime}-{schedule.endTime}
-                        </p>
-                      </button>
-                    ))}
+                    {daySchedules.map((schedule) => {
+                      const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
+                      return (
+                        <button
+                          key={schedule.id}
+                          onClick={() => handleEditSchedule(schedule)}
+                          className="w-full text-left p-2 rounded text-xs border border-border hover:bg-gray-50"
+                          style={{
+                            borderLeftWidth: '3px',
+                            borderLeftColor: schedule.user?.avatarColor,
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">
+                                {schedule.activityDescription}
+                              </p>
+                              <p className="text-gray-600">
+                                {schedule.startTime}-{schedule.endTime}
+                              </p>
+                            </div>
+                            {participantCount > 0 && (
+                              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                +{participantCount}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <button

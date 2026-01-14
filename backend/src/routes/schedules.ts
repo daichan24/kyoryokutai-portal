@@ -97,7 +97,8 @@ router.get('/', async (req: AuthRequest, res) => {
           },
         },
         scheduleParticipants: {
-          where: {
+          // 作成者の場合は全参加者を返す、参加者の場合は自分のみ
+          where: where.userId === currentUserId ? undefined : {
             userId: currentUserId,
           },
           include: {
@@ -105,6 +106,7 @@ router.get('/', async (req: AuthRequest, res) => {
               select: {
                 id: true,
                 name: true,
+                role: true,
                 avatarColor: true,
               },
             },
@@ -239,6 +241,18 @@ router.put('/:id', async (req: AuthRequest, res) => {
             email: true,
             role: true,
             avatarColor: true,
+          },
+        },
+        scheduleParticipants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+                avatarColor: true,
+              },
+            },
           },
         },
       },

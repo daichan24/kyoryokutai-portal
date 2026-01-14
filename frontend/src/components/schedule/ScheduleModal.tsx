@@ -200,6 +200,96 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             />
           </div>
 
+          {/* 共同メンバー表示（編集時・詳細表示時） */}
+          {schedule && schedule.scheduleParticipants && schedule.scheduleParticipants.length > 0 && (
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">共同メンバー</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {/* 承認済みメンバー */}
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-2">承認済み</p>
+                  {schedule.scheduleParticipants.filter(p => p.status === 'APPROVED').length > 0 ? (
+                    <div className="space-y-2">
+                      {schedule.scheduleParticipants
+                        .filter(p => p.status === 'APPROVED')
+                        .map((participant) => (
+                          <div
+                            key={participant.id}
+                            className="flex items-center gap-2 p-2 bg-green-50 rounded border border-green-200"
+                          >
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                              style={{ backgroundColor: participant.user?.avatarColor || '#6B7280' }}
+                            >
+                              {participant.user?.name?.charAt(0) || '?'}
+                            </div>
+                            <span className="text-sm text-gray-700 flex-1">{participant.user?.name || '不明'}</span>
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">承認済</span>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">なし</p>
+                  )}
+                </div>
+
+                {/* 未承認メンバー */}
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-2">未承認</p>
+                  {schedule.scheduleParticipants.filter(p => p.status === 'PENDING').length > 0 ? (
+                    <div className="space-y-2">
+                      {schedule.scheduleParticipants
+                        .filter(p => p.status === 'PENDING')
+                        .map((participant) => (
+                          <div
+                            key={participant.id}
+                            className="flex items-center gap-2 p-2 bg-yellow-50 rounded border border-yellow-200"
+                          >
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                              style={{ backgroundColor: participant.user?.avatarColor || '#6B7280' }}
+                            >
+                              {participant.user?.name?.charAt(0) || '?'}
+                            </div>
+                            <span className="text-sm text-gray-700 flex-1">{participant.user?.name || '不明'}</span>
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">未承認</span>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">なし</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 却下メンバー（任意表示） */}
+              {schedule.scheduleParticipants.filter(p => p.status === 'REJECTED').length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs font-medium text-gray-600 mb-2">却下</p>
+                  <div className="space-y-2">
+                    {schedule.scheduleParticipants
+                      .filter(p => p.status === 'REJECTED')
+                      .map((participant) => (
+                        <div
+                          key={participant.id}
+                          className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200 opacity-60"
+                        >
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                            style={{ backgroundColor: participant.user?.avatarColor || '#6B7280' }}
+                          >
+                            {participant.user?.name?.charAt(0) || '?'}
+                          </div>
+                          <span className="text-sm text-gray-500 flex-1">{participant.user?.name || '不明'}</span>
+                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">却下</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 共同作業（新規作成時のみ） */}
           {!schedule && (
             <div className="border-t pt-4">
