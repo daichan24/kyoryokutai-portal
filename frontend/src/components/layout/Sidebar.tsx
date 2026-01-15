@@ -85,9 +85,7 @@ export const Sidebar: React.FC = () => {
       items.push(...memberOnlyItems);
     } else if (user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') {
       items.push(...supportGovernmentItems);
-      if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
-        items.push(...supportMasterItems);
-      }
+      // 月次報告は「報告」カテゴリに移動したため、ここでは追加しない
     }
     
     return items;
