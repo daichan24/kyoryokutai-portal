@@ -16,6 +16,7 @@ import {
   Contact,
   FileBarChart,
   MessageSquareText,
+  Inbox,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -36,7 +37,6 @@ export const Sidebar: React.FC = () => {
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/contacts', icon: Contact, label: '町民データベース' },
-    { to: '/task-requests', icon: UserCheck, label: 'タスク依頼' },
   ];
 
   // SUPPORT/GOVERNMENT/MASTER用のメニュー（全データ閲覧可能）
@@ -44,7 +44,6 @@ export const Sidebar: React.FC = () => {
     { to: '/goals', icon: Target, label: '起業準備進捗' },
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
-    { to: '/contacts', icon: Contact, label: '町民データベース' },
     { to: '/task-requests', icon: UserCheck, label: 'タスク依頼' },
   ];
 
@@ -63,15 +62,33 @@ export const Sidebar: React.FC = () => {
 
   const reportItems = getReportItems();
 
-  // 状況カテゴリのメニュー（イベント参加状況）
+  // 状況カテゴリのメニュー（イベント参加状況、タスクボックス、町民データベース）
   const getStatusItems = () => {
-    const items: Array<{ to: string; icon: typeof CalendarDays; label: string }> = [];
+    const items: Array<{ to: string; icon: typeof CalendarDays | typeof Inbox | typeof Contact; label: string }> = [];
+    
     // 全ロールでイベント参加状況を表示
     items.push({
       to: '/events/participation-summary',
       icon: CalendarDays,
       label: 'イベント参加状況',
     });
+    
+    // MEMBERのみタスクボックスを表示
+    if (user?.role === 'MEMBER') {
+      items.push({
+        to: '/task-requests',
+        icon: Inbox,
+        label: 'タスクボックス',
+      });
+    }
+    
+    // 全ロールで町民データベースを表示
+    items.push({
+      to: '/contacts',
+      icon: Contact,
+      label: '町民データベース',
+    });
+    
     return items;
   };
 

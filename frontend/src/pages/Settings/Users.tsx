@@ -33,15 +33,15 @@ export const UsersSettings: React.FC = () => {
     fetchUsers();
   }, []);
 
-  // MEMBER向けのroleフィルター適用
+  // 全ロールでroleフィルター適用
   useEffect(() => {
-    if (currentUser?.role === 'MEMBER' && roleFilter !== 'all') {
+    if (roleFilter !== 'all') {
       const filtered = allUsers.filter((user) => user.role === roleFilter);
       setUsers(filtered);
     } else {
       setUsers(allUsers);
     }
-  }, [roleFilter, allUsers, currentUser?.role]);
+  }, [roleFilter, allUsers]);
 
   const fetchUsers = async (filterRole?: string) => {
     try {
@@ -50,8 +50,8 @@ export const UsersSettings: React.FC = () => {
       const fetchedUsers = response.data || [];
       setAllUsers(fetchedUsers);
       
-      // MEMBER向けの初期フィルター適用
-      if (currentUser?.role === 'MEMBER' && !filterRole && roleFilter !== 'all') {
+      // 初期フィルター適用
+      if (!filterRole && roleFilter !== 'all') {
         const filtered = fetchedUsers.filter((user) => user.role === roleFilter);
         setUsers(filtered);
       } else {
@@ -100,8 +100,8 @@ export const UsersSettings: React.FC = () => {
   // ページタイトル（ロール別）
   const pageTitle = currentUser?.role === 'MASTER' ? 'ユーザー管理' : 'ユーザー情報';
   
-  // MEMBER向けのフィルターUI
-  const showRoleFilter = currentUser?.role === 'MEMBER';
+  // 全ロールでフィルターUIを表示
+  const showRoleFilter = true;
 
   return (
     <div className="space-y-6">
