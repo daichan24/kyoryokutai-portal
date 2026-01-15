@@ -1,24 +1,19 @@
 -- ========================================
--- SNSPost.week フィールドの型不一致修正（安全な再実行対応版）
+-- SNSPost.week フィールド修正（手動実行用）
 -- ========================================
 -- 
--- 問題: week フィールドが数値（例: "3"）で保存されているが、
--- Prisma スキーマでは String 型（"YYYY-WWW" 形式）として定義されている
+-- このスクリプトは、失敗したマイグレーションを手動で修正するために使用します
+-- Render のデータベース管理画面から実行してください
 -- 
--- 解決策: 
--- 1. week を TEXT 型に正規化（既に TEXT の場合はスキップ）
--- 2. 数値のみの week を "YYYY-WWW" 形式に変換
--- 3. unique 制約の重複を事前に処理
--- 
--- 注意: このマイグレーションは部分的に適用されていても安全に再実行できます
+-- 注意: 実行前に必ずバックアップを取得してください
 
 -- ========================================
--- Step 1: week フィールドを TEXT 型に正規化（安全・冪等）
+-- Step 1: week フィールドを TEXT 型に正規化
 -- ========================================
 
 DO $$ 
 BEGIN
-  -- 数値型の場合のみ変換（既に TEXT の場合はスキップ）
+  -- 数値型の場合のみ変換
   IF EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_name = 'SNSPost' 
@@ -41,10 +36,10 @@ BEGIN
 END $$;
 
 -- ========================================
--- Step 2: 数値のみの week を "YYYY-WWW" 形式に変換（冪等）
+-- Step 2: 数値のみの week を "YYYY-WWW" 形式に変換
 -- ========================================
 
--- 関数: 日付から week を計算（既に存在する場合は置き換え）
+-- 関数: 日付から week を計算
 CREATE OR REPLACE FUNCTION calculate_week_from_date(target_date TIMESTAMP WITH TIME ZONE)
 RETURNS TEXT AS $$
 DECLARE
@@ -73,41 +68,38 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- postedAt がある場合（数値形式の week のみ更新）
+-- postedAt がある場合
 UPDATE "SNSPost"
 SET "week" = calculate_week_from_date("postedAt")
 WHERE "week" ~ '^[0-9]+$'  -- 数値のみ（例: "3"）
-  AND "postedAt" IS NOT NULL
-  AND ("week" !~ '^[0-9]{4}-W[0-9]{2}$' OR "week" IS NULL);  -- 既に変換済みの場合はスキップ
+  AND "postedAt" IS NOT NULL;
 
--- postedAt がない場合、createdAt から（数値形式の week のみ更新）
+-- postedAt がない場合、createdAt から
 UPDATE "SNSPost"
 SET "week" = calculate_week_from_date("createdAt")
 WHERE "week" ~ '^[0-9]+$'
   AND "postedAt" IS NULL
-  AND "createdAt" IS NOT NULL
-  AND ("week" !~ '^[0-9]{4}-W[0-9]{2}$' OR "week" IS NULL);
+  AND "createdAt" IS NOT NULL;
 
--- どちらもない場合、現在日時から（数値形式の week のみ更新）
+-- どちらもない場合、現在日時から
 UPDATE "SNSPost"
 SET "week" = calculate_week_from_date(CURRENT_TIMESTAMP)
 WHERE "week" ~ '^[0-9]+$'
   AND "postedAt" IS NULL
-  AND "createdAt" IS NULL
-  AND ("week" !~ '^[0-9]{4}-W[0-9]{2}$' OR "week" IS NULL);
+  AND "createdAt" IS NULL;
 
 -- 関数を削除（一時的なもの）
 DROP FUNCTION IF EXISTS calculate_week_from_date(TIMESTAMP WITH TIME ZONE);
 
 -- ========================================
--- Step 3: unique 制約の重複を処理（安全・冪等）
+-- Step 3: unique 制約の重複を処理
 -- ========================================
 
+-- 重複を確認
 DO $$
 DECLARE
   dup_count INTEGER;
 BEGIN
-  -- 重複を確認
   SELECT COUNT(*) INTO dup_count
   FROM (
     SELECT "userId", "week", COUNT(*) as cnt
@@ -159,6 +151,39 @@ BEGIN
   IF invalid_count > 0 THEN
     RAISE NOTICE '警告: % 件の week が "YYYY-WWW" 形式ではありません', invalid_count;
   ELSE
-    RAISE NOTICE '✅ すべての week が "YYYY-WWW" 形式に変換されました';
+    RAISE NOTICE 'すべての week が "YYYY-WWW" 形式に変換されました';
   END IF;
 END $$;
+
+-- ========================================
+-- Step 5: 失敗したマイグレーションを「適用済み」としてマーク
+-- ========================================
+
+-- 失敗したマイグレーションのレコードを更新
+UPDATE "_prisma_migrations"
+SET finished_at = NOW(),
+    applied_steps_count = 1
+WHERE migration_name = '20260119000000_fix_snspost_week_format'
+  AND finished_at IS NULL;
+
+-- レコードが存在しない場合は作成
+INSERT INTO "_prisma_migrations" (
+  migration_name,
+  checksum,
+  finished_at,
+  applied_steps_count,
+  started_at
+)
+SELECT 
+  '20260119000000_fix_snspost_week_format',
+  '',
+  NOW(),
+  1,
+  NOW()
+WHERE NOT EXISTS (
+  SELECT 1 FROM "_prisma_migrations"
+  WHERE migration_name = '20260119000000_fix_snspost_week_format'
+);
+
+RAISE NOTICE 'マイグレーションを「適用済み」としてマークしました';
+

@@ -75,7 +75,21 @@ router.get('/', async (req: AuthRequest, res) => {
       orderBy: { postedAt: 'desc' },
     });
 
-    res.json(posts);
+    // 暫定回避: week が数値形式の場合、文字列に変換して返す
+    const normalizedPosts = posts.map(post => {
+      if (post.week && /^[0-9]+$/.test(post.week)) {
+        // 数値のみの week を "YYYY-WWW" 形式に変換（暫定）
+        const year = new Date().getFullYear();
+        const weekNum = parseInt(post.week, 10);
+        return {
+          ...post,
+          week: `${year}-W${weekNum.toString().padStart(2, '0')}`,
+        };
+      }
+      return post;
+    });
+
+    res.json(normalizedPosts);
   } catch (error) {
     console.error('Get SNS posts error:', error);
     res.status(500).json({ error: 'Failed to get SNS posts' });

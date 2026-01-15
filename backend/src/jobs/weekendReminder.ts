@@ -64,12 +64,11 @@ export async function sendWeekendReminder() {
     }
 
     // 4. SNS投稿チェック
-    const snsPost = await prisma.sNSPost.findUnique({
+    // 暫定回避: week フィールドの型不一致を回避するため、findFirst を使用
+    const snsPost = await prisma.sNSPost.findFirst({
       where: {
-        userId_week: {
-          userId: user.id,
-          week: thisWeek,
-        },
+        userId: user.id,
+        week: thisWeek,
       },
     });
 
