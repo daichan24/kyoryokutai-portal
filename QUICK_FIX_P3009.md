@@ -67,9 +67,11 @@ MIGRATE DONE
 
 ### エラー: "Can't reach database server"
 
-- 本番DBの Internal Database URL を使用しているか確認
+- **External Database URL** を使用しているか確認（Internal ではなく External）
+- ポート番号（:5432）が含まれているか確認
 - ネットワーク接続を確認
 - Render のデータベースが起動しているか確認
+- 接続できない場合: `ALTERNATIVE_FIX_P3009.md` を参照（Render のシェルを使用）
 
 ### エラー: "Migration not found"
 
