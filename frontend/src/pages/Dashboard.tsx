@@ -13,6 +13,8 @@ import { SNSHistoryWidget } from '../components/dashboard/SNSHistoryWidget';
 import { TaskRequestsWidget } from '../components/dashboard/TaskRequestsWidget';
 import { ProjectsWidget } from '../components/dashboard/ProjectsWidget';
 import { GoalsWidget } from '../components/dashboard/GoalsWidget';
+import { TasksWidget } from '../components/dashboard/TasksWidget';
+import { EventsWidget } from '../components/dashboard/EventsWidget';
 import { SNSLinksWidget } from '../components/dashboard/SNSLinksWidget';
 import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
@@ -84,8 +86,10 @@ export const Dashboard: React.FC = () => {
     const baseWidgets = [
       { key: 'snsHistory', enabled: true, showAddButton: true, size: 'M' as const, order: 1 },
       { key: 'taskRequests', enabled: true, showAddButton: false, size: 'L' as const, order: 2 }, // 後方互換性のため残す
-      { key: 'projects', enabled: false, showAddButton: false, size: 'M' as const, order: 3 },
-      { key: 'goals', enabled: false, showAddButton: false, size: 'M' as const, order: 4 },
+      { key: 'tasks', enabled: true, showAddButton: true, size: 'M' as const, order: 3 },
+      { key: 'events', enabled: true, showAddButton: true, size: 'M' as const, order: 4 },
+      { key: 'projects', enabled: false, showAddButton: false, size: 'M' as const, order: 5 },
+      { key: 'goals', enabled: false, showAddButton: false, size: 'M' as const, order: 6 },
     ];
 
     if (role === 'MEMBER') {
@@ -93,8 +97,10 @@ export const Dashboard: React.FC = () => {
         widgets: [
           { ...baseWidgets[0], enabled: true, showAddButton: true },
           { ...baseWidgets[1], enabled: false },
-          { ...baseWidgets[2], enabled: true },
-          { ...baseWidgets[3], enabled: true },
+          { ...baseWidgets[2], enabled: true, showAddButton: true }, // tasks
+          { ...baseWidgets[3], enabled: true, showAddButton: true }, // events
+          { ...baseWidgets[4], enabled: true },
+          { ...baseWidgets[5], enabled: true },
         ],
       };
     } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
@@ -102,8 +108,10 @@ export const Dashboard: React.FC = () => {
         widgets: [
           { ...baseWidgets[0], enabled: false },
           { ...baseWidgets[1], enabled: true, showAddButton: true },
-          { ...baseWidgets[2], enabled: true },
-          { ...baseWidgets[3], enabled: false },
+          { ...baseWidgets[2], enabled: true, showAddButton: true }, // tasks
+          { ...baseWidgets[3], enabled: true, showAddButton: true }, // events
+          { ...baseWidgets[4], enabled: true },
+          { ...baseWidgets[5], enabled: false },
         ],
       };
     } else if (role === 'MASTER') {
@@ -205,6 +213,10 @@ export const Dashboard: React.FC = () => {
         return <ProjectsWidget key={widget.key} {...commonProps} />;
       case 'goals':
         return <GoalsWidget key={widget.key} {...commonProps} />;
+      case 'tasks':
+        return <TasksWidget key={widget.key} {...commonProps} />;
+      case 'events':
+        return <EventsWidget key={widget.key} {...commonProps} />;
       default:
         return null;
     }
