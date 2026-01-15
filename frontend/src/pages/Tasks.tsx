@@ -97,10 +97,22 @@ export const Tasks: React.FC = () => {
   const handleCreateTask = (projectId?: string) => {
     setSelectedTask(null);
     // projectIdが指定されていない場合、最初のプロジェクトを選択
-    if (!projectId && projects.length > 0) {
-      setSelectedProjectId(projects[0].id);
+    let targetProjectId = projectId;
+    if (!targetProjectId && projects.length > 0) {
+      targetProjectId = projects[0].id;
+    }
+    
+    if (targetProjectId) {
+      // プロジェクトIDからmissionIdを取得
+      const project = projects.find(p => p.id === targetProjectId);
+      if (project?.missionId) {
+        setSelectedProjectId(project.missionId);
+      } else {
+        // missionIdがない場合は、プロジェクトIDをそのまま使用（暫定的）
+        setSelectedProjectId(targetProjectId);
+      }
     } else {
-      setSelectedProjectId(projectId || null);
+      setSelectedProjectId(null);
     }
     setIsModalOpen(true);
   };
@@ -363,9 +375,9 @@ export const Tasks: React.FC = () => {
       )}
 
       {/* タスクモーダル */}
-      {isModalOpen && (
+      {isModalOpen && selectedProjectId && (
         <TaskModal
-          missionId={selectedProjectId || projects[0]?.id || ''} // 暫定的にprojectIdを使用、プロジェクトがない場合は空文字
+          missionId={selectedProjectId}
           task={selectedTask}
           onClose={() => {
             setIsModalOpen(false);
