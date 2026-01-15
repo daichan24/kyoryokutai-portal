@@ -120,7 +120,93 @@ export type ApprovalStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
 export interface Project {
   id: string;
   projectName: string;
+  missionId?: string;
+  mission?: Mission;
+  projectTasks?: Task[]; // プロジェクト配下のタスク（小目標）
+  taskProgress?: number; // プロジェクト配下のタスクの進捗率
 }
+
+// ミッション（旧：起業準備進捗 / Goal）
+export interface Mission {
+  id: string;
+  userId: string;
+  user?: User;
+  missionName: string;
+  missionType: 'PRIMARY' | 'SUB';
+  targetPercentage: number;
+  approvalStatus: ApprovalStatus;
+  approvalComment?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  progress?: number;
+  midGoals?: MidGoal[];
+  projects?: Project[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 中目標
+export interface MidGoal {
+  id: string;
+  missionId: string;
+  name: string;
+  weight: number;
+  weightMethod: 'EQUAL' | 'PERIOD' | 'MANUAL';
+  startDate?: string;
+  endDate?: string;
+  order: number;
+  progress?: number;
+  subGoals?: SubGoal[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 小目標
+export interface SubGoal {
+  id: string;
+  midGoalId: string;
+  name: string;
+  weight: number;
+  weightMethod: 'EQUAL' | 'PERIOD' | 'MANUAL';
+  startDate?: string;
+  endDate?: string;
+  order: number;
+  progress?: number;
+  tasks?: GoalTask[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 目標タスク（ミッション階層内のタスク）
+export interface GoalTask {
+  id: string;
+  subGoalId: string;
+  name: string;
+  weight: number;
+  progress: number;
+  phase: 'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW';
+  startDate?: string;
+  endDate?: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// タスク（プロジェクト配下の小目標）
+export interface Task {
+  id: string;
+  projectId: string;
+  project?: Project;
+  title: string;
+  description?: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 後方互換性のため残す
+export interface Goal extends Mission {}
 
 export interface ProjectTask {
   id: string;
@@ -128,7 +214,8 @@ export interface ProjectTask {
   progress: number;
 }
 
-export interface TaskRequest {
+// 依頼（旧：タスク依頼）
+export interface Request {
   id: string;
   requestedBy: string;
   requester: User;
@@ -147,6 +234,9 @@ export interface TaskRequest {
   createdAt: string;
   updatedAt: string;
 }
+
+// 後方互換性のため残す
+export interface TaskRequest extends Request {}
 
 export interface Inspection {
   id: string;

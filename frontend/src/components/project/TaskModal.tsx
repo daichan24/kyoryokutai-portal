@@ -2,23 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { Task } from '../../types';
 
-export interface ProjectSubGoal {
-  id?: string;
-  title: string;
-  description?: string;
-  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
-  order?: number;
-}
-
-interface ProjectSubGoalModalProps {
-  subGoal?: ProjectSubGoal | null;
+interface TaskModalProps {
+  task?: Task | null;
   onClose: () => void;
-  onSaved: (subGoal: ProjectSubGoal) => void;
+  onSaved: (task: Task) => void;
 }
 
-export const ProjectSubGoalModal: React.FC<ProjectSubGoalModalProps> = ({
-  subGoal,
+export const TaskModal: React.FC<TaskModalProps> = ({
+  task,
   onClose,
   onSaved,
 }) => {
@@ -28,16 +21,16 @@ export const ProjectSubGoalModal: React.FC<ProjectSubGoalModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (subGoal) {
-      setTitle(subGoal.title);
-      setDescription(subGoal.description || '');
-      setStatus(subGoal.status);
+    if (task) {
+      setTitle(task.title);
+      setDescription(task.description || '');
+      setStatus(task.status);
     } else {
       setTitle('');
       setDescription('');
       setStatus('NOT_STARTED');
     }
-  }, [subGoal]);
+  }, [task]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,14 +41,19 @@ export const ProjectSubGoalModal: React.FC<ProjectSubGoalModalProps> = ({
 
     setLoading(true);
     try {
-      const data: ProjectSubGoal = {
+      const data: Task = {
+        id: task?.id || '',
         title: title.trim(),
         description: description.trim() || undefined,
         status,
+        projectId: task?.projectId || '',
+        order: task?.order || 0,
+        createdAt: task?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       onSaved(data);
     } catch (error) {
-      console.error('Failed to save sub-goal:', error);
+      console.error('Failed to save task:', error);
       alert('保存に失敗しました');
     } finally {
       setLoading(false);
@@ -67,7 +65,7 @@ export const ProjectSubGoalModal: React.FC<ProjectSubGoalModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl max-w-lg w-full m-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-bold">
-            {subGoal ? 'サブ目標編集' : 'サブ目標追加'}
+            {task ? 'タスク編集' : 'タスク追加'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="h-6 w-6" />
@@ -81,7 +79,7 @@ export const ProjectSubGoalModal: React.FC<ProjectSubGoalModalProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            placeholder="サブ目標のタイトルを入力"
+            placeholder="タスクのタイトルを入力"
           />
 
           <div>
@@ -93,7 +91,7 @@ export const ProjectSubGoalModal: React.FC<ProjectSubGoalModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border border-border rounded-md"
-              placeholder="サブ目標の説明を入力"
+              placeholder="タスクの説明を入力"
             />
           </div>
 

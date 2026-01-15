@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { DashboardWidget } from '@/types';
+import { Button } from '../common/Button';
+import { DashboardWidget } from '../../types';
 import { Settings, GripVertical } from 'lucide-react';
 
 interface CustomizableDashboardProps {
@@ -15,7 +12,7 @@ interface CustomizableDashboardProps {
 const defaultWidgets: DashboardWidget[] = [
   { id: 'alerts', name: 'アラート', isVisible: true, order: 0, isFixed: true },
   { id: 'weekly-schedule', name: '今週のスケジュール', isVisible: true, order: 1, isFixed: true },
-  { id: 'goal-progress', name: '起業準備進捗', isVisible: true, order: 2, isFixed: true },
+  { id: 'goal-progress', name: 'ミッション（大目標）', isVisible: true, order: 2, isFixed: true },
   { id: 'tasks', name: 'タスク一覧', isVisible: true, order: 3, isFixed: true },
   { id: 'event-points', name: 'イベントポイント', isVisible: true, order: 4 },
   { id: 'sns-posts', name: 'SNS投稿状況', isVisible: true, order: 5 },
@@ -93,7 +90,7 @@ export function CustomizableDashboard({ userId, children }: CustomizableDashboar
             </Button>
           )}
           <Button
-            variant={isCustomizing ? 'default' : 'outline'}
+            variant={isCustomizing ? 'primary' : 'outline'}
             onClick={() => setIsCustomizing(!isCustomizing)}
             size="sm"
             className="flex items-center gap-2"
@@ -105,7 +102,7 @@ export function CustomizableDashboard({ userId, children }: CustomizableDashboar
       </div>
 
       {isCustomizing ? (
-        <Card className="p-4 mb-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
           <h3 className="font-semibold mb-4">ウィジェット設定</h3>
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="widgets">
@@ -141,14 +138,16 @@ export function CustomizableDashboard({ userId, children }: CustomizableDashboar
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <Label htmlFor={`toggle-${widget.id}`} className="text-sm">
+                              <label htmlFor={`toggle-${widget.id}`} className="text-sm text-gray-700">
                                 表示
-                              </Label>
-                              <Switch
+                              </label>
+                              <input
+                                type="checkbox"
                                 id={`toggle-${widget.id}`}
                                 checked={widget.isVisible}
-                                onCheckedChange={() => handleToggleVisibility(widget.id)}
+                                onChange={() => handleToggleVisibility(widget.id)}
                                 disabled={widget.isFixed}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                               />
                             </div>
                           </div>
@@ -161,7 +160,7 @@ export function CustomizableDashboard({ userId, children }: CustomizableDashboar
               )}
             </Droppable>
           </DragDropContext>
-        </Card>
+        </div>
       ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

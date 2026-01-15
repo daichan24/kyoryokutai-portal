@@ -31,11 +31,11 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
   const { user } = useAuthStore();
 
   const { data: requests, isLoading } = useQuery<TaskRequest[]>({
-    queryKey: ['task-requests-widget', user?.id],
+    queryKey: ['requests-widget', user?.id],
     queryFn: async () => {
       const url = user?.role === 'MEMBER' 
-        ? `/api/task-requests?requestedTo=${user.id}`
-        : '/api/task-requests';
+        ? `/api/requests?requestedTo=${user.id}`
+        : '/api/requests';
       const response = await api.get(url);
       const allRequests = response.data || [];
       // 未処理（PENDING）のみ表示
@@ -43,7 +43,7 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
     },
   });
 
-  const widgetTitle = user?.role === 'MEMBER' ? 'タスクボックス' : 'タスク依頼';
+  const widgetTitle = user?.role === 'MEMBER' ? 'タスクボックス' : '依頼';
 
   return (
     <div className="bg-white rounded-lg shadow border border-border p-4">
@@ -61,7 +61,7 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
         <LoadingSpinner />
       ) : !requests || requests.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-4">
-          {user?.role === 'MEMBER' ? '未処理のタスクがありません' : '未処理のタスク依頼がありません'}
+          {user?.role === 'MEMBER' ? '未処理のタスクがありません' : '未処理の依頼がありません'}
         </p>
       ) : (
         <div className="space-y-2">

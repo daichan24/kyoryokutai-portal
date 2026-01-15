@@ -33,7 +33,7 @@ export const Sidebar: React.FC = () => {
 
   // MEMBER専用のメニュー（自分のデータのみ）
   const memberOnlyItems = [
-    { to: '/goals', icon: Target, label: '起業準備進捗' },
+    { to: '/goals', icon: Target, label: 'ミッション' },
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     // 町民データベースは「状況」カテゴリに移動したため削除
@@ -41,10 +41,10 @@ export const Sidebar: React.FC = () => {
 
   // SUPPORT/GOVERNMENT/MASTER用のメニュー（全データ閲覧可能）
   const supportGovernmentItems = [
-    { to: '/goals', icon: Target, label: '起業準備進捗' },
+    { to: '/goals', icon: Target, label: 'ミッション' },
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
-    { to: '/task-requests', icon: UserCheck, label: 'タスク依頼' },
+    { to: '/task-requests', icon: UserCheck, label: '依頼' },
   ];
 
   // 報告カテゴリのメニュー
@@ -76,7 +76,7 @@ export const Sidebar: React.FC = () => {
     // MEMBERのみタスクボックスを表示
     if (user?.role === 'MEMBER') {
       items.push({
-        to: '/task-requests',
+        to: '/task-requests', // パスは後方互換性のため維持
         icon: Inbox,
         label: 'タスクボックス',
       });

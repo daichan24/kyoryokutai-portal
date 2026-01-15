@@ -12,8 +12,11 @@ import { useAuthStore } from '../stores/authStore';
 
 interface Goal {
   id: string;
-  goalName: string;
-  goalType: 'PRIMARY' | 'SUB';
+  goalName?: string; // 後方互換性
+  missionName?: string;
+  goalType?: 'PRIMARY' | 'SUB'; // 後方互換性
+  missionType?: 'PRIMARY' | 'SUB';
+  targetPercentage: number;
   progress: number;
   approvalStatus?: string;
   user: { id: string; name: string; avatarColor?: string };
@@ -33,13 +36,15 @@ interface SubGoal {
   name: string;
   progress: number;
   weight: number;
-  tasks: Task[];
+  tasks: GoalTask[];
 }
 
-interface Task {
+interface GoalTask {
   id: string;
   name: string;
+  weight: number;
   progress: number;
+  phase: 'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW';
   deadline?: string;
 }
 
@@ -61,15 +66,15 @@ export const Goals: React.FC = () => {
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   const [selectedMidGoalId, setSelectedMidGoalId] = useState<string>('');
   const [selectedSubGoalId, setSelectedSubGoalId] = useState<string>('');
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<GoalTask | null>(null);
 
   const { data: goals, isLoading } = useQuery<Goal[]>({
-    queryKey: ['goals', user?.id],
+    queryKey: ['missions', user?.id],
     queryFn: async () => {
       // MEMBERの場合は自分の目標のみ、他は全員の目標
       const url = user?.role === 'MEMBER' 
-        ? `/api/goals?userId=${user.id}`
-        : '/api/goals';
+        ? `/api/missions?userId=${user.id}`
+        : '/api/missions';
       const response = await api.get(url);
       return response.data;
     }
@@ -138,7 +143,7 @@ export const Goals: React.FC = () => {
     setIsTaskModalOpen(true);
   };
 
-  const handleUpdateTaskProgress = (task: Task, subGoalId: string) => {
+  const handleUpdateTaskProgress = (task: GoalTask, subGoalId: string) => {
     setSelectedTask(task);
     setSelectedSubGoalId(subGoalId);
     setIsTaskModalOpen(true);
@@ -157,7 +162,7 @@ export const Goals: React.FC = () => {
   };
 
   const handleSaved = () => {
-    queryClient.invalidateQueries({ queryKey: ['goals'] });
+    queryClient.invalidateQueries({ queryKey: ['missions'] });
     handleCloseModals();
   };
 
@@ -173,14 +178,14 @@ export const Goals: React.FC = () => {
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          起業準備進捗管理
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分の目標）</span>}
+          <h1 className="text-2xl font-bold text-gray-900">
+          ミッション管理
+          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のミッション）</span>}
         </h1>
         {(user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
           <Button onClick={handleCreateGoal}>
             <Plus className="h-4 w-4 mr-2" />
-            新規目標
+            新規ミッション
           </Button>
         )}
       </div>
@@ -211,13 +216,13 @@ export const Goals: React.FC = () => {
                   <button className="text-gray-400 hover:text-gray-600">
                     {expandedGoals.has(goal.id) ? '▼' : '▶'}
                   </button>
-                  <h2 className="text-lg font-semibold text-gray-900">{goal.goalName}</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">{goal.missionName || goal.goalName}</h2>
                   <span className={`text-xs px-2 py-1 rounded-full ${
-                    goal.goalType === 'PRIMARY' 
+                    (goal.missionType || goal.goalType) === 'PRIMARY' 
                       ? 'bg-purple-100 text-purple-800' 
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {goal.goalType === 'PRIMARY' ? 'メイン目標' : 'サブ目標'}
+                    {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
                   </span>
                 </div>
                 <span className="text-xl font-bold text-gray-900">{goal.progress}%</span>
@@ -368,7 +373,7 @@ export const Goals: React.FC = () => {
       {/* 空状態 */}
       {goals?.length === 0 && (
         <div className="text-center py-12 text-gray-500">
-          目標がまだ設定されていません
+          ミッションがまだ設定されていません
         </div>
       )}
 

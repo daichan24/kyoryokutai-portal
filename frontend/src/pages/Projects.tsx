@@ -7,7 +7,7 @@ import { ProjectModal } from '../components/project/ProjectModal';
 import { Button } from '../components/common/Button';
 import { Plus } from 'lucide-react';
 
-interface ProjectSubGoal {
+interface Task {
   id: string;
   title: string;
   description?: string;
@@ -25,8 +25,8 @@ interface Project {
   endDate?: string;
   user: { id: string; name: string };
   members: any[];
-  goal?: { id: string; goalName: string };
-  subGoals?: ProjectSubGoal[];
+  mission?: { id: string; missionName?: string; goalName?: string };
+  projectTasks?: Task[];
 }
 
 export const Projects: React.FC = () => {
@@ -207,9 +207,9 @@ export const Projects: React.FC = () => {
               )}
             </div>
 
-            {project.goal && (
+            {project.mission && (
               <div className="text-xs bg-purple-50 border border-purple-200 rounded px-2 py-1 mb-3">
-                目標: {project.goal.goalName}
+                ミッション: {project.mission.missionName || project.mission.goalName || '未設定'}
               </div>
             )}
 

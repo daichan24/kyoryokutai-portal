@@ -34,7 +34,7 @@ export const MidGoalModal: React.FC<MidGoalModalProps> = ({
         endDate: endDate || undefined,
       };
 
-      await api.post(`/api/goals/${goalId}/mid-goals`, data);
+      await api.post(`/api/missions/${goalId}/mid-goals`, data);
       onSaved();
     } catch (error) {
       console.error('Failed to save mid goal:', error);

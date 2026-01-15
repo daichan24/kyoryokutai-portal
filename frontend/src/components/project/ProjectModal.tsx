@@ -4,7 +4,8 @@ import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
-import { ProjectSubGoalModal, ProjectSubGoal } from './ProjectSubGoalModal';
+import { TaskModal } from './TaskModal';
+import { Task } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 
 interface Project {
@@ -14,13 +15,14 @@ interface Project {
   phase: 'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW';
   startDate?: string;
   endDate?: string;
-  goalId?: string;
+  missionId?: string;
   tags: string[];
+  projectTasks?: Task[];
 }
 
-interface Goal {
+interface Mission {
   id: string;
-  goalName: string;
+  missionName: string;
 }
 
 interface ProjectModalProps {
@@ -40,17 +42,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [phase, setPhase] = useState<'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW'>('PREPARATION');
-  const [goalId, setGoalId] = useState('');
+  const [missionId, setMissionId] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(false);
-  const [subGoals, setSubGoals] = useState<ProjectSubGoal[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isSubGoalModalOpen, setIsSubGoalModalOpen] = useState(false);
-  const [selectedSubGoal, setSelectedSubGoal] = useState<ProjectSubGoal | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   useEffect(() => {
-    fetchGoals();
+    fetchMissions();
 
     if (project) {
       setProjectName(project.projectName);
@@ -58,38 +60,38 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setStartDate(project.startDate ? formatDate(new Date(project.startDate)) : '');
       setEndDate(project.endDate ? formatDate(new Date(project.endDate)) : '');
       setPhase(project.phase);
-      setGoalId(project.goalId || '');
+      setMissionId(project.missionId || '');
       setTags(project.tags || []);
-      setSubGoals(project.subGoals || []);
+      setTasks(project.projectTasks || []);
     } else {
-      setSubGoals([]);
+      setTasks([]);
     }
   }, [project]);
 
   useEffect(() => {
     if (project?.id) {
-      fetchSubGoals();
+      fetchTasks();
     }
   }, [project?.id]);
 
-  const fetchGoals = async () => {
+  const fetchMissions = async () => {
     try {
-      const response = await api.get<Goal[]>('/api/goals');
-      setGoals(response.data || []);
+      const response = await api.get<Mission[]>('/api/missions');
+      setMissions(response.data || []);
     } catch (error) {
-      console.error('Failed to fetch goals:', error);
-      setGoals([]);
+      console.error('Failed to fetch missions:', error);
+      setMissions([]);
     }
   };
 
-  const fetchSubGoals = async () => {
+  const fetchTasks = async () => {
     if (!project?.id) return;
     try {
-      const response = await api.get<ProjectSubGoal[]>(`/api/projects/${project.id}/sub-goals`);
-      setSubGoals(response.data || []);
+      const response = await api.get<Task[]>(`/api/projects/${project.id}/tasks`);
+      setTasks(response.data || []);
     } catch (error) {
-      console.error('Failed to fetch sub-goals:', error);
-      setSubGoals([]);
+      console.error('Failed to fetch tasks:', error);
+      setTasks([]);
     }
   };
 
@@ -115,7 +117,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         phase,
-        goalId: goalId || undefined,
+        missionId: missionId || undefined,
         tags,
       };
 
@@ -146,45 +148,53 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     }
   };
 
-  // サブ目標関連のハンドラー
-  const handleAddSubGoal = () => {
-    setSelectedSubGoal(null);
+  // タスク関連のハンドラー（旧：サブ目標）
+  const handleAddTask = () => {
+    setSelectedTask(null);
     setIsSubGoalModalOpen(true);
   };
 
-  const handleEditSubGoal = (subGoal: ProjectSubGoal) => {
-    setSelectedSubGoal(subGoal);
+  const handleEditTask = (task: Task) => {
+    setSelectedTask(task);
     setIsSubGoalModalOpen(true);
   };
 
-  const handleDeleteSubGoal = async (subGoalId: string) => {
-    if (!project?.id || !confirm('このサブ目標を削除しますか？')) return;
+  const handleDeleteTask = async (taskId: string) => {
+    if (!project?.id || !confirm('このタスクを削除しますか？')) return;
 
     try {
-      await api.delete(`/api/projects/${project.id}/sub-goals/${subGoalId}`);
-      await fetchSubGoals();
+      await api.delete(`/api/projects/${project.id}/tasks/${taskId}`);
+      await fetchTasks();
     } catch (error) {
-      console.error('Failed to delete sub-goal:', error);
+      console.error('Failed to delete task:', error);
       alert('削除に失敗しました');
     }
   };
 
-  const handleSubGoalSaved = async (subGoalData: ProjectSubGoal) => {
+  const handleTaskSaved = async (taskData: Task) => {
     if (!project?.id) return;
 
     try {
-      if (subGoalData.id) {
+      if (taskData.id) {
         // 更新
-        await api.put(`/api/projects/${project.id}/sub-goals/${subGoalData.id}`, subGoalData);
+        await api.put(`/api/projects/${project.id}/tasks/${taskData.id}`, {
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+        });
       } else {
         // 作成
-        await api.post(`/api/projects/${project.id}/sub-goals`, subGoalData);
+        await api.post(`/api/projects/${project.id}/tasks`, {
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status || 'NOT_STARTED',
+        });
       }
-      await fetchSubGoals();
+      await fetchTasks();
       setIsSubGoalModalOpen(false);
-      setSelectedSubGoal(null);
+      setSelectedTask(null);
     } catch (error) {
-      console.error('Failed to save sub-goal:', error);
+      console.error('Failed to save task:', error);
       alert('保存に失敗しました');
     }
   };
@@ -219,7 +229,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   // 権限チェック: MEMBERは自分のプロジェクトのみ編集可、GOVERNMENTは閲覧のみ
-  const canEditSubGoals = project && (
+  const canEditTasks = project && (
     user?.role === 'MASTER' ||
     user?.role === 'SUPPORT' ||
     (user?.role === 'MEMBER' && (project as any).userId === user.id)
@@ -293,17 +303,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              関連目標（任意）
+              関連ミッション（任意）
             </label>
             <select
-              value={goalId}
-              onChange={(e) => setGoalId(e.target.value)}
+              value={missionId}
+              onChange={(e) => setMissionId(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-md"
             >
               <option value="">選択しない</option>
-              {goals.map((goal) => (
-                <option key={goal.id} value={goal.id}>
-                  {goal.goalName}
+              {missions.map((mission) => (
+                <option key={mission.id} value={mission.id}>
+                  {mission.missionName}
                 </option>
               ))}
             </select>
@@ -352,47 +362,47 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             )}
           </div>
 
-          {/* サブ目標セクション */}
+          {/* タスクセクション（旧：サブ目標） */}
           {project && (
             <div className="pt-6 border-t">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">サブ目標</h3>
-                {canEditSubGoals && (
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddSubGoal}>
+                <h3 className="text-lg font-semibold text-gray-900">タスク（小目標）</h3>
+                {canEditTasks && (
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddTask}>
                     <Plus className="h-4 w-4 mr-1" />
                     追加
                   </Button>
                 )}
               </div>
 
-              {subGoals.length === 0 ? (
+              {tasks.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  サブ目標がありません
+                  タスクがありません
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {subGoals.map((subGoal) => (
+                  {tasks.map((task) => (
                     <div
-                      key={subGoal.id}
+                      key={task.id}
                       className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
                     >
-                      <div className="mt-0.5">{getStatusIcon(subGoal.status)}</div>
+                      <div className="mt-0.5">{getStatusIcon(task.status)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-gray-900">{subGoal.title}</h4>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(subGoal.status)}`}>
-                            {getStatusLabel(subGoal.status)}
+                          <h4 className="font-medium text-gray-900">{task.title}</h4>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(task.status)}`}>
+                            {getStatusLabel(task.status)}
                           </span>
                         </div>
-                        {subGoal.description && (
-                          <p className="text-sm text-gray-600">{subGoal.description}</p>
+                        {task.description && (
+                          <p className="text-sm text-gray-600">{task.description}</p>
                         )}
                       </div>
-                      {canEditSubGoals && (
+                      {canEditTasks && (
                         <div className="flex gap-1">
                           <button
                             type="button"
-                            onClick={() => handleEditSubGoal(subGoal)}
+                            onClick={() => handleEditTask(task)}
                             className="p-1 text-gray-500 hover:text-blue-600"
                             title="編集"
                           >
@@ -400,7 +410,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => subGoal.id && handleDeleteSubGoal(subGoal.id)}
+                            onClick={() => task.id && handleDeleteTask(task.id)}
                             className="p-1 text-gray-500 hover:text-red-600"
                             title="削除"
                           >
@@ -435,15 +445,15 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         </form>
       </div>
 
-      {/* サブ目標モーダル */}
+      {/* タスクモーダル（旧：サブ目標モーダル） */}
       {isSubGoalModalOpen && (
-        <ProjectSubGoalModal
-          subGoal={selectedSubGoal}
+        <TaskModal
+          task={selectedTask}
           onClose={() => {
             setIsSubGoalModalOpen(false);
-            setSelectedSubGoal(null);
+            setSelectedTask(null);
           }}
-          onSaved={handleSubGoalSaved}
+          onSaved={handleTaskSaved}
         />
       )}
     </div>

@@ -36,7 +36,7 @@ interface InboxData {
     decision: 'APPROVED' | 'REJECTED';
     respondedAt: string;
   }>;
-  taskRequests: Array<{
+  taskRequests: Array<{ // 後方互換性のため残す（実際はrequests）
     id: string;
     requester: { id: string; name: string; avatarColor: string };
     requestTitle: string;
@@ -83,7 +83,7 @@ export const Dashboard: React.FC = () => {
   const getDefaultConfig = (role: string = 'MEMBER'): DashboardConfig => {
     const baseWidgets = [
       { key: 'snsHistory', enabled: true, showAddButton: true, size: 'M' as const, order: 1 },
-      { key: 'taskRequests', enabled: true, showAddButton: false, size: 'L' as const, order: 2 },
+      { key: 'taskRequests', enabled: true, showAddButton: false, size: 'L' as const, order: 2 }, // 後方互換性のため残す
       { key: 'projects', enabled: false, showAddButton: false, size: 'M' as const, order: 3 },
       { key: 'goals', enabled: false, showAddButton: false, size: 'M' as const, order: 4 },
     ];
@@ -174,21 +174,21 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // タスク依頼への応答
-  const handleTaskRequestResponse = async (requestId: string, decision: 'APPROVED' | 'REJECTED') => {
+  // 依頼への応答
+  const handleRequestResponse = async (requestId: string, decision: 'APPROVED' | 'REJECTED') => {
     try {
-      await api.post(`/api/task-requests/${requestId}/respond`, {
+      await api.post(`/api/requests/${requestId}/respond`, {
         approvalStatus: decision,
       });
       queryClient.invalidateQueries({ queryKey: ['inbox'] });
-      queryClient.invalidateQueries({ queryKey: ['task-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
     } catch (error) {
       console.error('Failed to respond to task request:', error);
       alert('応答に失敗しました');
     }
   };
 
-  const totalInboxCount = (inboxData?.scheduleInvites?.length || 0) + (inboxData?.taskRequests?.length || 0);
+  const totalInboxCount = (inboxData?.scheduleInvites?.length || 0) + (inboxData?.taskRequests?.length || 0); // taskRequestsは後方互換性のため残す
 
   const renderWidget = (widget: WidgetConfig) => {
     const commonProps = {
@@ -393,7 +393,7 @@ export const Dashboard: React.FC = () => {
               {inboxData?.taskRequests && inboxData.taskRequests.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                    {user?.role === 'MEMBER' ? 'タスクボックス' : 'タスク依頼'}
+                    {user?.role === 'MEMBER' ? 'タスクボックス' : '依頼'}
                   </h3>
                   <div className="space-y-3">
                     {inboxData.taskRequests.map((request) => (
@@ -429,7 +429,7 @@ export const Dashboard: React.FC = () => {
                           <div className="flex gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleTaskRequestResponse(request.id, 'APPROVED')}
+                              onClick={() => handleRequestResponse(request.id, 'APPROVED')}
                               className="flex items-center gap-1"
                             >
                               <Check className="w-4 h-4" />
@@ -438,7 +438,7 @@ export const Dashboard: React.FC = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleTaskRequestResponse(request.id, 'REJECTED')}
+                              onClick={() => handleRequestResponse(request.id, 'REJECTED')}
                               className="flex items-center gap-1"
                             >
                               <X className="w-4 h-4" />
@@ -529,14 +529,13 @@ export const Dashboard: React.FC = () => {
         onClose={() => setIsCustomizeModalOpen(false)}
       />
 
-      {/* タスク依頼追加モーダル */}
+      {/* 依頼追加モーダル */}
       {isTaskRequestModalOpen && (
         <TaskRequestModal
-          isOpen={isTaskRequestModalOpen}
           onClose={() => setIsTaskRequestModalOpen(false)}
           onSaved={() => {
             setIsTaskRequestModalOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['task-requests'] });
+            queryClient.invalidateQueries({ queryKey: ['requests'] });
           }}
         />
       )}

@@ -27,12 +27,12 @@ export const TaskRequests: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: requests, isLoading } = useQuery({
-    queryKey: ['task-requests', user?.id, user?.role],
+    queryKey: ['requests', user?.id, user?.role],
     queryFn: async () => {
       // MEMBERの場合は自分宛の依頼のみ、他は全員の依頼
       const url = user?.role === 'MEMBER' 
-        ? `/api/task-requests?requestedTo=${user.id}`
-        : '/api/task-requests';
+        ? `/api/requests?requestedTo=${user.id}`
+        : '/api/requests';
       const response = await api.get(url);
       return response.data as TaskRequest[];
     }
@@ -40,13 +40,13 @@ export const TaskRequests: React.FC = () => {
 
   const respondMutation = useMutation({
     mutationFn: async ({ id, status, note }: { id: string; status: string; note?: string }) => {
-      return api.post(`/api/task-requests/${id}/respond`, {
+      return api.post(`/api/requests/${id}/respond`, {
         approvalStatus: status,
         approvalNote: note
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['task-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
     }
   });
 
@@ -104,7 +104,7 @@ export const TaskRequests: React.FC = () => {
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">
-          {user?.role === 'MEMBER' ? 'タスクボックス' : 'タスク依頼'}
+          {user?.role === 'MEMBER' ? 'タスクボックス' : '依頼'}
         </h1>
         {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
           <Button onClick={handleCreateRequest}>

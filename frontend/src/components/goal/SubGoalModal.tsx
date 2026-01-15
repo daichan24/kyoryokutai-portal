@@ -34,7 +34,7 @@ export const SubGoalModal: React.FC<SubGoalModalProps> = ({
         endDate: endDate || undefined,
       };
 
-      await api.post(`/api/goals/mid-goals/${midGoalId}/sub-goals`, data);
+      await api.post(`/api/missions/mid-goals/${midGoalId}/sub-goals`, data);
       onSaved();
     } catch (error) {
       console.error('Failed to save sub goal:', error);

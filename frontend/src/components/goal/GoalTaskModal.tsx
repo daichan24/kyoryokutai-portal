@@ -54,7 +54,7 @@ export const GoalTaskModal: React.FC<GoalTaskModalProps> = ({
     try {
       if (task) {
         // 進捗更新のみ
-        await api.put(`/api/goals/tasks/${task.id}/progress`, { progress });
+        await api.put(`/api/missions/tasks/${task.id}/progress`, { progress });
       } else {
         // 新規作成
         const data = {
@@ -65,7 +65,7 @@ export const GoalTaskModal: React.FC<GoalTaskModalProps> = ({
           startDate: startDate || undefined,
           endDate: endDate || undefined,
         };
-        await api.post(`/api/goals/sub-goals/${subGoalId}/tasks`, data);
+        await api.post(`/api/missions/sub-goals/${subGoalId}/tasks`, data);
       }
 
       onSaved();

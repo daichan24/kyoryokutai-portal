@@ -9,8 +9,10 @@ import { useAuthStore } from '../../stores/authStore';
 
 interface Goal {
   id: string;
-  goalName: string;
-  goalType: 'PRIMARY' | 'SUB';
+  goalName?: string; // 後方互換性
+  missionName?: string;
+  goalType?: 'PRIMARY' | 'SUB'; // 後方互換性
+  missionType?: 'PRIMARY' | 'SUB';
   progress: number;
   user: { id: string; name: string; avatarColor?: string };
 }
@@ -28,7 +30,7 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
   const { data: goals, isLoading } = useQuery<Goal[]>({
     queryKey: ['goals-widget'],
     queryFn: async () => {
-      const response = await api.get('/api/goals');
+      const response = await api.get('/api/missions');
       return (response.data || []).slice(0, 5); // 最新5件
     },
   });
@@ -36,9 +38,9 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
   return (
     <div className="bg-white rounded-lg shadow border border-border p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">目標</h3>
+        <h3 className="text-lg font-semibold text-gray-900">ミッション</h3>
         {showAddButton && (user?.role === 'MEMBER' || user?.role === 'MASTER') && (
-          <Link to="/goals">
+          <Link to="/missions">
             <Button size="sm" className="flex items-center gap-1">
               <Plus className="w-4 h-4" />
               追加
@@ -50,19 +52,19 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
       {isLoading ? (
         <LoadingSpinner />
       ) : !goals || goals.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">目標がありません</p>
+        <p className="text-sm text-gray-500 text-center py-4">ミッションがありません</p>
       ) : (
         <div className="space-y-2">
           {goals.map((goal) => (
             <Link
               key={goal.id}
-              to="/goals"
+              to="/missions"
               className="block p-2 border border-gray-200 rounded hover:bg-gray-50"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    {goal.goalName}
+                    {goal.missionName || goal.goalName}
                   </p>
                   <p className="text-xs text-gray-500">{goal.user.name}</p>
                 </div>
