@@ -16,7 +16,7 @@ export const UsersSettings: React.FC = () => {
   const [allUsers, setAllUsers] = useState<User[]>([]); // 全ユーザー（フィルター前）
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('MEMBER'); // MEMBER向けの初期フィルター
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all'); // 初期は全件表示
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -115,7 +115,7 @@ export const UsersSettings: React.FC = () => {
         )}
       </div>
 
-      {/* MEMBER向けのroleフィルター */}
+      {/* ロール別フィルター */}
       {showRoleFilter && (
         <div className="bg-white rounded-lg shadow border border-border p-4">
           <div className="flex space-x-2">
