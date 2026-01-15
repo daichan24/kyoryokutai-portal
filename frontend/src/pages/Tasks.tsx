@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskModal } from '../components/project/TaskModal';
 import { Button } from '../components/common/Button';
+import { UserFilter } from '../components/common/UserFilter';
 import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, Check } from 'lucide-react';
 import { Task, Project, Mission } from '../types';
 
@@ -18,13 +19,18 @@ export const Tasks: React.FC = () => {
   // フィルタ・ソート状態
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterProject, setFilterProject] = useState<string>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>('deadline'); // deadline, status, project, created
+  const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
 
   // プロジェクト一覧を取得（Taskの紐づき情報用）
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['projects'],
+    queryKey: ['projects', selectedUserId],
     queryFn: async () => {
-      const response = await api.get('/api/projects');
+      const url = selectedUserId 
+        ? `/api/projects?userId=${selectedUserId}`
+        : '/api/projects';
+      const response = await api.get(url);
       return response.data;
     },
   });
@@ -207,7 +213,8 @@ export const Tasks: React.FC = () => {
     );
   }
 
-  const canCreate = user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'MASTER';
+  const canCreate = user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER';
+  const isNonMember = user?.role !== 'MEMBER';
 
   return (
     <div className="space-y-6">
@@ -215,8 +222,34 @@ export const Tasks: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">
           タスク
           {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のタスク）</span>}
+          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
         </h1>
-        {canCreate && (
+        <div className="flex gap-3">
+          {isNonMember && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('view')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'view'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                閲覧
+              </button>
+              <button
+                onClick={() => setViewMode('create')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'create'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                作成
+              </button>
+            </div>
+          )}
+          {canCreate && viewMode !== 'view' && (
           <Button 
             onClick={() => {
               if (projects.length === 0) {
@@ -232,11 +265,20 @@ export const Tasks: React.FC = () => {
         )}
       </div>
 
-      {/* フィルタ・ソート */}
-      <div className="flex gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-gray-500" />
-          <select
+      {viewMode === 'view' && (
+        <>
+          {/* フィルタ・ソート */}
+          <div className="flex gap-4 flex-wrap items-center">
+            {isNonMember && (
+              <UserFilter
+                selectedUserId={selectedUserId}
+                onUserChange={setSelectedUserId}
+                label="担当者"
+              />
+            )}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -273,10 +315,10 @@ export const Tasks: React.FC = () => {
             <option value="project">プロジェクト順</option>
             <option value="created">作成日順</option>
           </select>
-        </div>
-      </div>
+            </div>
+          </div>
 
-      {/* タスク一覧 */}
+          {/* タスク一覧 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredAndSortedTasks.map((task) => {
           const missionName = getMissionName(task);
@@ -366,11 +408,19 @@ export const Tasks: React.FC = () => {
         })}
       </div>
 
-      {filteredAndSortedTasks.length === 0 && (
+          {filteredAndSortedTasks.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              {filterStatus !== 'all' || filterProject !== 'all'
+                ? '条件に一致するタスクがありません'
+                : 'タスクがありません'}
+            </div>
+          )}
+        </>
+      )}
+
+      {viewMode === 'create' && (
         <div className="text-center py-12 text-gray-500">
-          {filterStatus !== 'all' || filterProject !== 'all'
-            ? '条件に一致するタスクがありません'
-            : 'タスクがありません'}
+          新規タスクを作成するには、右上の「新規タスク」ボタンをクリックしてください。
         </div>
       )}
 

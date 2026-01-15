@@ -8,6 +8,7 @@ import { SubGoalModal } from '../components/goal/SubGoalModal';
 import { GoalTaskModal } from '../components/goal/GoalTaskModal';
 import { MissionDetailContent } from '../components/mission/MissionDetailContent';
 import { Button } from '../components/common/Button';
+import { UserFilter } from '../components/common/UserFilter';
 import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Task, Project } from '../types';
@@ -71,14 +72,18 @@ export const Goals: React.FC = () => {
   const [selectedSubGoalId, setSelectedSubGoalId] = useState<string>('');
   const [selectedTask, setSelectedTask] = useState<GoalTask | null>(null);
   const [selectedNewTask, setSelectedNewTask] = useState<Task | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
 
   const { data: goals, isLoading } = useQuery<Goal[]>({
-    queryKey: ['missions', user?.id],
+    queryKey: ['missions', user?.id, selectedUserId],
     queryFn: async () => {
-      // MEMBERの場合は自分の目標のみ、他は全員の目標
-      const url = user?.role === 'MEMBER' 
-        ? `/api/missions?userId=${user.id}`
-        : '/api/missions';
+      let url = '/api/missions';
+      if (user?.role === 'MEMBER') {
+        url = `/api/missions?userId=${user.id}`;
+      } else if (selectedUserId) {
+        url = `/api/missions?userId=${selectedUserId}`;
+      }
       const response = await api.get(url);
       return response.data;
     }
@@ -199,23 +204,62 @@ export const Goals: React.FC = () => {
     );
   }
 
+  const isNonMember = user?.role !== 'MEMBER';
+
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-gray-900">
           ミッション管理
           {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のミッション）</span>}
+          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
         </h1>
-        {(user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
-          <Button onClick={handleCreateGoal}>
-            <Plus className="h-4 w-4 mr-2" />
-            新規ミッション
-          </Button>
-        )}
+        <div className="flex gap-3">
+          {isNonMember && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('view')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'view'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                閲覧
+              </button>
+              <button
+                onClick={() => setViewMode('create')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'create'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                作成
+              </button>
+            </div>
+          )}
+          {(user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && viewMode !== 'view' && (
+            <Button onClick={handleCreateGoal}>
+              <Plus className="h-4 w-4 mr-2" />
+              新規ミッション
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* 目標一覧 */}
+      {viewMode === 'view' && (
+        <>
+          {isNonMember && (
+            <UserFilter
+              selectedUserId={selectedUserId}
+              onUserChange={setSelectedUserId}
+              label="担当者"
+            />
+          )}
+
+          {/* 目標一覧 */}
       <div className="space-y-4">
         {goals?.map((goal) => (
           <div key={goal.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -402,10 +446,18 @@ export const Goals: React.FC = () => {
         ))}
       </div>
 
-      {/* 空状態 */}
-      {goals?.length === 0 && (
+          {/* 空状態 */}
+          {goals?.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              ミッションがまだ設定されていません
+            </div>
+          )}
+        </>
+      )}
+
+      {viewMode === 'create' && (
         <div className="text-center py-12 text-gray-500">
-          ミッションがまだ設定されていません
+          新規ミッションを作成するには、右上の「新規ミッション」ボタンをクリックしてください。
         </div>
       )}
 

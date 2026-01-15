@@ -4,7 +4,7 @@ import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
-import { TaskModal } from './TaskModal';
+import { ProjectTaskModal } from './ProjectTaskModal';
 import { Task } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -171,31 +171,15 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     }
   };
 
-  const handleTaskSaved = async (taskData: Task) => {
+  const handleTaskSaved = async () => {
     if (!project?.id) return;
 
     try {
-      if (taskData.id) {
-        // 更新
-        await api.put(`/api/projects/${project.id}/tasks/${taskData.id}`, {
-          title: taskData.title,
-          description: taskData.description,
-          status: taskData.status,
-        });
-      } else {
-        // 作成
-        await api.post(`/api/projects/${project.id}/tasks`, {
-          title: taskData.title,
-          description: taskData.description,
-          status: taskData.status || 'NOT_STARTED',
-        });
-      }
       await fetchTasks();
       setIsSubGoalModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
-      console.error('Failed to save task:', error);
-      alert('保存に失敗しました');
+      console.error('Failed to refresh tasks:', error);
     }
   };
 
@@ -446,8 +430,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       </div>
 
       {/* タスクモーダル（旧：サブ目標モーダル） */}
-      {isSubGoalModalOpen && (
-        <TaskModal
+      {isSubGoalModalOpen && project && (
+        <ProjectTaskModal
+          projectId={project.id}
           task={selectedTask}
           onClose={() => {
             setIsSubGoalModalOpen(false);

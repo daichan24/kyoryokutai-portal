@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 import { Button } from '../components/common/Button';
+import { UserFilter } from '../components/common/UserFilter';
 import { Plus } from 'lucide-react';
 
 interface TaskRequest {
@@ -25,14 +26,19 @@ export const TaskRequests: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
 
   const { data: requests, isLoading } = useQuery({
-    queryKey: ['requests', user?.id, user?.role],
+    queryKey: ['requests', user?.id, user?.role, selectedUserId],
     queryFn: async () => {
-      // MEMBERの場合は自分宛の依頼のみ、他は全員の依頼
-      const url = user?.role === 'MEMBER' 
-        ? `/api/requests?requestedTo=${user.id}`
-        : '/api/requests';
+      let url = '/api/requests';
+      if (user?.role === 'MEMBER') {
+        url = `/api/requests?requestedTo=${user.id}`;
+      } else if (selectedUserId) {
+        // メンバー以外は選択したユーザーの依頼を表示
+        url = `/api/requests?requestedTo=${selectedUserId}`;
+      }
       const response = await api.get(url);
       return response.data as TaskRequest[];
     }
@@ -99,20 +105,59 @@ export const TaskRequests: React.FC = () => {
     );
   }
 
+  const isNonMember = user?.role !== 'MEMBER';
+
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">
           {user?.role === 'MEMBER' ? 'タスクボックス' : '依頼'}
+          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
         </h1>
-        {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
-          <Button onClick={handleCreateRequest}>
-            <Plus className="h-4 w-4 mr-2" />
-            新規依頼
-          </Button>
-        )}
+        <div className="flex gap-3">
+          {isNonMember && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('view')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'view'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                閲覧
+              </button>
+              <button
+                onClick={() => setViewMode('create')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'create'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                作成
+              </button>
+            </div>
+          )}
+          {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && viewMode !== 'view' && (
+            <Button onClick={handleCreateRequest}>
+              <Plus className="h-4 w-4 mr-2" />
+              新規依頼
+            </Button>
+          )}
+        </div>
       </div>
+
+      {viewMode === 'view' && (
+        <>
+          {isNonMember && (
+            <UserFilter
+              selectedUserId={selectedUserId}
+              onUserChange={setSelectedUserId}
+              label="依頼先"
+            />
+          )}
 
       {/* 受信したタスク（協力隊員） */}
       {user?.role === 'MEMBER' && (
