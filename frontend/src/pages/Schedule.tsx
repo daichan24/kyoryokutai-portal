@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType } from '../types';
 import { formatDate, getWeekDates, getMonthDates, getDayDate, isSameDay, isHolidayDate, isSunday, isSaturday } from '../utils/date';
@@ -10,9 +11,22 @@ import { useAuthStore } from '../stores/authStore';
 
 type ViewMode = 'week' | 'month' | 'day';
 
+interface Event {
+  id: string;
+  eventName: string;
+  eventType: 'TOWN_OFFICIAL' | 'TEAM' | 'OTHER';
+  date: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  endAt?: string;
+  isCompleted?: boolean;
+}
+
 export const Schedule: React.FC = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [schedules, setSchedules] = useState<ScheduleType[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
@@ -34,6 +48,7 @@ export const Schedule: React.FC = () => {
   useEffect(() => {
     if (weekDates.length > 0) {
       fetchSchedules();
+      fetchEvents();
     }
   }, [weekDates]);
 
@@ -47,7 +62,6 @@ export const Schedule: React.FC = () => {
   }, []);
 
   const fetchSchedules = async () => {
-    setLoading(true);
     try {
       const params = new URLSearchParams({
         startDate: formatDate(weekDates[0]),
@@ -59,6 +73,27 @@ export const Schedule: React.FC = () => {
       setSchedules(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
+    }
+  };
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      const startDate = formatDate(weekDates[0]);
+      const endDate = formatDate(weekDates[weekDates.length - 1]);
+      const response = await api.get<Event[]>('/api/events');
+      const allEvents = response.data || [];
+      
+      // 表示期間内のイベントのみフィルタリング
+      const filteredEvents = allEvents.filter((event) => {
+        const eventDate = new Date(event.date);
+        return eventDate >= new Date(startDate) && eventDate <= new Date(endDate);
+      });
+      
+      setEvents(filteredEvents);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -113,6 +148,17 @@ export const Schedule: React.FC = () => {
 
   const getSchedulesForDate = (date: Date) => {
     return schedules.filter((s) => isSameDay(s.date, date));
+  };
+
+  const getEventsForDate = (date: Date) => {
+    return events.filter((e) => {
+      const eventDate = new Date(e.date);
+      return isSameDay(eventDate, date);
+    });
+  };
+
+  const handleEventClick = (eventId: string) => {
+    navigate(`/events/${eventId}`);
   };
 
   return (
@@ -250,6 +296,7 @@ export const Schedule: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
+                    {/* スケジュール表示 */}
                     {daySchedules.map((schedule) => {
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
                       return (
@@ -276,6 +323,41 @@ export const Schedule: React.FC = () => {
                                 +{participantCount}
                               </span>
                             )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                    
+                    {/* イベント表示（read-only） */}
+                    {getEventsForDate(date).map((event) => {
+                      const eventTypeColors = {
+                        TOWN_OFFICIAL: 'bg-blue-100 border-blue-300 text-blue-800',
+                        TEAM: 'bg-green-100 border-green-300 text-green-800',
+                        OTHER: 'bg-gray-100 border-gray-300 text-gray-800',
+                      };
+                      const colorClass = eventTypeColors[event.eventType] || eventTypeColors.OTHER;
+                      
+                      return (
+                        <button
+                          key={event.id}
+                          onClick={() => handleEventClick(event.id)}
+                          className={`w-full text-left p-2 rounded text-xs border-2 hover:opacity-80 transition-opacity ${colorClass} ${
+                            event.isCompleted ? 'opacity-60' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">
+                                {event.eventName}
+                              </p>
+                              {event.startTime && (
+                                <p className="text-xs opacity-75">
+                                  {event.startTime}
+                                  {event.endTime && `-${event.endTime}`}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </button>
                       );

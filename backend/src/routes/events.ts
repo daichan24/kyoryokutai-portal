@@ -10,37 +10,73 @@ const eventSchema = z.object({
   eventName: z.string().min(1),
   eventType: z.enum(['TOWN_OFFICIAL', 'TEAM', 'OTHER']),
   date: z.string(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   location: z.string().optional(),
   locationText: z.string().optional(),
+  locationId: z.string().optional(),
   description: z.string().optional(),
   maxParticipants: z.number().optional(),
   projectId: z.string().optional(),
+  participants: z.array(z.object({
+    userId: z.string(),
+    participationType: z.enum(['PARTICIPATION', 'PREPARATION']),
+  })).optional(),
 });
 
 // イベント一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { eventType, upcoming } = req.query;
+    const { eventType, status } = req.query;
     const where: any = {};
 
     if (eventType) where.eventType = eventType;
-    if (upcoming === 'true') {
-      where.date = { gte: new Date() };
-    }
 
     const events = await prisma.event.findMany({
       where,
       include: {
         creator: { select: { id: true, name: true, avatarColor: true } },
         project: { select: { id: true, projectName: true } },
+        location: { select: { id: true, name: true } },
         participations: {
-          include: { user: { select: { id: true, name: true } } },
+          include: { user: { select: { id: true, name: true, avatarColor: true } } },
         },
       },
       orderBy: { date: 'desc' },
     });
 
-    res.json(events);
+    // クライアント側で実施済み/未実施を判定しやすくするため、endAtを計算して追加
+    const now = new Date();
+    const eventsWithStatus = events.map(event => {
+      // endAtを計算（date + endTime、endTimeがない場合はdateの23:59:59）
+      let endAt: Date;
+      if (event.endTime) {
+        const [hours, minutes] = event.endTime.split(':').map(Number);
+        endAt = new Date(event.date);
+        endAt.setHours(hours, minutes, 0, 0);
+      } else {
+        endAt = new Date(event.date);
+        endAt.setHours(23, 59, 59, 999);
+      }
+      
+      const isCompleted = endAt < now;
+      
+      return {
+        ...event,
+        endAt: endAt.toISOString(),
+        isCompleted,
+      };
+    });
+
+    // ステータスフィルター（クライアント側でフィルタリング）
+    let filteredEvents = eventsWithStatus;
+    if (status === 'upcoming') {
+      filteredEvents = eventsWithStatus.filter(e => !e.isCompleted);
+    } else if (status === 'past') {
+      filteredEvents = eventsWithStatus.filter(e => e.isCompleted);
+    }
+
+    res.json(filteredEvents);
   } catch (error) {
     console.error('Get events error:', error);
     res.status(500).json({ error: 'Failed to get events' });
@@ -48,7 +84,7 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 // イベント詳細取得
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: AuthRequest, res) => {
   try {
     const event = await prisma.event.findUnique({
       where: { id: req.params.id },
@@ -75,20 +111,58 @@ router.post('/', async (req: AuthRequest, res) => {
   try {
     const data = eventSchema.parse(req.body);
 
+    // イベント作成
     const event = await prisma.event.create({
       data: {
         createdBy: req.user!.id,
         eventName: data.eventName,
         eventType: data.eventType,
         date: new Date(data.date),
-        locationText: data.locationText || data.location,
-        description: data.description,
-        projectId: data.projectId,
+        startTime: data.startTime || null,
+        endTime: data.endTime || null,
+        locationId: data.locationId || null,
+        locationText: data.locationText || data.location || null,
+        description: data.description || null,
+        projectId: data.projectId || null,
       },
       include: { creator: true, project: true },
     });
 
-    res.status(201).json(event);
+    // 参加メンバーを追加
+    if (data.participants && data.participants.length > 0) {
+      await Promise.all(
+        data.participants.map((participant) => {
+          const pointEarned = participant.participationType === 'PARTICIPATION' 
+            ? 1.0 
+            : 0.5;
+          return prisma.eventParticipation.create({
+            data: {
+              eventId: event.id,
+              userId: participant.userId,
+              participationType: participant.participationType,
+              pointEarned,
+            },
+          });
+        })
+      );
+    }
+
+    // 参加メンバーを含めて再取得
+    const eventWithParticipants = await prisma.event.findUnique({
+      where: { id: event.id },
+      include: {
+        creator: { select: { id: true, name: true, avatarColor: true } },
+        project: { select: { id: true, projectName: true } },
+        location: { select: { id: true, name: true } },
+        participations: {
+          include: {
+            user: { select: { id: true, name: true, avatarColor: true } },
+          },
+        },
+      },
+    });
+
+    res.status(201).json(eventWithParticipants);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
@@ -117,20 +191,66 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
+    // イベント情報を更新
     const updated = await prisma.event.update({
       where: { id },
       data: {
         eventName: data.eventName,
         eventType: data.eventType,
         date: new Date(data.date),
-        locationText: data.locationText || data.location,
-        description: data.description,
-        projectId: data.projectId,
+        startTime: data.startTime || null,
+        endTime: data.endTime || null,
+        locationId: data.locationId || null,
+        locationText: data.locationText || data.location || null,
+        description: data.description || null,
+        projectId: data.projectId || null,
       },
       include: { creator: true, project: true },
     });
 
-    res.json(updated);
+    // 参加メンバーを更新（既存を削除して新規作成）
+    if (data.participants !== undefined) {
+      // 既存の参加メンバーを削除
+      await prisma.eventParticipation.deleteMany({
+        where: { eventId: id },
+      });
+
+      // 新しい参加メンバーを追加
+      if (data.participants.length > 0) {
+        await Promise.all(
+          data.participants.map((participant) => {
+            const pointEarned = participant.participationType === 'PARTICIPATION' 
+              ? 1.0 
+              : 0.5;
+            return prisma.eventParticipation.create({
+              data: {
+                eventId: id,
+                userId: participant.userId,
+                participationType: participant.participationType,
+                pointEarned,
+              },
+            });
+          })
+        );
+      }
+    }
+
+    // 参加メンバーを含めて再取得
+    const eventWithParticipants = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        creator: { select: { id: true, name: true, avatarColor: true } },
+        project: { select: { id: true, projectName: true } },
+        location: { select: { id: true, name: true } },
+        participations: {
+          include: {
+            user: { select: { id: true, name: true, avatarColor: true } },
+          },
+        },
+      },
+    });
+
+    res.json(eventWithParticipants);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
@@ -229,6 +349,65 @@ router.delete('/:id/participate', async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Cancel participation error:', error);
     res.status(500).json({ error: 'Failed to cancel participation' });
+  }
+});
+
+// イベント参加状況サマリー（自分の参加回数・ポイント）
+router.get('/participation-summary', async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // 今月の参加
+    const thisMonthParticipations = await prisma.eventParticipation.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: currentMonthStart,
+          lte: currentMonthEnd,
+        },
+      },
+      include: {
+        event: {
+          select: {
+            id: true,
+            eventName: true,
+            date: true,
+          },
+        },
+      },
+    });
+
+    // 累計参加
+    const allParticipations = await prisma.eventParticipation.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        event: {
+          select: {
+            id: true,
+            eventName: true,
+            date: true,
+          },
+        },
+      },
+    });
+
+    const thisMonthCount = thisMonthParticipations.length;
+    const totalCount = allParticipations.length;
+    const totalPoints = allParticipations.reduce((sum, p) => sum + p.pointEarned, 0);
+
+    res.json({
+      thisMonthCount,
+      totalCount,
+      totalPoints,
+    });
+  } catch (error) {
+    console.error('Get participation summary error:', error);
+    res.status(500).json({ error: 'Failed to get participation summary' });
   }
 });
 

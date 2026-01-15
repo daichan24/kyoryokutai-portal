@@ -16,11 +16,26 @@ interface Event {
   description?: string;
   maxParticipants?: number;
   projectId?: string;
+  participations?: Array<{
+    id: string;
+    userId: string;
+    participationType: 'PARTICIPATION' | 'PREPARATION';
+    user: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 interface Project {
   id: string;
   projectName: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  avatarColor?: string;
 }
 
 interface EventModalProps {
@@ -44,10 +59,16 @@ export const EventModal: React.FC<EventModalProps> = ({
   const [maxParticipants, setMaxParticipants] = useState<number | undefined>();
   const [projectId, setProjectId] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedParticipants, setSelectedParticipants] = useState<Array<{
+    userId: string;
+    participationType: 'PARTICIPATION' | 'PREPARATION';
+  }>>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchProjects();
+    fetchUsers();
 
     if (event) {
       setEventName(event.eventName);
@@ -59,8 +80,18 @@ export const EventModal: React.FC<EventModalProps> = ({
       setDescription(event.description || '');
       setMaxParticipants(event.maxParticipants);
       setProjectId(event.projectId || '');
+      // 参加メンバーを設定
+      if (event.participations) {
+        setSelectedParticipants(
+          event.participations.map((p) => ({
+            userId: p.userId,
+            participationType: p.participationType,
+          }))
+        );
+      }
     } else {
       setDate(formatDate(new Date()));
+      setSelectedParticipants([]);
     }
   }, [event]);
 
@@ -74,6 +105,36 @@ export const EventModal: React.FC<EventModalProps> = ({
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get<User[]>('/api/users');
+      setUsers(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      setUsers([]);
+    }
+  };
+
+  const handleParticipantToggle = (userId: string, participationType: 'PARTICIPATION' | 'PREPARATION') => {
+    setSelectedParticipants((prev) => {
+      const existing = prev.find((p) => p.userId === userId);
+      if (existing) {
+        if (existing.participationType === participationType) {
+          // 同じタイプなら削除
+          return prev.filter((p) => p.userId !== userId);
+        } else {
+          // 異なるタイプなら更新
+          return prev.map((p) =>
+            p.userId === userId ? { ...p, participationType } : p
+          );
+        }
+      } else {
+        // 新規追加
+        return [...prev, { userId, participationType }];
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -83,10 +144,13 @@ export const EventModal: React.FC<EventModalProps> = ({
         eventName,
         eventType,
         date,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
         locationText: locationText || undefined,
         description: description || undefined,
         maxParticipants: maxParticipants || undefined,
         projectId: projectId || undefined,
+        participants: selectedParticipants.length > 0 ? selectedParticipants : undefined,
       };
 
       if (event) {

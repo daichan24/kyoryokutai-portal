@@ -15,6 +15,7 @@ import {
   Eye,
   Contact,
   FileBarChart,
+  MessageSquareText,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -26,9 +27,7 @@ export const Sidebar: React.FC = () => {
   const commonItems = [
     { to: '/dashboard', icon: Home, label: 'ダッシュボード' },
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
-    { to: '/reports/weekly', icon: FileText, label: '週次報告' },
     { to: '/events', icon: CalendarDays, label: 'イベント' },
-    { to: '/nudges', icon: FileText, label: '協力隊催促' },
   ];
 
   // MEMBER専用のメニュー（自分のデータのみ）
@@ -38,7 +37,6 @@ export const Sidebar: React.FC = () => {
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/contacts', icon: Contact, label: '町民データベース' },
     { to: '/task-requests', icon: UserCheck, label: 'タスク依頼' },
-    { to: '/inspections', icon: Eye, label: '視察記録' },
   ];
 
   // SUPPORT/GOVERNMENT/MASTER用のメニュー（全データ閲覧可能）
@@ -48,13 +46,36 @@ export const Sidebar: React.FC = () => {
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/contacts', icon: Contact, label: '町民データベース' },
     { to: '/task-requests', icon: UserCheck, label: 'タスク依頼' },
-    { to: '/inspections', icon: Eye, label: '視察記録' },
   ];
 
-  // SUPPORT/MASTER専用のメニュー
-  const supportMasterItems = [
-    { to: '/reports/monthly', icon: FileBarChart, label: '月次報告' },
-  ];
+  // 報告カテゴリのメニュー
+  const getReportItems = () => {
+    const items = [
+      { to: '/reports/weekly', icon: FileText, label: '週次報告' },
+      { to: '/inspections', icon: Eye, label: '視察記録' },
+    ];
+    // SUPPORT/MASTERのみ月次報告を追加
+    if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
+      items.splice(1, 0, { to: '/reports/monthly', icon: FileBarChart, label: '月次報告' });
+    }
+    return items;
+  };
+
+  const reportItems = getReportItems();
+
+  // 情報カテゴリのメニュー（イベント参加状況）
+  const getInfoItems = () => {
+    const items: Array<{ to: string; icon: typeof CalendarDays; label: string }> = [];
+    // 全ロールでイベント参加状況を表示
+    items.push({
+      to: '/events/participation-summary',
+      icon: CalendarDays,
+      label: 'イベント参加状況',
+    });
+    return items;
+  };
+
+  const infoItems = getInfoItems();
 
   // ロール別にメニューを組み立て
   const getNavItems = () => {
@@ -82,7 +103,7 @@ export const Sidebar: React.FC = () => {
     return 'ユーザー情報';
   };
 
-  const userMenuItems: Array<{ to: string; icon: typeof Users | typeof Settings; label: string }> = [];
+  const userMenuItems: Array<{ to: string; icon: typeof Users | typeof Settings | typeof MapPin | typeof MessageSquareText; label: string }> = [];
   
   // プロフィール設定（全ユーザー）
   userMenuItems.push({
@@ -100,12 +121,23 @@ export const Sidebar: React.FC = () => {
     });
   }
 
-  const adminItems =
-    user?.role === 'MASTER'
-      ? [
-          { to: '/settings/locations', icon: MapPin, label: '場所管理' },
-        ]
-      : [];
+  // MASTERのみ場所管理
+  if (user?.role === 'MASTER') {
+    userMenuItems.push({
+      to: '/settings/locations',
+      icon: MapPin,
+      label: '場所管理',
+    });
+  }
+
+  // 協力隊催促（MASTER/SUPPORT/GOVERNMENTのみ編集可、MEMBERは閲覧のみ）
+  if (user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MEMBER') {
+    userMenuItems.push({
+      to: '/nudges',
+      icon: MessageSquareText,
+      label: '協力隊催促',
+    });
+  }
 
   return (
     <aside className="w-64 bg-white border-r border-border h-full">
@@ -128,14 +160,14 @@ export const Sidebar: React.FC = () => {
           </NavLink>
         ))}
 
-        {(userMenuItems.length > 0 || adminItems.length > 0) && (
+        {reportItems.length > 0 && (
           <>
             <div className="pt-4 pb-2">
               <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                {user?.role === 'MASTER' ? '管理' : '情報'}
+                報告
               </p>
             </div>
-            {userMenuItems.map((item) => (
+            {reportItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -152,7 +184,44 @@ export const Sidebar: React.FC = () => {
                 <span className="font-medium">{item.label}</span>
               </NavLink>
             ))}
-            {adminItems.map((item) => (
+          </>
+        )}
+
+        {infoItems.length > 0 && (
+          <>
+            <div className="pt-4 pb-2">
+              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                情報
+              </p>
+            </div>
+            {infoItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
+                    isActive
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  )
+                }
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="font-medium">{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
+
+        {(userMenuItems.length > 0) && (
+          <>
+            <div className="pt-4 pb-2">
+              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                {user?.role === 'MASTER' ? '管理' : '情報'}
+              </p>
+            </div>
+            {userMenuItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}

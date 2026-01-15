@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { EventModal } from '../components/event/EventModal';
@@ -12,23 +13,33 @@ interface Event {
   date: string;
   startTime?: string;
   endTime?: string;
+  endAt?: string; // 計算された終了日時
+  isCompleted?: boolean; // 実施済みフラグ
   description?: string;
   participationPoint: number;
   preparationPoint: number;
   participations: any[];
+  location?: { id: string; name: string } | null;
+  locationText?: string | null;
 }
 
 export const Events: React.FC = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [filterType, setFilterType] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // 未実施/実施済み/すべて
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const queryClient = useQueryClient();
 
   const { data: events, isLoading } = useQuery<Event[]>({
-    queryKey: ['events'],
+    queryKey: ['events', statusFilter],
     queryFn: async () => {
-      const response = await api.get('/api/events');
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      const response = await api.get(`/api/events?${params.toString()}`);
       return response.data;
     }
   });
@@ -81,6 +92,15 @@ export const Events: React.FC = () => {
 
       <div className="flex gap-4">
         <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-gray-300 rounded-lg px-4 py-2"
+        >
+          <option value="all">すべて</option>
+          <option value="upcoming">未実施</option>
+          <option value="past">実施済み</option>
+        </select>
+        <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
           className="border border-gray-300 rounded-lg px-4 py-2"
@@ -94,7 +114,15 @@ export const Events: React.FC = () => {
 
       <div className="space-y-3">
         {filteredEvents?.map((event) => (
-          <div key={event.id} className="bg-white border rounded-lg p-5">
+          <div 
+            key={event.id} 
+            className={`bg-white border rounded-lg p-5 cursor-pointer hover:bg-gray-50 transition-colors ${
+              event.isCompleted ? 'opacity-60' : ''
+            }`}
+            onClick={() => {
+              navigate(`/events/${event.id}`);
+            }}
+          >
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
@@ -102,10 +130,27 @@ export const Events: React.FC = () => {
                   <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(event.eventType)}`}>
                     {getTypeLabel(event.eventType)}
                   </span>
+                  {event.isCompleted && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">
+                      実施済み
+                    </span>
+                  )}
                 </div>
                 <div className="text-sm text-gray-600">
                   {format(new Date(event.date), 'yyyy年M月d日')}
+                  {event.startTime && ` ${event.startTime}〜`}
+                  {event.endTime && event.endTime}
                 </div>
+                {event.location && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    場所: {event.location.name}
+                  </div>
+                )}
+                {event.locationText && !event.location && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    場所: {event.locationText}
+                  </div>
+                )}
               </div>
             </div>
             {event.description && (

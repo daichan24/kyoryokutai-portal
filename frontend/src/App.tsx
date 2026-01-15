@@ -13,10 +13,11 @@ import { LocationsSettings } from './pages/Settings/Locations';
 import { ProfileSettings } from './pages/Settings/Profile';
 import { Nudges } from './pages/Nudges';
 
-
 // 既存のインポートの下に追加
 import { Projects } from './pages/Projects';
 import { Events } from './pages/Events';
+import { EventDetail } from './pages/EventDetail';
+import { EventParticipationSummary } from './pages/EventParticipationSummary';
 import { SNSPosts } from './pages/SNSPosts';
 import { Goals } from './pages/Goals';
 import { TaskRequests } from './pages/TaskRequests';
@@ -153,6 +154,28 @@ const App: React.FC = () => {
           <PrivateRoute>
             <Layout>
               <Events />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/events/:id"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <EventDetail />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/events/participation-summary"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <EventParticipationSummary />
             </Layout>
           </PrivateRoute>
         }
