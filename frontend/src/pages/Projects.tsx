@@ -207,9 +207,27 @@ export const Projects: React.FC = () => {
               )}
             </div>
 
+            {/* 方向性（Mission）表示 */}
             {project.mission && (
-              <div className="text-xs bg-purple-50 border border-purple-200 rounded px-2 py-1 mb-3">
-                ミッション: {project.mission.missionName || project.mission.goalName || '未設定'}
+              <div className="text-xs text-gray-500 mb-2">
+                方向性: <span className="text-gray-700">{project.mission.missionName || project.mission.goalName || '未設定'}</span>
+              </div>
+            )}
+
+            {/* タスク数表示 */}
+            {project.projectTasks && project.projectTasks.length > 0 && (
+              <div className="text-xs text-gray-500 mb-3">
+                タスク: {project.projectTasks.length}件
+                {project.projectTasks.filter(t => t.status === 'COMPLETED').length > 0 && (
+                  <span className="text-green-600 ml-1">
+                    （完了: {project.projectTasks.filter(t => t.status === 'COMPLETED').length}）
+                  </span>
+                )}
+                {project.projectTasks.filter(t => t.status === 'IN_PROGRESS').length > 0 && (
+                  <span className="text-blue-600 ml-1">
+                    （進行中: {project.projectTasks.filter(t => t.status === 'IN_PROGRESS').length}）
+                  </span>
+                )}
               </div>
             )}
 

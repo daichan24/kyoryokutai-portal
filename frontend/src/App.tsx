@@ -20,6 +20,7 @@ import { EventDetail } from './pages/EventDetail';
 import { EventParticipationSummary } from './pages/EventParticipationSummary';
 import { SNSPosts } from './pages/SNSPosts';
 import { Goals } from './pages/Goals';
+import { Tasks } from './pages/Tasks';
 import { TaskRequests } from './pages/TaskRequests';
 import { Inspections } from './pages/Inspections';
 import { Contacts } from './pages/Contacts';
@@ -143,6 +144,17 @@ const App: React.FC = () => {
           <PrivateRoute>
             <Layout>
               <Projects />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/tasks"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <Tasks />
             </Layout>
           </PrivateRoute>
         }

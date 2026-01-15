@@ -31,18 +31,25 @@ export const Sidebar: React.FC = () => {
     { to: '/events', icon: CalendarDays, label: 'イベント' },
   ];
 
+  // 方向性カテゴリ（Mission）
+  const directionItems = [
+    { to: '/goals', icon: Target, label: '方向性' },
+  ];
+
+  // 進行中の取り組みカテゴリ（Project, Task）
+  const activeWorkItems = [
+    { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
+    { to: '/tasks', icon: Check, label: 'タスク' },
+  ];
+
   // MEMBER専用のメニュー（自分のデータのみ）
   const memberOnlyItems = [
-    { to: '/goals', icon: Target, label: 'ミッション' },
-    { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     // 町民データベースは「状況」カテゴリに移動したため削除
   ];
 
   // SUPPORT/GOVERNMENT/MASTER用のメニュー（全データ閲覧可能）
   const supportGovernmentItems = [
-    { to: '/goals', icon: Target, label: 'ミッション' },
-    { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/task-requests', icon: UserCheck, label: '依頼' },
   ];
@@ -174,6 +181,62 @@ export const Sidebar: React.FC = () => {
             <span className="font-medium">{item.label}</span>
           </NavLink>
         ))}
+
+        {/* 方向性カテゴリ */}
+        {directionItems.length > 0 && (
+          <>
+            <div className="pt-4 pb-2">
+              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                方向性
+              </p>
+            </div>
+            {directionItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
+                    isActive
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  )
+                }
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="font-medium">{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
+
+        {/* 進行中の取り組みカテゴリ */}
+        {activeWorkItems.length > 0 && (
+          <>
+            <div className="pt-4 pb-2">
+              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                進行中の取り組み
+              </p>
+            </div>
+            {activeWorkItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
+                    isActive
+                      ? 'bg-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  )
+                }
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="font-medium">{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
 
         {reportItems.length > 0 && (
           <>
