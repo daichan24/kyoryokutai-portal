@@ -263,6 +263,14 @@ export const TaskRequests: React.FC = () => {
           </div>
         </section>
       )}
+        </>
+      )}
+
+      {viewMode === 'create' && (
+        <div className="text-center py-12 text-gray-500">
+          新規依頼を作成するには、右上の「新規依頼」ボタンをクリックしてください。
+        </div>
+      )}
 
       {isModalOpen && (
         <TaskRequestModal
