@@ -114,10 +114,10 @@ export const TaskRequests: React.FC = () => {
         )}
       </div>
 
-      {/* 受信した依頼（協力隊員） */}
+      {/* 受信したタスク（協力隊員） */}
       {user?.role === 'MEMBER' && (
         <section>
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">受信した依頼</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">受信したタスク</h2>
           <div className="space-y-3">
             {receivedRequests?.map((request) => (
               <div key={request.id} className="bg-white border border-gray-200 rounded-lg p-5">
@@ -131,7 +131,7 @@ export const TaskRequests: React.FC = () => {
                 <p className="text-gray-600 text-sm mb-4">{request.requestDescription}</p>
 
                 <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                  <span>依頼元: {request.requester.name}</span>
+                  <span>依頼元: {request.requester.name}さん</span>
                   {request.deadline && (
                     <span>期限: {format(new Date(request.deadline), 'yyyy/MM/dd')}</span>
                   )}
