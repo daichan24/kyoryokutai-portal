@@ -63,8 +63,8 @@ export const Sidebar: React.FC = () => {
 
   const reportItems = getReportItems();
 
-  // 情報カテゴリのメニュー（イベント参加状況）
-  const getInfoItems = () => {
+  // 状況カテゴリのメニュー（イベント参加状況）
+  const getStatusItems = () => {
     const items: Array<{ to: string; icon: typeof CalendarDays; label: string }> = [];
     // 全ロールでイベント参加状況を表示
     items.push({
@@ -75,7 +75,7 @@ export const Sidebar: React.FC = () => {
     return items;
   };
 
-  const infoItems = getInfoItems();
+  const statusItems = getStatusItems();
 
   // ロール別にメニューを組み立て
   const getNavItems = () => {
@@ -185,14 +185,14 @@ export const Sidebar: React.FC = () => {
           </>
         )}
 
-        {infoItems.length > 0 && (
+        {statusItems.length > 0 && (
           <>
             <div className="pt-4 pb-2">
               <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                情報
+                状況
               </p>
             </div>
-            {infoItems.map((item) => (
+            {statusItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
