@@ -95,7 +95,12 @@ CREATE TABLE "Task" (
 );
 
 -- TaskStatus enum を作成
-CREATE TYPE "TaskStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TaskStatus') THEN
+    CREATE TYPE "TaskStatus" AS ENUM ('NOT_STARTED','IN_PROGRESS','COMPLETED');
+  END IF;
+END $$;
 
 -- ProjectSubGoal のデータを Task に移行
 -- 注意: ProjectSubGoal は projectId のみ持っていたが、Task は missionId が必須

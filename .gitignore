@@ -39,3 +39,14 @@ Thumbs.db
 *.db
 *.sqlite
 
+# Database backups
+*.dump
+*.log
+
+# Local docs / ops notes
+BACKUP_GUIDE.md
+DEPLOYMENT_*.md
+PRODUCTION_DEPLOYMENT.md
+QUICK_DEPLOY_GUIDE.md
+RENDER_*.md
+REFACTORING_SUMMARY.md
