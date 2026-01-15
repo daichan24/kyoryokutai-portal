@@ -44,8 +44,8 @@ model User {
   scheduleSuggestions ScheduleSuggestion[]
 
   // Phase 4 Relations
-  requestsSent     Request[]         @relation("Requester")
-  requestsReceived Request[]         @relation("Requestee")
+  requestsSent         Request[]             @relation("Requester")
+  requestsReceived     Request[]             @relation("Requestee")
   inspections          Inspection[]
   personalModeEnabled  Boolean               @default(false)
   personalProjects     PersonalProject[]
@@ -168,9 +168,9 @@ model Mission {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  missionName     String
-  missionType     MissionTypeEnum @default(PRIMARY)
-  targetPercentage Int            @default(100)
+  missionName      String
+  missionType      MissionTypeEnum @default(PRIMARY)
+  targetPercentage Int             @default(100)
 
   approvalStatus  ApprovalStatus @default(DRAFT)
   approvalComment String?        @db.Text
@@ -179,7 +179,6 @@ model Mission {
 
   midGoals MidGoal[]
   projects Project[]
-  tasks    Task[] // ミッション配下のタスク（プロジェクトと並列）
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -300,11 +299,11 @@ model Project {
 
   members          ProjectMember[]
   tasks            ProjectTask[]
+  projectTasks     Task[] // プロジェクト配下のタスク（小目標）
   schedules        Schedule[]
   events           Event[]
   contactHistories ContactHistory[]
   requests         Request[] // Phase 4: 依頼（旧：タスク依頼）
-  relatedTasks     Task[] // このプロジェクトに関連するタスク（任意）
   inspections      Inspection[] // Phase 4
 
   createdAt DateTime @default(now())
@@ -342,7 +341,7 @@ model ProjectTask {
   order      Int       @default(0)
 
   scheduleProgress ScheduleProgress[]
-  request Request? // Phase 4: 依頼との紐付け（旧：タスク依頼）
+  request          Request? // Phase 4: 依頼との紐付け（旧：タスク依頼）
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -357,23 +356,19 @@ model ProjectTask {
 
 model Task {
   id        String  @id @default(uuid())
-  missionId String
-  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
-
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   title       String
-  description String? @db.Text
+  description String?    @db.Text
   status      TaskStatus @default(NOT_STARTED)
-  order       Int     @default(0)
+  order       Int        @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([missionId])
   @@index([projectId])
-  @@index([missionId, status])
+  @@index([projectId, status])
 }
 
 enum TaskStatus {

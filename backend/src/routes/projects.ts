@@ -38,7 +38,7 @@ router.get('/', async (req: AuthRequest, res) => {
         mission: { select: { id: true, missionName: true } },
         members: { include: { user: { select: { id: true, name: true } } } },
         tasks: { orderBy: { order: 'asc' } },
-        relatedTasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // 関連タスクを含める
+        projectTasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // プロジェクト配下のタスク（小目標）
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -60,7 +60,7 @@ router.get('/:id', async (req, res) => {
         mission: true,
         members: { include: { user: true } },
         tasks: { include: { assignee: { select: { id: true, name: true } } } },
-        relatedTasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // 関連タスクを含める
+        projectTasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // プロジェクト配下のタスク（小目標）
         schedules: { take: 10, orderBy: { date: 'desc' } },
       },
     });
@@ -69,8 +69,8 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // 関連タスクの進捗率を計算
-    const tasks = project.relatedTasks || [];
+    // プロジェクト配下のタスクの進捗率を計算
+    const tasks = project.projectTasks || [];
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
     const taskProgress = totalTasks > 0 

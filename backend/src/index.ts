@@ -14,6 +14,7 @@ import inspectionsRoutes from './routes/inspections';
 import personalRoutes from './routes/personal';
 import notificationsRoutes from './routes/notifications';
 import projectsRoutes from './routes/projects';
+import tasksRoutes from './routes/tasks';
 import eventsRoutes from './routes/events';
 import snsPostsRoutes from './routes/snsPosts';
 import contactsRoutes from './routes/contacts';
@@ -92,6 +93,7 @@ app.use('/api/inspections', inspectionsRoutes);
 app.use('/api/personal', personalRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/projects', projectsRoutes);
+app.use('/api', tasksRoutes); // /api/projects/:projectId/tasks のルート
 app.use('/api/events', eventsRoutes);
 app.use('/api/sns-posts', snsPostsRoutes);
 app.use('/api/contacts', contactsRoutes);
