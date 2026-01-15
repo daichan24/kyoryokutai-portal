@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
-import { Task } from '../../types';
+import { Task, Project } from '../../types';
+import { api } from '../../utils/api';
 
 interface TaskModalProps {
+  missionId: string;
   task?: Task | null;
   onClose: () => void;
-  onSaved: (task: Task) => void;
+  onSaved: () => void;
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
+  missionId,
   task,
   onClose,
   onSaved,
@@ -18,17 +21,34 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'>('NOT_STARTED');
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // ミッション配下のプロジェクトを取得
+    const fetchProjects = async () => {
+      try {
+        const response = await api.get(`/api/projects?missionId=${missionId}`);
+        setProjects(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch projects:', error);
+      }
+    };
+    fetchProjects();
+  }, [missionId]);
 
   useEffect(() => {
     if (task) {
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
+      setProjectId(task.projectId || null);
     } else {
       setTitle('');
       setDescription('');
       setStatus('NOT_STARTED');
+      setProjectId(null);
     }
   }, [task]);
 
@@ -41,17 +61,21 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
     setLoading(true);
     try {
-      const data: Task = {
-        id: task?.id || '',
+      const data = {
         title: title.trim(),
         description: description.trim() || undefined,
         status,
-        projectId: task?.projectId || '',
-        order: task?.order || 0,
-        createdAt: task?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        projectId: projectId || null,
       };
-      onSaved(data);
+
+      if (task) {
+        // 更新
+        await api.put(`/api/missions/${missionId}/tasks/${task.id}`, data);
+      } else {
+        // 作成
+        await api.post(`/api/missions/${missionId}/tasks`, data);
+      }
+      onSaved();
     } catch (error) {
       console.error('Failed to save task:', error);
       alert('保存に失敗しました');
@@ -97,6 +121,24 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              関連プロジェクト（任意）
+            </label>
+            <select
+              value={projectId || ''}
+              onChange={(e) => setProjectId(e.target.value || null)}
+              className="w-full px-3 py-2 border border-border rounded-md"
+            >
+              <option value="">プロジェクトを選択しない</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.projectName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               ステータス
             </label>
             <select
@@ -123,4 +165,3 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     </div>
   );
 };
-

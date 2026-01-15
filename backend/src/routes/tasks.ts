@@ -10,38 +10,52 @@ const taskSchema = z.object({
   title: z.string().min(1, 'タイトルは必須です'),
   description: z.string().optional(),
   status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']).optional(),
+  projectId: z.string().optional().nullable(), // プロジェクトへの紐付けは任意
   order: z.number().int().optional(),
 });
 
 /**
- * GET /api/projects/:projectId/tasks
- * プロジェクトのタスク一覧を取得
+ * GET /api/missions/:missionId/tasks
+ * ミッションのタスク一覧を取得
+ * オプション: projectId でフィルタリング可能
  */
-router.get('/projects/:projectId/tasks', async (req: AuthRequest, res) => {
+router.get('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
   try {
-    const { projectId } = req.params;
+    const { missionId } = req.params;
+    const { projectId } = req.query;
 
-    // プロジェクトの存在確認と権限チェック
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      include: {
-        user: { select: { id: true } },
-        mission: { select: { id: true, userId: true } },
-      },
+    // ミッションの存在確認と権限チェック
+    const mission = await prisma.mission.findUnique({
+      where: { id: missionId },
+      select: { id: true, userId: true },
     });
 
-    if (!project) {
-      return res.status(404).json({ error: 'プロジェクトが見つかりません' });
+    if (!mission) {
+      return res.status(404).json({ error: 'ミッションが見つかりません' });
     }
 
     // 権限チェック
-    // MEMBERは自分のプロジェクトのみ、他は全プロジェクト閲覧可
-    if (req.user!.role === 'MEMBER' && project.userId !== req.user!.id) {
+    // MEMBERは自分のミッションのみ、他は全ミッション閲覧可
+    if (req.user!.role === 'MEMBER' && mission.userId !== req.user!.id) {
       return res.status(403).json({ error: '権限がありません' });
     }
 
+    // タスクを取得（projectId でフィルタリング可能）
+    const where: any = { missionId };
+    if (projectId) {
+      where.projectId = projectId;
+    }
+
     const tasks = await prisma.task.findMany({
-      where: { projectId },
+      where,
+      include: {
+        project: {
+          select: {
+            id: true,
+            projectName: true,
+          },
+        },
+      },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
     });
 
@@ -53,41 +67,54 @@ router.get('/projects/:projectId/tasks', async (req: AuthRequest, res) => {
 });
 
 /**
- * POST /api/projects/:projectId/tasks
+ * POST /api/missions/:missionId/tasks
  * タスクを作成
- * 権限: MASTER/SUPPORT: 全プロジェクト、MEMBER: 自分のプロジェクトのみ
+ * 権限: MASTER/SUPPORT: 全ミッション、MEMBER: 自分のミッションのみ
  */
-router.post('/projects/:projectId/tasks', async (req: AuthRequest, res) => {
+router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
   try {
-    const { projectId } = req.params;
+    const { missionId } = req.params;
     const data = taskSchema.parse(req.body);
 
-    // プロジェクトの存在確認と権限チェック
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      include: {
-        user: { select: { id: true } },
-        mission: { select: { id: true, userId: true } },
-      },
+    // ミッションの存在確認と権限チェック
+    const mission = await prisma.mission.findUnique({
+      where: { id: missionId },
+      select: { id: true, userId: true },
     });
 
-    if (!project) {
-      return res.status(404).json({ error: 'プロジェクトが見つかりません' });
+    if (!mission) {
+      return res.status(404).json({ error: 'ミッションが見つかりません' });
     }
 
     // 権限チェック
     if (req.user!.role === 'GOVERNMENT') {
       return res.status(403).json({ error: '権限がありません' });
     }
-    if (req.user!.role === 'MEMBER' && project.userId !== req.user!.id) {
+    if (req.user!.role === 'MEMBER' && mission.userId !== req.user!.id) {
       return res.status(403).json({ error: '権限がありません' });
+    }
+
+    // projectId が指定されている場合、そのプロジェクトが同じミッションに属しているか確認
+    if (data.projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: data.projectId },
+        select: { id: true, missionId: true },
+      });
+
+      if (!project) {
+        return res.status(404).json({ error: 'プロジェクトが見つかりません' });
+      }
+
+      if (project.missionId !== missionId) {
+        return res.status(400).json({ error: 'プロジェクトがこのミッションに属していません' });
+      }
     }
 
     // orderが指定されていない場合は最後に追加
     let order = data.order;
     if (order === undefined) {
       const lastTask = await prisma.task.findFirst({
-        where: { projectId },
+        where: { missionId },
         orderBy: { order: 'desc' },
       });
       order = lastTask ? lastTask.order + 1 : 0;
@@ -95,11 +122,20 @@ router.post('/projects/:projectId/tasks', async (req: AuthRequest, res) => {
 
     const task = await prisma.task.create({
       data: {
-        projectId,
+        missionId,
+        projectId: data.projectId || null,
         title: data.title,
         description: data.description || null,
         status: data.status || 'NOT_STARTED',
         order,
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            projectName: true,
+          },
+        },
       },
     });
 
@@ -114,21 +150,28 @@ router.post('/projects/:projectId/tasks', async (req: AuthRequest, res) => {
 });
 
 /**
- * PUT /api/projects/:projectId/tasks/:id
+ * PUT /api/missions/:missionId/tasks/:id
  * タスクを更新
  */
-router.put('/projects/:projectId/tasks/:id', async (req: AuthRequest, res) => {
+router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
   try {
-    const { projectId, id } = req.params;
+    const { missionId, id } = req.params;
     const data = taskSchema.partial().parse(req.body);
 
     // タスクの存在確認
     const task = await prisma.task.findUnique({
       where: { id },
       include: {
+        mission: {
+          select: {
+            id: true,
+            userId: true,
+          },
+        },
         project: {
-          include: {
-            user: { select: { id: true } },
+          select: {
+            id: true,
+            userId: true,
           },
         },
       },
@@ -138,16 +181,32 @@ router.put('/projects/:projectId/tasks/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'タスクが見つかりません' });
     }
 
-    if (task.projectId !== projectId) {
-      return res.status(400).json({ error: 'プロジェクトIDが一致しません' });
+    if (task.missionId !== missionId) {
+      return res.status(400).json({ error: 'ミッションIDが一致しません' });
     }
 
     // 権限チェック
     if (req.user!.role === 'GOVERNMENT') {
       return res.status(403).json({ error: '権限がありません' });
     }
-    if (req.user!.role === 'MEMBER' && task.project.userId !== req.user!.id) {
+    if (req.user!.role === 'MEMBER' && task.mission.userId !== req.user!.id) {
       return res.status(403).json({ error: '権限がありません' });
+    }
+
+    // projectId が変更される場合、そのプロジェクトが同じミッションに属しているか確認
+    if (data.projectId !== undefined && data.projectId !== null) {
+      const project = await prisma.project.findUnique({
+        where: { id: data.projectId },
+        select: { id: true, missionId: true },
+      });
+
+      if (!project) {
+        return res.status(404).json({ error: 'プロジェクトが見つかりません' });
+      }
+
+      if (project.missionId !== missionId) {
+        return res.status(400).json({ error: 'プロジェクトがこのミッションに属していません' });
+      }
     }
 
     const updated = await prisma.task.update({
@@ -156,7 +215,16 @@ router.put('/projects/:projectId/tasks/:id', async (req: AuthRequest, res) => {
         title: data.title,
         description: data.description !== undefined ? (data.description || null) : undefined,
         status: data.status,
+        projectId: data.projectId !== undefined ? (data.projectId || null) : undefined,
         order: data.order,
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            projectName: true,
+          },
+        },
       },
     });
 
@@ -171,20 +239,21 @@ router.put('/projects/:projectId/tasks/:id', async (req: AuthRequest, res) => {
 });
 
 /**
- * DELETE /api/projects/:projectId/tasks/:id
+ * DELETE /api/missions/:missionId/tasks/:id
  * タスクを削除
  */
-router.delete('/projects/:projectId/tasks/:id', async (req: AuthRequest, res) => {
+router.delete('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
   try {
-    const { projectId, id } = req.params;
+    const { missionId, id } = req.params;
 
     // タスクの存在確認
     const task = await prisma.task.findUnique({
       where: { id },
       include: {
-        project: {
-          include: {
-            user: { select: { id: true } },
+        mission: {
+          select: {
+            id: true,
+            userId: true,
           },
         },
       },
@@ -194,15 +263,15 @@ router.delete('/projects/:projectId/tasks/:id', async (req: AuthRequest, res) =>
       return res.status(404).json({ error: 'タスクが見つかりません' });
     }
 
-    if (task.projectId !== projectId) {
-      return res.status(400).json({ error: 'プロジェクトIDが一致しません' });
+    if (task.missionId !== missionId) {
+      return res.status(400).json({ error: 'ミッションIDが一致しません' });
     }
 
     // 権限チェック
     if (req.user!.role === 'GOVERNMENT') {
       return res.status(403).json({ error: '権限がありません' });
     }
-    if (req.user!.role === 'MEMBER' && task.project.userId !== req.user!.id) {
+    if (req.user!.role === 'MEMBER' && task.mission.userId !== req.user!.id) {
       return res.status(403).json({ error: '権限がありません' });
     }
 

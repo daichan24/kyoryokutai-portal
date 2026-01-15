@@ -179,6 +179,7 @@ model Mission {
 
   midGoals MidGoal[]
   projects Project[]
+  tasks    Task[] // タスク（小目標）
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -299,7 +300,7 @@ model Project {
 
   members          ProjectMember[]
   tasks            ProjectTask[]
-  projectTasks     Task[] // プロジェクト配下のタスク（小目標）
+  relatedTasks     Task[] // このプロジェクトに関連するタスク（小目標、任意）
   schedules        Schedule[]
   events           Event[]
   contactHistories ContactHistory[]
@@ -356,8 +357,11 @@ model ProjectTask {
 
 model Task {
   id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  missionId String
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   title       String
   description String?    @db.Text
@@ -367,7 +371,9 @@ model Task {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([missionId])
   @@index([projectId])
+  @@index([missionId, status])
   @@index([projectId, status])
 }
 

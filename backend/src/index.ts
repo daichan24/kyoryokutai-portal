@@ -93,7 +93,7 @@ app.use('/api/inspections', inspectionsRoutes);
 app.use('/api/personal', personalRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/projects', projectsRoutes);
-app.use('/api', tasksRoutes); // /api/projects/:projectId/tasks のルート
+app.use('/api', tasksRoutes); // /api/missions/:missionId/tasks のルート
 app.use('/api/events', eventsRoutes);
 app.use('/api/sns-posts', snsPostsRoutes);
 app.use('/api/contacts', contactsRoutes);

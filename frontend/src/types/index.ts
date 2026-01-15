@@ -122,7 +122,7 @@ export interface Project {
   projectName: string;
   missionId?: string;
   mission?: Mission;
-  projectTasks?: Task[]; // プロジェクト配下のタスク（小目標）
+  relatedTasks?: Task[]; // このプロジェクトに関連するタスク（小目標、任意）
   taskProgress?: number; // プロジェクト配下のタスクの進捗率
 }
 
@@ -141,6 +141,7 @@ export interface Mission {
   progress?: number;
   midGoals?: MidGoal[];
   projects?: Project[];
+  tasks?: Task[]; // タスク（小目標）
   createdAt: string;
   updatedAt: string;
 }
@@ -192,10 +193,12 @@ export interface GoalTask {
   updatedAt: string;
 }
 
-// タスク（プロジェクト配下の小目標）
+// タスク（ミッション配下の小目標、プロジェクトは任意）
 export interface Task {
   id: string;
-  projectId: string;
+  missionId: string;
+  mission?: Mission;
+  projectId?: string | null; // プロジェクトへの紐付けは任意
   project?: Project;
   title: string;
   description?: string;

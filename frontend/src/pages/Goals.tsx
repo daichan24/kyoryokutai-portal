@@ -6,9 +6,11 @@ import { GoalModal } from '../components/goal/GoalModal';
 import { MidGoalModal } from '../components/goal/MidGoalModal';
 import { SubGoalModal } from '../components/goal/SubGoalModal';
 import { GoalTaskModal } from '../components/goal/GoalTaskModal';
+import { MissionDetailContent } from '../components/mission/MissionDetailContent';
 import { Button } from '../components/common/Button';
-import { Plus } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { Task, Project } from '../types';
 
 interface Goal {
   id: string;
@@ -60,6 +62,7 @@ export const Goals: React.FC = () => {
   const [isMidGoalModalOpen, setIsMidGoalModalOpen] = useState(false);
   const [isSubGoalModalOpen, setIsSubGoalModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   
   // 選択状態
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
@@ -67,6 +70,7 @@ export const Goals: React.FC = () => {
   const [selectedMidGoalId, setSelectedMidGoalId] = useState<string>('');
   const [selectedSubGoalId, setSelectedSubGoalId] = useState<string>('');
   const [selectedTask, setSelectedTask] = useState<GoalTask | null>(null);
+  const [selectedNewTask, setSelectedNewTask] = useState<Task | null>(null);
 
   const { data: goals, isLoading } = useQuery<Goal[]>({
     queryKey: ['missions', user?.id],
@@ -79,6 +83,27 @@ export const Goals: React.FC = () => {
       return response.data;
     }
   });
+
+  // 各ミッションのプロジェクトとタスクを取得
+  const fetchProjectsForMission = async (missionId: string): Promise<Project[]> => {
+    try {
+      const response = await api.get(`/api/projects?missionId=${missionId}`);
+      return response.data || [];
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      return [];
+    }
+  };
+
+  const fetchTasksForMission = async (missionId: string): Promise<Task[]> => {
+    try {
+      const response = await api.get(`/api/missions/${missionId}/tasks`);
+      return response.data || [];
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      return [];
+    }
+  };
 
   const toggleGoal = (id: string) => {
     const newSet = new Set(expandedGoals);
@@ -237,19 +262,25 @@ export const Goals: React.FC = () => {
               </div>
             </div>
 
-            {/* 中目標一覧 */}
+            {/* ミッション詳細 */}
             {expandedGoals.has(goal.id) && (
               <div className="bg-gray-50 px-5 pb-5">
-                <div className="mb-3">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleCreateMidGoal(goal.id)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    中目標を追加
-                  </Button>
-                </div>
+                {/* プロジェクト（中目標）とタスク（小目標）を並列表示 */}
+                <MissionDetailContent missionId={goal.id} />
+                
+                {/* 中目標階層（既存の階層構造） */}
+                <div className="mt-6 pt-6 border-t border-gray-300">
+                  <h4 className="text-md font-semibold text-gray-900 mb-3">中目標階層（詳細管理）</h4>
+                  <div className="mb-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCreateMidGoal(goal.id)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      中目標を追加
+                    </Button>
+                  </div>
                 {goal.midGoals.map((midGoal) => (
                   <div key={midGoal.id} className="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
                     {/* 中目標ヘッダー */}
