@@ -299,6 +299,7 @@ model Project {
 
   members          ProjectMember[]
   tasks            ProjectTask[]
+  subGoals         ProjectSubGoal[] // サブ目標（小目標）
   schedules        Schedule[]
   events           Event[]
   contactHistories ContactHistory[]
@@ -347,6 +348,33 @@ model ProjectTask {
 
   @@index([projectId])
   @@index([assignedTo])
+}
+
+// ========================================
+// プロジェクトサブ目標（小目標）
+// ========================================
+
+model ProjectSubGoal {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?       @db.Text
+  status      SubGoalStatus @default(NOT_STARTED)
+  order       Int           @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([projectId, status])
+}
+
+enum SubGoalStatus {
+  NOT_STARTED // 未着手
+  IN_PROGRESS // 進行中
+  COMPLETED // 完了
 }
 
 enum MemberRole {

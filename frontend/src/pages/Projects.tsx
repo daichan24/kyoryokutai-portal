@@ -7,6 +7,14 @@ import { ProjectModal } from '../components/project/ProjectModal';
 import { Button } from '../components/common/Button';
 import { Plus } from 'lucide-react';
 
+interface ProjectSubGoal {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  order: number;
+}
+
 interface Project {
   id: string;
   projectName: string;
@@ -18,6 +26,7 @@ interface Project {
   user: { id: string; name: string };
   members: any[];
   goal?: { id: string; goalName: string };
+  subGoals?: ProjectSubGoal[];
 }
 
 export const Projects: React.FC = () => {

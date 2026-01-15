@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { ProjectSubGoalModal, ProjectSubGoal } from './ProjectSubGoalModal';
+import { useAuthStore } from '../../stores/authStore';
 
 interface Project {
   id: string;
@@ -32,6 +34,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   onClose,
   onSaved,
 }) => {
+  const { user } = useAuthStore();
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -42,6 +45,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [tagInput, setTagInput] = useState('');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(false);
+  const [subGoals, setSubGoals] = useState<ProjectSubGoal[]>([]);
+  const [isSubGoalModalOpen, setIsSubGoalModalOpen] = useState(false);
+  const [selectedSubGoal, setSelectedSubGoal] = useState<ProjectSubGoal | null>(null);
 
   useEffect(() => {
     fetchGoals();
@@ -54,8 +60,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setPhase(project.phase);
       setGoalId(project.goalId || '');
       setTags(project.tags || []);
+      setSubGoals(project.subGoals || []);
+    } else {
+      setSubGoals([]);
     }
   }, [project]);
+
+  useEffect(() => {
+    if (project?.id) {
+      fetchSubGoals();
+    }
+  }, [project?.id]);
 
   const fetchGoals = async () => {
     try {
@@ -64,6 +79,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     } catch (error) {
       console.error('Failed to fetch goals:', error);
       setGoals([]);
+    }
+  };
+
+  const fetchSubGoals = async () => {
+    if (!project?.id) return;
+    try {
+      const response = await api.get<ProjectSubGoal[]>(`/api/projects/${project.id}/sub-goals`);
+      setSubGoals(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch sub-goals:', error);
+      setSubGoals([]);
     }
   };
 
@@ -119,6 +145,85 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       alert('削除に失敗しました');
     }
   };
+
+  // サブ目標関連のハンドラー
+  const handleAddSubGoal = () => {
+    setSelectedSubGoal(null);
+    setIsSubGoalModalOpen(true);
+  };
+
+  const handleEditSubGoal = (subGoal: ProjectSubGoal) => {
+    setSelectedSubGoal(subGoal);
+    setIsSubGoalModalOpen(true);
+  };
+
+  const handleDeleteSubGoal = async (subGoalId: string) => {
+    if (!project?.id || !confirm('このサブ目標を削除しますか？')) return;
+
+    try {
+      await api.delete(`/api/projects/${project.id}/sub-goals/${subGoalId}`);
+      await fetchSubGoals();
+    } catch (error) {
+      console.error('Failed to delete sub-goal:', error);
+      alert('削除に失敗しました');
+    }
+  };
+
+  const handleSubGoalSaved = async (subGoalData: ProjectSubGoal) => {
+    if (!project?.id) return;
+
+    try {
+      if (subGoalData.id) {
+        // 更新
+        await api.put(`/api/projects/${project.id}/sub-goals/${subGoalData.id}`, subGoalData);
+      } else {
+        // 作成
+        await api.post(`/api/projects/${project.id}/sub-goals`, subGoalData);
+      }
+      await fetchSubGoals();
+      setIsSubGoalModalOpen(false);
+      setSelectedSubGoal(null);
+    } catch (error) {
+      console.error('Failed to save sub-goal:', error);
+      alert('保存に失敗しました');
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case 'IN_PROGRESS':
+        return <PlayCircle className="h-4 w-4 text-blue-600" />;
+      default:
+        return <Circle className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      NOT_STARTED: '未着手',
+      IN_PROGRESS: '進行中',
+      COMPLETED: '完了',
+    };
+    return labels[status as keyof typeof labels] || status;
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      NOT_STARTED: 'bg-gray-100 text-gray-800',
+      IN_PROGRESS: 'bg-blue-100 text-blue-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-100';
+  };
+
+  // 権限チェック: MEMBERは自分のプロジェクトのみ編集可、GOVERNMENTは閲覧のみ
+  const canEditSubGoals = project && (
+    user?.role === 'MASTER' ||
+    user?.role === 'SUPPORT' ||
+    (user?.role === 'MEMBER' && (project as any).userId === user.id)
+  );
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -247,6 +352,69 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             )}
           </div>
 
+          {/* サブ目標セクション */}
+          {project && (
+            <div className="pt-6 border-t">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">サブ目標</h3>
+                {canEditSubGoals && (
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddSubGoal}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    追加
+                  </Button>
+                )}
+              </div>
+
+              {subGoals.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  サブ目標がありません
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {subGoals.map((subGoal) => (
+                    <div
+                      key={subGoal.id}
+                      className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="mt-0.5">{getStatusIcon(subGoal.status)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium text-gray-900">{subGoal.title}</h4>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(subGoal.status)}`}>
+                            {getStatusLabel(subGoal.status)}
+                          </span>
+                        </div>
+                        {subGoal.description && (
+                          <p className="text-sm text-gray-600">{subGoal.description}</p>
+                        )}
+                      </div>
+                      {canEditSubGoals && (
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleEditSubGoal(subGoal)}
+                            className="p-1 text-gray-500 hover:text-blue-600"
+                            title="編集"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => subGoal.id && handleDeleteSubGoal(subGoal.id)}
+                            className="p-1 text-gray-500 hover:text-red-600"
+                            title="削除"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-between pt-4">
             <div>
               {project && (
@@ -266,6 +434,18 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* サブ目標モーダル */}
+      {isSubGoalModalOpen && (
+        <ProjectSubGoalModal
+          subGoal={selectedSubGoal}
+          onClose={() => {
+            setIsSubGoalModalOpen(false);
+            setSelectedSubGoal(null);
+          }}
+          onSaved={handleSubGoalSaved}
+        />
+      )}
     </div>
   );
 };

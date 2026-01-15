@@ -38,6 +38,7 @@ router.get('/', async (req: AuthRequest, res) => {
         goal: { select: { id: true, goalName: true } },
         members: { include: { user: { select: { id: true, name: true } } } },
         tasks: { orderBy: { order: 'asc' } },
+        subGoals: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // サブ目標を含める
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -59,6 +60,7 @@ router.get('/:id', async (req, res) => {
         goal: true,
         members: { include: { user: true } },
         tasks: { include: { assignee: { select: { id: true, name: true } } } },
+        subGoals: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // サブ目標を含める
         schedules: { take: 10, orderBy: { date: 'desc' } },
       },
     });
@@ -67,7 +69,18 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    res.json(project);
+    // サブ目標の進捗率を計算
+    const subGoals = project.subGoals || [];
+    const totalSubGoals = subGoals.length;
+    const completedSubGoals = subGoals.filter(sg => sg.status === 'COMPLETED').length;
+    const subGoalProgress = totalSubGoals > 0 
+      ? Math.round((completedSubGoals / totalSubGoals) * 100) 
+      : 0;
+
+    res.json({
+      ...project,
+      subGoalProgress, // サブ目標の進捗率（0-100）
+    });
   } catch (error) {
     console.error('Get project error:', error);
     res.status(500).json({ error: 'Failed to get project' });
@@ -174,5 +187,9 @@ router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequ
     res.status(500).json({ error: 'Failed to approve project' });
   }
 });
+
+// サブ目標関連のルートを統合
+import projectSubGoalsRoutes from './projectSubGoals';
+router.use('/', projectSubGoalsRoutes);
 
 export default router;
