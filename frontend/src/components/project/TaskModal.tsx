@@ -26,11 +26,17 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // ミッション配下のプロジェクトを取得
+    // プロジェクトを取得（missionIdが空の場合は全プロジェクトを取得）
     const fetchProjects = async () => {
       try {
-        const response = await api.get(`/api/projects?missionId=${missionId}`);
-        setProjects(response.data || []);
+        if (missionId) {
+          const response = await api.get(`/api/projects?missionId=${missionId}`);
+          setProjects(response.data || []);
+        } else {
+          // missionIdが空の場合は全プロジェクトを取得
+          const response = await api.get('/api/projects');
+          setProjects(response.data || []);
+        }
       } catch (error) {
         console.error('Failed to fetch projects:', error);
       }

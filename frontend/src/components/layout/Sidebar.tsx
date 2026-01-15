@@ -32,12 +32,12 @@ export const Sidebar: React.FC = () => {
     { to: '/events', icon: CalendarDays, label: 'イベント' },
   ];
 
-  // 方向性カテゴリ（Mission）
+  // 大目標カテゴリ（Mission）
   const directionItems = [
-    { to: '/goals', icon: Target, label: '方向性' },
+    { to: '/goals', icon: Target, label: 'ミッション' },
   ];
 
-  // 進行中の取り組みカテゴリ（Project, Task）
+  // 中・小目標カテゴリ（Project, Task）
   const activeWorkItems = [
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/tasks', icon: Check, label: 'タスク' },
@@ -183,12 +183,12 @@ export const Sidebar: React.FC = () => {
           </NavLink>
         ))}
 
-        {/* 方向性カテゴリ */}
+        {/* 大目標カテゴリ */}
         {directionItems.length > 0 && (
           <>
             <div className="pt-4 pb-2">
               <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                方向性
+                大目標
               </p>
             </div>
             {directionItems.map((item) => (
@@ -211,12 +211,12 @@ export const Sidebar: React.FC = () => {
           </>
         )}
 
-        {/* 進行中の取り組みカテゴリ */}
+        {/* 中・小目標カテゴリ */}
         {activeWorkItems.length > 0 && (
           <>
             <div className="pt-4 pb-2">
               <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                進行中の取り組み
+                中・小目標
               </p>
             </div>
             {activeWorkItems.map((item) => (

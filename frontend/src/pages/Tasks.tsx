@@ -96,7 +96,12 @@ export const Tasks: React.FC = () => {
 
   const handleCreateTask = (projectId?: string) => {
     setSelectedTask(null);
-    setSelectedProjectId(projectId || null);
+    // projectIdが指定されていない場合、最初のプロジェクトを選択
+    if (!projectId && projects.length > 0) {
+      setSelectedProjectId(projects[0].id);
+    } else {
+      setSelectedProjectId(projectId || null);
+    }
     setIsModalOpen(true);
   };
 
@@ -200,7 +205,15 @@ export const Tasks: React.FC = () => {
           {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のタスク）</span>}
         </h1>
         {canCreate && (
-          <Button onClick={() => handleCreateTask()}>
+          <Button 
+            onClick={() => {
+              if (projects.length === 0) {
+                alert('タスクを作成するには、まずプロジェクトを作成してください。');
+                return;
+              }
+              handleCreateTask();
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             新規タスク
           </Button>
@@ -350,9 +363,9 @@ export const Tasks: React.FC = () => {
       )}
 
       {/* タスクモーダル */}
-      {isModalOpen && selectedProjectId && (
+      {isModalOpen && (
         <TaskModal
-          missionId={selectedProjectId} // 暫定的にprojectIdを使用
+          missionId={selectedProjectId || projects[0]?.id || ''} // 暫定的にprojectIdを使用、プロジェクトがない場合は空文字
           task={selectedTask}
           onClose={() => {
             setIsModalOpen(false);
