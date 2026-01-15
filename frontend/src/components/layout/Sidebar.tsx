@@ -21,8 +21,13 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
+import { X } from 'lucide-react';
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const { user } = useAuthStore();
 
   // 全ロール共通のメニュー
@@ -163,7 +168,19 @@ export const Sidebar: React.FC = () => {
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-border h-full flex flex-col">
+    <aside className="w-64 bg-white border-r border-border h-full flex flex-col shadow-lg md:shadow-none">
+      {/* モバイル: 閉じるボタン、デスクトップ: 非表示 */}
+      <div className="flex justify-between items-center p-4 border-b md:hidden">
+        <h2 className="text-lg font-semibold text-gray-900">メニュー</h2>
+        <button
+          onClick={onClose}
+          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          aria-label="メニューを閉じる"
+        >
+          <X className="h-5 w-5 text-gray-700" />
+        </button>
+      </div>
+      
       <nav className="p-4 space-y-2 overflow-y-auto flex-1">
         {navItems.map((item) => (
           <NavLink
