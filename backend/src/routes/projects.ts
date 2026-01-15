@@ -12,7 +12,7 @@ const projectSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   phase: z.enum(['PREPARATION', 'EXECUTION', 'COMPLETED', 'REVIEW']).optional(),
-  goalId: z.string().optional(),
+  missionId: z.string().optional(),
   tags: z.array(z.string()).default([]),
 });
 
@@ -35,10 +35,10 @@ router.get('/', async (req: AuthRequest, res) => {
       where,
       include: {
         user: { select: { id: true, name: true, avatarColor: true } },
-        goal: { select: { id: true, goalName: true } },
+        mission: { select: { id: true, missionName: true } },
         members: { include: { user: { select: { id: true, name: true } } } },
         tasks: { orderBy: { order: 'asc' } },
-        subGoals: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // サブ目標を含める
+        relatedTasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // 関連タスクを含める
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -57,10 +57,10 @@ router.get('/:id', async (req, res) => {
       where: { id: req.params.id },
       include: {
         user: true,
-        goal: true,
+        mission: true,
         members: { include: { user: true } },
         tasks: { include: { assignee: { select: { id: true, name: true } } } },
-        subGoals: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // サブ目標を含める
+        relatedTasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // 関連タスクを含める
         schedules: { take: 10, orderBy: { date: 'desc' } },
       },
     });
@@ -69,17 +69,17 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // サブ目標の進捗率を計算
-    const subGoals = project.subGoals || [];
-    const totalSubGoals = subGoals.length;
-    const completedSubGoals = subGoals.filter(sg => sg.status === 'COMPLETED').length;
-    const subGoalProgress = totalSubGoals > 0 
-      ? Math.round((completedSubGoals / totalSubGoals) * 100) 
+    // 関連タスクの進捗率を計算
+    const tasks = project.relatedTasks || [];
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
+    const taskProgress = totalTasks > 0 
+      ? Math.round((completedTasks / totalTasks) * 100) 
       : 0;
 
     res.json({
       ...project,
-      subGoalProgress, // サブ目標の進捗率（0-100）
+      taskProgress, // 関連タスクの進捗率（0-100）
     });
   } catch (error) {
     console.error('Get project error:', error);
@@ -100,10 +100,10 @@ router.post('/', async (req: AuthRequest, res) => {
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null,
         phase: data.phase || 'PREPARATION',
-        goalId: data.goalId,
+        missionId: data.missionId,
         tags: data.tags,
       },
-      include: { user: true, goal: true },
+      include: { user: true, mission: true },
     });
 
     res.status(201).json(project);
@@ -133,10 +133,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null,
         phase: data.phase,
-        goalId: data.goalId,
+        missionId: data.missionId,
         tags: data.tags,
       },
-      include: { user: true, goal: true },
+      include: { user: true, mission: true },
     });
 
     res.json(project);
@@ -188,8 +188,8 @@ router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequ
   }
 });
 
-// サブ目標関連のルートを統合
-import projectSubGoalsRoutes from './projectSubGoals';
-router.use('/', projectSubGoalsRoutes);
+// タスク関連のルートを統合（旧：サブ目標）
+import tasksRoutes from './tasks';
+router.use('/', tasksRoutes);
 
 export default router;

@@ -12,11 +12,11 @@ function daysBetween(startDate: Date, endDate: Date): number {
  * 中目標の重みを再計算
  */
 export async function recalculateMidGoalWeights(
-  goalId: string,
+  missionId: string,
   method: 'EQUAL' | 'PERIOD'
 ) {
   const midGoals = await prisma.midGoal.findMany({
-    where: { goalId },
+    where: { missionId },
     orderBy: { order: 'asc' },
   });
 

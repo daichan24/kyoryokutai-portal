@@ -28,7 +28,7 @@ model User {
   weeklyReports WeeklyReport[]
 
   // Phase 2 Relations
-  goals               Goal[]
+  missions            Mission[]
   projects            Project[]
   projectMemberships  ProjectMember[]
   projectTasks        ProjectTask[]        @relation("TaskAssignee")
@@ -44,8 +44,8 @@ model User {
   scheduleSuggestions ScheduleSuggestion[]
 
   // Phase 4 Relations
-  taskRequestsSent     TaskRequest[]         @relation("TaskRequester")
-  taskRequestsReceived TaskRequest[]         @relation("TaskRequestee")
+  requestsSent     Request[]         @relation("Requester")
+  requestsReceived Request[]         @relation("Requestee")
   inspections          Inspection[]
   personalModeEnabled  Boolean               @default(false)
   personalProjects     PersonalProject[]
@@ -160,17 +160,17 @@ model WeeklyReport {
 }
 
 // ========================================
-// 起業準備進捗管理
+// ミッション管理（旧：起業準備進捗管理）
 // ========================================
 
-model Goal {
+model Mission {
   id     String @id @default(uuid())
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  goalName         String
-  goalType         GoalType @default(PRIMARY)
-  targetPercentage Int      @default(100)
+  missionName     String
+  missionType     MissionTypeEnum @default(PRIMARY)
+  targetPercentage Int            @default(100)
 
   approvalStatus  ApprovalStatus @default(DRAFT)
   approvalComment String?        @db.Text
@@ -179,6 +179,7 @@ model Goal {
 
   midGoals MidGoal[]
   projects Project[]
+  tasks    Task[] // ミッション配下のタスク（プロジェクトと並列）
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -187,9 +188,9 @@ model Goal {
 }
 
 model MidGoal {
-  id     String @id @default(uuid())
-  goalId String
-  goal   Goal   @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  id        String  @id @default(uuid())
+  missionId String
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
 
   name         String
   weight       Int
@@ -203,7 +204,7 @@ model MidGoal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([goalId])
+  @@index([missionId])
 }
 
 model SubGoal {
@@ -247,7 +248,7 @@ model GoalTask {
   @@index([subGoalId])
 }
 
-enum GoalType {
+enum MissionTypeEnum {
   PRIMARY
   SUB
 }
@@ -287,8 +288,8 @@ model Project {
   endDate     DateTime? @db.Date
   phase       Phase     @default(PREPARATION)
 
-  goalId String?
-  goal   Goal?   @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  missionId String?
+  mission   Mission? @relation(fields: [missionId], references: [id], onDelete: SetNull)
 
   approvalStatus  ApprovalStatus @default(DRAFT)
   approvalComment String?        @db.Text
@@ -299,18 +300,18 @@ model Project {
 
   members          ProjectMember[]
   tasks            ProjectTask[]
-  subGoals         ProjectSubGoal[] // サブ目標（小目標）
   schedules        Schedule[]
   events           Event[]
   contactHistories ContactHistory[]
-  taskRequests     TaskRequest[] // Phase 4
+  requests         Request[] // Phase 4: 依頼（旧：タスク依頼）
+  relatedTasks     Task[] // このプロジェクトに関連するタスク（任意）
   inspections      Inspection[] // Phase 4
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
-  @@index([goalId])
+  @@index([missionId])
 }
 
 model ProjectMember {
@@ -341,7 +342,7 @@ model ProjectTask {
   order      Int       @default(0)
 
   scheduleProgress ScheduleProgress[]
-  taskRequest      TaskRequest? // Phase 4: タスク依頼との紐付け
+  request Request? // Phase 4: 依頼との紐付け（旧：タスク依頼）
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -351,27 +352,31 @@ model ProjectTask {
 }
 
 // ========================================
-// プロジェクトサブ目標（小目標）
+// タスク（ミッション配下、プロジェクトは任意）
 // ========================================
 
-model ProjectSubGoal {
+model Task {
   id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  missionId String
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   title       String
-  description String?       @db.Text
-  status      SubGoalStatus @default(NOT_STARTED)
-  order       Int           @default(0)
+  description String? @db.Text
+  status      TaskStatus @default(NOT_STARTED)
+  order       Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([missionId])
   @@index([projectId])
-  @@index([projectId, status])
+  @@index([missionId, status])
 }
 
-enum SubGoalStatus {
+enum TaskStatus {
   NOT_STARTED // 未着手
   IN_PROGRESS // 進行中
   COMPLETED // 完了
@@ -686,15 +691,15 @@ model SystemConfig {
 }
 
 // ========================================
-// タスク依頼（Phase 4）
+// 依頼（Phase 4、旧：タスク依頼）
 // ========================================
 
-model TaskRequest {
+model Request {
   id          String @id @default(uuid())
   requestedBy String
-  requester   User   @relation("TaskRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
+  requester   User   @relation("Requester", fields: [requestedBy], references: [id], onDelete: Cascade)
   requestedTo String
-  requestee   User   @relation("TaskRequestee", fields: [requestedTo], references: [id], onDelete: Cascade)
+  requestee   User   @relation("Requestee", fields: [requestedTo], references: [id], onDelete: Cascade)
 
   requestTitle       String
   requestDescription String    @db.Text

@@ -83,8 +83,8 @@ router.get('/', async (req: AuthRequest, res) => {
       take: 20, // 最新20件
     });
 
-    // C) タスク依頼（未対応/未読）
-    const taskRequests = await prisma.taskRequest.findMany({
+    // C) 依頼（未対応/未読、旧：タスク依頼）
+    const requests = await prisma.request.findMany({
       where: {
         requestedTo: currentUserId,
         approvalStatus: 'PENDING',
@@ -129,7 +129,7 @@ router.get('/', async (req: AuthRequest, res) => {
         decision: response.status,
         respondedAt: response.respondedAt,
       })),
-      taskRequests: taskRequests.map((request) => ({
+      taskRequests: requests.map((request) => ({
         id: request.id,
         requester: request.requester,
         requestTitle: request.requestTitle,

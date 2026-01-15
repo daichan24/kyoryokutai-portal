@@ -2,14 +2,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { notifyTaskRequest } from '../services/notificationService';
+import { notifyRequest } from '../services/notificationService';
 import type { Role } from '@prisma/client';
 
 const router = Router();
 router.use(authenticate);
 
 // バリデーションスキーマ
-const createTaskRequestSchema = z.object({
+const createRequestSchema = z.object({
   requesteeId: z.string(),
   requestTitle: z.string().min(1),
   requestDescription: z.string().min(1),
@@ -22,7 +22,7 @@ const respondSchema = z.object({
   approvalNote: z.string().optional(),
 });
 
-// タスク依頼一覧取得
+// 依頼一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const { status, requestedTo } = req.query;
@@ -41,7 +41,7 @@ router.get('/', async (req: AuthRequest, res) => {
       where.requestedTo = req.user!.id;
     }
 
-    const requests = await prisma.taskRequest.findMany({
+    const requests = await prisma.request.findMany({
       where,
       include: {
         requester: {
@@ -78,18 +78,16 @@ router.get('/', async (req: AuthRequest, res) => {
 
     res.json(requests);
   } catch (error) {
-    console.error('Get task requests error:', error);
-    res.status(500).json({ error: 'Failed to get task requests' });
+    console.error('Get requests error:', error);
+    res.status(500).json({ error: 'Failed to get requests' });
   }
 });
 
-// タスク依頼詳細取得
+// 依頼詳細取得
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const request = await prisma.taskRequest.findUnique({
-      where: { id },
+    const request = await prisma.request.findUnique({
+      where: { id: req.params.id },
       include: {
         requester: true,
         requestee: true,
@@ -99,17 +97,17 @@ router.get('/:id', async (req, res) => {
     });
 
     if (!request) {
-      return res.status(404).json({ error: 'Task request not found' });
+      return res.status(404).json({ error: 'Request not found' });
     }
 
     res.json(request);
   } catch (error) {
-    console.error('Get task request error:', error);
-    res.status(500).json({ error: 'Failed to get task request' });
+    console.error('Get request error:', error);
+    res.status(500).json({ error: 'Failed to get request' });
   }
 });
 
-// タスク依頼作成（MASTER, SUPPORT, GOVERNMENT, MEMBER 全員可能）
+// 依頼作成（MASTER, SUPPORT, GOVERNMENT, MEMBER 全員可能）
 router.post('/', async (req: AuthRequest, res) => {
   try {
     // 認可チェック: MASTER, SUPPORT, GOVERNMENT, MEMBER 全員可能
@@ -119,15 +117,15 @@ router.post('/', async (req: AuthRequest, res) => {
 
     const allowedRoles: Role[] = ['MASTER', 'SUPPORT', 'GOVERNMENT', 'MEMBER'];
     if (!allowedRoles.includes(req.user.role)) {
-      console.log(`❌ [AUTH] POST /api/task-requests: Role ${req.user.role} is not allowed`);
+      console.log(`❌ [AUTH] POST /api/requests: Role ${req.user.role} is not allowed`);
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
-    console.log(`✅ [AUTH] POST /api/task-requests: User ${req.user.email} (${req.user.role}) is allowed`);
+    console.log(`✅ [AUTH] POST /api/requests: User ${req.user.email} (${req.user.role}) is allowed`);
 
-    const data = createTaskRequestSchema.parse(req.body);
+    const data = createRequestSchema.parse(req.body);
 
-    const taskRequest = await prisma.taskRequest.create({
+    const request = await prisma.request.create({
       data: {
         requestedBy: req.user.id,
         requestedTo: data.requesteeId,
@@ -148,36 +146,36 @@ router.post('/', async (req: AuthRequest, res) => {
       where: { id: req.user!.id },
       select: { name: true },
     });
-    await notifyTaskRequest(
+    await notifyRequest(
       data.requesteeId,
       requester?.name || 'Unknown',
       data.requestTitle,
-      taskRequest.id
+      request.id
     );
 
-    res.status(201).json(taskRequest);
+    res.status(201).json(request);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
-    console.error('Create task request error:', error);
-    res.status(500).json({ error: 'Failed to create task request' });
+    console.error('Create request error:', error);
+    res.status(500).json({ error: 'Failed to create request' });
   }
 });
 
-// タスク依頼に応答（承認/却下）
+// 依頼に応答（承認/却下）
 router.post('/:id/respond', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const data = respondSchema.parse(req.body);
 
-    const existingRequest = await prisma.taskRequest.findUnique({
+    const existingRequest = await prisma.request.findUnique({
       where: { id },
       include: { project: true },
     });
 
     if (!existingRequest) {
-      return res.status(404).json({ error: 'Task request not found' });
+      return res.status(404).json({ error: 'Request not found' });
     }
 
     // 依頼先本人のみ応答可能
@@ -201,8 +199,8 @@ router.post('/:id/respond', async (req: AuthRequest, res) => {
       createdTaskId = task.id;
     }
 
-    // タスク依頼を更新
-    const updatedRequest = await prisma.taskRequest.update({
+    // 依頼を更新
+    const updatedRequest = await prisma.request.update({
       where: { id },
       data: {
         approvalStatus: data.approvalStatus,
@@ -223,37 +221,10 @@ router.post('/:id/respond', async (req: AuthRequest, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
-    console.error('Respond to task request error:', error);
-    res.status(500).json({ error: 'Failed to respond to task request' });
-  }
-});
-
-// タスク依頼削除（依頼者のみ）
-router.delete('/:id', async (req: AuthRequest, res) => {
-  try {
-    const { id } = req.params;
-
-    const existingRequest = await prisma.taskRequest.findUnique({
-      where: { id },
-    });
-
-    if (!existingRequest) {
-      return res.status(404).json({ error: 'Task request not found' });
-    }
-
-    if (existingRequest.requestedBy !== req.user!.id && req.user!.role !== 'MASTER') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    await prisma.taskRequest.delete({
-      where: { id },
-    });
-
-    res.json({ message: 'Task request deleted successfully' });
-  } catch (error) {
-    console.error('Delete task request error:', error);
-    res.status(500).json({ error: 'Failed to delete task request' });
+    console.error('Respond to request error:', error);
+    res.status(500).json({ error: 'Failed to respond to request' });
   }
 });
 
 export default router;
+

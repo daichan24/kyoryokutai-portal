@@ -35,7 +35,26 @@ export async function createNotification(
 }
 
 /**
- * タスク依頼通知を作成
+ * 依頼通知を作成（旧：タスク依頼通知）
+ */
+export async function notifyRequest(
+  requestedToUserId: string,
+  requesterName: string,
+  requestTitle: string,
+  requestId: string
+) {
+  return await createNotification(
+    requestedToUserId,
+    'TASK_REQUEST', // 通知タイプは後で変更可能
+    '新しい依頼',
+    `${requesterName}さんから「${requestTitle}」の依頼が届きました`,
+    `/requests/${requestId}`
+  );
+}
+
+/**
+ * タスク依頼通知を作成（後方互換性のため残す）
+ * @deprecated notifyRequest を使用してください
  */
 export async function notifyTaskRequest(
   requestedToUserId: string,
@@ -43,13 +62,7 @@ export async function notifyTaskRequest(
   taskTitle: string,
   requestId: string
 ) {
-  return await createNotification(
-    requestedToUserId,
-    'TASK_REQUEST',
-    '新しいタスク依頼',
-    `${requesterName}さんから「${taskTitle}」の依頼が届きました`,
-    `/task-requests/${requestId}`
-  );
+  return notifyRequest(requestedToUserId, requesterName, taskTitle, requestId);
 }
 
 /**

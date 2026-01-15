@@ -3,9 +3,9 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import {
-  getGoalProgressData,
+  getMissionProgressData,
   updateGoalTaskProgress,
-  calculateGoalProgress,
+  calculateMissionProgress,
 } from '../services/progressCalculator';
 import {
   recalculateMidGoalWeights,
@@ -15,9 +15,9 @@ const router = Router();
 router.use(authenticate);
 
 // バリデーションスキーマ
-const createGoalSchema = z.object({
-  goalName: z.string().min(1),
-  goalType: z.enum(['PRIMARY', 'SUB']),
+const createMissionSchema = z.object({
+  missionName: z.string().min(1),
+  missionType: z.enum(['PRIMARY', 'SUB']),
   targetPercentage: z.number().min(0).max(100).optional(),
 });
 
@@ -47,7 +47,7 @@ const createTaskSchema = z.object({
   order: z.number().optional(),
 });
 
-// 目標一覧取得
+// ミッション一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const { userId } = req.query;
@@ -59,7 +59,7 @@ router.get('/', async (req: AuthRequest, res) => {
       where.userId = req.user!.id;
     }
 
-    const goals = await prisma.goal.findMany({
+    const missions = await prisma.mission.findMany({
       where,
       include: {
         user: {
@@ -82,121 +82,123 @@ router.get('/', async (req: AuthRequest, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    const goalsWithProgress = await Promise.all(
-      goals.map(async (goal) => {
-        const progress = await calculateGoalProgress(goal.id);
+    const missionsWithProgress = await Promise.all(
+      missions.map(async (mission) => {
+        const progress = await calculateMissionProgress(mission.id);
         return {
-          ...goal,
+          ...mission,
           progress: Math.round(progress * 100) / 100,
         };
       })
     );
 
-    res.json(goalsWithProgress);
+    res.json(missionsWithProgress);
   } catch (error) {
-    console.error('Get goals error:', error);
-    res.status(500).json({ error: 'Failed to get goals' });
+    console.error('Get missions error:', error);
+    res.status(500).json({ error: 'Failed to get missions' });
   }
 });
 
-// 目標詳細取得（進捗計算済み）
+// ミッション詳細取得（進捗計算済み）
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const goalData = await getGoalProgressData(id);
-    res.json(goalData);
+    const missionData = await getMissionProgressData(id);
+    res.json(missionData);
   } catch (error) {
-    console.error('Get goal error:', error);
-    res.status(500).json({ error: 'Failed to get goal' });
+    console.error('Get mission error:', error);
+    res.status(500).json({ error: 'Failed to get mission' });
   }
 });
 
-// 目標作成
+// ミッション作成
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const data = createGoalSchema.parse(req.body);
+    const data = createMissionSchema.parse(req.body);
 
-    const goal = await prisma.goal.create({
+    const mission = await prisma.mission.create({
       data: {
         userId: req.user!.id,
-        ...data,
+        missionName: data.missionName,
+        missionType: data.missionType,
+        targetPercentage: data.targetPercentage || 100,
       },
     });
 
-    res.status(201).json(goal);
+    res.status(201).json(mission);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
-    console.error('Create goal error:', error);
-    res.status(500).json({ error: 'Failed to create goal' });
+    console.error('Create mission error:', error);
+    res.status(500).json({ error: 'Failed to create mission' });
   }
 });
 
-// 目標更新
+// ミッション更新
 router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
-    const existingGoal = await prisma.goal.findUnique({
+    const existingMission = await prisma.mission.findUnique({
       where: { id },
     });
 
-    if (!existingGoal) {
-      return res.status(404).json({ error: 'Goal not found' });
+    if (!existingMission) {
+      return res.status(404).json({ error: 'Mission not found' });
     }
 
-    if (existingGoal.userId !== req.user!.id && req.user!.role !== 'MASTER') {
+    if (existingMission.userId !== req.user!.id && req.user!.role !== 'MASTER') {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const goal = await prisma.goal.update({
+    const mission = await prisma.mission.update({
       where: { id },
       data: req.body,
     });
 
-    res.json(goal);
+    res.json(mission);
   } catch (error) {
-    console.error('Update goal error:', error);
-    res.status(500).json({ error: 'Failed to update goal' });
+    console.error('Update mission error:', error);
+    res.status(500).json({ error: 'Failed to update mission' });
   }
 });
 
-// 目標削除
+// ミッション削除
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
-    const existingGoal = await prisma.goal.findUnique({
+    const existingMission = await prisma.mission.findUnique({
       where: { id },
     });
 
-    if (!existingGoal) {
-      return res.status(404).json({ error: 'Goal not found' });
+    if (!existingMission) {
+      return res.status(404).json({ error: 'Mission not found' });
     }
 
-    if (existingGoal.userId !== req.user!.id && req.user!.role !== 'MASTER') {
+    if (existingMission.userId !== req.user!.id && req.user!.role !== 'MASTER') {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    await prisma.goal.delete({
+    await prisma.mission.delete({
       where: { id },
     });
 
-    res.json({ message: 'Goal deleted successfully' });
+    res.json({ message: 'Mission deleted successfully' });
   } catch (error) {
-    console.error('Delete goal error:', error);
-    res.status(500).json({ error: 'Failed to delete goal' });
+    console.error('Delete mission error:', error);
+    res.status(500).json({ error: 'Failed to delete mission' });
   }
 });
 
-// 目標承認/差し戻し
+// ミッション承認/差し戻し
 router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { approvalStatus, comment } = req.body;
 
-    const goal = await prisma.goal.update({
+    const mission = await prisma.mission.update({
       where: { id },
       data: {
         approvalStatus,
@@ -206,22 +208,22 @@ router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequ
       },
     });
 
-    res.json(goal);
+    res.json(mission);
   } catch (error) {
-    console.error('Approve goal error:', error);
-    res.status(500).json({ error: 'Failed to approve goal' });
+    console.error('Approve mission error:', error);
+    res.status(500).json({ error: 'Failed to approve mission' });
   }
 });
 
 // 中目標作成
-router.post('/:goalId/mid-goals', async (req, res) => {
+router.post('/:missionId/mid-goals', async (req, res) => {
   try {
-    const { goalId } = req.params;
+    const { missionId } = req.params;
     const data = createMidGoalSchema.parse(req.body);
 
     const midGoal = await prisma.midGoal.create({
       data: {
-        goalId,
+        missionId,
         ...data,
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null,
@@ -263,7 +265,7 @@ router.post('/mid-goals/:midGoalId/sub-goals', async (req, res) => {
   }
 });
 
-// タスク作成
+// タスク作成（GoalTask - ミッション階層内のタスク）
 router.post('/sub-goals/:subGoalId/tasks', async (req, res) => {
   try {
     const { subGoalId } = req.params;
@@ -294,9 +296,9 @@ router.put('/tasks/:id/progress', async (req, res) => {
     const { id } = req.params;
     const { progress } = req.body;
 
-    const goalProgress = await updateGoalTaskProgress(id, progress);
+    const missionProgress = await updateGoalTaskProgress(id, progress);
 
-    res.json({ success: true, goalProgress });
+    res.json({ success: true, missionProgress });
   } catch (error) {
     console.error('Update task progress error:', error);
     res.status(500).json({ error: 'Failed to update task progress' });
@@ -323,3 +325,4 @@ router.post('/:id/recalculate-weights', async (req, res) => {
 });
 
 export default router;
+

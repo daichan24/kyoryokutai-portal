@@ -12,7 +12,7 @@ export async function updateGoalTaskProgress(taskId: string, newProgress: number
         include: {
           midGoal: {
             include: {
-              goal: true,
+              mission: true,
             },
           },
         },
@@ -24,9 +24,9 @@ export async function updateGoalTaskProgress(taskId: string, newProgress: number
 
   await calculateSubGoalProgress(task.subGoal.id);
   await calculateMidGoalProgress(task.subGoal.midGoal.id);
-  const goalProgress = await calculateGoalProgress(task.subGoal.midGoal.goal.id);
+  const missionProgress = await calculateMissionProgress(task.subGoal.midGoal.mission.id);
 
-  return goalProgress;
+  return missionProgress;
 }
 
 /**
@@ -74,11 +74,11 @@ export async function calculateMidGoalProgress(midGoalId: string): Promise<numbe
 }
 
 /**
- * 目標全体の進捗を計算
+ * ミッション全体の進捗を計算（旧：目標全体の進捗）
  */
-export async function calculateGoalProgress(goalId: string): Promise<number> {
+export async function calculateMissionProgress(missionId: string): Promise<number> {
   const midGoals = await prisma.midGoal.findMany({
-    where: { goalId },
+    where: { missionId },
     include: { subGoals: { include: { tasks: true } } },
   });
 
@@ -94,6 +94,14 @@ export async function calculateGoalProgress(goalId: string): Promise<number> {
   }
 
   return (weightedProgress / totalWeight) * 100;
+}
+
+/**
+ * 目標全体の進捗を計算（後方互換性のため残す）
+ * @deprecated calculateMissionProgress を使用してください
+ */
+export async function calculateGoalProgress(goalId: string): Promise<number> {
+  return calculateMissionProgress(goalId);
 }
 
 /**
@@ -123,11 +131,11 @@ export async function calculateProjectProgress(projectId: string): Promise<numbe
 }
 
 /**
- * 目標の完全な進捗データを取得
+ * ミッションの完全な進捗データを取得（旧：目標の完全な進捗データ）
  */
-export async function getGoalProgressData(goalId: string) {
-  const goal = await prisma.goal.findUnique({
-    where: { id: goalId },
+export async function getMissionProgressData(missionId: string) {
+  const mission = await prisma.mission.findUnique({
+    where: { id: missionId },
     include: {
       midGoals: {
         include: {
@@ -142,12 +150,12 @@ export async function getGoalProgressData(goalId: string) {
     },
   });
 
-  if (!goal) throw new Error('Goal not found');
+  if (!mission) throw new Error('Mission not found');
 
-  const goalProgress = await calculateGoalProgress(goalId);
+  const missionProgress = await calculateMissionProgress(missionId);
 
   const midGoalsWithProgress = await Promise.all(
-    goal.midGoals.map(async (midGoal) => {
+    mission.midGoals.map(async (midGoal) => {
       const midGoalProgress = await calculateMidGoalProgress(midGoal.id);
       const subGoalsWithProgress = await Promise.all(
         midGoal.subGoals.map(async (subGoal) => {
@@ -168,8 +176,16 @@ export async function getGoalProgressData(goalId: string) {
   );
 
   return {
-    ...goal,
-    progress: Math.round(goalProgress * 100) / 100,
+    ...mission,
+    progress: Math.round(missionProgress * 100) / 100,
     midGoals: midGoalsWithProgress,
   };
+}
+
+/**
+ * 目標の完全な進捗データを取得（後方互換性のため残す）
+ * @deprecated getMissionProgressData を使用してください
+ */
+export async function getGoalProgressData(goalId: string) {
+  return getMissionProgressData(goalId);
 }
