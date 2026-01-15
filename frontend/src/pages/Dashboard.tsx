@@ -389,10 +389,12 @@ export const Dashboard: React.FC = () => {
                 </div>
               )}
 
-              {/* タスク依頼 */}
+              {/* タスクボックス（メンバー向け） */}
               {inboxData?.taskRequests && inboxData.taskRequests.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">タスク依頼</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                    {user?.role === 'MEMBER' ? 'タスクボックス' : 'タスク依頼'}
+                  </h3>
                   <div className="space-y-3">
                     {inboxData.taskRequests.map((request) => (
                       <div
@@ -409,7 +411,11 @@ export const Dashboard: React.FC = () => {
                                 {request.requester.name.charAt(0)}
                               </div>
                               <div>
-                                <p className="font-medium text-gray-900">{request.requester.name}さんからの依頼</p>
+                                <p className="font-medium text-gray-900">
+                                  {user?.role === 'MEMBER' 
+                                    ? `${request.requester.name}さんからのタスク`
+                                    : `${request.requester.name}さんからの依頼`}
+                                </p>
                                 <p className="text-sm text-gray-600">{request.requestTitle}</p>
                               </div>
                             </div>

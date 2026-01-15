@@ -43,10 +43,12 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
     },
   });
 
+  const widgetTitle = user?.role === 'MEMBER' ? 'タスクボックス' : 'タスク依頼';
+
   return (
     <div className="bg-white rounded-lg shadow border border-border p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">タスク依頼</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{widgetTitle}</h3>
         {showAddButton && onAddClick && (
           <Button size="sm" onClick={onAddClick} className="flex items-center gap-1">
             <Plus className="w-4 h-4" />
@@ -58,7 +60,9 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
       {isLoading ? (
         <LoadingSpinner />
       ) : !requests || requests.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">未処理のタスク依頼がありません</p>
+        <p className="text-sm text-gray-500 text-center py-4">
+          {user?.role === 'MEMBER' ? '未処理のタスクがありません' : '未処理のタスク依頼がありません'}
+        </p>
       ) : (
         <div className="space-y-2">
           {requests.map((request) => (

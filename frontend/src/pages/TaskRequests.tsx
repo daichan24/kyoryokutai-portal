@@ -103,7 +103,9 @@ export const TaskRequests: React.FC = () => {
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">タスク依頼</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {user?.role === 'MEMBER' ? 'タスクボックス' : 'タスク依頼'}
+        </h1>
         {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
           <Button onClick={handleCreateRequest}>
             <Plus className="h-4 w-4 mr-2" />
@@ -166,7 +168,7 @@ export const TaskRequests: React.FC = () => {
 
             {receivedRequests?.length === 0 && (
               <div className="text-center py-8 text-gray-500">
-                受信した依頼はありません
+                受信したタスクはありません
               </div>
             )}
           </div>

@@ -36,7 +36,7 @@ export const Sidebar: React.FC = () => {
     { to: '/goals', icon: Target, label: '起業準備進捗' },
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
-    { to: '/contacts', icon: Contact, label: '町民データベース' },
+    // 町民データベースは「状況」カテゴリに移動したため削除
   ];
 
   // SUPPORT/GOVERNMENT/MASTER用のメニュー（全データ閲覧可能）
@@ -155,8 +155,8 @@ export const Sidebar: React.FC = () => {
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-border h-full">
-      <nav className="p-4 space-y-2">
+    <aside className="w-64 bg-white border-r border-border h-full flex flex-col">
+      <nav className="p-4 space-y-2 overflow-y-auto flex-1">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
