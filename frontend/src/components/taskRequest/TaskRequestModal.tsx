@@ -41,7 +41,12 @@ export const TaskRequestModal: React.FC<TaskRequestModalProps> = ({
   const fetchMembers = async () => {
     try {
       const response = await api.get<User[]>('/api/users?role=MEMBER');
-      setMembers(response.data || []);
+      // サポート・行政ユーザーの場合は「佐藤大地」を除外
+      const filteredMembers = (response.data || []).filter(u => {
+        if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') && u.name === '佐藤大地') return false;
+        return true;
+      });
+      setMembers(filteredMembers);
     } catch (error) {
       console.error('Failed to fetch members:', error);
       setMembers([]);

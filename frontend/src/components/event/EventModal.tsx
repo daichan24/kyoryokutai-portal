@@ -4,6 +4,7 @@ import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { useAuthStore } from '../../stores/authStore';
 
 interface Event {
   id: string;
@@ -59,6 +60,7 @@ export const EventModal: React.FC<EventModalProps> = ({
   const [maxParticipants, setMaxParticipants] = useState<number | undefined>();
   const [projectId, setProjectId] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
+  const { user } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<Array<{
     userId: string;
@@ -108,7 +110,12 @@ export const EventModal: React.FC<EventModalProps> = ({
   const fetchUsers = async () => {
     try {
       const response = await api.get<User[]>('/api/users');
-      setUsers(response.data || []);
+      // サポート・行政ユーザーの場合は「佐藤大地」を除外
+      const filteredUsers = (response.data || []).filter(u => {
+        if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') && u.name === '佐藤大地') return false;
+        return true;
+      });
+      setUsers(filteredUsers);
     } catch (error) {
       console.error('Failed to fetch users:', error);
       setUsers([]);
