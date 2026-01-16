@@ -18,6 +18,9 @@ import { EventsWidget } from '../components/dashboard/EventsWidget';
 import { SNSLinksWidget } from '../components/dashboard/SNSLinksWidget';
 import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
+import { ContactsWidget } from '../components/dashboard/ContactsWidget';
+import { EventParticipationWidget } from '../components/dashboard/EventParticipationWidget';
+import { ContactModal } from '../components/contact/ContactModal';
 
 interface InboxData {
   scheduleInvites: Array<{
@@ -50,11 +53,16 @@ interface InboxData {
   }>;
 }
 
+type DisplayMode = 'view-only' | 'view-with-add' | 'add-only';
+type ColumnSpan = 1 | 2;
+
 interface WidgetConfig {
   key: string;
   enabled: boolean;
-  showAddButton?: boolean;
+  displayMode?: DisplayMode;
+  showAddButton?: boolean; // 後方互換性のため残す
   size?: 'S' | 'M' | 'L';
+  columnSpan?: ColumnSpan;
   order: number;
 }
 
@@ -70,6 +78,7 @@ export const Dashboard: React.FC = () => {
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [isTaskRequestModalOpen, setIsTaskRequestModalOpen] = useState(false);
   const [isSNSPostModalOpen, setIsSNSPostModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   // 受信箱データ取得
   const { data: inboxData, isLoading: inboxLoading } = useQuery<InboxData>({
@@ -95,23 +104,25 @@ export const Dashboard: React.FC = () => {
     if (role === 'MEMBER') {
       return {
         widgets: [
-          { ...baseWidgets[0], enabled: true, showAddButton: true },
+          { ...baseWidgets[0], enabled: true, displayMode: 'view-with-add' as const },
           { ...baseWidgets[1], enabled: false },
-          { ...baseWidgets[2], enabled: true, showAddButton: true }, // tasks
-          { ...baseWidgets[3], enabled: true, showAddButton: true }, // events
-          { ...baseWidgets[4], enabled: true },
-          { ...baseWidgets[5], enabled: true },
+          { ...baseWidgets[2], enabled: true, displayMode: 'view-with-add' as const }, // tasks
+          { ...baseWidgets[3], enabled: true, displayMode: 'view-with-add' as const }, // events
+          { ...baseWidgets[4], enabled: true, displayMode: 'view-only' as const },
+          { ...baseWidgets[5], enabled: true, displayMode: 'view-only' as const },
         ],
       };
     } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
       return {
         widgets: [
           { ...baseWidgets[0], enabled: false },
-          { ...baseWidgets[1], enabled: true, showAddButton: true },
-          { ...baseWidgets[2], enabled: true, showAddButton: true }, // tasks
-          { ...baseWidgets[3], enabled: true, showAddButton: true }, // events
-          { ...baseWidgets[4], enabled: true },
+          { ...baseWidgets[1], enabled: true, displayMode: 'view-with-add' as const },
+          { ...baseWidgets[2], enabled: true, displayMode: 'view-with-add' as const }, // tasks
+          { ...baseWidgets[3], enabled: true, displayMode: 'view-with-add' as const }, // events
+          { ...baseWidgets[4], enabled: true, displayMode: 'view-only' as const },
           { ...baseWidgets[5], enabled: false },
+          { ...baseWidgets[6], enabled: true, displayMode: 'add-only' as const }, // contacts
+          { ...baseWidgets[7], enabled: true, displayMode: 'view-only' as const }, // eventParticipation
         ],
       };
     } else if (role === 'MASTER') {
@@ -199,27 +210,45 @@ export const Dashboard: React.FC = () => {
   const totalInboxCount = (inboxData?.scheduleInvites?.length || 0) + (inboxData?.taskRequests?.length || 0); // taskRequestsは後方互換性のため残す
 
   const renderWidget = (widget: WidgetConfig) => {
+    const displayMode = widget.displayMode || (widget.showAddButton ? 'view-with-add' : 'view-only');
+    
     const commonProps = {
-      showAddButton: widget.showAddButton || false,
+      displayMode,
+      showAddButton: displayMode === 'view-with-add' || displayMode === 'add-only',
       onAddClick: widget.key === 'taskRequests' ? () => setIsTaskRequestModalOpen(true) : undefined,
     };
 
-    switch (widget.key) {
-      case 'snsHistory':
-        return <SNSHistoryWidget key={widget.key} {...commonProps} />;
-      case 'taskRequests':
-        return <TaskRequestsWidget key={widget.key} {...commonProps} />;
-      case 'projects':
-        return <ProjectsWidget key={widget.key} {...commonProps} />;
-      case 'goals':
-        return <GoalsWidget key={widget.key} {...commonProps} />;
-      case 'tasks':
-        return <TasksWidget key={widget.key} {...commonProps} />;
-      case 'events':
-        return <EventsWidget key={widget.key} {...commonProps} />;
-      default:
-        return null;
-    }
+    const columnSpan = widget.columnSpan || 1;
+    const widgetElement = (() => {
+      switch (widget.key) {
+        case 'snsHistory':
+          return <SNSHistoryWidget key={widget.key} {...commonProps} />;
+        case 'taskRequests':
+          return <TaskRequestsWidget key={widget.key} {...commonProps} />;
+        case 'projects':
+          return <ProjectsWidget key={widget.key} {...commonProps} />;
+        case 'goals':
+          return <GoalsWidget key={widget.key} {...commonProps} />;
+        case 'tasks':
+          return <TasksWidget key={widget.key} {...commonProps} />;
+        case 'events':
+          return <EventsWidget key={widget.key} {...commonProps} />;
+        case 'contacts':
+          return <ContactsWidget key={widget.key} {...commonProps} />;
+        case 'eventParticipation':
+          return <EventParticipationWidget key={widget.key} {...commonProps} />;
+        default:
+          return null;
+      }
+    })();
+
+    if (!widgetElement) return null;
+
+    return (
+      <div key={widget.key} className={columnSpan === 2 ? 'md:col-span-2' : ''}>
+        {widgetElement}
+      </div>
+    );
   };
 
   const enabledWidgets = dashboardConfig?.widgets
@@ -531,7 +560,15 @@ export const Dashboard: React.FC = () => {
       {/* カスタムウィジェットエリア */}
       {enabledWidgets.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {enabledWidgets.map((widget) => renderWidget(widget))}
+          {enabledWidgets.map((widget) => {
+            const widgetElement = renderWidget(widget);
+            const columnSpan = widget.columnSpan || 1;
+            return (
+              <div key={widget.key} className={columnSpan === 2 ? 'md:col-span-2' : ''}>
+                {widgetElement}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -561,6 +598,18 @@ export const Dashboard: React.FC = () => {
             setIsSNSPostModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['sns-posts'] });
             queryClient.invalidateQueries({ queryKey: ['sns-weekly-status'] });
+          }}
+        />
+      )}
+
+      {/* 町民データベース追加モーダル */}
+      {isContactModalOpen && (
+        <ContactModal
+          contact={null}
+          onClose={() => setIsContactModalOpen(false)}
+          onSaved={() => {
+            setIsContactModalOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
           }}
         />
       )}

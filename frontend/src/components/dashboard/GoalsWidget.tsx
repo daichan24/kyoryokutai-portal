@@ -17,12 +17,16 @@ interface Goal {
   user: { id: string; name: string; avatarColor?: string };
 }
 
+type DisplayMode = 'view-only' | 'view-with-add' | 'add-only';
+
 interface GoalsWidgetProps {
+  displayMode?: DisplayMode;
   showAddButton?: boolean;
   onAddClick?: () => void;
 }
 
 export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
+  displayMode = 'view-only',
   showAddButton = false,
   onAddClick,
 }) => {
@@ -35,11 +39,26 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
     },
   });
 
+  // 追加ボタンのみモード
+  if (displayMode === 'add-only') {
+    return (
+      <div className="bg-white rounded-lg shadow border border-border p-6 flex items-center justify-center min-h-[200px]">
+        <Link to="/missions">
+          <Button className="flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            ミッションを追加
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // 表示のみ or 表示+追加ボタンモード
   return (
     <div className="bg-white rounded-lg shadow border border-border p-4">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900">ミッション</h3>
-        {showAddButton && (user?.role === 'MEMBER' || user?.role === 'MASTER') && (
+        {(displayMode === 'view-with-add' || showAddButton) && (user?.role === 'MEMBER' || user?.role === 'MASTER') && (
           <Link to="/missions">
             <Button size="sm" className="flex items-center gap-1">
               <Plus className="w-4 h-4" />
@@ -49,41 +68,45 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
         )}
       </div>
 
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : !goals || goals.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">ミッションがありません</p>
-      ) : (
-        <div className="space-y-2">
-          {goals.map((goal) => (
-            <Link
-              key={goal.id}
-              to="/missions"
-              className="block p-2 border border-gray-200 rounded hover:bg-gray-50"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {goal.missionName || goal.goalName}
-                  </p>
-                  <p className="text-xs text-gray-500">{goal.user.name}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 transition-all"
-                      style={{ width: `${goal.progress}%` }}
-                    />
+      {displayMode === 'view-only' || displayMode === 'view-with-add' ? (
+        <>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : !goals || goals.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">ミッションがありません</p>
+          ) : (
+            <div className="space-y-2">
+              {goals.map((goal) => (
+                <Link
+                  key={goal.id}
+                  to="/missions"
+                  className="block p-2 border border-gray-200 rounded hover:bg-gray-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {goal.missionName || goal.goalName}
+                      </p>
+                      <p className="text-xs text-gray-500">{goal.user.name}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 transition-all"
+                          style={{ width: `${goal.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-600 font-medium w-10 text-right">
+                        {goal.progress}%
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-600 font-medium w-10 text-right">
-                    {goal.progress}%
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 };

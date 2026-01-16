@@ -8,12 +8,16 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Task, Project } from '../../types';
 
+type DisplayMode = 'view-only' | 'view-with-add' | 'add-only';
+
 interface TasksWidgetProps {
+  displayMode?: DisplayMode;
   showAddButton?: boolean;
   onAddClick?: () => void;
 }
 
 export const TasksWidget: React.FC<TasksWidgetProps> = ({
+  displayMode = 'view-with-add',
   showAddButton = false,
   onAddClick,
 }) => {
@@ -70,11 +74,26 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
     }
   };
 
+  // 追加ボタンのみモード
+  if (displayMode === 'add-only') {
+    return (
+      <div className="bg-white rounded-lg shadow border border-border p-6 flex items-center justify-center min-h-[200px]">
+        <Link to="/tasks">
+          <Button className="flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            タスクを追加
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // 表示のみ or 表示+追加ボタンモード
   return (
     <div className="bg-white rounded-lg shadow border border-border p-4">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900">タスク</h3>
-        {showAddButton && (user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'MASTER') && (
+        {(displayMode === 'view-with-add' || showAddButton) && (user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'MASTER') && (
           <Link to="/tasks">
             <Button size="sm" className="flex items-center gap-1">
               <Plus className="w-4 h-4" />
@@ -84,40 +103,44 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
         )}
       </div>
 
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : !allTasks || allTasks.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">タスクがありません</p>
-      ) : (
-        <div className="space-y-2">
-          {allTasks.map((task) => (
-            <Link
-              key={task.id}
-              to="/tasks"
-              className="block p-2 border-2 border-gray-300 rounded hover:bg-gray-50"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {getStatusIcon(task.status)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">
-                      {task.title}
-                    </p>
-                    {task.project && (
-                      <p className="text-xs text-gray-500 truncate">
-                        {task.project.projectName}
-                      </p>
-                    )}
+      {displayMode === 'view-only' || displayMode === 'view-with-add' ? (
+        <>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : !allTasks || allTasks.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">タスクがありません</p>
+          ) : (
+            <div className="space-y-2">
+              {allTasks.map((task) => (
+                <Link
+                  key={task.id}
+                  to="/tasks"
+                  className="block p-2 border-2 border-gray-300 rounded hover:bg-gray-50"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {getStatusIcon(task.status)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">
+                          {task.title}
+                        </p>
+                        {task.project && (
+                          <p className="text-xs text-gray-500 truncate">
+                            {task.project.projectName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700 ml-2">
+                      {getStatusLabel(task.status)}
+                    </span>
                   </div>
-                </div>
-                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700 ml-2">
-                  {getStatusLabel(task.status)}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 };
