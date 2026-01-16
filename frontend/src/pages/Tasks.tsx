@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskModal } from '../components/project/TaskModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, Check, HelpCircle } from 'lucide-react';
 import { Task, Project, Mission } from '../types';
 
 export const Tasks: React.FC = () => {
