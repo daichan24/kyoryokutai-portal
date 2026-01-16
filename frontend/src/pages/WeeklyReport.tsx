@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { api } from '../utils/api';
 import { WeeklyReport as WeeklyReportType } from '../types';
 import { formatDate, parseWeekString } from '../utils/date';
