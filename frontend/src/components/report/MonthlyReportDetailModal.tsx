@@ -324,29 +324,30 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             <div>
               <h3 className="font-bold text-lg mb-3">支援内容</h3>
               {report.supportRecords && report.supportRecords.length === 0 ? (
-              <p className="text-gray-500">支援記録がありません</p>
-            ) : (
-              <div className="space-y-3">
-                {report.supportRecords.map((record) => (
-                  <div key={record.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <span className="font-medium">{record.user.name}</span>
-                        <span className="text-sm text-gray-600 ml-2">
-                          {format(new Date(record.supportDate), 'M月d日')}
-                        </span>
+                <p className="text-gray-500">支援記録がありません</p>
+              ) : (
+                <div className="space-y-3">
+                  {report.supportRecords?.map((record) => (
+                    <div key={record.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="font-medium">{record.user.name}</span>
+                          <span className="text-sm text-gray-600 ml-2">
+                            {format(new Date(record.supportDate), 'M月d日')}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-600">{record.supportBy}</span>
                       </div>
-                      <span className="text-sm text-gray-600">{record.supportBy}</span>
+                      <div
+                        className="text-gray-900 prose max-w-none"
+                        dangerouslySetInnerHTML={{ __html: record.supportContent }}
+                      />
                     </div>
-                    <div
-                      className="text-gray-900 prose max-w-none"
-                      dangerouslySetInnerHTML={{ __html: record.supportContent }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <h3 className="font-bold text-lg mb-3">隊員別シート</h3>

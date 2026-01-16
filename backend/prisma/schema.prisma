@@ -603,9 +603,9 @@ model MonthlyReportRevision {
 }
 
 model SupportRecord {
-  id              String        @id @default(uuid())
-  monthlyReportId String
-  monthlyReport   MonthlyReport @relation(fields: [monthlyReportId], references: [id], onDelete: Cascade)
+  id              String         @id @default(uuid())
+  monthlyReportId String?
+  monthlyReport   MonthlyReport? @relation(fields: [monthlyReportId], references: [id], onDelete: Cascade)
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
