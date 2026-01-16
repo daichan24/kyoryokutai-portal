@@ -211,5 +211,53 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
   }
 });
 
+/**
+ * 【API定義】月次報告削除
+ * エンドポイント: DELETE /api/monthly-reports/:id
+ * 権限: SUPPORT, MASTER のみ
+ */
+router.delete('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingReport = await prisma.monthlyReport.findUnique({
+      where: { id },
+    });
+
+    if (!existingReport) {
+      return res.status(404).json({ error: '月次報告が見つかりません' });
+    }
+
+    await prisma.monthlyReport.delete({
+      where: { id },
+    });
+
+    res.json({ message: '月次報告を削除しました' });
+  } catch (error) {
+    console.error('Delete monthly report error:', error);
+    res.status(500).json({ error: '月次報告の削除に失敗しました' });
+  }
+});
+
+/**
+ * 【API定義】月次報告PDF出力
+ * エンドポイント: GET /api/monthly-reports/:id/pdf
+ */
+router.get('/:id/pdf', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const { generateMonthlyReportPDF } = await import('../services/pdfGenerator');
+    const pdfBuffer = await generateMonthlyReportPDF(id);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="monthly-report-${id}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Generate monthly report PDF error:', error);
+    res.status(500).json({ error: 'PDF出力に失敗しました' });
+  }
+});
+
 export default router;
 

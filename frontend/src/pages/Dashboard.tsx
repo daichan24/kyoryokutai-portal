@@ -405,7 +405,7 @@ export const Dashboard: React.FC = () => {
               {inboxData?.taskRequests && inboxData.taskRequests.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                    {user?.role === 'MEMBER' ? 'タスクボックス' : '依頼'}
+                    {user?.role === 'MEMBER' ? '依頼ボックス' : '依頼'}
                   </h3>
                   <div className="space-y-3">
                     {inboxData.taskRequests.map((request) => (

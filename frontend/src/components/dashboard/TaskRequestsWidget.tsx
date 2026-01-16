@@ -43,7 +43,7 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
     },
   });
 
-  const widgetTitle = user?.role === 'MEMBER' ? 'タスクボックス' : '依頼';
+  const widgetTitle = user?.role === 'MEMBER' ? '依頼ボックス' : '依頼';
 
   return (
     <div className="bg-white rounded-lg shadow border border-border p-4">

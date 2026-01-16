@@ -151,7 +151,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Weekly report not found' });
     }
 
-    if (existingReport.userId !== req.user!.id && req.user!.role !== 'MASTER') {
+    // MEMBERのみ編集可能
+    if (req.user!.role !== 'MEMBER' || existingReport.userId !== req.user!.id) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 

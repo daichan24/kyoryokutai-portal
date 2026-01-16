@@ -112,7 +112,7 @@ export const TaskRequests: React.FC = () => {
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">
-          {user?.role === 'MEMBER' ? 'タスクボックス' : '依頼'}
+          {user?.role === 'MEMBER' ? '依頼ボックス' : '依頼'}
           {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
         </h1>
         <div className="flex gap-3">

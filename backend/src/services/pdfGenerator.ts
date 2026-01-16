@@ -296,13 +296,14 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
     <body>
       <div style="text-align: center; margin: 50px 0;">
         <div style="margin: 20px 0;">${format(new Date(), 'yyyy年M月d日')}</div>
-        <div style="margin: 20px 0;">${report.coverRecipient}</div>
+        <div style="margin: 20px 0;">${report.coverRecipient || '長沼町長 斎藤良彦様'}</div>
         <div style="margin: 40px 0; text-align: right; padding-right: 50px;">
-          ${report.coverSender.split('\n').map(line => `<div>${line}</div>`).join('')}
+          ${(report.coverSender || '一般社団法人まおいのはこ 代表理事 坂本一志').split('\n').map(line => `<div>${line}</div>`).join('')}
         </div>
         <h1>長沼町地域おこし協力隊サポート業務月次報告（${report.month}）</h1>
       </div>
 
+      ${Object.keys(groupedRecords).length > 0 ? `
       <div style="page-break-before: always;">
         <h2>一般社団法人まおいのはこの支援内容（${report.month}）</h2>
         ${Object.entries(groupedRecords).map(([userId, records]) => `
@@ -310,12 +311,13 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
             <strong>【${records[0].user.name}】</strong>
             ${records.map(record => `
               <div class="record">
-                ・${format(new Date(record.supportDate), 'M/d')} ${record.supportContent}（${record.supportBy}）
+                ・${format(new Date(record.supportDate), 'M/d')} ${(record.supportContent || '').replace(/<[^>]*>/g, '').replace(/\n/g, ' ')}（${record.supportBy}）
               </div>
             `).join('')}
           </div>
         `).join('')}
       </div>
+      ` : ''}
     </body>
     </html>
   `;

@@ -14,17 +14,37 @@ export const WeeklyReport: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<WeeklyReportType | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string }>>([]);
 
   useEffect(() => {
+    fetchUsers();
     fetchReports();
-  }, [user]);
+  }, [user, selectedUserId]);
+
+  const fetchUsers = async () => {
+    if (user?.role === 'MEMBER') return; // メンバーはユーザー一覧不要
+    
+    try {
+      const response = await api.get('/api/users');
+      const memberUsers = response.data.filter((u: any) => u.role === 'MEMBER');
+      setUsers(memberUsers);
+      if (memberUsers.length > 0 && !selectedUserId) {
+        setSelectedUserId(memberUsers[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      // MEMBERの場合は自分の報告のみ、他は全員の報告
+      // MEMBERの場合は自分の報告のみ、他は選択したユーザーの報告
       const url = user?.role === 'MEMBER' 
         ? `/api/weekly-reports?userId=${user.id}`
+        : selectedUserId
+        ? `/api/weekly-reports?userId=${selectedUserId}`
         : '/api/weekly-reports';
       const response = await api.get<WeeklyReportType[]>(url);
       setReports(response.data || []);
@@ -57,7 +77,21 @@ export const WeeklyReport: React.FC = () => {
   };
 
   // MEMBERのみ新規作成ボタンを表示（自分の報告のみ作成可能）
-  const canCreate = user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER';
+  const canCreate = user?.role === 'MEMBER';
+  const canView = user?.role !== 'MEMBER'; // メンバー以外は閲覧のみ
+
+  const handleDelete = async (reportId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // カードのクリックイベントを防ぐ
+    if (!confirm('この週次報告を削除しますか？')) return;
+    
+    try {
+      await api.delete(`/api/weekly-reports/${reportId}`);
+      fetchReports();
+    } catch (error) {
+      console.error('Failed to delete report:', error);
+      alert('削除に失敗しました');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -99,6 +133,25 @@ export const WeeklyReport: React.FC = () => {
         )}
       </div>
 
+      {canView && users.length > 0 && (
+        <div className="bg-white rounded-lg shadow border border-border p-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            担当者を選択
+          </label>
+          <select
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+            className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md"
+          >
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <LoadingSpinner />
       ) : reports.length === 0 ? (
@@ -121,11 +174,13 @@ export const WeeklyReport: React.FC = () => {
             return (
               <div
                 key={report.id}
-                className="bg-white rounded-lg shadow border border-border p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => handleEditReport(report)}
+                className="bg-white rounded-lg shadow border border-border p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex justify-between items-start mb-4">
-                  <div>
+                  <div 
+                    className="flex-1 cursor-pointer"
+                    onClick={() => canCreate ? handleEditReport(report) : undefined}
+                  >
                     <h3 className="text-xl font-bold text-gray-900">
                       {report.week} {isNaN(weekStart.getTime()) ? '' : `- ${formatDate(weekStart, 'yyyy年M月d日週')}`}
                     </h3>
@@ -136,14 +191,29 @@ export const WeeklyReport: React.FC = () => {
                       )}
                     </p>
                   </div>
-                  {report.submittedAt && (
-                    <span className="px-3 py-1 bg-secondary/10 text-secondary text-sm rounded-full">
-                      提出済み
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {report.submittedAt && (
+                      <span className="px-3 py-1 bg-secondary/10 text-secondary text-sm rounded-full">
+                        提出済み
+                      </span>
+                    )}
+                    {canCreate && (
+                      <button
+                        onClick={(e) => handleDelete(report.id, e)}
+                        className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="削除"
+                      >
+                        削除
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-4">
+                <div 
+                  className="space-y-4"
+                  onClick={() => canCreate ? handleEditReport(report) : undefined}
+                  style={{ cursor: canCreate ? 'pointer' : 'default' }}
+                >
                   <div>
                     <h4 className="font-medium text-gray-900 mb-2">今週の活動</h4>
                     <div className="space-y-2">

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { X, FileDown, Edit2, History } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { X, FileDown, Edit2, History, Save, Trash2 } from 'lucide-react';
 import { api } from '../../utils/api';
 import { format } from 'date-fns';
 import { Button } from '../common/Button';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { useAuthStore } from '../../stores/authStore';
+import { Input } from '../common/Input';
+import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 
 interface MonthlyReport {
   id: string;
@@ -47,23 +49,38 @@ interface MonthlyReportDetailModalProps {
   reportId: string;
   onClose: () => void;
   onEdit?: () => void;
+  onUpdated?: () => void;
 }
 
 export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> = ({
   reportId,
   onClose,
   onEdit,
+  onUpdated,
 }) => {
   const { user } = useAuthStore();
   const [showRevisions, setShowRevisions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [coverRecipient, setCoverRecipient] = useState('');
+  const [coverSender, setCoverSender] = useState('');
+  const [memberSheets, setMemberSheets] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  const { data: report, isLoading } = useQuery<MonthlyReport>({
+  const { data: report, isLoading, refetch } = useQuery<MonthlyReport>({
     queryKey: ['monthly-report', reportId],
     queryFn: async () => {
       const response = await api.get(`/api/monthly-reports/${reportId}`);
       return response.data;
     },
   });
+
+  useEffect(() => {
+    if (report) {
+      setCoverRecipient(report.coverRecipient);
+      setCoverSender(report.coverSender);
+      setMemberSheets(report.memberSheets || []);
+    }
+  }, [report]);
 
   const downloadPDF = async () => {
     try {
@@ -84,7 +101,44 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     }
   };
 
+  const queryClient = useQueryClient();
   const canEdit = user?.role === 'MASTER' || (!report?.submittedAt && (user?.role === 'SUPPORT' || user?.role === 'MASTER'));
+  const canDelete = user?.role === 'SUPPORT' || user?.role === 'MASTER';
+
+  const handleSave = async () => {
+    if (!report) return;
+    setSaving(true);
+    try {
+      await api.put(`/api/monthly-reports/${reportId}`, {
+        coverRecipient,
+        coverSender,
+        memberSheets,
+      });
+      setIsEditing(false);
+      refetch();
+      if (onUpdated) onUpdated();
+      queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+    } catch (error: any) {
+      console.error('Failed to save monthly report:', error);
+      alert(`保存に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!report) return;
+    if (!confirm('この月次報告を削除しますか？')) return;
+    
+    try {
+      await api.delete(`/api/monthly-reports/${reportId}`);
+      queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+      onClose();
+    } catch (error: any) {
+      console.error('Failed to delete monthly report:', error);
+      alert(`削除に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -106,16 +160,40 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
           <h2 className="text-2xl font-bold">{report.month} 月次報告</h2>
           <div className="flex items-center gap-2">
-            {canEdit && onEdit && (
-              <Button onClick={onEdit} variant="outline" size="sm">
+            {canEdit && !isEditing && (
+              <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
                 <Edit2 className="h-4 w-4 mr-1" />
                 編集
+              </Button>
+            )}
+            {isEditing && (
+              <Button onClick={handleSave} variant="primary" size="sm" disabled={saving}>
+                <Save className="h-4 w-4 mr-1" />
+                {saving ? '保存中...' : '保存'}
+              </Button>
+            )}
+            {isEditing && (
+              <Button onClick={() => {
+                setIsEditing(false);
+                if (report) {
+                  setCoverRecipient(report.coverRecipient);
+                  setCoverSender(report.coverSender);
+                  setMemberSheets(report.memberSheets || []);
+                }
+              }} variant="outline" size="sm">
+                キャンセル
               </Button>
             )}
             <Button onClick={downloadPDF} variant="outline" size="sm">
               <FileDown className="h-4 w-4 mr-1" />
               PDF出力
             </Button>
+            {canDelete && (
+              <Button onClick={handleDelete} variant="outline" size="sm">
+                <Trash2 className="h-4 w-4 mr-1" />
+                削除
+              </Button>
+            )}
             {report.revisions && report.revisions.length > 0 && (
               <Button
                 onClick={() => setShowRevisions(!showRevisions)}
@@ -174,6 +252,40 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             )}
           </div>
 
+          {isEditing && (
+            <div className="space-y-4 border-t pt-4">
+              <Input
+                label="宛先"
+                value={coverRecipient}
+                onChange={(e) => setCoverRecipient(e.target.value)}
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  差出人
+                </label>
+                <textarea
+                  value={coverSender}
+                  onChange={(e) => setCoverSender(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+          )}
+
+          {!isEditing && (
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">宛先:</span>
+                <p className="text-gray-900">{report.coverRecipient}</p>
+              </div>
+              <div>
+                <span className="text-gray-600">差出人:</span>
+                <p className="text-gray-900 whitespace-pre-line">{report.coverSender}</p>
+              </div>
+            </div>
+          )}
+
           <div>
             <h3 className="font-bold text-lg mb-3">支援内容</h3>
             {report.supportRecords.length === 0 ? (
@@ -203,22 +315,124 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
 
           <div>
             <h3 className="font-bold text-lg mb-3">隊員別シート</h3>
-            {Array.isArray(report.memberSheets) && report.memberSheets.length > 0 ? (
+            {Array.isArray(memberSheets) && memberSheets.length > 0 ? (
               <div className="space-y-4">
-                {report.memberSheets.map((sheet: any, index: number) => (
+                {memberSheets.map((sheet: any, index: number) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4">
                     <h4 className="font-medium mb-2">{sheet.userName}</h4>
-                    {sheet.thisMonthActivities && sheet.thisMonthActivities.length > 0 && (
-                      <div className="mb-2">
-                        <span className="text-sm font-medium text-gray-700">今月の活動:</span>
-                        <ul className="list-disc list-inside text-sm text-gray-700 ml-2">
-                          {sheet.thisMonthActivities.map((activity: any, i: number) => (
-                            <li key={i}>
-                              {activity.date}: {activity.description}
-                            </li>
-                          ))}
-                        </ul>
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            今月の活動
+                          </label>
+                          <SimpleRichTextEditor
+                            value={sheet.thisMonthActivities ? sheet.thisMonthActivities.map((a: any) => `${a.date}: ${a.description}`).join('\n') : ''}
+                            onChange={(value) => {
+                              const newSheets = [...memberSheets];
+                              newSheets[index] = {
+                                ...sheet,
+                                thisMonthActivities: value.split('\n').filter(v => v.trim()).map(line => {
+                                  const match = line.match(/^(.+?):\s*(.+)$/);
+                                  if (match) {
+                                    return { date: match[1], description: match[2] };
+                                  }
+                                  return { date: '', description: line };
+                                }),
+                              };
+                              setMemberSheets(newSheets);
+                            }}
+                            placeholder="活動内容を入力..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            来月の予定
+                          </label>
+                          <textarea
+                            value={sheet.nextMonthPlan || ''}
+                            onChange={(e) => {
+                              const newSheets = [...memberSheets];
+                              newSheets[index] = {
+                                ...sheet,
+                                nextMonthPlan: e.target.value,
+                              };
+                              setMemberSheets(newSheets);
+                            }}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            業務上の質問・相談
+                          </label>
+                          <textarea
+                            value={sheet.workQuestions || ''}
+                            onChange={(e) => {
+                              const newSheets = [...memberSheets];
+                              newSheets[index] = {
+                                ...sheet,
+                                workQuestions: e.target.value,
+                              };
+                              setMemberSheets(newSheets);
+                            }}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            生活面の備考
+                          </label>
+                          <textarea
+                            value={sheet.lifeNotes || ''}
+                            onChange={(e) => {
+                              const newSheets = [...memberSheets];
+                              newSheets[index] = {
+                                ...sheet,
+                                lifeNotes: e.target.value,
+                              };
+                              setMemberSheets(newSheets);
+                            }}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          />
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        {sheet.thisMonthActivities && sheet.thisMonthActivities.length > 0 && (
+                          <div className="mb-2">
+                            <span className="text-sm font-medium text-gray-700">今月の活動:</span>
+                            <ul className="list-disc list-inside text-sm text-gray-700 ml-2">
+                              {sheet.thisMonthActivities.map((activity: any, i: number) => (
+                                <li key={i}>
+                                  {activity.date}: {activity.description}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {sheet.nextMonthPlan && (
+                          <div className="mb-2">
+                            <span className="text-sm font-medium text-gray-700">来月の予定:</span>
+                            <p className="text-sm text-gray-700 whitespace-pre-line ml-2">{sheet.nextMonthPlan}</p>
+                          </div>
+                        )}
+                        {sheet.workQuestions && (
+                          <div className="mb-2">
+                            <span className="text-sm font-medium text-gray-700">業務上の質問・相談:</span>
+                            <p className="text-sm text-gray-700 whitespace-pre-line ml-2">{sheet.workQuestions}</p>
+                          </div>
+                        )}
+                        {sheet.lifeNotes && (
+                          <div className="mb-2">
+                            <span className="text-sm font-medium text-gray-700">生活面の備考:</span>
+                            <p className="text-sm text-gray-700 whitespace-pre-line ml-2">{sheet.lifeNotes}</p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 ))}

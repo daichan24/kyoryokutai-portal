@@ -95,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       items.push({
         to: '/task-requests', // パスは後方互換性のため維持
         icon: Inbox,
-        label: 'タスクボックス',
+        label: '依頼ボックス',
       });
     }
     

@@ -111,12 +111,31 @@ export const MonthlyReport: React.FC = () => {
                   作成日: {format(new Date(report.createdAt), 'yyyy年M月d日')}
                 </p>
               </div>
-              <button
-                onClick={() => downloadPDF(report.id, report.month)}
-                className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
-              >
-                📄 PDF出力
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => downloadPDF(report.id, report.month)}
+                  className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                >
+                  📄 PDF出力
+                </button>
+                {canCreate && (
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!confirm('この月次報告を削除しますか？')) return;
+                      try {
+                        await api.delete(`/api/monthly-reports/${report.id}`);
+                        queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+                      } catch (error: any) {
+                        alert(`削除に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
+                      }
+                    }}
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    削除
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -209,6 +228,9 @@ export const MonthlyReport: React.FC = () => {
         <MonthlyReportDetailModal
           reportId={selectedReportId}
           onClose={() => setSelectedReportId(null)}
+          onUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+          }}
         />
       )}
     </div>
