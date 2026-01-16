@@ -228,7 +228,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 削除
               </Button>
             )}
-            {report.revisions && report.revisions.length > 0 && (
+            {report && report.revisions && report.revisions.length > 0 && (
               <Button
                 onClick={() => setShowRevisions(!showRevisions)}
                 variant="outline"
@@ -245,7 +245,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         </div>
 
         <div className="p-6 space-y-6">
-          {showRevisions && report.revisions && report.revisions.length > 0 && (
+          {report && showRevisions && report.revisions && report.revisions.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <h3 className="font-bold text-lg mb-3">変更履歴</h3>
               <div className="space-y-3">
