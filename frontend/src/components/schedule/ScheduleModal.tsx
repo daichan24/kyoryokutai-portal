@@ -243,6 +243,58 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              プロジェクト（任意）
+            </label>
+            <select
+              value={selectedProjectId || ''}
+              onChange={(e) => {
+                setSelectedProjectId(e.target.value || null);
+                // プロジェクトが変更されたら、そのプロジェクトに紐づくタスクのみ表示
+                if (!e.target.value) {
+                  setSelectedTaskId(null);
+                }
+              }}
+              className="w-full px-3 py-2 border border-border rounded-md"
+            >
+              <option value="">選択しない</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.projectName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              タスク（任意）
+            </label>
+            <select
+              value={selectedTaskId || ''}
+              onChange={(e) => setSelectedTaskId(e.target.value || null)}
+              className="w-full px-3 py-2 border border-border rounded-md"
+              disabled={!selectedProjectId && tasks.filter(t => !t.projectId).length === 0}
+            >
+              <option value="">選択しない</option>
+              {tasks
+                .filter((task) => {
+                  // プロジェクトが選択されている場合は、そのプロジェクトのタスクのみ表示
+                  if (selectedProjectId) {
+                    return task.projectId === selectedProjectId;
+                  }
+                  // プロジェクトが選択されていない場合は、プロジェクトに紐づいていないタスクのみ表示
+                  return !task.projectId;
+                })
+                .map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.title}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               活動内容 <span className="text-error">*</span>
             </label>
             <textarea
