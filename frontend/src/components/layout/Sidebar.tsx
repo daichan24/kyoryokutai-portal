@@ -69,6 +69,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     // SUPPORT/MASTERのみ月次報告を追加
     if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
       items.splice(1, 0, { to: '/reports/monthly', icon: FileBarChart, label: '月次報告' });
+      // SUPPORTのみ支援内容を追加
+      if (user?.role === 'SUPPORT') {
+        items.push({ to: '/support-records', icon: UserCheck, label: '支援内容' });
+      }
     }
     return items;
   };

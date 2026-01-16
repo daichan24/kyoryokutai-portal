@@ -7,27 +7,37 @@ import { ja } from 'date-fns/locale';
  * HTML文字列からPDFを生成
  */
 async function generatePDFFromHTML(html: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      timeout: 30000,
+    });
 
-  const page = await browser.newPage();
-  await page.setContent(html, { waitUntil: 'networkidle0' });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
 
-  const pdf = await page.pdf({
-    format: 'A4',
-    margin: {
-      top: '20mm',
-      right: '20mm',
-      bottom: '20mm',
-      left: '20mm',
-    },
-  });
+    const pdf = await page.pdf({
+      format: 'A4',
+      margin: {
+        top: '20mm',
+        right: '20mm',
+        bottom: '20mm',
+        left: '20mm',
+      },
+      printBackground: true,
+    });
 
-  await browser.close();
-
-  return Buffer.from(pdf);
+    return Buffer.from(pdf);
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    throw new Error(`PDF生成に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    if (browser) {
+      await browser.close().catch(err => console.error('Browser close error:', err));
+    }
+  }
 }
 
 /**
@@ -126,22 +136,22 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
 
       <div class="section">
         <div class="label">1. 視察目的</div>
-        <div class="content">${inspection.inspectionPurpose}</div>
+        <div class="content">${(inspection.inspectionPurpose || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
       </div>
 
       <div class="section">
         <div class="label">2. 視察内容</div>
-        <div class="content">${inspection.inspectionContent}</div>
+        <div class="content">${(inspection.inspectionContent || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
       </div>
 
       <div class="section">
         <div class="label">3. 所感</div>
-        <div class="content">${inspection.reflection}</div>
+        <div class="content">${(inspection.reflection || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
       </div>
 
       <div class="section">
         <div class="label">4. 今後のアクション</div>
-        <div class="content">${inspection.futureAction}</div>
+        <div class="content">${(inspection.futureAction || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
       </div>
 
       <div style="margin-top: 60px; text-align: right;">

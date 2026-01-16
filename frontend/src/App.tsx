@@ -25,6 +25,7 @@ import { TaskRequests } from './pages/TaskRequests';
 import { Inspections } from './pages/Inspections';
 import { Contacts } from './pages/Contacts';
 import { MonthlyReport } from './pages/MonthlyReport';
+import { SupportRecords } from './pages/SupportRecords';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -244,6 +245,17 @@ const App: React.FC = () => {
           <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT']}>
             <Layout>
               <MonthlyReport />
+            </Layout>
+          </RoleProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/support-records"
+        element={
+          <RoleProtectedRoute allowedRoles={['SUPPORT']}>
+            <Layout>
+              <SupportRecords />
             </Layout>
           </RoleProtectedRoute>
         }

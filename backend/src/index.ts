@@ -25,6 +25,7 @@ import inboxRoutes from './routes/inbox';
 import dashboardConfigRoutes from './routes/dashboardConfig';
 import snsLinksRoutes from './routes/snsLinks';
 import nudgesRoutes from './routes/nudges';
+import supportRecordsRoutes from './routes/supportRecords';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -104,6 +105,7 @@ app.use('/api/inbox', inboxRoutes); // 受信箱API
 app.use('/api/me/dashboard-config', dashboardConfigRoutes); // ダッシュボード設定API
 app.use('/api/me/sns-links', snsLinksRoutes); // SNSリンクAPI
 app.use('/api/nudges', nudgesRoutes); // 協力隊催促API
+app.use('/api/support-records', supportRecordsRoutes); // 支援記録API
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');
