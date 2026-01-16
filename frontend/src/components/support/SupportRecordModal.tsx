@@ -35,7 +35,6 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
   const [supportDate, setSupportDate] = useState(formatDate(new Date()));
   const [userId, setUserId] = useState('');
   const [supportContent, setSupportContent] = useState('');
-  const [supportBy, setSupportBy] = useState('');
   const [monthlyReportId, setMonthlyReportId] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -64,7 +63,6 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
       setSupportDate(formatDate(new Date(record.supportDate)));
       setUserId(record.userId);
       setSupportContent(record.supportContent);
-      setSupportBy(record.supportBy);
       setMonthlyReportId(record.monthlyReportId || '');
     }
   }, [record]);
@@ -78,8 +76,7 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
         userId,
         supportDate,
         supportContent,
-        supportBy,
-        monthlyReportId: monthlyReportId || undefined,
+        monthlyReportId, // 必須
       };
 
       if (record) {
@@ -147,31 +144,26 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
             />
           </div>
 
-          <Input
-            label="支援者"
-            type="text"
-            value={supportBy}
-            onChange={(e) => setSupportBy(e.target.value)}
-            required
-            placeholder="支援を行った人の名前"
-          />
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              月次報告への紐付け（任意）
+              月次報告 <span className="text-red-500">*</span>
             </label>
             <select
               value={monthlyReportId}
               onChange={(e) => setMonthlyReportId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              required
             >
-              <option value="">なし</option>
+              <option value="">選択してください</option>
               {monthlyReports.map((report) => (
                 <option key={report.id} value={report.id}>
                   {report.month} 月次報告
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-500 mt-1">
+              支援者は自動的にあなたのアカウントに紐付けられます
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">

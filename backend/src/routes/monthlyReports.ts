@@ -65,5 +65,43 @@ router.post('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =
   }
 });
 
+/**
+ * 【API定義】月次報告詳細取得
+ * エンドポイント: GET /api/monthly-reports/:id
+ */
+router.get('/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    const report = await prisma.monthlyReport.findUnique({
+      where: { id },
+      include: {
+        creator: { select: { id: true, name: true } },
+        supportRecords: {
+          include: {
+            user: { select: { id: true, name: true } },
+          },
+          orderBy: { supportDate: 'asc' },
+        },
+        revisions: {
+          include: {
+            changer: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!report) {
+      return res.status(404).json({ error: '月次報告が見つかりません' });
+    }
+
+    res.json(report);
+  } catch (error) {
+    console.error('Get monthly report error:', error);
+    res.status(500).json({ error: '月次報告の取得に失敗しました' });
+  }
+});
+
 export default router;
 

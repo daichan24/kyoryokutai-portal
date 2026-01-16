@@ -28,17 +28,18 @@ model User {
   weeklyReports WeeklyReport[]
 
   // Phase 2 Relations
-  missions            Mission[]
-  projects            Project[]
-  projectMemberships  ProjectMember[]
-  projectTasks        ProjectTask[]        @relation("TaskAssignee")
-  events              Event[]
-  eventParticipations EventParticipation[]
-  snsPosts            SNSPost[]
-  monthlyReports      MonthlyReport[]      @relation("MonthlyReportCreator")
-  supportRecords      SupportRecord[]
-  contacts            Contact[]
-  contactHistories    ContactHistory[]
+  missions               Mission[]
+  projects               Project[]
+  projectMemberships     ProjectMember[]
+  projectTasks           ProjectTask[]           @relation("TaskAssignee")
+  events                 Event[]
+  eventParticipations    EventParticipation[]
+  snsPosts               SNSPost[]
+  monthlyReports         MonthlyReport[]         @relation("MonthlyReportCreator")
+  monthlyReportRevisions MonthlyReportRevision[] @relation("MonthlyReportRevisionChanger")
+  supportRecords         SupportRecord[]
+  contacts               Contact[]
+  contactHistories       ContactHistory[]
 
   // Phase 3 Relations
   scheduleSuggestions ScheduleSuggestion[]
@@ -568,11 +569,28 @@ model MonthlyReport {
   submittedAt DateTime?
 
   supportRecords SupportRecord[]
+  revisions      MonthlyReportRevision[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([month])
+}
+
+model MonthlyReportRevision {
+  id              String        @id @default(uuid())
+  monthlyReportId String
+  monthlyReport   MonthlyReport @relation(fields: [monthlyReportId], references: [id], onDelete: Cascade)
+
+  changedBy String
+  changer   User   @relation("MonthlyReportRevisionChanger", fields: [changedBy], references: [id], onDelete: Cascade)
+
+  changes Json // 変更内容をJSON形式で保存
+  reason  String? @db.Text // 変更理由
+
+  createdAt DateTime @default(now())
+
+  @@index([monthlyReportId])
 }
 
 model SupportRecord {

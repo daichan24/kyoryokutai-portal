@@ -10,8 +10,7 @@ const supportRecordSchema = z.object({
   userId: z.string().min(1),
   supportDate: z.string(),
   supportContent: z.string().min(1),
-  supportBy: z.string().min(1),
-  monthlyReportId: z.string().optional(),
+  monthlyReportId: z.string().min(1), // 必須
 });
 
 // 支援記録一覧取得（SUPPORTのみ）
@@ -43,18 +42,25 @@ router.get('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =>
   }
 });
 
-// 支援記録作成（SUPPORTのみ）
+// 支援記録作成（SUPPORT/MASTERのみ）
 router.post('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) => {
   try {
     const data = supportRecordSchema.parse(req.body);
 
+    // 現在のユーザー情報を取得
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { name: true },
+    });
+
+    // 支援者は現在のログインユーザーに自動紐付け
     const record = await prisma.supportRecord.create({
       data: {
         userId: data.userId,
         supportDate: new Date(data.supportDate),
         supportContent: data.supportContent,
-        supportBy: data.supportBy,
-        monthlyReportId: data.monthlyReportId || null,
+        supportBy: currentUser?.name || req.user!.email, // 現在のユーザー名を自動設定
+        monthlyReportId: data.monthlyReportId,
       },
       include: {
         user: {
@@ -83,11 +89,17 @@ router.post('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =
   }
 });
 
-// 支援記録更新（SUPPORTのみ）
+// 支援記録更新（SUPPORT/MASTERのみ）
 router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const data = supportRecordSchema.parse(req.body);
+
+    // 現在のユーザー情報を取得
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { name: true },
+    });
 
     const record = await prisma.supportRecord.update({
       where: { id },
@@ -95,8 +107,8 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
         userId: data.userId,
         supportDate: new Date(data.supportDate),
         supportContent: data.supportContent,
-        supportBy: data.supportBy,
-        monthlyReportId: data.monthlyReportId || null,
+        supportBy: currentUser?.name || req.user!.email, // 現在のユーザー名を自動設定
+        monthlyReportId: data.monthlyReportId,
       },
       include: {
         user: {

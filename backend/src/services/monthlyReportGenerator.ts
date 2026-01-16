@@ -8,6 +8,7 @@ interface ActivityItem {
 
 /**
  * 月次報告を自動生成
+ * その月の支援記録を自動的に含める
  */
 export async function generateMonthlyReport(month: string, createdBy: string) {
   const users = await prisma.user.findMany({
@@ -30,13 +31,20 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     });
   }
 
-  return await prisma.monthlyReport.create({
+  // 月次報告を作成
+  const report = await prisma.monthlyReport.create({
     data: {
       month,
       createdBy,
       memberSheets: memberSheets as any,
     },
   });
+
+  // 注意: 支援記録は作成時に必ず月次報告に紐付けられるため、
+  // 月次報告作成時に既存の支援記録を紐付ける処理は不要
+  // 支援記録は支援記録作成APIで自動的に月次報告に紐付けられる
+
+  return report;
 }
 
 /**

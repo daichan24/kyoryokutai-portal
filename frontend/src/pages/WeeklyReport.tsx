@@ -67,10 +67,35 @@ export const WeeklyReport: React.FC = () => {
           {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分の報告）</span>}
         </h1>
         {canCreate && (
-          <Button onClick={handleCreateReport}>
-            <Plus className="h-4 w-4 mr-2" />
-            新規作成
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={async () => {
+                try {
+                  // 現在の週を取得
+                  const now = new Date();
+                  const year = now.getFullYear();
+                  const weekStart = new Date(now);
+                  weekStart.setDate(now.getDate() - now.getDay()); // 日曜日に設定
+                  const weekNum = Math.ceil((now.getTime() - new Date(year, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+                  const week = `${year}-${String(weekNum).padStart(2, '0')}`;
+                  
+                  const response = await api.post('/api/weekly-reports/draft', { week });
+                  setSelectedReport(response.data);
+                  setIsModalOpen(true);
+                } catch (error: any) {
+                  console.error('Failed to generate draft:', error);
+                  alert(error?.response?.data?.error || '自動作成に失敗しました');
+                }
+              }}
+              variant="outline"
+            >
+              🤖 自動作成
+            </Button>
+            <Button onClick={handleCreateReport}>
+              <Plus className="h-4 w-4 mr-2" />
+              新規作成
+            </Button>
+          </div>
         )}
       </div>
 

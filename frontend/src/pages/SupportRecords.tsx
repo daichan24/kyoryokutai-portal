@@ -143,7 +143,10 @@ export const SupportRecords: React.FC = () => {
             <div className="space-y-2 mb-3">
               <div>
                 <span className="text-sm font-medium text-gray-700">支援内容:</span>
-                <p className="text-gray-900 mt-1 whitespace-pre-wrap">{record.supportContent}</p>
+                <div 
+                  className="text-gray-900 mt-1 prose max-w-none"
+                  dangerouslySetInnerHTML={{ __html: record.supportContent }}
+                />
               </div>
               <div>
                 <span className="text-sm font-medium text-gray-700">支援者:</span>

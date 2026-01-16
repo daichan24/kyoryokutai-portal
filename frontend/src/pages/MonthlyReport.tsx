@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { useAuthStore } from '../stores/authStore';
+import { MonthlyReportDetailModal } from '../components/report/MonthlyReportDetailModal';
 
 interface MonthlyReport {
   id: string;
@@ -18,6 +19,9 @@ interface MonthlyReport {
 export const MonthlyReport: React.FC = () => {
   const { user } = useAuthStore();
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [showMonthSelector, setShowMonthSelector] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('');
   const queryClient = useQueryClient();
   const { data: reports, isLoading, error } = useQuery<MonthlyReport[]>({
     queryKey: ['monthly-reports'],
@@ -83,29 +87,15 @@ export const MonthlyReport: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">月次報告</h1>
         {canCreate && (
-          <button 
-          onClick={async () => {
-            console.log('🔵 [UI] 月次報告新規作成ボタンがクリックされました');
-            setIsCreating(true);
-            try {
-              const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-              const response = await api.post('/api/monthly-reports', {
-                month: currentMonth,
-              });
-              console.log('✅ [UI] 月次報告作成成功:', response.data);
-              queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
-            } catch (error: any) {
-              console.error('❌ [UI] 月次報告作成失敗:', error);
-              alert(`月次報告の作成に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
-            } finally {
-              setIsCreating(false);
-            }
-          }}
-          disabled={isCreating}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isCreating ? '作成中...' : '+ 新規作成'}
-        </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowMonthSelector(true)}
+              disabled={isCreating}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCreating ? '作成中...' : '+ 新規作成'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -148,7 +138,10 @@ export const MonthlyReport: React.FC = () => {
             </div>
 
             <div className="flex justify-end mt-3">
-              <button className="text-sm text-blue-600 hover:underline">
+              <button
+                onClick={() => setSelectedReportId(report.id)}
+                className="text-sm text-blue-600 hover:underline"
+              >
                 詳細を見る →
               </button>
             </div>
@@ -160,6 +153,63 @@ export const MonthlyReport: React.FC = () => {
         <div className="text-center py-12 text-gray-500">
           月次報告がありません
         </div>
+      )}
+
+      {showMonthSelector && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">月を選択</h2>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowMonthSelector(false);
+                  setSelectedMonth('');
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={async () => {
+                  if (!selectedMonth) {
+                    alert('月を選択してください');
+                    return;
+                  }
+                  setIsCreating(true);
+                  try {
+                    const response = await api.post('/api/monthly-reports', {
+                      month: selectedMonth,
+                    });
+                    queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+                    setShowMonthSelector(false);
+                    setSelectedMonth('');
+                  } catch (error: any) {
+                    alert(`月次報告の作成に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
+                  } finally {
+                    setIsCreating(false);
+                  }
+                }}
+                disabled={isCreating || !selectedMonth}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+              >
+                {isCreating ? '作成中...' : '作成'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedReportId && (
+        <MonthlyReportDetailModal
+          reportId={selectedReportId}
+          onClose={() => setSelectedReportId(null)}
+        />
       )}
     </div>
   );
