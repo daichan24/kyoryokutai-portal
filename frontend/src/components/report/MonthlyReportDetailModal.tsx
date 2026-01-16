@@ -167,11 +167,32 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     );
   }
 
+  if (!report && !isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
+          <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
+            <h2 className="text-2xl font-bold">月次報告</h2>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="text-center py-12 text-gray-500">
+              <p>月次報告のデータが見つかりませんでした。</p>
+              <p className="text-sm mt-2">新しい月次報告を作成してください。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
         <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-2xl font-bold">{report.month} 月次報告</h2>
+          <h2 className="text-2xl font-bold">{report?.month || ''} 月次報告</h2>
           <div className="flex items-center gap-2">
             {canEdit && !isEditing && (
               <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
@@ -299,10 +320,10 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             </div>
           )}
 
-          {!isLoading && report && (
+          {report && (
             <div>
               <h3 className="font-bold text-lg mb-3">支援内容</h3>
-              {report.supportRecords.length === 0 ? (
+              {report.supportRecords && report.supportRecords.length === 0 ? (
               <p className="text-gray-500">支援記録がありません</p>
             ) : (
               <div className="space-y-3">
