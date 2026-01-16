@@ -157,8 +157,14 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     );
   }
 
-  if (!report) {
-    return null;
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl p-8">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
   }
 
   return (
