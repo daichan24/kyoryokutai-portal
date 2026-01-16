@@ -31,6 +31,49 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
 }
 
 /**
+ * 協力隊催促PDF生成
+ */
+export async function generateNudgePDF(): Promise<Buffer> {
+  const document = await prisma.nudgeDocument.findFirst({
+    orderBy: { updatedAt: 'desc' },
+    include: {
+      updater: true,
+    },
+  });
+
+  if (!document) {
+    throw new Error('Nudge document not found');
+  }
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: 'MS Gothic', monospace; font-size: 12pt; margin: 40px; line-height: 1.8; }
+        h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; }
+        .header { margin-bottom: 30px; text-align: right; }
+        .content { white-space: pre-wrap; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div>${format(new Date(), 'yyyy年MM月dd日')}</div>
+      </div>
+      <h1>${document.title}</h1>
+      <div class="content">${document.content.replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
+      <div style="margin-top: 60px; text-align: right;">
+        <div>${document.updater.name}</div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await generatePDFFromHTML(html);
+}
+
+/**
  * 視察復命書PDF生成
  */
 export async function generateInspectionPDF(inspectionId: string): Promise<Buffer> {

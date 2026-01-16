@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { InspectionModal } from '../components/inspection/InspectionModal';
+import { InspectionDetailModal } from '../components/inspection/InspectionDetailModal';
 import { Button } from '../components/common/Button';
 import { Plus } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -26,6 +27,7 @@ export const Inspections: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
 
   const { data: inspections, isLoading } = useQuery<Inspection[]>({
     queryKey: ['inspections', user?.id],
@@ -132,7 +134,10 @@ export const Inspections: React.FC = () => {
             </div>
 
             <div className="flex justify-end mt-3 pt-3 border-t">
-              <button className="text-sm text-blue-600 hover:underline">
+              <button 
+                onClick={() => setSelectedInspectionId(inspection.id)}
+                className="text-sm text-blue-600 hover:underline"
+              >
                 詳細を見る →
               </button>
             </div>
@@ -150,6 +155,16 @@ export const Inspections: React.FC = () => {
         <InspectionModal
           onClose={handleCloseModal}
           onSaved={handleSaved}
+        />
+      )}
+
+      {selectedInspectionId && (
+        <InspectionDetailModal
+          inspectionId={selectedInspectionId}
+          onClose={() => setSelectedInspectionId(null)}
+          onUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['inspections'] });
+          }}
         />
       )}
     </div>

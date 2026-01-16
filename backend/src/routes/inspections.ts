@@ -139,21 +139,24 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const data = createInspectionSchema.parse(req.body);
+    // 部分更新に対応
+    const updateSchema = createInspectionSchema.partial();
+    const data = updateSchema.parse(req.body);
+
+    const updateData: any = {};
+    if (data.date !== undefined) updateData.date = new Date(data.date);
+    if (data.destination !== undefined) updateData.destination = data.destination;
+    if (data.purpose !== undefined) updateData.purpose = data.purpose;
+    if (data.participants !== undefined) updateData.participants = data.participants;
+    if (data.inspectionPurpose !== undefined) updateData.inspectionPurpose = data.inspectionPurpose;
+    if (data.inspectionContent !== undefined) updateData.inspectionContent = data.inspectionContent;
+    if (data.reflection !== undefined) updateData.reflection = data.reflection;
+    if (data.futureAction !== undefined) updateData.futureAction = data.futureAction;
+    if (data.projectId !== undefined) updateData.projectId = data.projectId;
 
     const inspection = await prisma.inspection.update({
       where: { id },
-      data: {
-        date: new Date(data.date),
-        destination: data.destination,
-        purpose: data.purpose,
-        participants: data.participants,
-        inspectionPurpose: data.inspectionPurpose,
-        inspectionContent: data.inspectionContent,
-        reflection: data.reflection,
-        futureAction: data.futureAction,
-        projectId: data.projectId,
-      },
+      data: updateData,
       include: {
         user: true,
         project: true,

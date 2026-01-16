@@ -211,7 +211,7 @@ export const Schedule: React.FC = () => {
                   {formatDate(weekDates[6], 'M月d日')}
                 </>
               )}
-              {viewMode === 'month' && weekDates[0] && formatDate(weekDates[0], 'yyyy年M月')}
+              {viewMode === 'month' && formatDate(currentDate, 'yyyy年M月')}
             </h2>
           </div>
           <Button variant="outline" onClick={handleNext}>

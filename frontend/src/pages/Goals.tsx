@@ -76,14 +76,22 @@ export const Goals: React.FC = () => {
   const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
 
   const { data: goals, isLoading } = useQuery<Goal[]>({
-    queryKey: ['missions', user?.id, selectedUserId],
+    queryKey: ['missions', user?.id, selectedUserId, viewMode],
     queryFn: async () => {
       let url = '/api/missions';
-      if (user?.role === 'MEMBER') {
-        url = `/api/missions?userId=${user.id}`;
-      } else if (selectedUserId) {
-        url = `/api/missions?userId=${selectedUserId}`;
+      
+      // 閲覧モード: 選択したユーザーのミッションを表示（MEMBERは自分のみ）
+      if (viewMode === 'view') {
+        if (user?.role === 'MEMBER') {
+          url = `/api/missions?userId=${user.id}`;
+        } else if (selectedUserId) {
+          url = `/api/missions?userId=${selectedUserId}`;
+        }
+      } else {
+        // 作成モード: 自分のミッションのみ表示
+        url = `/api/missions?userId=${user?.id}`;
       }
+      
       const response = await api.get(url);
       return response.data;
     }

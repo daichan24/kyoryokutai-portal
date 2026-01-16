@@ -5,7 +5,8 @@ import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { Edit, History, X } from 'lucide-react';
+import { SimpleRichTextEditor } from '../components/editor/SimpleRichTextEditor';
+import { Edit, History, X, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface NudgeDocument {
@@ -153,12 +154,10 @@ export const Nudges: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 本文 <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <SimpleRichTextEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={15}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                required
+                onChange={setContent}
+                placeholder="本文を入力..."
               />
             </div>
           </div>
@@ -188,8 +187,40 @@ export const Nudges: React.FC = () => {
           </div>
 
           <div className="prose max-w-none">
-            <div className="whitespace-pre-wrap text-gray-700">{document.content}</div>
+            <div 
+              className="text-gray-700"
+              dangerouslySetInnerHTML={{ __html: document.content }}
+            />
           </div>
+          
+          {canEdit && (
+            <div className="mt-4 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const response = await api.get('/api/nudges/pdf', {
+                      responseType: 'blob'
+                    });
+                    const url = window.URL.createObjectURL(new Blob([response.data]));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `協力隊催促_${format(new Date(), 'yyyyMMdd')}.pdf`);
+                    document.body.appendChild(link);
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+                    link.remove();
+                  } catch (error) {
+                    console.error('PDF download failed:', error);
+                    alert('PDF出力に失敗しました');
+                  }
+                }}
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                PDF出力
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

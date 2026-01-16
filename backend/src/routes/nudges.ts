@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { format } from 'date-fns';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
@@ -186,6 +187,24 @@ router.get('/revisions', async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Get nudge revisions error:', error);
     res.status(500).json({ error: 'Failed to get nudge revisions' });
+  }
+});
+
+/**
+ * GET /api/nudges/pdf
+ * 協力隊催促PDF出力
+ */
+router.get('/pdf', async (req: AuthRequest, res) => {
+  try {
+    const { generateNudgePDF } = await import('../services/pdfGenerator');
+    const pdf = await generateNudgePDF();
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="nudge_${format(new Date(), 'yyyyMMdd')}.pdf"`);
+    res.send(pdf);
+  } catch (error) {
+    console.error('Generate nudge PDF error:', error);
+    res.status(500).json({ error: 'Failed to generate PDF' });
   }
 });
 

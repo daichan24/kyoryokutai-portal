@@ -19,13 +19,17 @@ const projectSchema = z.object({
 // プロジェクト一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { userId, phase, approvalStatus } = req.query;
+    const { userId, phase, approvalStatus, missionId } = req.query;
     const where: any = {};
 
     if (userId) {
       where.userId = userId;
     } else if (req.user!.role === 'MEMBER') {
       where.userId = req.user!.id;
+    }
+
+    if (missionId) {
+      where.missionId = missionId;
     }
 
     if (phase) where.phase = phase;

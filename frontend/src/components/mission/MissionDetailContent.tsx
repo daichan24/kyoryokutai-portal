@@ -17,11 +17,16 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  // プロジェクト一覧を取得
+  // プロジェクト一覧を取得（このミッションに紐づくプロジェクトのみ）
   const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ['projects', missionId],
     queryFn: async () => {
-      const response = await api.get(`/api/projects?missionId=${missionId}`);
+      // まずミッションの所有者を取得
+      const missionResponse = await api.get(`/api/missions/${missionId}`);
+      const mission = missionResponse.data;
+      
+      // このミッションに紐づくプロジェクトで、かつ所有者がこのミッションの所有者と同じもののみを取得
+      const response = await api.get(`/api/projects?missionId=${missionId}&userId=${mission.userId}`);
       return response.data || [];
     },
   });
