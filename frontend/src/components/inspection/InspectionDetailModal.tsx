@@ -125,7 +125,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-2xl font-bold">視察記録詳細</h2>
           <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6" style={{ maxWidth: '210mm' }}>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">視察日</label>

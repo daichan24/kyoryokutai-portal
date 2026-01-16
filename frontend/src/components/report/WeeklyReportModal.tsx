@@ -88,7 +88,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-2xl font-bold">
             {report ? '週次報告編集' : '週次報告作成'}

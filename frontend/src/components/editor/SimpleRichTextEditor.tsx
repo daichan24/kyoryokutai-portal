@@ -6,7 +6,11 @@ import {
   AlignRight, 
   Heading1, 
   Heading2, 
-  Heading3 
+  Heading3,
+  List,
+  ListOrdered,
+  Indent,
+  Outdent
 } from 'lucide-react';
 
 interface SimpleRichTextEditorProps {
@@ -133,7 +137,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         </div>
 
         {/* 配置 */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 border-r border-gray-300 pr-2">
           <button
             type="button"
             onClick={() => handleAlignment('left')}
@@ -157,6 +161,46 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
             title="右揃え"
           >
             <AlignRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* 箇条書き */}
+        <div className="flex items-center gap-1 border-r border-gray-300 pr-2">
+          <button
+            type="button"
+            onClick={() => executeCommand('insertUnorderedList')}
+            className="p-2 hover:bg-gray-200 rounded"
+            title="箇条書き（・）"
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => executeCommand('insertOrderedList')}
+            className="p-2 hover:bg-gray-200 rounded"
+            title="番号付きリスト"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* インデント */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => executeCommand('indent')}
+            className="p-2 hover:bg-gray-200 rounded"
+            title="インデント増"
+          >
+            <Indent className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => executeCommand('outdent')}
+            className="p-2 hover:bg-gray-200 rounded"
+            title="インデント減"
+          >
+            <Outdent className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -194,6 +238,19 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           font-size: 1.25rem;
           font-weight: bold;
           margin: 0.75rem 0;
+        }
+        [contenteditable] ul, [contenteditable] ol {
+          margin: 0.5rem 0;
+          padding-left: 2rem;
+        }
+        [contenteditable] li {
+          margin: 0.25rem 0;
+        }
+        [contenteditable] strong, [contenteditable] b {
+          font-weight: bold;
+        }
+        [contenteditable] em, [contenteditable] i {
+          font-style: italic;
         }
       `}</style>
     </div>

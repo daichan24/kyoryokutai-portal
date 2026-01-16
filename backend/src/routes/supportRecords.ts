@@ -67,15 +67,13 @@ router.post('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =
     }
 
     // 支援記録を作成（月次報告IDは後で自動紐付け）
-    // 一時的な月次報告IDとして空文字列を使用（後で月次報告作成時に更新）
-    const tempMonthlyReportId = 'temp-' + Date.now().toString();
     const record = await prisma.supportRecord.create({
       data: {
         userId: data.userId,
         supportDate: new Date(data.supportDate),
         supportContent: data.supportContent,
         supportBy: currentUser?.name || req.user!.email, // 現在のユーザー名を自動設定
-        monthlyReportId: tempMonthlyReportId, // 一時的な値（後で月次報告作成時に更新）
+        monthlyReportId: null, // 月次報告作成時に自動紐付け
       },
       include: {
         user: {

@@ -103,7 +103,7 @@ export const Nudges: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">協力隊催促</h1>
+          <h1 className="text-3xl font-bold text-gray-900">協力隊細則</h1>
           <p className="mt-2 text-gray-600">
             {canEdit ? '文書を編集できます' : '文書を閲覧できます'}
           </p>
@@ -205,7 +205,7 @@ export const Nudges: React.FC = () => {
                     const url = window.URL.createObjectURL(new Blob([response.data]));
                     const link = document.createElement('a');
                     link.href = url;
-                    link.setAttribute('download', `協力隊催促_${format(new Date(), 'yyyyMMdd')}.pdf`);
+                    link.setAttribute('download', `協力隊細則_${format(new Date(), 'yyyyMMdd')}.pdf`);
                     document.body.appendChild(link);
                     link.click();
                     window.URL.revokeObjectURL(url);

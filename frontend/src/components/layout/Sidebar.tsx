@@ -167,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     userMenuItems.push({
       to: '/nudges',
       icon: MessageSquareText,
-      label: '協力隊催促',
+      label: '協力隊細則',
     });
   }
 

@@ -27,7 +27,9 @@ export const WeeklyReport: React.FC = () => {
       
       try {
         const response = await api.get('/api/users');
-        const memberUsers = response.data.filter((u: any) => u.role === 'MEMBER');
+        const memberUsers = response.data.filter((u: any) => 
+          u.role === 'MEMBER' && u.name !== '佐藤大地'
+        );
         setUsers(memberUsers);
       } catch (error) {
         console.error('Failed to fetch users:', error);

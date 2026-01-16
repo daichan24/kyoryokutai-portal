@@ -60,7 +60,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
 }) => {
   const { user } = useAuthStore();
   const [showRevisions, setShowRevisions] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true); // デフォルトで編集モードで開く
   const [coverRecipient, setCoverRecipient] = useState('');
   const [coverSender, setCoverSender] = useState('');
   const [memberSheets, setMemberSheets] = useState<any[]>([]);
@@ -156,7 +156,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
         <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
           <h2 className="text-2xl font-bold">{report.month} 月次報告</h2>
           <div className="flex items-center gap-2">
