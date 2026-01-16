@@ -43,9 +43,9 @@ export const TaskRequestModal: React.FC<TaskRequestModalProps> = ({
   const fetchMembers = async () => {
     try {
       const response = await api.get<User[]>('/api/users?role=MEMBER');
-      // サポート・行政ユーザーの場合は「佐藤大地」を除外
+      // サポート・行政・マスターユーザーの場合は「佐藤大地」を除外
       const filteredMembers = (response.data || []).filter(u => {
-        if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') && u.name === '佐藤大地') return false;
+        if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && u.name === '佐藤大地') return false;
         return true;
       });
       setMembers(filteredMembers);

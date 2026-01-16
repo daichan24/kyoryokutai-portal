@@ -114,10 +114,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     try {
       const response = await api.get<User[]>('/api/users');
       // MASTERを除外（招待候補から）
-      // サポート・行政ユーザーの場合は「佐藤大地」も除外
+      // サポート・行政・マスターユーザーの場合は「佐藤大地」も除外
       const users = (response.data || []).filter(u => {
         if (u.role === 'MASTER' || u.id === currentUser?.id) return false;
-        if ((currentUser?.role === 'SUPPORT' || currentUser?.role === 'GOVERNMENT') && u.name === '佐藤大地') return false;
+        if ((currentUser?.role === 'SUPPORT' || currentUser?.role === 'GOVERNMENT' || currentUser?.role === 'MASTER') && u.name === '佐藤大地') return false;
         return true;
       });
       setAvailableUsers(users);

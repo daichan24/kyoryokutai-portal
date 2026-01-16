@@ -46,9 +46,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     const fetchUsers = async () => {
       try {
         const response = await api.get<User[]>('/api/users');
-        // サポート・行政ユーザーの場合は「佐藤大地」を除外
+        // サポート・行政・マスターユーザーの場合は「佐藤大地」を除外
         const filteredUsers = (response.data || []).filter(u => {
-          if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') && u.name === '佐藤大地') return false;
+          if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && u.name === '佐藤大地') return false;
           return true;
         });
         setUsers(filteredUsers);
