@@ -156,13 +156,14 @@ export const MonthlyReport: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end mt-3">
-              <button
+            <div className="flex justify-end mt-3 gap-2">
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => setSelectedReportId(report.id)}
-                className="text-sm text-blue-600 hover:underline"
               >
-                詳細を見る →
-              </button>
+                詳細を見る
+              </Button>
             </div>
           </div>
         ))}

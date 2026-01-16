@@ -293,12 +293,13 @@ export const Projects: React.FC = () => {
                   <span className={`text-xs px-2 py-1 rounded-full ${getApprovalColor(project.approvalStatus)}`}>
                     {getApprovalLabel(project.approvalStatus)}
                   </span>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() => handleEditProject(project)}
-                    className="text-sm text-blue-600 hover:underline"
                   >
-                    詳細 →
-                  </button>
+                    詳細
+                  </Button>
                 </div>
 
                 {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') &&

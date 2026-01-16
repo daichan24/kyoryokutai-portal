@@ -351,20 +351,24 @@ export const Tasks: React.FC = () => {
                 </div>
                 {canCreate && (
                   <div className="flex items-center gap-1">
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => handleEditTask(task)}
-                      className="p-1 text-gray-500 hover:text-blue-600"
                       title="編集"
                     >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
+                      <Edit2 className="h-4 w-4 mr-1" />
+                      編集
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleDeleteTask(task)}
-                      className="p-1 text-gray-500 hover:text-red-600"
                       title="削除"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      削除
+                    </Button>
                   </div>
                 )}
               </div>
@@ -402,24 +406,27 @@ export const Tasks: React.FC = () => {
                 </span>
                 <div className="flex items-center gap-2">
                   {task.status !== 'COMPLETED' && canCreate && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => handleCompleteTask(task)}
-                      className="text-xs text-green-600 hover:text-green-700 font-medium"
                     >
+                      <Check className="h-3 w-3 mr-1" />
                       完了
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() => {
                       setScheduleTask(task);
                       setIsScheduleModalOpen(true);
                     }}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
                     title="スケジュールに追加"
                   >
-                    <Calendar className="h-3 w-3" />
+                    <Calendar className="h-3 w-3 mr-1" />
                     スケジュール
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

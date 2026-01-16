@@ -213,13 +213,15 @@ export const WeeklyReport: React.FC = () => {
                       </span>
                     )}
                     {canCreate && (
-                      <button
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={(e) => handleDelete(report.id, e)}
-                        className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
                         title="削除"
                       >
+                        <Trash2 className="h-4 w-4 mr-1" />
                         削除
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>

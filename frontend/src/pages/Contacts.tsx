@@ -5,8 +5,10 @@ import { api } from '../utils/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ContactModal } from '../components/contact/ContactModal';
 import { ContactHistoryModal } from '../components/contact/ContactHistoryModal';
+import { ContactDetailModal } from '../components/contact/ContactDetailModal';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
+import { LayoutGrid, List } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -39,8 +41,10 @@ export const Contacts: React.FC = () => {
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>(''); // ジャンルでフィルタ
   const [filterRelationship, setFilterRelationship] = useState<string>(''); // 関わり方でフィルタ
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card'); // カード/リスト表示切り替え
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   // 【データ取得】UIイベント → API → DB の流れ
@@ -78,9 +82,16 @@ export const Contacts: React.FC = () => {
     setIsModalOpen(true);
   };
 
+
+  const handleViewDetail = (contact: Contact) => {
+    setSelectedContact(contact);
+    setIsDetailModalOpen(true);
+  };
+
   const handleEditContact = (contact: Contact) => {
     setSelectedContact(contact);
     setIsModalOpen(true);
+    setIsDetailModalOpen(false);
   };
 
   const handleAddHistory = (contact: Contact) => {
@@ -98,6 +109,11 @@ export const Contacts: React.FC = () => {
     setSelectedContact(null);
   };
 
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedContact(null);
+  };
+
   // 【UIイベント定義】保存成功時のコールバック
   // カレンダーの実装パターンに合わせて、invalidateQueries + handleCloseModal
   const handleSaved = () => {
@@ -110,6 +126,18 @@ export const Contacts: React.FC = () => {
   const handleHistorySaved = () => {
     queryClient.invalidateQueries({ queryKey: ['contacts'] });
     handleCloseHistoryModal();
+    if (isDetailModalOpen && selectedContact) {
+      // 詳細モーダルが開いている場合は、データを再取得
+      const fetchContact = async () => {
+        try {
+          const response = await api.get(`/api/citizens/${selectedContact.id}`);
+          setSelectedContact(response.data);
+        } catch (error) {
+          console.error('Failed to fetch contact:', error);
+        }
+      };
+      fetchContact();
+    }
   };
 
   if (isLoading) {
@@ -124,12 +152,30 @@ export const Contacts: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-               <h1 className="text-2xl font-bold text-gray-900">町民データベース</h1>
+          <h1 className="text-2xl font-bold text-gray-900">町民データベース</h1>
         </div>
-        <Button onClick={handleCreateContact} data-testid="citizens-new">
-          <Plus className="h-4 w-4 mr-2" />
-          新規登録
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 border border-gray-300 rounded-lg">
+            <button
+              onClick={() => setViewMode('card')}
+              className={`p-2 ${viewMode === 'card' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+              title="カード表示"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+              title="リスト表示"
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+          <Button onClick={handleCreateContact} data-testid="citizens-new">
+            <Plus className="h-4 w-4 mr-2" />
+            新規登録
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-4">
@@ -172,107 +218,192 @@ export const Contacts: React.FC = () => {
         </select>
       </div>
 
-      {/* 【一覧表示】要件に合わせて表示項目を追加 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredContacts?.map((contact) => (
-          <div key={contact.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
-              {contact.tags.length > 0 && (
-                <div className="flex gap-1">
-                  {contact.tags.map((tag) => (
-                    <span key={tag} className="text-xs px-2 py-1 bg-gray-100 rounded">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+      {/* 【一覧表示】カード/リスト表示切り替え */}
+      {viewMode === 'card' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredContacts?.map((contact) => (
+            <div key={contact.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
+                {contact.tags.length > 0 && (
+                  <div className="flex gap-1">
+                    {contact.tags.map((tag) => (
+                      <span key={tag} className="text-xs px-2 py-1 bg-gray-100 rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ジャンル */}
+              {contact.category && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">ジャンル:</span> {contact.category}
+                </p>
               )}
-            </div>
 
-            {/* ジャンル */}
-            {contact.category && (
-              <p className="text-sm text-gray-600 mb-1">
-                <span className="font-medium">ジャンル:</span> {contact.category}
-              </p>
-            )}
+              {/* 関わり方 */}
+              {contact.relationshipType && (
+                <p className="text-sm mb-2">
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    contact.relationshipType === '協力的' 
+                      ? 'bg-green-100 text-green-800'
+                      : contact.relationshipType === '要注意'
+                      ? 'bg-red-100 text-red-800'
+                      : contact.relationshipType === '未知'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {contact.relationshipType}
+                  </span>
+                </p>
+              )}
 
-            {/* 関わり方 */}
-            {contact.relationshipType && (
-              <p className="text-sm mb-2">
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  contact.relationshipType === '協力的' 
-                    ? 'bg-green-100 text-green-800'
-                    : contact.relationshipType === '要注意'
-                    ? 'bg-red-100 text-red-800'
-                    : contact.relationshipType === '未知'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {contact.relationshipType}
+              {/* 所属 */}
+              {contact.role && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">所属:</span> {contact.role}
+                </p>
+              )}
+
+              {/* 任期 */}
+              {(contact.startYear || contact.endYear) && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">任期:</span>{' '}
+                  {contact.startYear || '?'}年 ～ {contact.endYear || '現在'}
+                </p>
+              )}
+
+              {/* ステータス */}
+              {contact.status && (
+                <p className="text-sm mb-2">
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    contact.status === '在籍中' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {contact.status}
+                  </span>
+                </p>
+              )}
+
+              {contact.organization && (
+                <p className="text-sm text-gray-600">{contact.organization}</p>
+              )}
+
+              {contact.memo && (
+                <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                  {contact.memo}
+                </p>
+              )}
+
+              <div className="flex justify-between items-center mt-3 pt-3 border-t">
+                <span className="text-xs text-gray-500">
+                  接触履歴: {contact.histories.length}件
                 </span>
-              </p>
-            )}
-
-            {/* 要件: 所属（現役/OB/サポート/役場）を表示 */}
-            {contact.role && (
-              <p className="text-sm text-gray-600 mb-1">
-                <span className="font-medium">所属:</span> {contact.role}
-              </p>
-            )}
-
-            {/* 要件: 任期開始年・終了年を表示 */}
-            {(contact.startYear || contact.endYear) && (
-              <p className="text-sm text-gray-600 mb-1">
-                <span className="font-medium">任期:</span>{' '}
-                {contact.startYear || '?'}年 ～ {contact.endYear || '現在'}
-              </p>
-            )}
-
-            {/* 要件: ステータス（在籍中/任期終了）を表示 */}
-            {contact.status && (
-              <p className="text-sm mb-2">
-                <span className={`px-2 py-1 rounded-full ${
-                  contact.status === '在籍中' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {contact.status}
-                </span>
-              </p>
-            )}
-
-            {contact.organization && (
-              <p className="text-sm text-gray-600">{contact.organization}</p>
-            )}
-
-            {contact.memo && (
-              <p className="text-sm text-gray-700 mt-2 line-clamp-2">
-                {contact.memo}
-              </p>
-            )}
-
-            <div className="flex justify-between items-center mt-3 pt-3 border-t">
-              <span className="text-xs text-gray-500">
-                接触履歴: {contact.histories.length}件
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleAddHistory(contact)}
-                  className="text-sm text-green-600 hover:underline"
-                >
-                  履歴追加
-                </button>
-                <button
-                  onClick={() => handleEditContact(contact)}
-                  className="text-sm text-blue-600 hover:underline"
-                >
-                  詳細 →
-                </button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAddHistory(contact)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    履歴追加
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleViewDetail(contact)}
+                  >
+                    詳細
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名前</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">所属</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ジャンル</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">関わり方</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">接触履歴</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredContacts?.map((contact) => (
+                <tr key={contact.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="text-sm font-medium text-gray-900">{contact.name}</div>
+                      {contact.tags.length > 0 && (
+                        <div className="ml-2 flex gap-1">
+                          {contact.tags.slice(0, 2).map((tag) => (
+                            <span key={tag} className="text-xs px-1.5 py-0.5 bg-gray-100 rounded">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {contact.organization || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {contact.category || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {contact.relationshipType ? (
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        contact.relationshipType === '協力的' 
+                          ? 'bg-green-100 text-green-800'
+                          : contact.relationshipType === '要注意'
+                          ? 'bg-red-100 text-red-800'
+                          : contact.relationshipType === '未知'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {contact.relationshipType}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {contact.histories.length}件
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddHistory(contact)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        履歴追加
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleViewDetail(contact)}
+                      >
+                        詳細
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {filteredContacts?.length === 0 && (
         <div className="text-center py-12 text-gray-500">
@@ -293,6 +424,15 @@ export const Contacts: React.FC = () => {
           contactId={selectedContact.id}
           onClose={handleCloseHistoryModal}
           onSaved={handleHistorySaved}
+        />
+      )}
+
+      {isDetailModalOpen && selectedContact && (
+        <ContactDetailModal
+          contact={selectedContact}
+          onClose={handleCloseDetailModal}
+          onEdit={() => handleEditContact(selectedContact)}
+          onHistoryAdded={handleHistorySaved}
         />
       )}
     </div>

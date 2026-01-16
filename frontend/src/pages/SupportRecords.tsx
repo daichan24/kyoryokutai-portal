@@ -123,20 +123,24 @@ export const SupportRecords: React.FC = () => {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => handleEdit(record)}
-                  className="p-2 text-gray-500 hover:text-blue-600 transition-colors"
                   title="編集"
                 >
-                  <Edit2 className="h-4 w-4" />
-                </button>
-                <button
+                  <Edit2 className="h-4 w-4 mr-1" />
+                  編集
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={() => handleDelete(record)}
-                  className="p-2 text-gray-500 hover:text-red-600 transition-colors"
                   title="削除"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  削除
+                </Button>
               </div>
             </div>
 
