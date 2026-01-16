@@ -253,7 +253,7 @@ const App: React.FC = () => {
       <Route
         path="/support-records"
         element={
-          <RoleProtectedRoute allowedRoles={['SUPPORT']}>
+          <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
             <Layout>
               <SupportRecords />
             </Layout>
