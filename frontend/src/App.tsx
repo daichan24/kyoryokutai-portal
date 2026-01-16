@@ -38,7 +38,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchMe();
-  }, [fetchMe]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 初回マウント時のみ実行
 
   if (isLoading) {
     return (

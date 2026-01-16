@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { api } from '../utils/api';
 import { WeeklyReport as WeeklyReportType } from '../types';
@@ -17,25 +17,38 @@ export const WeeklyReport: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [users, setUsers] = useState<Array<{ id: string; name: string; role: string }>>([]);
 
+  // ユーザー一覧の取得（メンバー以外のみ）
   useEffect(() => {
-    fetchUsers();
+    const loadUsers = async () => {
+      if (user?.role === 'MEMBER') {
+        setUsers([]);
+        return;
+      }
+      
+      try {
+        const response = await api.get('/api/users');
+        const memberUsers = response.data.filter((u: any) => u.role === 'MEMBER');
+        setUsers(memberUsers);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+        setUsers([]);
+      }
+    };
+    
+    loadUsers();
+  }, [user]);
+
+  // selectedUserIdの初期設定（ユーザー一覧が取得できた場合のみ）
+  useEffect(() => {
+    if (users.length > 0 && !selectedUserId && user?.role !== 'MEMBER') {
+      setSelectedUserId(users[0].id);
+    }
+  }, [users, selectedUserId, user?.role]);
+
+  // 週次報告の取得
+  useEffect(() => {
     fetchReports();
   }, [user, selectedUserId]);
-
-  const fetchUsers = async () => {
-    if (user?.role === 'MEMBER') return; // メンバーはユーザー一覧不要
-    
-    try {
-      const response = await api.get('/api/users');
-      const memberUsers = response.data.filter((u: any) => u.role === 'MEMBER');
-      setUsers(memberUsers);
-      if (memberUsers.length > 0 && !selectedUserId) {
-        setSelectedUserId(memberUsers[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    }
-  };
 
   const fetchReports = async () => {
     setLoading(true);
