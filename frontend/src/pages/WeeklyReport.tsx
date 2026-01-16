@@ -45,12 +45,7 @@ export const WeeklyReport: React.FC = () => {
     }
   }, [users, selectedUserId, user?.role]);
 
-  // 週次報告の取得
-  useEffect(() => {
-    fetchReports();
-  }, [user, selectedUserId]);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
       // MEMBERの場合は自分の報告のみ、他は選択したユーザーの報告
@@ -67,7 +62,12 @@ export const WeeklyReport: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, selectedUserId]);
+
+  // 週次報告の取得
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
   const handleCreateReport = () => {
     setSelectedReport(null);
