@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskModal } from '../components/project/TaskModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
+import { UsageGuideModal } from '../components/common/UsageGuideModal';
 import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, Check, HelpCircle } from 'lucide-react';
 import { Task, Project, Mission } from '../types';
 
