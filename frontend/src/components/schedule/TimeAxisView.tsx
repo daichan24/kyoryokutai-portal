@@ -48,9 +48,10 @@ const minutesToTime = (minutes: number): string => {
 const calculateSchedulePosition = (startTime: string, endTime: string) => {
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
-  const top = (startMinutes / 30) * 2; // 30分 = 2rem
-  const height = ((endMinutes - startMinutes) / 30) * 2;
-  return { top: `${top}rem`, height: `${Math.max(height, 2)}rem` };
+  // 1時間 = 4rem（48rem / 24時間）、30分 = 2rem
+  const top = (startMinutes / 60) * 4; // 分を時間に変換してremに変換
+  const height = ((endMinutes - startMinutes) / 60) * 4;
+  return { top: `${top}rem`, height: `${Math.max(height, 0.5)}rem` };
 };
 
 export const TimeAxisView: React.FC<TimeAxisViewProps> = ({

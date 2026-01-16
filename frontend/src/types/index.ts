@@ -138,6 +138,9 @@ export interface Mission {
   missionName: string;
   missionType: 'PRIMARY' | 'SUB';
   targetPercentage: number;
+  startDate?: string;
+  endDate?: string;
+  achievementBorder?: string;
   approvalStatus: ApprovalStatus;
   approvalComment?: string;
   approvedBy?: string;
