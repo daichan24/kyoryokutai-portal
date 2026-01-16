@@ -45,7 +45,34 @@ export const getWeekString = (date: Date = new Date()): string => {
 };
 
 export const parseWeekString = (weekStr: string): Date => {
-  return parse(weekStr, "yyyy-'W'II", new Date());
+  try {
+    // YYYY-WW形式（例: 2024-01）をパース
+    const match = weekStr.match(/^(\d{4})-(\d{2})$/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const weekNum = parseInt(match[2], 10);
+      
+      // 年の最初の月曜日を基準に週を計算
+      const yearStart = new Date(year, 0, 1);
+      const firstMonday = new Date(yearStart);
+      const dayOfWeek = yearStart.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7;
+      firstMonday.setDate(yearStart.getDate() + daysToMonday);
+      
+      // 指定された週の開始日
+      const weekStart = new Date(firstMonday);
+      weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+      
+      return weekStart;
+    }
+    
+    // フォールバック: 既存のパース方法を試す
+    return parse(weekStr, "yyyy-'W'II", new Date());
+  } catch (error) {
+    console.error('Failed to parse week string:', weekStr, error);
+    // エラー時は現在の日付を返す
+    return new Date();
+  }
 };
 
 export const isToday = (date: Date | string): boolean => {

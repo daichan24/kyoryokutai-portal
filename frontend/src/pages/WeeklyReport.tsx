@@ -111,7 +111,13 @@ export const WeeklyReport: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {reports.map((report) => {
-            const weekStart = parseWeekString(report.week);
+            let weekStart: Date;
+            try {
+              weekStart = parseWeekString(report.week);
+            } catch (error) {
+              console.error('Failed to parse week:', report.week, error);
+              weekStart = new Date();
+            }
             return (
               <div
                 key={report.id}
@@ -121,7 +127,7 @@ export const WeeklyReport: React.FC = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">
-                      {report.week} - {formatDate(weekStart, 'yyyy年M月d日週')}
+                      {report.week} {isNaN(weekStart.getTime()) ? '' : `- ${formatDate(weekStart, 'yyyy年M月d日週')}`}
                     </h3>
                     <p className="text-sm text-gray-600 mt-1">
                       {report.user?.name}

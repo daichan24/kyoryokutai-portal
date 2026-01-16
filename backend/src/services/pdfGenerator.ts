@@ -215,6 +215,7 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
 
       <div class="section">
         <div class="label">今週の活動内容</div>
+        ${activities && activities.length > 0 ? `
         <table>
           <tr>
             <th style="width: 30%;">日時</th>
@@ -222,11 +223,12 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
           </tr>
           ${activities.map(activity => `
             <tr>
-              <td>${activity.date}</td>
-              <td>${activity.activity}</td>
+              <td>${activity.date || ''}</td>
+              <td>${activity.activity || ''}</td>
             </tr>
           `).join('')}
         </table>
+        ` : '<p>活動内容がありません</p>'}
       </div>
 
       ${report.nextWeekPlan ? `

@@ -40,9 +40,37 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     },
   });
 
-  // 注意: 支援記録は作成時に必ず月次報告に紐付けられるため、
-  // 月次報告作成時に既存の支援記録を紐付ける処理は不要
-  // 支援記録は支援記録作成APIで自動的に月次報告に紐付けられる
+  // その月の支援記録を取得して、月次報告に紐付け
+  const startDate = startOfMonth(new Date(`${month}-01`));
+  const endDate = endOfMonth(startDate);
+
+  // その月の支援記録を取得（まだ月次報告に紐付けられていないもの）
+  // 一時的なID（temp-で始まる）または実際の月次報告IDが存在しないものを取得
+  const allSupportRecords = await prisma.supportRecord.findMany({
+    where: {
+      supportDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+  });
+
+  // 一時的なID（temp-で始まる）のもののみをフィルタリング
+  const supportRecords = allSupportRecords.filter(record => 
+    record.monthlyReportId?.startsWith('temp-') || !record.monthlyReportId
+  );
+
+  // 支援記録を月次報告に紐付け
+  if (supportRecords.length > 0) {
+    await prisma.supportRecord.updateMany({
+      where: {
+        id: { in: supportRecords.map(r => r.id) },
+      },
+      data: {
+        monthlyReportId: report.id,
+      },
+    });
+  }
 
   return report;
 }

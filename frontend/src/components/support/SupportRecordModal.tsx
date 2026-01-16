@@ -35,14 +35,16 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
   const [supportDate, setSupportDate] = useState(formatDate(new Date()));
   const [userId, setUserId] = useState('');
   const [supportContent, setSupportContent] = useState('');
-  const [monthlyReportId, setMonthlyReportId] = useState('');
   const [loading, setLoading] = useState(false);
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ['users'],
     queryFn: async () => {
       const response = await api.get('/api/users');
-      return response.data;
+      // メンバーのみに限定し、佐藤大地を除外
+      return response.data.filter((user: User) => 
+        user.role === 'MEMBER' && user.name !== '佐藤大地'
+      );
     },
   });
 
@@ -63,7 +65,6 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
       setSupportDate(formatDate(new Date(record.supportDate)));
       setUserId(record.userId);
       setSupportContent(record.supportContent);
-      setMonthlyReportId(record.monthlyReportId || '');
     }
   }, [record]);
 
@@ -76,7 +77,6 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
         userId,
         supportDate,
         supportContent,
-        monthlyReportId, // 必須
       };
 
       if (record) {
@@ -144,27 +144,9 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              月次報告 <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={monthlyReportId}
-              onChange={(e) => setMonthlyReportId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
-            >
-              <option value="">選択してください</option>
-              {monthlyReports.map((report) => (
-                <option key={report.id} value={report.id}>
-                  {report.month} 月次報告
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              支援者は自動的にあなたのアカウントに紐付けられます
-            </p>
-          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            支援者は自動的にあなたのアカウントに紐付けられます
+          </p>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose}>

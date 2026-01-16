@@ -40,7 +40,7 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
 
   const activities: ActivityItem[] = [];
 
-  // 1. スケジュール（タスク）から抽出
+  // 1. スケジュール（タスク）から抽出 - 自分のカレンダーのすべてのスケジュール
   const schedules = await prisma.schedule.findMany({
     where: {
       userId,
@@ -73,7 +73,7 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     });
   }
 
-  // 2. イベントから抽出
+  // 2. イベントから抽出 - 自分のカレンダーに入っているすべてのイベント（共同イベント含む）
   const events = await prisma.event.findMany({
     where: {
       date: {
@@ -86,6 +86,13 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
         },
       },
     },
+    include: {
+      participations: {
+        where: {
+          userId,
+        },
+      },
+    },
     orderBy: {
       date: 'asc',
     },
@@ -93,9 +100,10 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
 
   for (const event of events) {
     const dateStr = format(new Date(event.date), 'M/d(E)', { locale: ja });
+    const eventType = event.eventType === 'TOWN_OFFICIAL' ? '町公式' : event.eventType === 'TEAM' ? 'チーム' : 'その他';
     activities.push({
       date: dateStr,
-      activity: `[イベント] ${event.eventName}`,
+      activity: `[イベント:${eventType}] ${event.eventName}${event.startTime ? ` (${event.startTime}${event.endTime ? `-${event.endTime}` : ''})` : ''}`,
     });
   }
 

@@ -10,7 +10,6 @@ const supportRecordSchema = z.object({
   userId: z.string().min(1),
   supportDate: z.string(),
   supportContent: z.string().min(1),
-  monthlyReportId: z.string().min(1), // 必須
 });
 
 // 支援記録一覧取得（SUPPORTのみ）
@@ -53,14 +52,30 @@ router.post('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =
       select: { name: true },
     });
 
-    // 支援者は現在のログインユーザーに自動紐付け
+    // 支援対象者がメンバーか確認
+    const targetUser = await prisma.user.findUnique({
+      where: { id: data.userId },
+      select: { role: true, name: true },
+    });
+
+    if (!targetUser || targetUser.role !== 'MEMBER') {
+      return res.status(400).json({ error: '支援対象者はメンバーのみです' });
+    }
+
+    if (targetUser.name === '佐藤大地') {
+      return res.status(400).json({ error: 'このユーザーは選択できません' });
+    }
+
+    // 支援記録を作成（月次報告IDは後で自動紐付け）
+    // 一時的な月次報告IDとして空文字列を使用（後で月次報告作成時に更新）
+    const tempMonthlyReportId = 'temp-' + Date.now().toString();
     const record = await prisma.supportRecord.create({
       data: {
         userId: data.userId,
         supportDate: new Date(data.supportDate),
         supportContent: data.supportContent,
         supportBy: currentUser?.name || req.user!.email, // 現在のユーザー名を自動設定
-        monthlyReportId: data.monthlyReportId,
+        monthlyReportId: tempMonthlyReportId, // 一時的な値（後で月次報告作成時に更新）
       },
       include: {
         user: {
@@ -101,6 +116,25 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
       select: { name: true },
     });
 
+    // 支援対象者がメンバーか確認
+    const targetUser = await prisma.user.findUnique({
+      where: { id: data.userId },
+      select: { role: true, name: true },
+    });
+
+    if (!targetUser || targetUser.role !== 'MEMBER') {
+      return res.status(400).json({ error: '支援対象者はメンバーのみです' });
+    }
+
+    if (targetUser.name === '佐藤大地') {
+      return res.status(400).json({ error: 'このユーザーは選択できません' });
+    }
+
+    // 既存のレコードを取得
+    const existingRecord = await prisma.supportRecord.findUnique({
+      where: { id },
+    });
+
     const record = await prisma.supportRecord.update({
       where: { id },
       data: {
@@ -108,7 +142,8 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
         supportDate: new Date(data.supportDate),
         supportContent: data.supportContent,
         supportBy: currentUser?.name || req.user!.email, // 現在のユーザー名を自動設定
-        monthlyReportId: data.monthlyReportId,
+        // monthlyReportIdは更新しない（月次報告作成時に自動紐付け）
+        monthlyReportId: existingRecord?.monthlyReportId,
       },
       include: {
         user: {
