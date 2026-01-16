@@ -79,7 +79,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   return (
     <div className={`border border-gray-300 rounded-lg ${className}`}>
       {/* ツールバー */}
-      <div className="flex items-center gap-1 p-2 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+      <div className="flex items-center gap-1 p-2 border-b border-gray-200 bg-gray-50 rounded-t-lg sticky top-0 z-10">
         {/* 見出し */}
         <div className="flex items-center gap-1 border-r border-gray-300 pr-2">
           <button

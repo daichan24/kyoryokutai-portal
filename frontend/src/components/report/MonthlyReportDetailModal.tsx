@@ -66,12 +66,19 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   const [memberSheets, setMemberSheets] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const { data: report, isLoading, refetch } = useQuery<MonthlyReport>({
+  const { data: report, isLoading, refetch, error } = useQuery<MonthlyReport>({
     queryKey: ['monthly-report', reportId],
     queryFn: async () => {
-      const response = await api.get(`/api/monthly-reports/${reportId}`);
-      return response.data;
+      try {
+        const response = await api.get(`/api/monthly-reports/${reportId}`);
+        return response.data;
+      } catch (err: any) {
+        console.error('Failed to fetch monthly report:', err);
+        // エラーが発生した場合でもモーダルを開く（空のデータで）
+        return null;
+      }
     },
+    retry: false,
   });
 
   useEffect(() => {
@@ -273,22 +280,23 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             </div>
           )}
 
-          {!isEditing && (
+          {!isLoading && report && !isEditing && (
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-600">宛先:</span>
-                <p className="text-gray-900">{report.coverRecipient}</p>
+                <p className="text-gray-900">{report.coverRecipient || '未設定'}</p>
               </div>
               <div>
                 <span className="text-gray-600">差出人:</span>
-                <p className="text-gray-900 whitespace-pre-line">{report.coverSender}</p>
+                <p className="text-gray-900 whitespace-pre-line">{report.coverSender || '未設定'}</p>
               </div>
             </div>
           )}
 
-          <div>
-            <h3 className="font-bold text-lg mb-3">支援内容</h3>
-            {report.supportRecords.length === 0 ? (
+          {!isLoading && report && (
+            <div>
+              <h3 className="font-bold text-lg mb-3">支援内容</h3>
+              {report.supportRecords.length === 0 ? (
               <p className="text-gray-500">支援記録がありません</p>
             ) : (
               <div className="space-y-3">

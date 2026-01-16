@@ -85,9 +85,10 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
         await api.post('/api/support-records', data);
       }
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save support record:', error);
-      alert('保存に失敗しました');
+      const errorMessage = error?.response?.data?.error || '保存に失敗しました';
+      alert(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
     } finally {
       setLoading(false);
     }

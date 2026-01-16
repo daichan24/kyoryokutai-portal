@@ -55,9 +55,9 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     },
   });
 
-  // 一時的なID（temp-で始まる）のもののみをフィルタリング
+  // 月次報告に紐付けられていないもの（nullまたは空文字列）をフィルタリング
   const supportRecords = allSupportRecords.filter(record => 
-    record.monthlyReportId?.startsWith('temp-') || !record.monthlyReportId
+    !record.monthlyReportId || record.monthlyReportId === ''
   );
 
   // 支援記録を月次報告に紐付け
