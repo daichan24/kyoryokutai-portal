@@ -35,6 +35,10 @@ export interface Schedule {
   activityDescription: string;
   freeNote?: string;
   isPending: boolean;
+  projectId?: string;
+  project?: Project;
+  taskId?: string;
+  task?: Task;
   scheduleParticipants?: ScheduleParticipant[];
   createdAt: string;
   updatedAt: string;

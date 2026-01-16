@@ -10,6 +10,9 @@ import { useAuthStore } from '../../stores/authStore';
 interface ScheduleModalProps {
   schedule?: Schedule | null;
   defaultDate?: Date | null;
+  defaultTaskId?: string | null;
+  defaultProjectId?: string | null;
+  defaultActivityDescription?: string | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -17,6 +20,9 @@ interface ScheduleModalProps {
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   schedule,
   defaultDate,
+  defaultTaskId,
+  defaultProjectId,
+  defaultActivityDescription,
   onClose,
   onSaved,
 }) => {
@@ -26,6 +32,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [locationText, setLocationText] = useState('');
   const [activityDescription, setActivityDescription] = useState('');
   const [freeNote, setFreeNote] = useState('');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCollaborative, setIsCollaborative] = useState(false);
@@ -36,6 +46,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   useEffect(() => {
     fetchLocations();
     fetchUsers();
+    fetchTasks();
+    fetchProjects();
 
     if (schedule) {
       setDate(formatDate(schedule.date));
@@ -44,12 +56,59 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setLocationText(schedule.locationText || '');
       setActivityDescription(schedule.activityDescription);
       setFreeNote(schedule.freeNote || '');
+      setSelectedTaskId(schedule.taskId || null);
+      setSelectedProjectId(schedule.projectId || null);
       // 編集時は参加者選択を無効化（作成者のみ編集可能）
       setIsCollaborative(false);
-    } else if (defaultDate) {
-      setDate(formatDate(defaultDate));
+    } else {
+      if (defaultDate) {
+        setDate(formatDate(defaultDate));
+      }
+      if (defaultTaskId) {
+        setSelectedTaskId(defaultTaskId);
+      }
+      if (defaultProjectId) {
+        setSelectedProjectId(defaultProjectId);
+      }
+      if (defaultActivityDescription) {
+        setActivityDescription(defaultActivityDescription);
+      }
     }
-  }, [schedule, defaultDate]);
+  }, [schedule, defaultDate, defaultTaskId, defaultProjectId, defaultActivityDescription]);
+
+  const fetchTasks = async () => {
+    try {
+      // ユーザーのミッションを取得
+      const missionsResponse = await api.get('/api/missions');
+      const missions = missionsResponse.data || [];
+      
+      // 各ミッションからタスクを取得
+      const allTasks: any[] = [];
+      for (const mission of missions) {
+        try {
+          const tasksResponse = await api.get(`/api/missions/${mission.id}/tasks`);
+          const tasks = tasksResponse.data || [];
+          allTasks.push(...tasks);
+        } catch (error) {
+          console.error(`Failed to fetch tasks for mission ${mission.id}:`, error);
+        }
+      }
+      setTasks(allTasks);
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      setTasks([]);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const response = await api.get('/api/projects');
+      setProjects(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      setProjects([]);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -86,6 +145,13 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         activityDescription,
         freeNote,
       };
+
+      if (selectedTaskId) {
+        data.taskId = selectedTaskId;
+      }
+      if (selectedProjectId) {
+        data.projectId = selectedProjectId;
+      }
 
       // 新規作成時のみ参加者を追加
       if (!schedule && isCollaborative && selectedParticipantIds.length > 0) {

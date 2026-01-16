@@ -15,6 +15,8 @@ export const Tasks: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleTask, setScheduleTask] = useState<Task | null>(null);
   
   // フィルタ・ソート状態
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -249,7 +251,7 @@ export const Tasks: React.FC = () => {
               </button>
             </div>
           )}
-          {canCreate && viewMode !== 'view' && (
+          {canCreate && (
             <Button 
               onClick={() => {
                 if (projects.length === 0) {
@@ -396,6 +398,10 @@ export const Tasks: React.FC = () => {
                     </button>
                   )}
                   <button
+                    onClick={() => {
+                      setScheduleTask(task);
+                      setIsScheduleModalOpen(true);
+                    }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
                     title="スケジュールに追加"
                   >
@@ -436,6 +442,24 @@ export const Tasks: React.FC = () => {
             setSelectedProjectId(null);
           }}
           onSaved={handleTaskSaved}
+        />
+      )}
+
+      {/* スケジュールモーダル */}
+      {isScheduleModalOpen && scheduleTask && (
+        <ScheduleModal
+          defaultTaskId={scheduleTask.id}
+          defaultProjectId={scheduleTask.projectId || null}
+          defaultActivityDescription={scheduleTask.title}
+          onClose={() => {
+            setIsScheduleModalOpen(false);
+            setScheduleTask(null);
+          }}
+          onSaved={() => {
+            setIsScheduleModalOpen(false);
+            setScheduleTask(null);
+            queryClient.invalidateQueries({ queryKey: ['schedules'] });
+          }}
         />
       )}
     </div>

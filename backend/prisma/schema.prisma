@@ -100,6 +100,9 @@ model Schedule {
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
+  taskId String?
+  task   Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
   activityDescription String   @db.Text
   participants        String[] // User IDの配列（後方互換性のため残す）
   freeNote            String?  @db.Text
@@ -120,6 +123,7 @@ model Schedule {
 
   @@index([userId, date])
   @@index([projectId])
+  @@index([taskId])
   @@index([locationId])
 }
 
@@ -368,6 +372,8 @@ model Task {
   description String?    @db.Text
   status      TaskStatus @default(NOT_STARTED)
   order       Int        @default(0)
+
+  schedules Schedule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

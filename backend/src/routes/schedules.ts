@@ -21,6 +21,8 @@ const createScheduleSchema = z.object({
   freeNote: z.string().optional(),
   isPending: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),
+  projectId: z.string().optional(),
+  taskId: z.string().optional(),
 });
 
 const updateScheduleSchema = createScheduleSchema.partial();
@@ -147,6 +149,8 @@ router.post('/', async (req: AuthRequest, res) => {
         activityDescription: data.activityDescription,
         freeNote: data.freeNote,
         isPending: data.isPending || false,
+        projectId: data.projectId || null,
+        taskId: data.taskId || null,
         scheduleParticipants: participantIds.length > 0 ? {
           create: participantIds.map((userId) => ({
             userId,
@@ -231,6 +235,13 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const updateData: any = { ...data };
     if (data.date) {
       updateData.date = new Date(data.date);
+    }
+    // projectIdとtaskIdを明示的に設定（nullも許可）
+    if (data.projectId !== undefined) {
+      updateData.projectId = data.projectId || null;
+    }
+    if (data.taskId !== undefined) {
+      updateData.taskId = data.taskId || null;
     }
 
     const schedule = await prisma.schedule.update({

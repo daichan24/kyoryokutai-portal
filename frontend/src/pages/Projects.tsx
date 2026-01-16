@@ -179,7 +179,7 @@ export const Projects: React.FC = () => {
               </button>
             </div>
           )}
-          {canCreate && viewMode !== 'view' && (
+          {canCreate && (
             <Button onClick={handleCreateProject}>
               <Plus className="h-4 w-4 mr-2" />
               新規プロジェクト

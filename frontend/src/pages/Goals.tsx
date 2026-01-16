@@ -248,7 +248,7 @@ export const Goals: React.FC = () => {
               </button>
             </div>
           )}
-          {(user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && viewMode !== 'view' && (
+          {(user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
             <Button onClick={handleCreateGoal}>
               <Plus className="h-4 w-4 mr-2" />
               新規ミッション
