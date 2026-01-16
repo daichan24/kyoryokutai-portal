@@ -24,6 +24,7 @@ export const Tasks: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>('deadline'); // deadline, status, project, created
   const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
+  const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
   // プロジェクト一覧を取得（Taskの紐づき情報用）
   const { data: projects = [] } = useQuery<Project[]>({
@@ -221,11 +222,22 @@ export const Tasks: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          タスク
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のタスク）</span>}
-          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">
+            タスク
+            {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のタスク）</span>}
+            {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
+          </h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsUsageGuideOpen(true)}
+            title="使い方を見る"
+          >
+            <HelpCircle className="h-4 w-4 mr-1" />
+            使い方
+          </Button>
+        </div>
         <div className="flex gap-3">
           {isNonMember && (
             <div className="flex gap-2">
@@ -462,6 +474,11 @@ export const Tasks: React.FC = () => {
           }}
         />
       )}
+
+      <UsageGuideModal
+        isOpen={isUsageGuideOpen}
+        onClose={() => setIsUsageGuideOpen(false)}
+      />
     </div>
   );
 };

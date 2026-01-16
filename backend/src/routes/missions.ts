@@ -19,6 +19,9 @@ const createMissionSchema = z.object({
   missionName: z.string().min(1),
   missionType: z.enum(['PRIMARY', 'SUB']),
   targetPercentage: z.number().min(0).max(100).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  achievementBorder: z.string().optional(),
 });
 
 const createMidGoalSchema = z.object({
@@ -122,6 +125,9 @@ router.post('/', async (req: AuthRequest, res) => {
         missionName: data.missionName,
         missionType: data.missionType,
         targetPercentage: data.targetPercentage || 100,
+        startDate: data.startDate ? new Date(data.startDate) : null,
+        endDate: data.endDate ? new Date(data.endDate) : null,
+        achievementBorder: data.achievementBorder || null,
       },
     });
 
@@ -152,9 +158,17 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    const updateData: any = {};
+    if (req.body.missionName !== undefined) updateData.missionName = req.body.missionName;
+    if (req.body.missionType !== undefined) updateData.missionType = req.body.missionType;
+    if (req.body.targetPercentage !== undefined) updateData.targetPercentage = req.body.targetPercentage;
+    if (req.body.startDate !== undefined) updateData.startDate = req.body.startDate ? new Date(req.body.startDate) : null;
+    if (req.body.endDate !== undefined) updateData.endDate = req.body.endDate ? new Date(req.body.endDate) : null;
+    if (req.body.achievementBorder !== undefined) updateData.achievementBorder = req.body.achievementBorder || null;
+
     const mission = await prisma.mission.update({
       where: { id },
-      data: req.body,
+      data: updateData,
     });
 
     res.json(mission);

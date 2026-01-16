@@ -9,7 +9,8 @@ import { GoalTaskModal } from '../components/goal/GoalTaskModal';
 import { MissionDetailContent } from '../components/mission/MissionDetailContent';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
+import { UsageGuideModal } from '../components/common/UsageGuideModal';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, HelpCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Task, Project } from '../types';
 
@@ -74,6 +75,7 @@ export const Goals: React.FC = () => {
   const [selectedNewTask, setSelectedNewTask] = useState<Task | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
+  const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
   const { data: goals, isLoading } = useQuery<Goal[]>({
     queryKey: ['missions', user?.id, selectedUserId, viewMode],
@@ -218,11 +220,22 @@ export const Goals: React.FC = () => {
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          ミッション管理
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のミッション）</span>}
-          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">
+            ミッション管理
+            {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のミッション）</span>}
+            {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
+          </h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsUsageGuideOpen(true)}
+            title="使い方を見る"
+          >
+            <HelpCircle className="h-4 w-4 mr-1" />
+            使い方
+          </Button>
+        </div>
         <div className="flex gap-3">
           {isNonMember && (
             <div className="flex gap-2">
@@ -502,6 +515,11 @@ export const Goals: React.FC = () => {
           onSaved={handleSaved}
         />
       )}
+
+      <UsageGuideModal
+        isOpen={isUsageGuideOpen}
+        onClose={() => setIsUsageGuideOpen(false)}
+      />
     </div>
   );
 };

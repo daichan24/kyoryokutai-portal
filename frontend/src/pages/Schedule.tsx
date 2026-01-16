@@ -7,6 +7,7 @@ import { formatDate, getWeekDates, getMonthDates, getDayDate, isSameDay, isHolid
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
+import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { useAuthStore } from '../stores/authStore';
 
 type ViewMode = 'week' | 'month' | 'day';
@@ -237,12 +238,18 @@ export const Schedule: React.FC = () => {
 
         {loading ? (
           <LoadingSpinner />
+        ) : viewMode === 'week' || viewMode === 'day' ? (
+          <TimeAxisView
+            dates={weekDates}
+            schedules={schedules}
+            events={events}
+            onScheduleClick={handleEditSchedule}
+            onEventClick={handleEventClick}
+            onCreateSchedule={handleCreateSchedule}
+            viewMode={viewMode}
+          />
         ) : (
-          <div className={`grid gap-2 ${
-            viewMode === 'day' ? 'grid-cols-1' :
-            viewMode === 'week' ? 'grid-cols-7' :
-            'grid-cols-7'
-          }`}>
+          <div className="grid gap-2 grid-cols-7">
             {weekDates.map((date, index) => {
               const daySchedules = getSchedulesForDate(date);
               const isToday = formatDate(date) === formatDate(new Date());
@@ -278,18 +285,14 @@ export const Schedule: React.FC = () => {
               return (
                 <div
                   key={index}
-                  className={`border border-border rounded-lg p-3 ${dayBgColor} ${
-                    viewMode === 'day' ? 'min-h-[600px]' :
-                    viewMode === 'month' ? 'min-h-[120px]' :
-                    'min-h-[200px]'
-                  }`}
+                  className={`border border-border rounded-lg p-3 ${dayBgColor} min-h-[120px]`}
                 >
                   <div className="text-center mb-2">
                     <p className={`text-xs ${dayLabelColor}`}>
                       {formatDate(date, 'E')}
                     </p>
                     <p className={`text-lg font-bold ${dayTextColor} ${
-                      viewMode === 'month' && formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'opacity-40' : ''
+                      formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'opacity-40' : ''
                     }`}>
                       {formatDate(date, 'd')}
                     </p>

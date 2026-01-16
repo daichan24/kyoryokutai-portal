@@ -27,6 +27,9 @@ export const GoalModal: React.FC<GoalModalProps> = ({
   const [missionName, setMissionName] = useState('');
   const [missionType, setMissionType] = useState<'PRIMARY' | 'SUB'>('PRIMARY');
   const [targetPercentage, setTargetPercentage] = useState(100);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [achievementBorder, setAchievementBorder] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -34,6 +37,14 @@ export const GoalModal: React.FC<GoalModalProps> = ({
       setMissionName(goal.missionName || goal.goalName || '');
       setMissionType(goal.missionType || goal.goalType || 'PRIMARY');
       setTargetPercentage(goal.targetPercentage);
+      const goalAny = goal as any;
+      setStartDate(goalAny.startDate ? goalAny.startDate.split('T')[0] : '');
+      setEndDate(goalAny.endDate ? goalAny.endDate.split('T')[0] : '');
+      setAchievementBorder(goalAny.achievementBorder || '');
+    } else {
+      setStartDate('');
+      setEndDate('');
+      setAchievementBorder('');
     }
   }, [goal]);
 
@@ -42,11 +53,21 @@ export const GoalModal: React.FC<GoalModalProps> = ({
     setLoading(true);
 
     try {
-      const data = {
+      const data: any = {
         missionName,
         missionType,
         targetPercentage,
       };
+      
+      if (startDate) {
+        data.startDate = startDate;
+      }
+      if (endDate) {
+        data.endDate = endDate;
+      }
+      if (achievementBorder) {
+        data.achievementBorder = achievementBorder;
+      }
 
       if (goal) {
         await api.put(`/api/missions/${goal.id}`, data);
@@ -120,6 +141,37 @@ export const GoalModal: React.FC<GoalModalProps> = ({
             onChange={(e) => setTargetPercentage(Number(e.target.value))}
             required
           />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="開始日（任意）"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <Input
+              label="終了日（任意）"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              達成ボーダー（任意）
+            </label>
+            <textarea
+              value={achievementBorder}
+              onChange={(e) => setAchievementBorder(e.target.value)}
+              rows={4}
+              placeholder="例：月間売上10万円達成、SNSフォロワー1000人達成など、具体的な達成条件を記入してください"
+              className="w-full px-3 py-2 border border-border rounded-md"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              具体的に何ができれば達成になるかを明記してください（収益の発生やフォロワー獲得など数字的な目標）
+            </p>
+          </div>
 
           <div className="flex justify-between pt-4">
             <div>

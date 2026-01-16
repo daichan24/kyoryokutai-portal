@@ -176,6 +176,9 @@ model Mission {
   missionName      String
   missionType      MissionTypeEnum @default(PRIMARY)
   targetPercentage Int             @default(100)
+  startDate        DateTime?       @db.Date
+  endDate          DateTime?       @db.Date
+  achievementBorder String?         @db.Text
 
   approvalStatus  ApprovalStatus @default(DRAFT)
   approvalComment String?        @db.Text

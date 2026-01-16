@@ -6,7 +6,8 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ProjectModal } from '../components/project/ProjectModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
-import { Plus } from 'lucide-react';
+import { UsageGuideModal } from '../components/common/UsageGuideModal';
+import { Plus, HelpCircle } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -39,6 +40,7 @@ export const Projects: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
+  const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
     queryKey: ['projects', selectedUserId],
@@ -149,11 +151,22 @@ export const Projects: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          プロジェクト管理
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のプロジェクト）</span>}
-          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">
+            プロジェクト管理
+            {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のプロジェクト）</span>}
+            {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
+          </h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsUsageGuideOpen(true)}
+            title="使い方を見る"
+          >
+            <HelpCircle className="h-4 w-4 mr-1" />
+            使い方
+          </Button>
+        </div>
         <div className="flex gap-3">
           {isNonMember && (
             <div className="flex gap-2">
@@ -330,6 +343,11 @@ export const Projects: React.FC = () => {
           onSaved={handleSaved}
         />
       )}
+
+      <UsageGuideModal
+        isOpen={isUsageGuideOpen}
+        onClose={() => setIsUsageGuideOpen(false)}
+      />
     </div>
   );
 };
