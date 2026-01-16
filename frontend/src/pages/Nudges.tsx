@@ -136,7 +136,7 @@ export const Nudges: React.FC = () => {
           )}
         </div>
       ) : isEditing ? (
-        <div className="bg-white rounded-lg shadow border border-border p-6">
+        <div className="bg-white rounded-lg shadow border border-border p-6 max-w-[210mm] mx-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             {document ? '文書を編集' : '文書を作成'}
           </h2>
@@ -172,7 +172,7 @@ export const Nudges: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow border border-border p-6">
+        <div className="bg-white rounded-lg shadow border border-border p-6 max-w-[210mm] mx-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
           <div className="flex justify-between items-start mb-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{document.title}</h2>
