@@ -98,7 +98,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-6" style={{ maxWidth: '210mm' }}>
           <Input
             label="週 (YYYY-WW形式)"
             value={week}
