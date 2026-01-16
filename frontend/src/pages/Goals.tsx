@@ -22,6 +22,9 @@ interface Goal {
   missionType?: 'PRIMARY' | 'SUB';
   targetPercentage: number;
   progress: number;
+  startDate?: string;
+  endDate?: string;
+  achievementBorder?: string;
   approvalStatus?: string;
   user: { id: string; name: string; avatarColor?: string };
   midGoals: MidGoal[];
