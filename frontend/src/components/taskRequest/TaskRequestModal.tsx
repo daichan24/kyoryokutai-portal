@@ -4,6 +4,7 @@ import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { useAuthStore } from '../../stores/authStore';
 
 interface Project {
   id: string;
@@ -24,6 +25,7 @@ export const TaskRequestModal: React.FC<TaskRequestModalProps> = ({
   onClose,
   onSaved,
 }) => {
+  const { user } = useAuthStore();
   const [requestTitle, setRequestTitle] = useState('');
   const [requestDescription, setRequestDescription] = useState('');
   const [deadline, setDeadline] = useState('');
