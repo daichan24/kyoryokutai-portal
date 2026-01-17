@@ -7,8 +7,8 @@ const router = Router();
 router.use(authenticate);
 
 const updateProfileSchema = z.object({
-  avatarColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-  avatarLetter: z.string().max(1).optional().nullable(),
+  avatarColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/i).optional(),
+  avatarLetter: z.union([z.string().max(1), z.null(), z.literal('')]).optional(),
   darkMode: z.boolean().optional(),
 });
 
@@ -18,16 +18,24 @@ const updateProfileSchema = z.object({
  */
 router.put('/', async (req: AuthRequest, res) => {
   try {
+    console.log('[API] PUT /api/me/profile - Request body:', req.body);
+    
     const raw = updateProfileSchema.safeParse(req.body);
     if (!raw.success) {
+      console.error('[API] Validation error:', raw.error.errors);
       return res.status(400).json({ error: 'Invalid input', details: raw.error.errors });
     }
     const data = raw.data;
 
     const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean } = {};
     if (data.avatarColor !== undefined) updateData.avatarColor = data.avatarColor;
-    if (data.avatarLetter !== undefined) updateData.avatarLetter = data.avatarLetter === '' ? null : data.avatarLetter;
+    if (data.avatarLetter !== undefined) {
+      // 空文字列、null、undefinedの場合はnullに変換
+      updateData.avatarLetter = (data.avatarLetter === '' || data.avatarLetter === null || data.avatarLetter === undefined) ? null : String(data.avatarLetter).slice(0, 1);
+    }
     if (data.darkMode !== undefined) updateData.darkMode = data.darkMode;
+
+    console.log('[API] Update data:', updateData);
 
     const user = await prisma.user.update({
       where: { id: req.user!.id },
@@ -39,10 +47,11 @@ router.put('/', async (req: AuthRequest, res) => {
       },
     });
 
+    console.log('[API] Profile updated successfully:', user);
     res.json(user);
   } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
+    console.error('[API] Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 

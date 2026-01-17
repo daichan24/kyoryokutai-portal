@@ -46,7 +46,8 @@ export const ProfileSettings: React.FC = () => {
 
   const profileMutation = useMutation({
     mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean }) => {
-      return api.put('/api/me/profile', data);
+      const response = await api.put('/api/me/profile', data);
+      return response.data;
     },
     onSuccess: async () => {
       await fetchMe();
@@ -54,7 +55,8 @@ export const ProfileSettings: React.FC = () => {
     },
     onError: (error: any) => {
       console.error('Failed to save profile:', error);
-      alert('表示設定の保存に失敗しました');
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.details?.[0]?.message || error?.message || '表示設定の保存に失敗しました';
+      alert(`保存に失敗しました: ${errorMessage}`);
     },
   });
 
