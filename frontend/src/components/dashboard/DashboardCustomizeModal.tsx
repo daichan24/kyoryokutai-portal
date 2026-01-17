@@ -15,6 +15,7 @@ interface WidgetConfig {
   showAddButton?: boolean; // 後方互換性のため残す
   size?: 'S' | 'M' | 'L';
   columnSpan?: ColumnSpan; // カラム幅: 1カラム or 2カラム
+  contactCount?: number; // 町民データベースの表示人数（1〜3名）
   order: number;
 }
 
@@ -290,6 +291,22 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
                           >
                             <option value="1">1カラム</option>
                             <option value="2">2カラム</option>
+                          </select>
+                        </div>
+                      )}
+                      {widget.key === 'contacts' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            表示人数
+                          </label>
+                          <select
+                            value={widget.contactCount || 3}
+                            onChange={(e) => handleChangeContactCount(widget.key, parseInt(e.target.value))}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
+                          >
+                            <option value="1">1名</option>
+                            <option value="2">2名</option>
+                            <option value="3">3名</option>
                           </select>
                         </div>
                       )}

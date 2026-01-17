@@ -221,6 +221,7 @@ export const Dashboard: React.FC = () => {
           : widget.key === 'contacts'
           ? () => setIsContactModalOpen(true)
           : undefined,
+      ...(widget.key === 'contacts' && { contactCount: (widget as any).contactCount || 3 }),
     };
 
     const widgetElement = (() => {

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ContactModal } from '../components/contact/ContactModal';
@@ -37,6 +38,7 @@ interface ContactHistory {
 
 export const Contacts: React.FC = () => {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>(''); // ジャンルでフィルタ
@@ -46,6 +48,20 @@ export const Contacts: React.FC = () => {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+
+  // URLパラメータからcontactIdを取得して、自動的に詳細モーダルを開く
+  useEffect(() => {
+    const contactId = searchParams.get('contactId');
+    if (contactId && contacts && contacts.length > 0) {
+      const contact = contacts.find(c => c.id === contactId);
+      if (contact) {
+        setSelectedContact(contact);
+        setIsDetailModalOpen(true);
+        // URLパラメータをクリア
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, contacts, setSearchParams]);
 
   // 【データ取得】UIイベント → API → DB の流れ
   // useQueryが自動的にGET /api/citizensを呼び出す

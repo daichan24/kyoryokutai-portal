@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Plus, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, ChevronRight, History } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
 import { ContactModal } from '../contact/ContactModal';
+import { ContactHistoryModal } from '../contact/ContactHistoryModal';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
 type DisplayMode = 'view-only' | 'view-with-add' | 'add-only';
@@ -22,20 +23,26 @@ interface ContactsWidgetProps {
   displayMode?: DisplayMode;
   showAddButton?: boolean;
   onAddClick?: () => void;
+  contactCount?: number; // 1〜3名まで
 }
 
 export const ContactsWidget: React.FC<ContactsWidgetProps> = ({
   displayMode = 'add-only',
   showAddButton = true,
   onAddClick,
+  contactCount = 3,
 }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
 
   const { data: recentContacts = [], isLoading } = useQuery<ContactItem[]>({
-    queryKey: ['contacts-recent'],
+    queryKey: ['contacts-recent', contactCount],
     queryFn: async () => {
-      const res = await api.get('/api/citizens?orderBy=updatedAt&limit=10');
+      const limit = Math.max(1, Math.min(3, contactCount || 3)); // 1〜3名に制限
+      const res = await api.get(`/api/citizens?orderBy=updatedAt&limit=${limit}`);
       return (res.data || []).map((c: any) => ({
         id: c.id,
         name: c.name,
@@ -62,6 +69,24 @@ export const ContactsWidget: React.FC<ContactsWidgetProps> = ({
     queryClient.invalidateQueries({ queryKey: ['contacts'] });
     queryClient.invalidateQueries({ queryKey: ['contacts-recent'] });
     handleCloseModal();
+  };
+
+  const handleHistorySaved = () => {
+    queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    queryClient.invalidateQueries({ queryKey: ['contacts-recent'] });
+    setIsHistoryModalOpen(false);
+    setSelectedContactId(null);
+  };
+
+  const handleContactClick = (contactId: string) => {
+    // 町民データベースカテゴリの当該町民の詳細ページへ飛ぶ
+    navigate(`/contacts?contactId=${contactId}`);
+  };
+
+  const handleAddHistory = (e: React.MouseEvent, contactId: string) => {
+    e.stopPropagation(); // クリックイベントの伝播を防ぐ
+    setSelectedContactId(contactId);
+    setIsHistoryModalOpen(true);
   };
 
   // 追加ボタンのみモード
@@ -107,16 +132,29 @@ export const ContactsWidget: React.FC<ContactsWidgetProps> = ({
       ) : (
         <ul className="space-y-1.5">
           {recentContacts.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0">
+            <li 
+              key={c.id} 
+              className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0 group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-2 -mx-2"
+              onClick={() => handleContactClick(c.id)}
+            >
               <div className="min-w-0 flex-1">
                 <span className="font-medium text-gray-900 dark:text-gray-100 truncate block">{c.name}</span>
                 {c.organization && (
                   <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">{c.organization}</span>
                 )}
               </div>
-              <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap flex-shrink-0">
-                {formatDistanceToNow(new Date(c.updatedAt), { addSuffix: true, locale: ja })}
-              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={(e) => handleAddHistory(e, c.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                  title="履歴追加"
+                >
+                  <History className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                </button>
+                <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                  {formatDistanceToNow(new Date(c.updatedAt), { addSuffix: true, locale: ja })}
+                </span>
+              </div>
             </li>
           ))}
         </ul>
@@ -135,6 +173,16 @@ export const ContactsWidget: React.FC<ContactsWidgetProps> = ({
           contact={null}
           onClose={handleCloseModal}
           onSaved={handleSaved}
+        />
+      )}
+      {isHistoryModalOpen && selectedContactId && (
+        <ContactHistoryModal
+          contactId={selectedContactId}
+          onClose={() => {
+            setIsHistoryModalOpen(false);
+            setSelectedContactId(null);
+          }}
+          onSaved={handleHistorySaved}
         />
       )}
     </div>
