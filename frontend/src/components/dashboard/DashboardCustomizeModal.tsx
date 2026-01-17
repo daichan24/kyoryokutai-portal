@@ -196,8 +196,8 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
   if (isLoading || !config) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 p-6">
-          <p>読み込み中...</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 p-6">
+          <p className="dark:text-gray-300">読み込み中...</p>
         </div>
       </div>
     );
@@ -205,16 +205,16 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold">ダッシュボードをカスタマイズ</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+          <h2 className="text-2xl font-bold dark:text-gray-100">ダッシュボードをカスタマイズ</h2>
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
 
         <div className="p-6 space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             ウィジェットの表示/非表示、追加ボタンの表示、並び順を設定できます。
           </p>
 
@@ -224,7 +224,7 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
               .map((widget) => (
                 <div
                   key={widget.key}
-                  className="border border-gray-200 rounded-lg p-4 space-y-3"
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -232,23 +232,23 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
                         <button
                           onClick={() => handleMoveOrder(widget.key, 'up')}
                           disabled={widget.order === 1}
-                          className="text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
                         >
                           <ChevronUp className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleMoveOrder(widget.key, 'down')}
                           disabled={widget.order === config.widgets.length}
-                          className="text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
                         >
                           <ChevronDown className="w-4 h-4" />
                         </button>
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">
+                        <h3 className="font-medium text-gray-900 dark:text-gray-100">
                           {widgetLabels[widget.key] || widget.key}
                         </h3>
-                        <p className="text-xs text-gray-500">順序: {widget.order}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">順序: {widget.order}</p>
                       </div>
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -256,22 +256,22 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
                         type="checkbox"
                         checked={widget.enabled}
                         onChange={() => handleToggleEnabled(widget.key)}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-600 rounded"
                       />
-                      <span className="text-sm text-gray-700">表示</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">表示</span>
                     </label>
                   </div>
 
                   {widget.enabled && (
                     <div className="pl-8 space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           表示モード
                         </label>
                         <select
                           value={widget.displayMode || 'view-only'}
                           onChange={(e) => handleChangeDisplayMode(widget.key, e.target.value as DisplayMode)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                           <option value="view-only">表示のみ</option>
                           <option value="view-with-add">表示+追加ボタン</option>
@@ -280,13 +280,13 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
                       </div>
                       {(widget.key === 'goals' || widget.key === 'eventParticipation') && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             カラム幅
                           </label>
                           <select
                             value={widget.columnSpan || 1}
                             onChange={(e) => handleChangeColumnSpan(widget.key, parseInt(e.target.value) as ColumnSpan)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-transparent"
                           >
                             <option value="1">1カラム</option>
                             <option value="2">2カラム</option>
@@ -299,9 +299,9 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
                           type="checkbox"
                           checked={widget.showAddButton || false}
                           onChange={() => handleToggleAddButton(widget.key)}
-                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-600 rounded"
                         />
-                        <span className="text-sm text-gray-700">追加ボタンを表示（後方互換）</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">追加ボタンを表示（後方互換）</span>
                       </label>
                     </div>
                   )}
@@ -309,7 +309,7 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
               ))}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
             <Button variant="outline" onClick={onClose}>
               キャンセル
             </Button>

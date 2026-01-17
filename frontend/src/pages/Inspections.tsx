@@ -87,9 +87,9 @@ export const Inspections: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           視察記録
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分の視察）</span>}
+          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分の視察）</span>}
         </h1>
         {canCreate && (
           <Button onClick={handleCreateInspection}>
@@ -101,23 +101,23 @@ export const Inspections: React.FC = () => {
 
       <div className="space-y-4">
         {inspections?.map((inspection) => (
-          <div key={inspection.id} className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow">
+          <div key={inspection.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="font-semibold text-lg text-gray-900">{inspection.destination}</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{inspection.destination}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   {format(new Date(inspection.date), 'yyyy年M月d日')}
                 </p>
               </div>
               <button
                 onClick={() => downloadPDF(inspection.id, inspection.destination, inspection.date)}
-                className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >
                 📄 PDF出力
               </button>
             </div>
 
-            <div className="text-sm text-gray-700 space-y-2">
+            <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
               <p>
                 <span className="font-medium">目的:</span> {inspection.purpose}
               </p>
@@ -133,7 +133,7 @@ export const Inspections: React.FC = () => {
               )}
             </div>
 
-            <div className="flex justify-end mt-3 pt-3 border-t gap-2">
+            <div className="flex justify-end mt-3 pt-3 border-t dark:border-gray-700 gap-2">
               <Button
                 variant="primary"
                 size="sm"
@@ -147,7 +147,7 @@ export const Inspections: React.FC = () => {
       </div>
 
       {inspections?.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           視察記録がありません
         </div>
       )}

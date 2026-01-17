@@ -128,12 +128,12 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+          <h2 className="text-2xl font-bold dark:text-gray-100">
             {contact ? '町民情報編集' : '町民情報登録'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -169,21 +169,21 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
           {/* 関わった協力隊（複数選択） */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               関わった協力隊
             </label>
-            <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+            <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 max-h-48 overflow-y-auto bg-white dark:bg-gray-800">
               {users.length === 0 ? (
-                <p className="text-sm text-gray-500">ユーザーを読み込み中...</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">ユーザーを読み込み中...</p>
               ) : (
                 <div className="space-y-2">
                   {users.map((u) => (
-                    <label key={u.id} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                    <label key={u.id} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded">
                       <input
                         type="checkbox"
                         checked={relatedMembers.includes(u.id)}
                         onChange={() => handleToggleMember(u.id)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                       />
                       <div className="flex items-center space-x-2">
                         <div
@@ -192,8 +192,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                         >
                           {(u.avatarLetter || u.name || '').charAt(0)}
                         </div>
-                        <span className="text-sm text-gray-900">{u.name}</span>
-                        <span className="text-xs text-gray-500">({u.role})</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{u.name}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">({u.role})</span>
                       </div>
                     </label>
                   ))}
@@ -201,7 +201,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               )}
             </div>
             {relatedMembers.length > 0 && (
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 選択中: {relatedMembers.length}名
               </p>
             )}
@@ -209,13 +209,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
           {/* 関わり方（選択式） */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               関わり方
             </label>
             <select
               value={relationshipType}
               onChange={(e) => setRelationshipType(e.target.value as typeof relationshipType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
               <option value="協力的">協力的</option>
@@ -227,14 +227,14 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
           {/* 備考 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               備考
             </label>
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="備考を入力"
             />
           </div>

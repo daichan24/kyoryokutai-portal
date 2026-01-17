@@ -67,7 +67,7 @@ export const SNSPosts: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">SNS投稿管理</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">SNS投稿管理</h1>
         <Button onClick={() => setIsAddModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           投稿を追加
@@ -79,7 +79,7 @@ export const SNSPosts: React.FC = () => {
 
       {/* 投稿履歴 */}
       <div className="space-y-4">
-        <h2 className="font-semibold text-lg text-gray-900">投稿履歴</h2>
+        <h2 className="font-semibold text-lg text-gray-900 dark:text-gray-100">投稿履歴</h2>
         
         {posts && posts.length > 0 ? (
           <div className="space-y-3">
@@ -93,30 +93,30 @@ export const SNSPosts: React.FC = () => {
               .map((post) => (
                 <div
                   key={post.id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {format(new Date(post.postedAt), 'yyyy年M月d日 HH:mm')}
                         </span>
                         <span
                           className={`text-xs px-2 py-1 rounded-full ${
                             post.postType === 'STORY'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-blue-100 text-blue-800'
+                              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
+                              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
                           }`}
                         >
                           {post.postType === 'STORY' ? 'ストーリーズ' : 'フィード'}
                         </span>
                         {post.user && (
-                          <span className="text-xs text-gray-500">({post.user.name})</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">({post.user.name})</span>
                         )}
                       </div>
 
                       {post.theme && (
-                        <p className="text-sm font-medium text-gray-900 mb-1">{post.theme}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{post.theme}</p>
                       )}
 
                       {post.url && (
@@ -124,7 +124,7 @@ export const SNSPosts: React.FC = () => {
                           href={post.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-2"
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 mb-2"
                         >
                           <ExternalLink className="w-3 h-3" />
                           投稿リンク
@@ -134,7 +134,7 @@ export const SNSPosts: React.FC = () => {
                       {(post.followerDelta !== null ||
                         post.views !== null ||
                         post.likes !== null) && (
-                        <div className="flex gap-4 text-sm text-gray-600 mb-2">
+                        <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400 mb-2">
                           {post.followerDelta !== null && (
                             <span>フォロワー: {post.followerDelta > 0 ? '+' : ''}{post.followerDelta}</span>
                           )}
@@ -144,21 +144,21 @@ export const SNSPosts: React.FC = () => {
                       )}
 
                       {post.note && (
-                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{post.note}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{post.note}</p>
                       )}
                     </div>
 
                     <div className="flex gap-2 ml-4">
                       <button
                         onClick={() => setEditingPost(post)}
-                        className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
                         title="編集"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(post.id)}
-                        className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded"
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                         title="削除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -169,7 +169,7 @@ export const SNSPosts: React.FC = () => {
               ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             投稿履歴がありません
           </div>
         )}

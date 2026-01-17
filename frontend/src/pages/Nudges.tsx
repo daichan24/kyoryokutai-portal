@@ -103,8 +103,8 @@ export const Nudges: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">協力隊細則</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">協力隊細則</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
             {canEdit ? '文書を編集できます' : '文書を閲覧できます'}
           </p>
         </div>
@@ -127,8 +127,8 @@ export const Nudges: React.FC = () => {
       </div>
 
       {!document && !isEditing ? (
-        <div className="bg-white rounded-lg shadow border border-border p-6 text-center">
-          <p className="text-gray-500">文書がまだ作成されていません</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 text-center">
+          <p className="text-gray-500 dark:text-gray-400">文書がまだ作成されていません</p>
           {canEdit && (
             <Button onClick={() => setIsEditing(true)} className="mt-4">
               文書を作成
@@ -136,8 +136,8 @@ export const Nudges: React.FC = () => {
           )}
         </div>
       ) : isEditing ? (
-        <div className="bg-white rounded-lg shadow border border-border p-6 max-w-[210mm] mx-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 max-w-[210mm] mx-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
             {document ? '文書を編集' : '文書を作成'}
           </h2>
 
@@ -151,8 +151,8 @@ export const Nudges: React.FC = () => {
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                本文 <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                本文 <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <SimpleRichTextEditor
                 value={content}
@@ -172,11 +172,11 @@ export const Nudges: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow border border-border p-6 max-w-[210mm] mx-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 max-w-[210mm] mx-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{document.title}</h2>
-              <div className="mt-2 text-sm text-gray-500">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{document.title}</h2>
+              <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 <p>発行日: {format(new Date(document.publishedAt), 'yyyy年M月d日')}</p>
                 <p>
                   最終更新: {format(new Date(document.updatedAt), 'yyyy年M月d日 HH:mm')} by{' '}
@@ -186,9 +186,9 @@ export const Nudges: React.FC = () => {
             </div>
           </div>
 
-          <div className="prose max-w-none">
+          <div className="prose max-w-none dark:prose-invert">
             <div 
-              className="text-gray-700"
+              className="text-gray-700 dark:text-gray-300"
               dangerouslySetInnerHTML={{ __html: document.content }}
             />
           </div>
@@ -231,14 +231,14 @@ export const Nudges: React.FC = () => {
           onClick={() => setIsHistoryOpen(false)}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-2xl font-bold">更新履歴</h2>
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+              <h2 className="text-2xl font-bold dark:text-gray-100">更新履歴</h2>
               <button
                 onClick={() => setIsHistoryOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -247,7 +247,7 @@ export const Nudges: React.FC = () => {
             <div className="p-6 space-y-4">
               {revisions && revisions.length > 0 ? (
                 revisions.map((revision) => (
-                  <div key={revision.id} className="border border-gray-200 rounded-lg p-4">
+                  <div key={revision.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div
@@ -258,19 +258,19 @@ export const Nudges: React.FC = () => {
                         >
                           {(revision.updatedBy.avatarLetter || revision.updatedBy.name || '').charAt(0)}
                         </div>
-                        <span className="font-medium">{revision.updatedBy.name}</span>
+                        <span className="font-medium dark:text-gray-100">{revision.updatedBy.name}</span>
                       </div>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         {format(new Date(revision.createdAt), 'yyyy年M月d日 HH:mm')}
                       </span>
                     </div>
-                    <div className="mt-3 whitespace-pre-wrap text-gray-700 text-sm">
+                    <div className="mt-3 whitespace-pre-wrap text-gray-700 dark:text-gray-300 text-sm">
                       {revision.content}
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-center py-8">更新履歴がありません</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">更新履歴がありません</p>
               )}
             </div>
           </div>

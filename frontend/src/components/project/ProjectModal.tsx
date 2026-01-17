@@ -205,11 +205,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   const getStatusColor = (status: string) => {
     const colors = {
-      NOT_STARTED: 'bg-gray-100 text-gray-800',
-      IN_PROGRESS: 'bg-blue-100 text-blue-800',
-      COMPLETED: 'bg-green-100 text-green-800',
+      NOT_STARTED: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
+      IN_PROGRESS: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      COMPLETED: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-100';
+    return colors[status as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-700';
   };
 
   // 権限チェック: MEMBERは自分のプロジェクトのみ編集可、GOVERNMENTは閲覧のみ
@@ -221,12 +221,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+          <h2 className="text-2xl font-bold dark:text-gray-100">
             {project ? 'プロジェクト編集' : 'プロジェクト作成'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -242,7 +242,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               説明
             </label>
             <textarea
@@ -348,9 +348,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           {/* タスクセクション（旧：サブ目標） */}
           {project && (
-            <div className="pt-6 border-t">
+            <div className="pt-6 border-t dark:border-gray-700">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">タスク（小目標）</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（小目標）</h3>
                 {canEditTasks && (
                   <Button type="button" variant="outline" size="sm" onClick={handleAddTask}>
                     <Plus className="h-4 w-4 mr-1" />
@@ -360,7 +360,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </div>
 
               {tasks.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
                   タスクがありません
                 </p>
               ) : (
@@ -368,18 +368,18 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   {tasks.map((task) => (
                     <div
                       key={task.id}
-                      className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      className="flex items-start gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     >
                       <div className="mt-0.5">{getStatusIcon(task.status)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-gray-900">{task.title}</h4>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">{task.title}</h4>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(task.status)}`}>
                             {getStatusLabel(task.status)}
                           </span>
                         </div>
                         {task.description && (
-                          <p className="text-sm text-gray-600">{task.description}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{task.description}</p>
                         )}
                       </div>
                       {canEditTasks && (
@@ -387,7 +387,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleEditTask(task)}
-                            className="p-1 text-gray-500 hover:text-blue-600"
+                            className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                             title="編集"
                           >
                             <Edit2 className="h-4 w-4" />
@@ -395,7 +395,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                           <button
                             type="button"
                             onClick={() => task.id && handleDeleteTask(task.id)}
-                            className="p-1 text-gray-500 hover:text-red-600"
+                            className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                             title="削除"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -409,7 +409,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
           )}
 
-          <div className="flex justify-between pt-4">
+          <div className="flex justify-between pt-4 border-t dark:border-gray-700">
             <div>
               {project && (
                 <Button type="button" variant="danger" onClick={handleDelete}>
