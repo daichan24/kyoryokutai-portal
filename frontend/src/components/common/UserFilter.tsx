@@ -35,7 +35,7 @@ export const UserFilter: React.FC<UserFilterProps> = ({
   if (isLoading) {
     return (
       <select
-        className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         disabled
       >
         <option>読み込み中...</option>
@@ -45,13 +45,13 @@ export const UserFilter: React.FC<UserFilterProps> = ({
 
   return (
     <div className="flex items-center gap-2">
-      <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
         {label}:
       </label>
       <select
         value={selectedUserId || ''}
         onChange={(e) => onUserChange(e.target.value || null)}
-        className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[180px]"
+        className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[180px]"
       >
         {showAllOption && <option value="">全て</option>}
         {users.map((u) => (

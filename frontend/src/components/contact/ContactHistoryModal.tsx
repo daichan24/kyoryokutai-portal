@@ -64,10 +64,10 @@ export const ContactHistoryModal: React.FC<ContactHistoryModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold">接触履歴追加</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+          <h2 className="text-2xl font-bold dark:text-gray-100">接触履歴追加</h2>
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -82,27 +82,27 @@ export const ContactHistoryModal: React.FC<ContactHistoryModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              内容 <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              内容 <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               required
               rows={6}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="接触内容を入力"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               関連プロジェクト（任意）
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="">選択しない</option>
               {projects.map((project) => (
@@ -113,7 +113,7 @@ export const ContactHistoryModal: React.FC<ContactHistoryModalProps> = ({
             </select>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end space-x-3 pt-4 border-t dark:border-gray-700">
             <Button type="button" variant="outline" onClick={onClose}>
               キャンセル
             </Button>

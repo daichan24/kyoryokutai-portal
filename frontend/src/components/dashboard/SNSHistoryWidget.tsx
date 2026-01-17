@@ -44,9 +44,9 @@ export const SNSHistoryWidget: React.FC<SNSHistoryWidgetProps> = ({
   });
 
   return (
-    <div className="bg-white rounded-lg shadow border border-border p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">SNS投稿履歴</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">SNS投稿履歴</h3>
         {showAddButton && (
           <Button
             size="sm"
@@ -68,7 +68,7 @@ export const SNSHistoryWidget: React.FC<SNSHistoryWidgetProps> = ({
       {isLoading ? (
         <LoadingSpinner />
       ) : !posts || posts.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">投稿履歴がありません</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">投稿履歴がありません</p>
       ) : (
         <div className="space-y-2">
           {posts
@@ -78,14 +78,14 @@ export const SNSHistoryWidget: React.FC<SNSHistoryWidgetProps> = ({
               return (
                 <div
                   key={post.id}
-                  className="flex items-center justify-between p-2 border border-gray-200 rounded hover:bg-gray-50"
+                  className="flex items-center justify-between p-2 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 >
                   <div className="flex-1">
                     {post.theme && (
-                      <p className="text-sm font-medium text-gray-900 mb-1">{post.theme}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{post.theme}</p>
                     )}
                     {postDate && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {format(new Date(postDate), 'M月d日')}
                       </p>
                     )}
@@ -93,10 +93,10 @@ export const SNSHistoryWidget: React.FC<SNSHistoryWidgetProps> = ({
                       <span
                         className={`text-xs px-2 py-0.5 rounded ${
                           post.postType === 'STORY'
-                            ? 'bg-purple-100 text-purple-800'
+                            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200'
                             : post.postType === 'FEED'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                         }`}
                       >
                         {post.postType === 'STORY' ? 'ストーリー' : 

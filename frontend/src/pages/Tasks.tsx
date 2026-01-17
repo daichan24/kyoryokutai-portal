@@ -320,11 +320,11 @@ export const Tasks: React.FC = () => {
             </select>
 
             <div className="flex items-center gap-2">
-              <ArrowUpDown className="h-4 w-4 text-gray-500" />
+              <ArrowUpDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="deadline">期限順</option>
                 <option value="status">状態順</option>

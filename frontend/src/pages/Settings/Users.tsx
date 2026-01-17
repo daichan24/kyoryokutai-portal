@@ -106,7 +106,7 @@ export const UsersSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">{pageTitle}</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
         {canCreateUser && (
           <Button onClick={() => setIsModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -117,7 +117,7 @@ export const UsersSettings: React.FC = () => {
 
       {/* ロール別フィルター */}
       {showRoleFilter && (
-        <div className="bg-white rounded-lg shadow border border-border p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
           <div className="flex space-x-2">
             <Button
               variant={roleFilter === 'MEMBER' ? 'primary' : 'outline'}
@@ -154,30 +154,30 @@ export const UsersSettings: React.FC = () => {
       {loading ? (
         <LoadingSpinner />
       ) : (
-        <div className="bg-white rounded-lg shadow border border-border overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   名前
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   メール
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   役割
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   任期
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   登録日
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div
@@ -187,24 +187,24 @@ export const UsersSettings: React.FC = () => {
                         {(user.avatarLetter || user.name || '').charAt(0)}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {user.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
+                    <span className="px-2 py-1 text-xs rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary">
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {user.termStart && user.termEnd
                       ? `${formatDate(user.termStart, 'yyyy/M/d')} - ${formatDate(user.termEnd, 'yyyy/M/d')}`
                       : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(user.createdAt, 'yyyy/M/d')}
                   </td>
                 </tr>
@@ -217,15 +217,15 @@ export const UsersSettings: React.FC = () => {
       {/* 新規ユーザー作成モーダル */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-900">新規ユーザー追加</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">新規ユーザー追加</h2>
               <button
                 onClick={() => {
                   setIsModalOpen(false);
                   setFormError(null);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -233,7 +233,7 @@ export const UsersSettings: React.FC = () => {
 
             <form onSubmit={handleCreateUser} className="p-6 space-y-4">
               {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded">
                   <p className="text-sm">{formError}</p>
                 </div>
               )}
@@ -264,7 +264,7 @@ export const UsersSettings: React.FC = () => {
               />
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   役割 *
                 </label>
                 <select
@@ -275,7 +275,7 @@ export const UsersSettings: React.FC = () => {
                       role: e.target.value as 'MASTER' | 'MEMBER' | 'SUPPORT' | 'GOVERNMENT',
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   required
                 >
                   <option value="MEMBER">MEMBER（協力隊）</option>
