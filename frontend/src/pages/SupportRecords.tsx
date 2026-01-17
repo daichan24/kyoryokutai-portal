@@ -87,7 +87,7 @@ export const SupportRecords: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">支援内容</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">支援内容</h1>
         <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
           新規作成
@@ -98,7 +98,7 @@ export const SupportRecords: React.FC = () => {
         {records.map((record) => (
           <div
             key={record.id}
-            className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-md transition-shadow"
           >
             <div className="flex justify-between items-start mb-3">
               <div>
@@ -111,13 +111,13 @@ export const SupportRecords: React.FC = () => {
                   >
                     {(record.user.avatarLetter || record.user.name || '').charAt(0)}
                   </div>
-                  <h3 className="font-semibold text-lg text-gray-900">{record.user.name}</h3>
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{record.user.name}</h3>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   {format(new Date(record.supportDate), 'yyyy年M月d日')}
                 </p>
                 {record.monthlyReport && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     月次報告: {record.monthlyReport.month}
                   </p>
                 )}
@@ -146,15 +146,15 @@ export const SupportRecords: React.FC = () => {
 
             <div className="space-y-2 mb-3">
               <div>
-                <span className="text-sm font-medium text-gray-700">支援内容:</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">支援内容:</span>
                 <div 
-                  className="text-gray-900 mt-1 prose max-w-none"
+                  className="text-gray-900 dark:text-gray-100 mt-1 prose max-w-none dark:prose-invert"
                   dangerouslySetInnerHTML={{ __html: record.supportContent }}
                 />
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-700">支援者:</span>
-                <p className="text-gray-900 mt-1">{record.supportBy}</p>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">支援者:</span>
+                <p className="text-gray-900 dark:text-gray-100 mt-1">{record.supportBy}</p>
               </div>
             </div>
           </div>
@@ -162,7 +162,7 @@ export const SupportRecords: React.FC = () => {
       </div>
 
       {records.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           支援記録がありません
         </div>
       )}

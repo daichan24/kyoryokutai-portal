@@ -111,9 +111,9 @@ export const WeeklyReport: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           週次報告
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分の報告）</span>}
+          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分の報告）</span>}
         </h1>
         {canCreate && (
           <div className="flex gap-2">
@@ -149,14 +149,14 @@ export const WeeklyReport: React.FC = () => {
       </div>
 
       {canView && users.length > 0 && (
-        <div className="bg-white rounded-lg shadow border border-border p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             担当者を選択
           </label>
           <select
             value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
-            className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full md:w-64 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
             {users.map((u) => (
               <option key={u.id} value={u.id}>
@@ -170,8 +170,8 @@ export const WeeklyReport: React.FC = () => {
       {loading ? (
         <LoadingSpinner />
       ) : reports.length === 0 ? (
-        <div className="bg-white rounded-lg shadow border border-border p-12 text-center">
-          <p className="text-gray-500">週次報告がありません</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-12 text-center">
+          <p className="text-gray-500 dark:text-gray-400">週次報告がありません</p>
           <Button onClick={handleCreateReport} className="mt-4">
             最初の報告を作成
           </Button>
@@ -189,20 +189,20 @@ export const WeeklyReport: React.FC = () => {
             return (
               <div
                 key={report.id}
-                className="bg-white rounded-lg shadow border border-border p-6 hover:shadow-lg transition-shadow"
+                className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div 
                     className="flex-1 cursor-pointer"
                     onClick={() => canCreate ? handleEditReport(report) : undefined}
                   >
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                       {report.week} {isNaN(weekStart.getTime()) ? '' : `- ${formatDate(weekStart, 'yyyy年M月d日週')}`}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       {report.user?.name}
                       {user?.role !== 'MEMBER' && (
-                        <span className="ml-2 text-xs text-gray-400">（{report.user?.role}）</span>
+                        <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">（{report.user?.role}）</span>
                       )}
                     </p>
                   </div>
@@ -232,11 +232,11 @@ export const WeeklyReport: React.FC = () => {
                   style={{ cursor: canCreate ? 'pointer' : 'default' }}
                 >
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">今週の活動</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">今週の活動</h4>
                     <div className="space-y-2">
                       {Array.isArray(report.thisWeekActivities) &&
                         report.thisWeekActivities.slice(0, 3).map((activity, index) => (
-                          <div key={index} className="text-sm text-gray-700">
+                          <div key={index} className="text-sm text-gray-700 dark:text-gray-300">
                             <span className="font-medium">{activity.date}:</span>{' '}
                             {activity.activity}
                           </div>
@@ -246,8 +246,8 @@ export const WeeklyReport: React.FC = () => {
 
                   {report.nextWeekPlan && (
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">来週の予定</h4>
-                      <p className="text-sm text-gray-700 line-clamp-2">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">来週の予定</h4>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
                         {report.nextWeekPlan}
                       </p>
                     </div>

@@ -71,31 +71,31 @@ export const Login: React.FC = () => {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'MASTER':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300';
       case 'SUPPORT':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300';
       case 'GOVERNMENT':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
       case 'MEMBER':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             長沼町地域おこし協力隊
           </h2>
-          <p className="mt-2 text-sm text-gray-600">ポータルシステム</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">ポータルシステム</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded">
               {error}
             </div>
           )}
@@ -129,8 +129,8 @@ export const Login: React.FC = () => {
         </form>
 
         {/* アカウント一覧 */}
-        <div className="mt-8 pt-8 border-t border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               利用可能なアカウント一覧
             </h3>
             {loadingHints ? (
@@ -139,33 +139,33 @@ export const Login: React.FC = () => {
               </div>
             ) : loginHints.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         名前
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         メール
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         役割
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         パスワード
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         操作
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {loginHints.map((hint, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-900">
+                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100">
                           {hint.name}
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-900 font-mono text-xs">
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100 font-mono text-xs">
                           {hint.email}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
@@ -177,7 +177,7 @@ export const Login: React.FC = () => {
                             {hint.role}
                           </span>
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-600 font-mono text-xs">
+                        <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-400 font-mono text-xs">
                           {hint.password}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
@@ -199,7 +199,7 @@ export const Login: React.FC = () => {
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">アカウントが見つかりませんでした</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">アカウントが見つかりませんでした</p>
             )}
           </div>
       </div>

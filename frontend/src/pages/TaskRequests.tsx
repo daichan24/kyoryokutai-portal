@@ -90,11 +90,11 @@ export const TaskRequests: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     const colors = {
-      PENDING: 'bg-yellow-100 text-yellow-800',
-      APPROVED: 'bg-green-100 text-green-800',
-      REJECTED: 'bg-red-100 text-red-800'
+      PENDING: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300',
+      APPROVED: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+      REJECTED: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-100';
+    return colors[status as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-700';
   };
 
   if (isLoading) {
@@ -111,9 +111,9 @@ export const TaskRequests: React.FC = () => {
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {user?.role === 'MEMBER' ? '依頼ボックス' : '依頼'}
-          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
+          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（作成）</span>}
         </h1>
         <div className="flex gap-3">
           {isNonMember && (
@@ -123,7 +123,7 @@ export const TaskRequests: React.FC = () => {
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   viewMode === 'view'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 閲覧
@@ -162,20 +162,20 @@ export const TaskRequests: React.FC = () => {
       {/* 受信したタスク（協力隊員） */}
       {user?.role === 'MEMBER' && (
         <section>
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">受信したタスク</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">受信したタスク</h2>
           <div className="space-y-3">
             {receivedRequests?.map((request) => (
-              <div key={request.id} className="bg-white border border-gray-200 rounded-lg p-5">
+              <div key={request.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-semibold text-lg text-gray-900">{request.requestTitle}</h3>
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{request.requestTitle}</h3>
                   <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(request.approvalStatus)}`}>
                     {getStatusLabel(request.approvalStatus)}
                   </span>
                 </div>
 
-                <p className="text-gray-600 text-sm mb-4">{request.requestDescription}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">{request.requestDescription}</p>
 
-                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
                   <span>依頼元: {request.requester.name}さん</span>
                   {request.deadline && (
                     <span>期限: {format(new Date(request.deadline), 'yyyy/MM/dd')}</span>
@@ -195,7 +195,7 @@ export const TaskRequests: React.FC = () => {
                     </button>
                     <button
                       onClick={() => handleRespond(request.id, 'REJECTED')}
-                      className="flex-1 border border-gray-300 text-sm px-4 py-2 rounded hover:bg-gray-50 transition-colors"
+                      className="flex-1 border border-gray-300 dark:border-gray-600 text-sm px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     >
                       却下
                     </button>
@@ -203,16 +203,16 @@ export const TaskRequests: React.FC = () => {
                 )}
 
                 {request.approvalNote && (
-                  <div className="mt-4 bg-gray-50 rounded p-3 text-sm">
-                    <span className="font-medium">備考: </span>
-                    {request.approvalNote}
+                  <div className="mt-4 bg-gray-50 dark:bg-gray-700 rounded p-3 text-sm">
+                    <span className="font-medium dark:text-gray-300">備考: </span>
+                    <span className="dark:text-gray-300">{request.approvalNote}</span>
                   </div>
                 )}
               </div>
             ))}
 
             {receivedRequests?.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 受信したタスクはありません
               </div>
             )}
@@ -223,20 +223,20 @@ export const TaskRequests: React.FC = () => {
       {/* 送信した依頼（サポート・役場） */}
       {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
         <section>
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">送信した依頼</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">送信した依頼</h2>
           <div className="space-y-3">
             {sentRequests?.map((request) => (
-              <div key={request.id} className="bg-white border border-gray-200 rounded-lg p-5">
+              <div key={request.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-semibold text-lg text-gray-900">{request.requestTitle}</h3>
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{request.requestTitle}</h3>
                   <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(request.approvalStatus)}`}>
                     {getStatusLabel(request.approvalStatus)}
                   </span>
                 </div>
 
-                <p className="text-gray-600 text-sm mb-4">{request.requestDescription}</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">{request.requestDescription}</p>
 
-                <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                   <span>依頼先: {request.requestee.name}</span>
                   {request.deadline && (
                     <span>期限: {format(new Date(request.deadline), 'yyyy/MM/dd')}</span>
@@ -247,7 +247,7 @@ export const TaskRequests: React.FC = () => {
                 </div>
 
                 {request.approvalNote && (
-                  <div className="mt-4 bg-gray-50 rounded p-3 text-sm">
+                  <div className="mt-4 bg-gray-50 dark:bg-gray-700 rounded p-3 text-sm">
                     <span className="font-medium">備考: </span>
                     {request.approvalNote}
                   </div>
@@ -256,7 +256,7 @@ export const TaskRequests: React.FC = () => {
             ))}
 
             {sentRequests?.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 送信した依頼はありません
               </div>
             )}

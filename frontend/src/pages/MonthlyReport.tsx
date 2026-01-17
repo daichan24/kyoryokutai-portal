@@ -70,9 +70,9 @@ export const MonthlyReport: React.FC = () => {
   if (error) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">月次報告</h1>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">月次報告</h1>
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+          <p className="text-yellow-800 dark:text-yellow-300">
             月次報告機能は現在準備中です。
           </p>
         </div>
@@ -86,7 +86,7 @@ export const MonthlyReport: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">月次報告</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">月次報告</h1>
         {canCreate && (
           <div className="flex gap-2">
             <button
@@ -102,13 +102,13 @@ export const MonthlyReport: React.FC = () => {
 
       <div className="space-y-4">
         {reports?.map((report) => (
-          <div key={report.id} className="bg-white border border-gray-200 rounded-lg p-5">
+          <div key={report.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="font-semibold text-lg text-gray-900">
+                <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
                   {report.month} 月次報告
                 </h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   作成日: {format(new Date(report.createdAt), 'yyyy年M月d日')}
                 </p>
               </div>
@@ -141,17 +141,17 @@ export const MonthlyReport: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">宛先:</span>
-                <p className="text-gray-900">{report.coverRecipient}</p>
+                <span className="text-gray-600 dark:text-gray-400">宛先:</span>
+                <p className="text-gray-900 dark:text-gray-100">{report.coverRecipient}</p>
               </div>
               <div>
-                <span className="text-gray-600">差出人:</span>
-                <p className="text-gray-900">{report.coverSender}</p>
+                <span className="text-gray-600 dark:text-gray-400">差出人:</span>
+                <p className="text-gray-900 dark:text-gray-100">{report.coverSender}</p>
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex items-center gap-4 text-sm text-gray-600">
+            <div className="mt-4 pt-4 border-t dark:border-gray-700">
+              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                 <span>隊員別シート: {report.memberSheets.length}件</span>
                 <span>支援記録: {report.supportRecords.length}件</span>
               </div>
@@ -171,20 +171,20 @@ export const MonthlyReport: React.FC = () => {
       </div>
 
       {reports?.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           月次報告がありません
         </div>
       )}
 
       {showMonthSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">月を選択</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4 dark:text-gray-100">月を選択</h2>
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md mb-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
             <div className="flex justify-end gap-2">
               <button
@@ -192,7 +192,7 @@ export const MonthlyReport: React.FC = () => {
                   setShowMonthSelector(false);
                   setSelectedMonth('');
                 }}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 キャンセル
               </button>
