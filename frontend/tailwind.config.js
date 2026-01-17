@@ -5,14 +5,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#3B82F6',
-        secondary: '#10B981',
-        accent: '#F59E0B',
-        error: '#EF4444',
-        background: '#F9FAFB',
-        text: '#111827',
-        border: '#E5E7EB',
-        muted: '#6B7280',
+        primary: {
+          DEFAULT: '#3B82F6',
+          dark: '#60A5FA', // ダークモード用の少し明るい青
+        },
+        secondary: {
+          DEFAULT: '#10B981',
+          dark: '#34D399', // ダークモード用の少し明るい緑
+        },
+        accent: {
+          DEFAULT: '#F59E0B',
+          dark: '#FBBF24', // ダークモード用の少し明るいオレンジ
+        },
+        error: {
+          DEFAULT: '#EF4444',
+          dark: '#F87171', // ダークモード用の少し明るい赤
+        },
+        background: {
+          DEFAULT: '#F9FAFB',
+          dark: '#111827', // ダークモード用の濃いグレー
+        },
+        text: {
+          DEFAULT: '#111827',
+          dark: '#F9FAFB', // ダークモード用の明るいグレー
+        },
+        border: {
+          DEFAULT: '#E5E7EB',
+          dark: '#374151', // ダークモード用のグレー
+        },
+        muted: {
+          DEFAULT: '#6B7280',
+          dark: '#9CA3AF', // ダークモード用の少し明るいグレー
+        },
       },
       borderRadius: {
         lg: '0.5rem',

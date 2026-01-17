@@ -46,9 +46,9 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
   const widgetTitle = user?.role === 'MEMBER' ? '依頼ボックス' : '依頼';
 
   return (
-    <div className="bg-white rounded-lg shadow border border-border p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">{widgetTitle}</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{widgetTitle}</h3>
         {showAddButton && onAddClick && (
           <Button size="sm" onClick={onAddClick} className="flex items-center gap-1">
             <Plus className="w-4 h-4" />
@@ -60,7 +60,7 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
       {isLoading ? (
         <LoadingSpinner />
       ) : !requests || requests.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
           {user?.role === 'MEMBER' ? '未処理のタスクがありません' : '未処理の依頼がありません'}
         </p>
       ) : (
@@ -69,7 +69,7 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
             <Link
               key={request.id}
               to="/task-requests"
-              className="block p-2 border border-gray-200 rounded hover:bg-gray-50"
+              className="block p-2 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
             >
               <div className="flex items-start gap-2">
                 <div
@@ -79,19 +79,19 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
                   {(request.requester.avatarLetter || request.requester.name || '').charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                     {request.requestTitle}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     {request.requester.name}さんから
                   </p>
                   {request.deadline && (
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                       期限: {format(new Date(request.deadline), 'M月d日')}
                     </p>
                   )}
                 </div>
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded flex-shrink-0">
+                <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded flex-shrink-0">
                   未処理
                 </span>
               </div>

@@ -4,10 +4,10 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border dark:border-gray-700;
   }
   body {
-    @apply bg-background text-text;
+    @apply bg-background text-text dark:bg-gray-900 dark:text-gray-100;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
       'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
       sans-serif;
@@ -18,6 +18,6 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white/80 backdrop-blur-sm;
+    @apply bg-white/80 backdrop-blur-sm dark:bg-gray-800/80;
   }
 }

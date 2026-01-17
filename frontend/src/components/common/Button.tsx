@@ -18,11 +18,11 @@ export const Button: React.FC<ButtonProps> = ({
     'inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none rounded-md';
 
   const variants = {
-    primary: 'bg-primary text-white hover:bg-blue-600 focus:ring-primary',
-    secondary: 'bg-secondary text-white hover:bg-green-600 focus:ring-secondary',
-    outline: 'border border-border bg-transparent hover:bg-gray-100 focus:ring-primary',
-    ghost: 'bg-transparent hover:bg-gray-100 focus:ring-primary',
-    danger: 'bg-error text-white hover:bg-red-600 focus:ring-error',
+    primary: 'bg-primary text-white hover:bg-blue-600 dark:hover:bg-blue-500 focus:ring-primary',
+    secondary: 'bg-secondary text-white hover:bg-green-600 dark:hover:bg-green-500 focus:ring-secondary',
+    outline: 'border border-border bg-transparent hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-200 focus:ring-primary',
+    ghost: 'bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-200 focus:ring-primary',
+    danger: 'bg-error text-white hover:bg-red-600 dark:hover:bg-red-500 focus:ring-error',
   };
 
   const sizes = {

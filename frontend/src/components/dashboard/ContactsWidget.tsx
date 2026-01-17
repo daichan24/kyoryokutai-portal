@@ -68,7 +68,7 @@ export const ContactsWidget: React.FC<ContactsWidgetProps> = ({
   if (displayMode === 'add-only') {
     return (
       <>
-        <div className="bg-white rounded-lg shadow border border-border p-6 flex items-center justify-center min-h-[200px]">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 flex items-center justify-center min-h-[200px]">
           <Button onClick={handleAddClick} className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
             町民データベースに追加
@@ -87,9 +87,9 @@ export const ContactsWidget: React.FC<ContactsWidgetProps> = ({
 
   // 表示のみ / 表示+追加ボタン: 直近で更新された人を表示
   return (
-    <div className="bg-white rounded-lg shadow border border-border p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">町民データベース</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">町民データベース</h3>
         {showAddButton && (
           <Button size="sm" onClick={handleAddClick} className="flex items-center gap-1">
             <Plus className="w-4 h-4" />
@@ -97,31 +97,31 @@ export const ContactsWidget: React.FC<ContactsWidgetProps> = ({
           </Button>
         )}
       </div>
-      <p className="text-xs text-gray-500 mb-2">直近で更新された人</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">直近で更新された人</p>
       {isLoading ? (
         <div className="py-6 flex justify-center">
           <LoadingSpinner />
         </div>
       ) : recentContacts.length === 0 ? (
-        <p className="text-sm text-gray-500 py-4 text-center">登録がありません</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">登録がありません</p>
       ) : (
         <ul className="space-y-1.5">
           {recentContacts.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-100 last:border-0">
+            <li key={c.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0">
               <div className="min-w-0 flex-1">
-                <span className="font-medium text-gray-900 truncate block">{c.name}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100 truncate block">{c.name}</span>
                 {c.organization && (
-                  <span className="text-xs text-gray-500 truncate block">{c.organization}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">{c.organization}</span>
                 )}
               </div>
-              <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+              <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap flex-shrink-0">
                 {formatDistanceToNow(new Date(c.updatedAt), { addSuffix: true, locale: ja })}
               </span>
             </li>
           ))}
         </ul>
       )}
-      <div className="mt-3 pt-2 border-t border-gray-100">
+      <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700">
         <Link
           to="/contacts"
           className="text-sm text-primary hover:underline inline-flex items-center gap-1"

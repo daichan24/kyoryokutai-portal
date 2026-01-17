@@ -224,10 +224,10 @@ export const Tasks: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             タスク
-            {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のタスク）</span>}
-            {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
+            {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分のタスク）</span>}
+            {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（作成）</span>}
           </h1>
           <Button
             variant="outline"
@@ -247,7 +247,7 @@ export const Tasks: React.FC = () => {
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   viewMode === 'view'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 閲覧
@@ -293,11 +293,11 @@ export const Tasks: React.FC = () => {
               />
             )}
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
+              <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">全ての状態</option>
                 <option value="NOT_STARTED">未着手</option>
@@ -309,7 +309,7 @@ export const Tasks: React.FC = () => {
             <select
               value={filterProject}
               onChange={(e) => setFilterProject(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">全てのプロジェクト</option>
               {projects.map((project) => (

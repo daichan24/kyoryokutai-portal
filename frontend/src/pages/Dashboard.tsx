@@ -274,8 +274,8 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">ダッシュボード</h1>
-          <p className="mt-2 text-gray-600">ようこそ、{user?.name}さん</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">ダッシュボード</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">ようこそ、{user?.name}さん</p>
         </div>
         <Button
           variant="outline"
@@ -291,15 +291,15 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Link
           to="/schedule"
-          className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border"
+          className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border dark:border-gray-700"
         >
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-primary/10 rounded-lg">
+            <div className="p-3 bg-primary/10 dark:bg-primary/20 rounded-lg">
               <Calendar className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">スケジュール</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-gray-600 dark:text-gray-400">スケジュール</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {schedules.length}件
               </p>
             </div>
@@ -308,41 +308,41 @@ export const Dashboard: React.FC = () => {
 
         <Link
           to="/reports/weekly"
-          className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border"
+          className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border dark:border-gray-700"
         >
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-secondary/10 rounded-lg">
+            <div className="p-3 bg-secondary/10 dark:bg-secondary/20 rounded-lg">
               <FileText className="h-6 w-6 text-secondary" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">週次報告</p>
-              <p className="text-2xl font-bold text-gray-900">今週</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">週次報告</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">今週</p>
             </div>
           </div>
         </Link>
 
-        <div className="bg-white p-6 rounded-lg shadow border border-border">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-border dark:border-gray-700">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-accent/10 rounded-lg">
+            <div className="p-3 bg-accent/10 dark:bg-accent/20 rounded-lg">
               <Clock className="h-6 w-6 text-accent" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">今週の活動時間</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-gray-600 dark:text-gray-400">今週の活動時間</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {schedules.length * 8}h
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border border-border">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-border dark:border-gray-700">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <Inbox className="h-6 w-6 text-orange-600" />
+            <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+              <Inbox className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">受信箱</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-gray-600 dark:text-gray-400">受信箱</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {totalInboxCount}件
               </p>
             </div>
@@ -352,8 +352,8 @@ export const Dashboard: React.FC = () => {
 
       {/* 受信箱セクション */}
       {totalInboxCount > 0 && (
-        <div className="bg-white rounded-lg shadow border border-border p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">受信箱</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">受信箱</h2>
           
           {inboxLoading ? (
             <LoadingSpinner />
@@ -362,12 +362,12 @@ export const Dashboard: React.FC = () => {
               {/* スケジュール招待 */}
               {inboxData?.scheduleInvites && inboxData.scheduleInvites.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">スケジュール招待</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">スケジュール招待</h3>
                   <div className="space-y-3">
                     {inboxData.scheduleInvites.map((invite) => (
                       <div
                         key={invite.participantId}
-                        className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -379,11 +379,11 @@ export const Dashboard: React.FC = () => {
                                 {(invite.fromUser.avatarLetter || invite.fromUser.name || '').charAt(0)}
                               </div>
                               <div>
-                                <p className="font-medium text-gray-900">{invite.fromUser.name}さんからの招待</p>
-                                <p className="text-sm text-gray-600">{invite.title}</p>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">{invite.fromUser.name}さんからの招待</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{invite.title}</p>
                               </div>
                             </div>
-                            <p className="text-sm text-gray-600 ml-10">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 ml-10">
                               {formatDate(invite.date, 'M月d日(E)')} {invite.startTime} - {invite.endTime}
                             </p>
                           </div>
@@ -416,12 +416,12 @@ export const Dashboard: React.FC = () => {
               {/* スケジュール承認結果 */}
               {inboxData?.scheduleResponses && inboxData.scheduleResponses.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">承認結果</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">承認結果</h3>
                   <div className="space-y-2">
                     {inboxData.scheduleResponses.map((response, index) => (
                       <div
                         key={`${response.scheduleId}-${response.toUser.id}-${index}`}
-                        className="p-3 border border-gray-200 rounded-lg bg-gray-50"
+                        className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/50"
                       >
                         <div className="flex items-center gap-2">
                           <div
@@ -430,10 +430,10 @@ export const Dashboard: React.FC = () => {
                           >
                             {(response.toUser.avatarLetter || response.toUser.name || '').charAt(0)}
                           </div>
-                          <p className="text-sm text-gray-700">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
                             <span className="font-medium">{response.toUser.name}</span>さんが
                             <span className="font-medium">{response.scheduleTitle}</span>への参加を
-                            <span className={response.decision === 'APPROVED' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                            <span className={response.decision === 'APPROVED' ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
                               {response.decision === 'APPROVED' ? '承認' : '却下'}
                             </span>
                             しました
@@ -448,14 +448,14 @@ export const Dashboard: React.FC = () => {
               {/* タスクボックス（メンバー向け） */}
               {inboxData?.taskRequests && inboxData.taskRequests.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
                     {user?.role === 'MEMBER' ? '依頼ボックス' : '依頼'}
                   </h3>
                   <div className="space-y-3">
                     {inboxData.taskRequests.map((request) => (
                       <div
                         key={request.id}
-                        className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -467,17 +467,17 @@ export const Dashboard: React.FC = () => {
                                 {(request.requester.avatarLetter || request.requester.name || '').charAt(0)}
                               </div>
                               <div>
-                                <p className="font-medium text-gray-900">
+                                <p className="font-medium text-gray-900 dark:text-gray-100">
                                   {user?.role === 'MEMBER' 
                                     ? `${request.requester.name}さんからのタスク`
                                     : `${request.requester.name}さんからの依頼`}
                                 </p>
-                                <p className="text-sm text-gray-600">{request.requestTitle}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">{request.requestTitle}</p>
                               </div>
                             </div>
-                            <p className="text-sm text-gray-600 ml-10">{request.requestDescription}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 ml-10">{request.requestDescription}</p>
                             {request.deadline && (
-                              <p className="text-xs text-gray-500 ml-10 mt-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 ml-10 mt-1">
                                 期限: {formatDate(request.deadline, 'M月d日')}
                               </p>
                             )}
@@ -512,9 +512,9 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow border border-border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">今週のスケジュール</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">今週のスケジュール</h2>
           <Link to="/schedule">
             <Button variant="outline" size="sm">
               すべて見る
@@ -525,7 +525,7 @@ export const Dashboard: React.FC = () => {
         {loading ? (
           <LoadingSpinner />
         ) : schedules.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
+          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             今週のスケジュールはありません
           </p>
         ) : (
@@ -535,7 +535,7 @@ export const Dashboard: React.FC = () => {
               return (
                 <div
                   key={schedule.id}
-                  className="flex items-start space-x-4 p-4 border border-border rounded-lg hover:bg-gray-50"
+                  className="flex items-start space-x-4 p-4 border border-border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 >
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
@@ -545,21 +545,21 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
                         {schedule.activityDescription}
                       </p>
                       {participantCount > 0 && (
-                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                        <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
                           +{participantCount}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {formatDate(schedule.date, 'M月d日(E)')} {schedule.startTime} -{' '}
                       {schedule.endTime}
                     </p>
                     {schedule.locationText && (
-                      <p className="text-sm text-gray-500">{schedule.locationText}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{schedule.locationText}</p>
                     )}
                   </div>
                 </div>

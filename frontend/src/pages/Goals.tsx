@@ -224,10 +224,10 @@ export const Goals: React.FC = () => {
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             ミッション管理
-            {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のミッション）</span>}
-            {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 ml-2">（作成）</span>}
+            {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分のミッション）</span>}
+            {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（作成）</span>}
           </h1>
           <Button
             variant="outline"
@@ -247,7 +247,7 @@ export const Goals: React.FC = () => {
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   viewMode === 'view'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 閲覧
@@ -286,10 +286,10 @@ export const Goals: React.FC = () => {
           {/* 目標一覧 */}
       <div className="space-y-4">
         {goals?.map((goal) => (
-          <div key={goal.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div key={goal.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             {/* 目標ヘッダー */}
             <div
-              className="p-5 cursor-pointer hover:bg-gray-50 transition-colors"
+              className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               onClick={() => toggleGoal(goal.id)}
             >
               <div className="flex justify-end mb-2">
@@ -306,14 +306,14 @@ export const Goals: React.FC = () => {
               </div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <button className="text-gray-400 hover:text-gray-600">
+                  <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                     {expandedGoals.has(goal.id) ? '▼' : '▶'}
                   </button>
-                  <h2 className="text-lg font-semibold text-gray-900">{goal.missionName || goal.goalName}</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
                   <span className={`text-xs px-2 py-1 rounded-full ${
                     (goal.missionType || goal.goalType) === 'PRIMARY' 
-                      ? 'bg-purple-100 text-purple-800' 
-                      : 'bg-gray-100 text-gray-800'
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                   }`}>
                     {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
                   </span>
