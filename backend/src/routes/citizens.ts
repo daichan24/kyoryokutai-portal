@@ -144,7 +144,11 @@ router.get('/', async (req: AuthRequest, res) => {
       console.error('⚠️ [API] SQL check error:', sqlError);
     }
 
-    // DBアクセス: Prismaを使ってContactテーブルから取得
+    // クエリ: orderBy=updatedAt で直近更新順、limit で件数制限（ウィジェット用）
+    const orderBy = (req.query.orderBy as string) || 'createdAt';
+    const limitParam = req.query.limit;
+    const limit = limitParam != null ? Math.min(Math.max(parseInt(String(limitParam), 10) || 0, 1), 100) : undefined;
+
     const contacts = await prisma.contact.findMany({
       include: {
         creator: { select: { id: true, name: true } },
@@ -153,7 +157,8 @@ router.get('/', async (req: AuthRequest, res) => {
           orderBy: { date: 'desc' },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: orderBy === 'updatedAt' ? { updatedAt: 'desc' } : { createdAt: 'desc' },
+      ...(limit != null && limit > 0 ? { take: limit } : {}),
     });
 
     console.log(`✅ [API] ${contacts.length}件の町民情報を取得`);

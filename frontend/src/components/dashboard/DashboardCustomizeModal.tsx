@@ -39,6 +39,51 @@ const widgetLabels: Record<string, string> = {
   eventParticipation: 'イベント参加状況',
 };
 
+// カスタマイズ画面に必ず表示する全8ウィジェットのテンプレート
+const FULL_WIDGET_TEMPLATE: Omit<WidgetConfig, 'order'>[] = [
+  { key: 'snsHistory', enabled: true, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
+  { key: 'taskRequests', enabled: true, displayMode: 'view-only', showAddButton: false, size: 'L', columnSpan: 2 },
+  { key: 'projects', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'M', columnSpan: 2 },
+  { key: 'goals', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'M', columnSpan: 1 },
+  { key: 'tasks', enabled: false, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
+  { key: 'events', enabled: false, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
+  { key: 'contacts', enabled: false, displayMode: 'add-only', showAddButton: false, size: 'M', columnSpan: 2 },
+  { key: 'eventParticipation', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'L', columnSpan: 1 },
+];
+
+// APIレスポンスとテンプレートをマージし、常に全8件を返す（APIが古い・空・不正でも選択肢を表示）
+function mergeWithTemplate(apiConfig: DashboardConfig | null | undefined, role: string): DashboardConfig {
+  const raw = apiConfig?.widgets;
+  if (!raw || !Array.isArray(raw) || raw.length === 0) {
+    return getDefaultConfig(role);
+  }
+  const byKey = new Map<string, any>();
+  raw.forEach((w) => byKey.set(w.key, w));
+  const merged = FULL_WIDGET_TEMPLATE.map((t, i) => {
+    const saved = byKey.get(t.key);
+    if (saved) {
+      return { ...t, ...saved, key: t.key, order: typeof saved.order === 'number' ? saved.order : i + 1 } as WidgetConfig;
+    }
+    return { ...t, order: i + 1 } as WidgetConfig;
+  });
+  return { widgets: merged.sort((a, b) => a.order - b.order) };
+}
+
+// デフォルト設定（role別）※常に8件
+function getDefaultConfig(role: string = 'MEMBER'): DashboardConfig {
+  const base = FULL_WIDGET_TEMPLATE.map((w, i) => ({ ...w, order: i + 1 } as WidgetConfig));
+  if (role === 'MEMBER') {
+    return { widgets: [base[0], { ...base[1], enabled: false }, base[2], base[3], base[4], base[5], base[6], base[7]].map((w, i) => ({ ...w, order: i + 1 })) };
+  }
+  if (role === 'SUPPORT' || role === 'GOVERNMENT') {
+    return { widgets: [base[0], base[1], base[2], base[3], base[4], base[5], base[6], base[7]].map((w, i) => ({ ...w, enabled: [0, 3].includes(i) ? false : true, order: i + 1 })) };
+  }
+  if (role === 'MASTER') {
+    return { widgets: base.map((w, i) => ({ ...w, enabled: true, order: i + 1 })) };
+  }
+  return { widgets: base };
+}
+
 export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = ({
   isOpen,
   onClose,
@@ -46,61 +91,19 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
   const queryClient = useQueryClient();
   const [config, setConfig] = useState<DashboardConfig | null>(null);
 
-  // デフォルト設定（role別）
-  const getDefaultConfig = (role: string = 'MEMBER'): DashboardConfig => {
-    const baseWidgets = [
-      { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 1 as const, order: 1 },
-      { key: 'taskRequests', enabled: true, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const, order: 2 },
-      { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 3 },
-      { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
-      { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 1 as const, order: 5 },
-      { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 1 as const, order: 6 },
-      { key: 'contacts', enabled: false, displayMode: 'add-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 7 },
-      { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const, order: 8 },
-    ];
-
-    if (role === 'MEMBER') {
-      return {
-        widgets: [
-          { ...baseWidgets[0], enabled: true },
-          { ...baseWidgets[1], enabled: false },
-          { ...baseWidgets[2], enabled: true },
-          { ...baseWidgets[3], enabled: true },
-          { ...baseWidgets[4], enabled: true },
-          { ...baseWidgets[5], enabled: true },
-        ],
-      };
-    } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
-      return {
-        widgets: [
-          { ...baseWidgets[0], enabled: false },
-          { ...baseWidgets[1], enabled: true },
-          { ...baseWidgets[2], enabled: true },
-          { ...baseWidgets[3], enabled: false },
-          { ...baseWidgets[4], enabled: true },
-          { ...baseWidgets[5], enabled: true },
-          { ...baseWidgets[6], enabled: true },
-          { ...baseWidgets[7], enabled: true },
-        ],
-      };
-    } else if (role === 'MASTER') {
-      return {
-        widgets: baseWidgets.map((w, i) => ({ ...w, enabled: true, order: i + 1 })),
-      };
-    }
-
-    return { widgets: baseWidgets };
-  };
-
   const { data: currentConfig, isLoading } = useQuery<DashboardConfig>({
     queryKey: ['dashboard-config'],
     queryFn: async () => {
       try {
         const response = await api.get('/api/me/dashboard-config');
-        return response.data;
+        const data = response?.data;
+        if (!data || !Array.isArray(data?.widgets)) {
+          const { user } = useAuthStore.getState();
+          return getDefaultConfig(user?.role || 'MEMBER');
+        }
+        return data;
       } catch (error: any) {
-        console.error('[Dashboard] Failed to fetch dashboard config:', error);
-        // エラー時はデフォルト設定を返す（無限ローディングを防ぐ）
+        console.error('[DashboardCustomizeModal] Failed to fetch dashboard config:', error);
         const { user } = useAuthStore.getState();
         return getDefaultConfig(user?.role || 'MEMBER');
       }
@@ -121,10 +124,11 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
   });
 
   useEffect(() => {
-    if (currentConfig) {
-      setConfig(currentConfig);
+    if (currentConfig !== undefined && isOpen) {
+      const { user } = useAuthStore.getState();
+      setConfig(mergeWithTemplate(currentConfig, user?.role || 'MEMBER'));
     }
-  }, [currentConfig]);
+  }, [currentConfig, isOpen]);
 
   if (!isOpen) return null;
 
@@ -215,7 +219,7 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
           </p>
 
           <div className="space-y-3">
-            {config.widgets
+            {(config?.widgets ?? [])
               .sort((a, b) => a.order - b.order)
               .map((widget) => (
                 <div
