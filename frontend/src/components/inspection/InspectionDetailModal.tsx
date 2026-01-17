@@ -241,9 +241,9 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
                 />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">4. 今後のアクション</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">4. 今後のアクション</h3>
                 <div 
-                  className="prose max-w-none text-gray-700"
+                  className="prose max-w-none text-gray-700 dark:text-gray-300 dark:prose-invert"
                   dangerouslySetInnerHTML={{ __html: inspection.futureAction }}
                 />
               </div>

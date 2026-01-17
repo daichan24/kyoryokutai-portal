@@ -249,7 +249,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="プロジェクトの説明を入力"
             />
           </div>
@@ -270,13 +270,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               フェーズ
             </label>
             <select
               value={phase}
               onChange={(e) => setPhase(e.target.value as typeof phase)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="PREPARATION">準備</option>
               <option value="EXECUTION">実施</option>
@@ -286,13 +286,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               関連ミッション（任意）
             </label>
             <select
               value={missionId}
               onChange={(e) => setMissionId(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="">選択しない</option>
               {missions.map((mission) => (
@@ -304,7 +304,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               タグ
             </label>
             <div className="flex gap-2 mb-2">
@@ -319,7 +319,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   }
                 }}
                 placeholder="タグを入力してEnter"
-                className="flex-1 px-3 py-2 border border-border rounded-md"
+                className="flex-1 px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
               <Button type="button" variant="outline" onClick={handleAddTag}>
                 追加
@@ -330,13 +330,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 rounded-full text-sm"
                   >
                     {tag}
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="hover:text-blue-600"
+                      className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
                       <X className="h-4 w-4" />
                     </button>

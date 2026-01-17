@@ -257,14 +257,14 @@ export const EventModal: React.FC<EventModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               説明
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="イベントの説明を入力"
             />
           </div>
@@ -278,13 +278,13 @@ export const EventModal: React.FC<EventModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               関連プロジェクト（任意）
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="">選択しない</option>
               {projects.map((project) => (
@@ -295,7 +295,7 @@ export const EventModal: React.FC<EventModalProps> = ({
             </select>
           </div>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex justify-between pt-4 border-t dark:border-gray-700">
             <div>
               {event && (
                 <Button type="button" variant="danger" onClick={handleDelete}>

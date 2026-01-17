@@ -126,7 +126,7 @@ export const Events: React.FC = () => {
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-semibold text-lg">{event.eventName}</h3>
+                  <h3 className="font-semibold text-lg dark:text-gray-100">{event.eventName}</h3>
                   <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(event.eventType)}`}>
                     {getTypeLabel(event.eventType)}
                   </span>

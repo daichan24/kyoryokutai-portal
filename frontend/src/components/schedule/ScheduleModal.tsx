@@ -247,7 +247,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               プロジェクト（任意）
             </label>
             <select
@@ -259,7 +259,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                   setSelectedTaskId(null);
                 }
               }}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="">選択しない</option>
               {projects.map((project) => (
@@ -271,13 +271,13 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               タスク（任意）
             </label>
             <select
               value={selectedTaskId || ''}
               onChange={(e) => setSelectedTaskId(e.target.value || null)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               disabled={!selectedProjectId && tasks.filter(t => !t.projectId).length === 0}
             >
               <option value="">選択しない</option>
@@ -299,55 +299,55 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              活動内容 <span className="text-error">*</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              活動内容 <span className="text-error dark:text-red-400">*</span>
             </label>
             <textarea
               value={activityDescription}
               onChange={(e) => setActivityDescription(e.target.value)}
               required
               rows={4}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               備考
             </label>
             <textarea
               value={freeNote}
               onChange={(e) => setFreeNote(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
 
           {/* 起票者表示（編集時・詳細表示時） */}
           {schedule && schedule.user && (
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">起票者</h3>
-              <div className="flex items-center gap-2 p-2 bg-blue-50 rounded border border-blue-200">
+            <div className="border-t dark:border-gray-700 pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">起票者</h3>
+              <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
                   style={{ backgroundColor: schedule.user.avatarColor || '#6B7280' }}
                 >
                   {(schedule.user.avatarLetter || schedule.user.name || '').charAt(0) || '?'}
                 </div>
-                <span className="text-sm font-medium text-gray-900">{schedule.user.name}</span>
-                <span className="text-xs text-gray-500">({schedule.user.role})</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{schedule.user.name}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">({schedule.user.role})</span>
               </div>
             </div>
           )}
 
           {/* 共同メンバー表示（編集時・詳細表示時） */}
           {schedule && schedule.scheduleParticipants && schedule.scheduleParticipants.length > 0 && (
-            <div className="border-t pt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">共同メンバー</h3>
+            <div className="border-t dark:border-gray-700 pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">共同メンバー</h3>
               <div className="grid grid-cols-2 gap-4">
                 {/* 承認済みメンバー */}
                 <div>
-                  <p className="text-xs font-medium text-gray-600 mb-2">承認済み</p>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">承認済み</p>
                   {schedule.scheduleParticipants.filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId).length > 0 ? (
                     <div className="space-y-2">
                       {schedule.scheduleParticipants
@@ -355,7 +355,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                         .map((participant) => (
                           <div
                             key={participant.id}
-                            className="flex items-center gap-2 p-2 bg-green-50 rounded border border-green-200"
+                            className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800"
                           >
                             <div
                               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
@@ -363,19 +363,19 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                             >
                               {(participant.user?.avatarLetter || participant.user?.name || '').charAt(0) || '?'}
                             </div>
-                            <span className="text-sm text-gray-700 flex-1">{participant.user?.name || '不明'}</span>
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">承認済</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{participant.user?.name || '不明'}</span>
+                            <span className="text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200 px-2 py-0.5 rounded">承認済</span>
                           </div>
                         ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-400">なし</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">なし</p>
                   )}
                 </div>
 
                 {/* 未承認メンバー */}
                 <div>
-                  <p className="text-xs font-medium text-gray-600 mb-2">未承認</p>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">未承認</p>
                   {schedule.scheduleParticipants.filter(p => p.status === 'PENDING' && p.userId !== schedule.userId).length > 0 ? (
                     <div className="space-y-2">
                       {schedule.scheduleParticipants
@@ -383,7 +383,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                         .map((participant) => (
                           <div
                             key={participant.id}
-                            className="flex items-center gap-2 p-2 bg-yellow-50 rounded border border-yellow-200"
+                            className="flex items-center gap-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800"
                           >
                             <div
                               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
@@ -391,13 +391,13 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                             >
                               {(participant.user?.avatarLetter || participant.user?.name || '').charAt(0) || '?'}
                             </div>
-                            <span className="text-sm text-gray-700 flex-1">{participant.user?.name || '不明'}</span>
-                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">未承認</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{participant.user?.name || '不明'}</span>
+                            <span className="text-xs bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 px-2 py-0.5 rounded">未承認</span>
                           </div>
                         ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-400">なし</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">なし</p>
                   )}
                 </div>
               </div>
@@ -405,14 +405,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               {/* 却下メンバー（任意表示） */}
               {schedule.scheduleParticipants.filter(p => p.status === 'REJECTED' && p.userId !== schedule.userId).length > 0 && (
                 <div className="mt-4">
-                  <p className="text-xs font-medium text-gray-600 mb-2">却下</p>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">却下</p>
                   <div className="space-y-2">
                     {schedule.scheduleParticipants
                       .filter(p => p.status === 'REJECTED' && p.userId !== schedule.userId)
                       .map((participant) => (
                         <div
                           key={participant.id}
-                          className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200 opacity-60"
+                          className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 opacity-60"
                         >
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
@@ -420,8 +420,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                           >
                             {(participant.user?.avatarLetter || participant.user?.name || '').charAt(0) || '?'}
                           </div>
-                          <span className="text-sm text-gray-500 flex-1">{participant.user?.name || '不明'}</span>
-                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">却下</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400 flex-1">{participant.user?.name || '不明'}</span>
+                          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded">却下</span>
                         </div>
                       ))}
                   </div>

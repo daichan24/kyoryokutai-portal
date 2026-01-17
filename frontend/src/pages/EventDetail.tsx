@@ -58,11 +58,11 @@ export const EventDetail: React.FC = () => {
 
   const getTypeColor = (type: string) => {
     const colors = {
-      TOWN_OFFICIAL: 'bg-blue-100 text-blue-800',
-      TEAM: 'bg-green-100 text-green-800',
-      OTHER: 'bg-gray-100 text-gray-800',
+      TOWN_OFFICIAL: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      TEAM: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+      OTHER: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
     };
-    return colors[type as keyof typeof colors] || 'bg-gray-100';
+    return colors[type as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-700';
   };
 
   if (isLoading) {
@@ -76,7 +76,7 @@ export const EventDetail: React.FC = () => {
   if (!event) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">イベントが見つかりません</p>
+        <p className="text-gray-500 dark:text-gray-400">イベントが見つかりません</p>
         <Button onClick={() => navigate('/events')} className="mt-4">
           イベント一覧に戻る
         </Button>
@@ -103,25 +103,25 @@ export const EventDetail: React.FC = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           一覧に戻る
         </Button>
-        <h1 className="text-3xl font-bold text-gray-900">{event.eventName}</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{event.eventName}</h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <span className={`text-sm px-3 py-1 rounded-full ${getTypeColor(event.eventType)}`}>
               {getTypeLabel(event.eventType)}
             </span>
             {isCompleted && (
-              <span className="text-sm px-3 py-1 rounded-full bg-gray-200 text-gray-600">
+              <span className="text-sm px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                 実施済み
               </span>
             )}
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-1">開催日時</h2>
-            <p className="text-gray-900">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">開催日時</h2>
+            <p className="text-gray-900 dark:text-gray-100">
               {format(new Date(event.date), 'yyyy年M月d日')}
               {event.startTime && ` ${event.startTime}〜`}
               {event.endTime && event.endTime}
@@ -130,8 +130,8 @@ export const EventDetail: React.FC = () => {
 
           {(event.location || event.locationText) && (
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 mb-1">場所</h2>
-              <p className="text-gray-900">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">場所</h2>
+              <p className="text-gray-900 dark:text-gray-100">
                 {event.location ? event.location.name : event.locationText}
               </p>
             </div>
@@ -139,20 +139,20 @@ export const EventDetail: React.FC = () => {
 
           {event.description && (
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 mb-1">詳細説明</h2>
-              <p className="text-gray-900 whitespace-pre-wrap">{event.description}</p>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">詳細説明</h2>
+              <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{event.description}</p>
             </div>
           )}
 
           {event.project && (
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 mb-1">関連プロジェクト</h2>
-              <p className="text-gray-900">{event.project.projectName}</p>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">関連プロジェクト</h2>
+              <p className="text-gray-900 dark:text-gray-100">{event.project.projectName}</p>
             </div>
           )}
 
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-1">作成者</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">作成者</h2>
             <div className="flex items-center gap-2">
               {event.creator.avatarColor && (
                 <div
@@ -162,18 +162,18 @@ export const EventDetail: React.FC = () => {
                   {(event.creator.avatarLetter || event.creator.name || '').charAt(0)}
                 </div>
               )}
-              <span className="text-gray-900">{event.creator.name}</span>
+              <span className="text-gray-900 dark:text-gray-100">{event.creator.name}</span>
             </div>
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">参加メンバー</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">参加メンバー</h2>
             {event.participations && event.participations.length > 0 ? (
               <div className="space-y-2">
                 {event.participations.map((participation) => (
                   <div
                     key={participation.id}
-                    className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg"
+                    className="flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/50"
                   >
                     {participation.user.avatarColor && (
                       <div
@@ -183,15 +183,15 @@ export const EventDetail: React.FC = () => {
                         {(participation.user.avatarLetter || participation.user.name || '').charAt(0)}
                       </div>
                     )}
-                    <span className="text-gray-900">{participation.user.name}</span>
-                    <span className="text-xs text-gray-500 ml-auto">
+                    <span className="text-gray-900 dark:text-gray-100">{participation.user.name}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
                       {participation.participationType === 'PARTICIPATION' ? '参加' : '準備'}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500">参加メンバーはいません</p>
+              <p className="text-gray-500 dark:text-gray-400">参加メンバーはいません</p>
             )}
           </div>
         </div>
