@@ -90,45 +90,45 @@ export const Dashboard: React.FC = () => {
     refetchInterval: 30000, // 30秒ごとに更新
   });
 
-  // デフォルト設定（role別）
+  // デフォルト設定（role別）※API失敗時のフォールバック。通常はAPIが全8件を返す
   const getDefaultConfig = (role: string = 'MEMBER'): DashboardConfig => {
     const baseWidgets = [
-      { key: 'snsHistory', enabled: true, showAddButton: true, size: 'M' as const, order: 1 },
-      { key: 'taskRequests', enabled: true, showAddButton: false, size: 'L' as const, order: 2 }, // 後方互換性のため残す
-      { key: 'tasks', enabled: true, showAddButton: true, size: 'M' as const, order: 3 },
-      { key: 'events', enabled: true, showAddButton: true, size: 'M' as const, order: 4 },
-      { key: 'projects', enabled: false, showAddButton: false, size: 'M' as const, order: 5 },
-      { key: 'goals', enabled: false, showAddButton: false, size: 'M' as const, order: 6 },
+      { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 1 },
+      { key: 'taskRequests', enabled: true, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 2 as const, order: 2 },
+      { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 3 },
+      { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
+      { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 5 },
+      { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 6 },
+      { key: 'contacts', enabled: false, displayMode: 'add-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 7 },
+      { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const, order: 8 },
     ];
 
     if (role === 'MEMBER') {
       return {
         widgets: [
-          { ...baseWidgets[0], enabled: true, displayMode: 'view-with-add' as const },
+          { ...baseWidgets[0], enabled: true },
           { ...baseWidgets[1], enabled: false },
-          { ...baseWidgets[2], enabled: true, displayMode: 'view-with-add' as const }, // tasks
-          { ...baseWidgets[3], enabled: true, displayMode: 'view-with-add' as const }, // events
-          { ...baseWidgets[4], enabled: true, displayMode: 'view-only' as const },
-          { ...baseWidgets[5], enabled: true, displayMode: 'view-only' as const },
+          { ...baseWidgets[2], enabled: true },
+          { ...baseWidgets[3], enabled: true },
+          { ...baseWidgets[4], enabled: true },
+          { ...baseWidgets[5], enabled: true },
         ],
       };
     } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
       return {
         widgets: [
           { ...baseWidgets[0], enabled: false },
-          { ...baseWidgets[1], enabled: true, displayMode: 'view-with-add' as const },
-          { ...baseWidgets[2], enabled: true, displayMode: 'view-with-add' as const }, // tasks
-          { ...baseWidgets[3], enabled: true, displayMode: 'view-with-add' as const }, // events
-          { ...baseWidgets[4], enabled: true, displayMode: 'view-only' as const },
-          { ...baseWidgets[5], enabled: false },
-          { ...baseWidgets[6], enabled: true, displayMode: 'add-only' as const }, // contacts
-          { ...baseWidgets[7], enabled: true, displayMode: 'view-only' as const }, // eventParticipation
+          { ...baseWidgets[1], enabled: true },
+          { ...baseWidgets[2], enabled: true },
+          { ...baseWidgets[3], enabled: false },
+          { ...baseWidgets[4], enabled: true },
+          { ...baseWidgets[5], enabled: true },
+          { ...baseWidgets[6], enabled: true },
+          { ...baseWidgets[7], enabled: true },
         ],
       };
     } else if (role === 'MASTER') {
-      return {
-        widgets: baseWidgets.map((w, i) => ({ ...w, enabled: true, order: i + 1 })),
-      };
+      return { widgets: baseWidgets.map((w, i) => ({ ...w, enabled: true, order: i + 1 })) };
     }
 
     return { widgets: baseWidgets };
@@ -215,10 +215,14 @@ export const Dashboard: React.FC = () => {
     const commonProps = {
       displayMode,
       showAddButton: displayMode === 'view-with-add' || displayMode === 'add-only',
-      onAddClick: widget.key === 'taskRequests' ? () => setIsTaskRequestModalOpen(true) : undefined,
+      onAddClick:
+        widget.key === 'taskRequests'
+          ? () => setIsTaskRequestModalOpen(true)
+          : widget.key === 'contacts'
+          ? () => setIsContactModalOpen(true)
+          : undefined,
     };
 
-    const columnSpan = widget.columnSpan || 1;
     const widgetElement = (() => {
       switch (widget.key) {
         case 'snsHistory':
@@ -244,16 +248,27 @@ export const Dashboard: React.FC = () => {
 
     if (!widgetElement) return null;
 
+    // 1カラム(columnSpan=1) = 幅広 = md:col-span-2 / 2カラム(2) = 通常 = 1ブロック
+    const isFullWidth = (widget.columnSpan ?? 2) === 1;
     return (
-      <div key={widget.key} className={columnSpan === 2 ? 'md:col-span-2' : ''}>
+      <div key={widget.key} className={isFullWidth ? 'md:col-span-2' : ''}>
         {widgetElement}
       </div>
     );
   };
 
-  const enabledWidgets = dashboardConfig?.widgets
+  let enabledWidgets = (dashboardConfig?.widgets
     .filter((w) => w.enabled)
-    .sort((a, b) => a.order - b.order) || [];
+    .sort((a, b) => a.order - b.order) || []).slice();
+
+  // 1カラム(幅広)ウィジェットが偶数番目(右側)になる場合、はみ出しを防ぐため前のウィジェットと入れ替え
+  for (let i = 1; i < enabledWidgets.length; i++) {
+    const isEvenPosition = (i + 1) % 2 === 0;
+    const isFullWidth = (enabledWidgets[i].columnSpan ?? 2) === 1;
+    if (isEvenPosition && isFullWidth) {
+      [enabledWidgets[i], enabledWidgets[i - 1]] = [enabledWidgets[i - 1], enabledWidgets[i]];
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -560,15 +575,7 @@ export const Dashboard: React.FC = () => {
       {/* カスタムウィジェットエリア */}
       {enabledWidgets.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {enabledWidgets.map((widget) => {
-            const widgetElement = renderWidget(widget);
-            const columnSpan = widget.columnSpan || 1;
-            return (
-              <div key={widget.key} className={columnSpan === 2 ? 'md:col-span-2' : ''}>
-                {widgetElement}
-              </div>
-            );
-          })}
+          {enabledWidgets.map((widget) => renderWidget(widget))}
         </div>
       )}
 
