@@ -88,12 +88,12 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
-        <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-2xl font-bold">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+          <h2 className="text-2xl font-bold dark:text-gray-100">
             {report ? '週次報告編集' : '週次報告作成'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -109,8 +109,8 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                今週の活動 <span className="text-error">*</span>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                今週の活動 <span className="text-error dark:text-red-400">*</span>
               </label>
               <Button type="button" variant="outline" size="sm" onClick={handleAddActivity}>
                 活動を追加
@@ -136,7 +136,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                       handleActivityChange(index, 'activity', e.target.value)
                     }
                     placeholder="活動内容"
-                    className="flex-1 px-3 py-2 border border-border rounded-md"
+                    className="flex-1 px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                     required
                   />
                   {activities.length > 1 && (
@@ -155,30 +155,30 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               来週の予定
             </label>
             <textarea
               value={nextWeekPlan}
               onChange={(e) => setNextWeekPlan(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               備考
             </label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end space-x-3 pt-4 border-t dark:border-gray-700">
             <Button type="button" variant="outline" onClick={onClose}>
               キャンセル
             </Button>

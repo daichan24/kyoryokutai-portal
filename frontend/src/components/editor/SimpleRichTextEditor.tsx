@@ -77,15 +77,15 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   };
 
   return (
-    <div className={`border border-gray-300 rounded-lg ${className}`}>
+    <div className={`border border-gray-300 dark:border-gray-600 rounded-lg ${className}`}>
       {/* ツールバー */}
-      <div className="flex items-center gap-1 p-2 border-b border-gray-200 bg-gray-50 rounded-t-lg sticky top-0 z-10">
+      <div className="flex items-center gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg sticky top-0 z-10">
         {/* 見出し */}
-        <div className="flex items-center gap-1 border-r border-gray-300 pr-2">
+        <div className="flex items-center gap-1 border-r border-gray-300 dark:border-gray-600 pr-2">
           <button
             type="button"
             onClick={() => handleHeading(1)}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="見出し1"
           >
             <Heading1 className="h-4 w-4" />
@@ -93,7 +93,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => handleHeading(2)}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="見出し2"
           >
             <Heading2 className="h-4 w-4" />
@@ -101,7 +101,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => handleHeading(3)}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="見出し3"
           >
             <Heading3 className="h-4 w-4" />
@@ -109,11 +109,11 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         </div>
 
         {/* 文字サイズ */}
-        <div className="flex items-center gap-1 border-r border-gray-300 pr-2">
+        <div className="flex items-center gap-1 border-r border-gray-300 dark:border-gray-600 pr-2">
           <button
             type="button"
             onClick={() => handleFontSize('small')}
-            className="px-2 py-1 text-xs hover:bg-gray-200 rounded"
+            className="px-2 py-1 text-xs hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="小"
           >
             小
@@ -121,7 +121,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => handleFontSize('normal')}
-            className="px-2 py-1 text-sm hover:bg-gray-200 rounded"
+            className="px-2 py-1 text-sm hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="標準"
           >
             標準
@@ -129,7 +129,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => handleFontSize('large')}
-            className="px-2 py-1 text-base hover:bg-gray-200 rounded"
+            className="px-2 py-1 text-base hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="大"
           >
             大
@@ -137,11 +137,11 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         </div>
 
         {/* 配置 */}
-        <div className="flex items-center gap-1 border-r border-gray-300 pr-2">
+        <div className="flex items-center gap-1 border-r border-gray-300 dark:border-gray-600 pr-2">
           <button
             type="button"
             onClick={() => handleAlignment('left')}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="左揃え"
           >
             <AlignLeft className="h-4 w-4" />
@@ -149,7 +149,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => handleAlignment('center')}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="中央揃え"
           >
             <AlignCenter className="h-4 w-4" />
@@ -157,7 +157,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => handleAlignment('right')}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="右揃え"
           >
             <AlignRight className="h-4 w-4" />
@@ -165,11 +165,11 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         </div>
 
         {/* 箇条書き */}
-        <div className="flex items-center gap-1 border-r border-gray-300 pr-2">
+        <div className="flex items-center gap-1 border-r border-gray-300 dark:border-gray-600 pr-2">
           <button
             type="button"
             onClick={() => executeCommand('insertUnorderedList')}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="箇条書き（・）"
           >
             <List className="h-4 w-4" />
@@ -177,7 +177,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => executeCommand('insertOrderedList')}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="番号付きリスト"
           >
             <ListOrdered className="h-4 w-4" />
@@ -189,7 +189,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => executeCommand('indent')}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="インデント増"
           >
             <Indent className="h-4 w-4" />
@@ -197,7 +197,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           <button
             type="button"
             onClick={() => executeCommand('outdent')}
-            className="p-2 hover:bg-gray-200 rounded"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
             title="インデント減"
           >
             <Outdent className="h-4 w-4" />
@@ -210,7 +210,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         ref={editorRef}
         contentEditable
         onInput={handleInput}
-        className="min-h-[300px] p-4 focus:outline-none prose max-w-none"
+        className="min-h-[300px] p-4 focus:outline-none prose max-w-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-b-lg dark:prose-invert"
         style={{
           wordBreak: 'break-word',
         }}
@@ -224,20 +224,26 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
           color: #9ca3af;
           pointer-events: none;
         }
+        .dark [contenteditable][data-placeholder]:empty:before {
+          color: #6b7280;
+        }
         [contenteditable] h1 {
           font-size: 1.875rem;
           font-weight: bold;
           margin: 1rem 0;
+          color: inherit;
         }
         [contenteditable] h2 {
           font-size: 1.5rem;
           font-weight: bold;
           margin: 0.875rem 0;
+          color: inherit;
         }
         [contenteditable] h3 {
           font-size: 1.25rem;
           font-weight: bold;
           margin: 0.75rem 0;
+          color: inherit;
         }
         [contenteditable] ul, [contenteditable] ol {
           margin: 0.5rem 0;
@@ -251,6 +257,9 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         }
         [contenteditable] em, [contenteditable] i {
           font-style: italic;
+        }
+        [contenteditable] p {
+          margin: 0.5rem 0;
         }
       `}</style>
     </div>

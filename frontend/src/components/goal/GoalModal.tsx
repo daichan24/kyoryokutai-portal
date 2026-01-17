@@ -98,12 +98,12 @@ export const GoalModal: React.FC<GoalModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+          <h2 className="text-2xl font-bold dark:text-gray-100">
             {goal ? 'ミッション編集' : 'ミッション作成'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -119,13 +119,13 @@ export const GoalModal: React.FC<GoalModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               ミッションタイプ
             </label>
             <select
               value={missionType}
               onChange={(e) => setMissionType(e.target.value as typeof missionType)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="PRIMARY">メイン目標</option>
               <option value="SUB">サブ目標</option>
@@ -158,7 +158,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               達成ボーダー（任意）
             </label>
             <textarea
@@ -166,14 +166,14 @@ export const GoalModal: React.FC<GoalModalProps> = ({
               onChange={(e) => setAchievementBorder(e.target.value)}
               rows={4}
               placeholder="例：月間売上10万円達成、SNSフォロワー1000人達成など、具体的な達成条件を記入してください"
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               具体的に何ができれば達成になるかを明記してください（収益の発生やフォロワー獲得など数字的な目標）
             </p>
           </div>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex justify-between pt-4 border-t dark:border-gray-700">
             <div>
               {goal && (
                 <Button type="button" variant="danger" onClick={handleDelete}>

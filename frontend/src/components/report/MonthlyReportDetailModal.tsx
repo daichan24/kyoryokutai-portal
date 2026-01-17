@@ -150,7 +150,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
           <LoadingSpinner />
         </div>
       </div>
@@ -160,7 +160,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
           <LoadingSpinner />
         </div>
       </div>
@@ -170,15 +170,15 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   if (!report && !isLoading) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
-          <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
-            <h2 className="text-2xl font-bold">月次報告</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
+          <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+            <h2 className="text-2xl font-bold dark:text-gray-100">月次報告</h2>
+            <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
               <X className="h-6 w-6" />
             </button>
           </div>
           <div className="p-6 space-y-6">
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <p>月次報告のデータが見つかりませんでした。</p>
               <p className="text-sm mt-2">新しい月次報告を作成してください。</p>
             </div>
@@ -190,9 +190,9 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
-        <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-2xl font-bold">{report?.month || ''} 月次報告</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+          <h2 className="text-2xl font-bold dark:text-gray-100">{report?.month || ''} 月次報告</h2>
           <div className="flex items-center gap-2">
             {canEdit && !isEditing && (
               <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
@@ -294,14 +294,14 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 onChange={(e) => setCoverRecipient(e.target.value)}
               />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   差出人
                 </label>
                 <textarea
                   value={coverSender}
                   onChange={(e) => setCoverSender(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
             </div>
@@ -310,36 +310,36 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
           {!isLoading && report && !isEditing && (
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">宛先:</span>
-                <p className="text-gray-900">{report.coverRecipient || '未設定'}</p>
+                <span className="text-gray-600 dark:text-gray-400">宛先:</span>
+                <p className="text-gray-900 dark:text-gray-100">{report.coverRecipient || '未設定'}</p>
               </div>
               <div>
-                <span className="text-gray-600">差出人:</span>
-                <p className="text-gray-900 whitespace-pre-line">{report.coverSender || '未設定'}</p>
+                <span className="text-gray-600 dark:text-gray-400">差出人:</span>
+                <p className="text-gray-900 dark:text-gray-100 whitespace-pre-line">{report.coverSender || '未設定'}</p>
               </div>
             </div>
           )}
 
           {report && (
             <div>
-              <h3 className="font-bold text-lg mb-3">支援内容</h3>
+              <h3 className="font-bold text-lg mb-3 dark:text-gray-100">支援内容</h3>
               {report.supportRecords && report.supportRecords.length === 0 ? (
-                <p className="text-gray-500">支援記録がありません</p>
+                <p className="text-gray-500 dark:text-gray-400">支援記録がありません</p>
               ) : (
                 <div className="space-y-3">
                   {report.supportRecords?.map((record) => (
-                    <div key={record.id} className="border border-gray-200 rounded-lg p-4">
+                    <div key={record.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <span className="font-medium">{record.user.name}</span>
-                          <span className="text-sm text-gray-600 ml-2">
+                          <span className="font-medium dark:text-gray-100">{record.user.name}</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
                             {format(new Date(record.supportDate), 'M月d日')}
                           </span>
                         </div>
-                        <span className="text-sm text-gray-600">{record.supportBy}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{record.supportBy}</span>
                       </div>
                       <div
-                        className="text-gray-900 prose max-w-none"
+                        className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert"
                         dangerouslySetInnerHTML={{ __html: record.supportContent }}
                       />
                     </div>
@@ -350,16 +350,16 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
           )}
 
           <div>
-            <h3 className="font-bold text-lg mb-3">隊員別シート</h3>
+            <h3 className="font-bold text-lg mb-3 dark:text-gray-100">隊員別シート</h3>
             {Array.isArray(memberSheets) && memberSheets.length > 0 ? (
               <div className="space-y-4">
                 {memberSheets.map((sheet: any, index: number) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-medium mb-2">{sheet.userName}</h4>
+                  <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
+                    <h4 className="font-medium mb-2 dark:text-gray-100">{sheet.userName}</h4>
                     {isEditing ? (
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             今月の活動
                           </label>
                           <SimpleRichTextEditor
@@ -382,7 +382,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             来月の予定
                           </label>
                           <textarea
@@ -396,11 +396,11 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                               setMemberSheets(newSheets);
                             }}
                             rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             業務上の質問・相談
                           </label>
                           <textarea
@@ -414,11 +414,11 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                               setMemberSheets(newSheets);
                             }}
                             rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             生活面の備考
                           </label>
                           <textarea
@@ -432,7 +432,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                               setMemberSheets(newSheets);
                             }}
                             rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           />
                         </div>
                       </div>
@@ -440,8 +440,8 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                       <>
                         {sheet.thisMonthActivities && sheet.thisMonthActivities.length > 0 && (
                           <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700">今月の活動:</span>
-                            <ul className="list-disc list-inside text-sm text-gray-700 ml-2">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">今月の活動:</span>
+                            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 ml-2">
                               {sheet.thisMonthActivities.map((activity: any, i: number) => (
                                 <li key={i}>
                                   {activity.date}: {activity.description}
@@ -452,20 +452,20 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                         )}
                         {sheet.nextMonthPlan && (
                           <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700">来月の予定:</span>
-                            <p className="text-sm text-gray-700 whitespace-pre-line ml-2">{sheet.nextMonthPlan}</p>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">来月の予定:</span>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line ml-2">{sheet.nextMonthPlan}</p>
                           </div>
                         )}
                         {sheet.workQuestions && (
                           <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700">業務上の質問・相談:</span>
-                            <p className="text-sm text-gray-700 whitespace-pre-line ml-2">{sheet.workQuestions}</p>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">業務上の質問・相談:</span>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line ml-2">{sheet.workQuestions}</p>
                           </div>
                         )}
                         {sheet.lifeNotes && (
                           <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700">生活面の備考:</span>
-                            <p className="text-sm text-gray-700 whitespace-pre-line ml-2">{sheet.lifeNotes}</p>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">生活面の備考:</span>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line ml-2">{sheet.lifeNotes}</p>
                           </div>
                         )}
                       </>
@@ -474,7 +474,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500">隊員別シートがありません</p>
+              <p className="text-gray-500 dark:text-gray-400">隊員別シートがありません</p>
             )}
           </div>
         </div>

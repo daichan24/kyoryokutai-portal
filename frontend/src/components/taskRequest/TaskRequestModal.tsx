@@ -90,10 +90,10 @@ export const TaskRequestModal: React.FC<TaskRequestModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold">依頼作成</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+          <h2 className="text-2xl font-bold dark:text-gray-100">依頼作成</h2>
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -109,27 +109,27 @@ export const TaskRequestModal: React.FC<TaskRequestModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              依頼内容 <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              依頼内容 <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <textarea
               value={requestDescription}
               onChange={(e) => setRequestDescription(e.target.value)}
               required
               rows={6}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="依頼内容を入力"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              依頼先 <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              依頼先 <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <select
               value={requesteeId}
               onChange={(e) => setRequesteeId(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               required
             >
               <option value="">選択してください</option>
