@@ -35,11 +35,12 @@ router.get('/', async (req: AuthRequest, res) => {
     const events = await prisma.event.findMany({
       where,
       include: {
-        creator: { select: { id: true, name: true, avatarColor: true } },
+        creator: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
+        updater: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
         project: { select: { id: true, projectName: true } },
         location: { select: { id: true, name: true } },
         participations: {
-          include: { user: { select: { id: true, name: true, avatarColor: true } } },
+          include: { user: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } } },
         },
       },
       orderBy: { date: 'desc' },
@@ -89,9 +90,14 @@ router.get('/:id', async (req: AuthRequest, res) => {
     const event = await prisma.event.findUnique({
       where: { id: req.params.id },
       include: {
-        creator: true,
+        creator: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
+        updater: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
         project: true,
-        participations: { include: { user: true } },
+        participations: { 
+          include: { 
+            user: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } } 
+          } 
+        },
       },
     });
 
@@ -151,12 +157,13 @@ router.post('/', async (req: AuthRequest, res) => {
     const eventWithParticipants = await prisma.event.findUnique({
       where: { id: event.id },
       include: {
-        creator: { select: { id: true, name: true, avatarColor: true } },
+        creator: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
+        updater: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
         project: { select: { id: true, projectName: true } },
         location: { select: { id: true, name: true } },
         participations: {
           include: {
-            user: { select: { id: true, name: true, avatarColor: true } },
+            user: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
           },
         },
       },
@@ -178,7 +185,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const { id } = req.params;
     const data = eventSchema.parse(req.body);
 
-    // 作成者のみ編集可能
+    // イベント存在確認
     const event = await prisma.event.findUnique({
       where: { id },
     });
@@ -187,11 +194,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    if (event.createdBy !== req.user!.id && req.user!.role !== 'MASTER') {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    // イベント情報を更新
+    // 誰でも編集可能（最終更新者を記録）
     const updated = await prisma.event.update({
       where: { id },
       data: {
@@ -204,8 +207,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
         locationText: data.locationText || data.location || null,
         description: data.description || null,
         projectId: data.projectId || null,
+        updatedBy: req.user!.id, // 最終更新者を記録
       },
-      include: { creator: true, project: true },
+      include: { creator: true, project: true, updater: true },
     });
 
     // 参加メンバーを更新（既存を削除して新規作成）
@@ -239,12 +243,13 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const eventWithParticipants = await prisma.event.findUnique({
       where: { id },
       include: {
-        creator: { select: { id: true, name: true, avatarColor: true } },
+        creator: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
+        updater: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
         project: { select: { id: true, projectName: true } },
         location: { select: { id: true, name: true } },
         participations: {
           include: {
-            user: { select: { id: true, name: true, avatarColor: true } },
+            user: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
           },
         },
       },
@@ -265,7 +270,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
-    // 作成者のみ削除可能
+    // イベント存在確認
     const event = await prisma.event.findUnique({
       where: { id },
     });
@@ -274,10 +279,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    if (event.createdBy !== req.user!.id && req.user!.role !== 'MASTER') {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
+    // 誰でも削除可能
     await prisma.event.delete({
       where: { id },
     });
@@ -349,6 +351,121 @@ router.delete('/:id/participate', async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Cancel participation error:', error);
     res.status(500).json({ error: 'Failed to cancel participation' });
+  }
+});
+
+// イベント参加メンバー追加（管理者が他のメンバーを追加、スケジュールも自動追加）
+router.post('/:id/participants', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { userIds, participationType = 'PARTICIPATION' } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: 'userIds is required and must be an array' });
+    }
+
+    // イベント情報を取得
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        location: true,
+      },
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // ポイント計算
+    const pointEarned = participationType === 'PARTICIPATION' ? 1.0 : 0.5;
+
+    // 各ユーザーに対して参加登録とスケジュール追加
+    const results = await Promise.all(
+      userIds.map(async (userId: string) => {
+        // 既存参加チェック
+        const existing = await prisma.eventParticipation.findUnique({
+          where: {
+            eventId_userId: {
+              eventId: id,
+              userId,
+            },
+          },
+        });
+
+        if (existing) {
+          return { userId, status: 'already_participated', participation: existing };
+        }
+
+        // 参加登録
+        const participation = await prisma.eventParticipation.create({
+          data: {
+            eventId: id,
+            userId,
+            participationType,
+            pointEarned,
+          },
+        });
+
+        // スケジュールに追加（イベントと同じ日時で）
+        // startTimeとendTimeがない場合はデフォルト値を設定
+        const scheduleStartTime = event.startTime || '09:00';
+        const scheduleEndTime = event.endTime || '17:00';
+
+        // 既存のスケジュールと重複チェック（同じ日時で同じイベント名のスケジュールがあるか）
+        const existingSchedule = await prisma.schedule.findFirst({
+          where: {
+            userId,
+            date: event.date,
+            startTime: scheduleStartTime,
+            endTime: scheduleEndTime,
+            activityDescription: event.eventName,
+          },
+        });
+
+        if (!existingSchedule) {
+          await prisma.schedule.create({
+            data: {
+              userId,
+              date: event.date,
+              startTime: scheduleStartTime,
+              endTime: scheduleEndTime,
+              locationId: event.locationId || null,
+              locationText: event.locationText || event.location?.name || null,
+              activityDescription: event.eventName,
+              freeNote: event.description || null,
+              projectId: event.projectId || null,
+              createdBy: 'MANUAL',
+            },
+          });
+        }
+
+        return { userId, status: 'added', participation };
+      })
+    );
+
+    // 更新されたイベント情報を返す
+    const updatedEvent = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        creator: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
+        updater: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
+        project: { select: { id: true, projectName: true } },
+        location: { select: { id: true, name: true } },
+        participations: {
+          include: {
+            user: { select: { id: true, name: true, avatarColor: true, avatarLetter: true } },
+          },
+        },
+      },
+    });
+
+    res.status(201).json({
+      event: updatedEvent,
+      results,
+    });
+  } catch (error) {
+    console.error('Add participants error:', error);
+    res.status(500).json({ error: 'Failed to add participants' });
   }
 });
 

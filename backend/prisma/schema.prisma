@@ -34,7 +34,8 @@ model User {
   projects               Project[]
   projectMemberships     ProjectMember[]
   projectTasks           ProjectTask[]           @relation("TaskAssignee")
-  events                 Event[]
+  events                 Event[]                 @relation("EventCreator")
+  eventsUpdated          Event[]                 @relation("EventUpdater")
   eventParticipations    EventParticipation[]
   snsPosts               SNSPost[]
   monthlyReports         MonthlyReport[]         @relation("MonthlyReportCreator")
@@ -475,7 +476,10 @@ model Event {
   surveyQuestions Json?
 
   createdBy String
-  creator   User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  creator   User   @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  updatedBy String?
+  updater   User?  @relation("EventUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
 
   participations EventParticipation[]
 
@@ -484,6 +488,7 @@ model Event {
 
   @@index([eventType, date])
   @@index([createdBy])
+  @@index([updatedBy])
   @@index([locationId])
   @@index([projectId])
 }
