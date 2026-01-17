@@ -11,6 +11,8 @@ export interface User {
   termStart?: string;
   termEnd?: string;
   avatarColor: string;
+  avatarLetter?: string | null;
+  darkMode?: boolean;
   createdAt: string;
   updatedAt?: string;
 }

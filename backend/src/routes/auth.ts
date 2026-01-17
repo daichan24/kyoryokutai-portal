@@ -58,6 +58,8 @@ router.post('/register', async (req, res) => {
         termStart: true,
         termEnd: true,
         avatarColor: true,
+        avatarLetter: true,
+        darkMode: true,
         createdAt: true,
       },
     });
@@ -112,6 +114,8 @@ router.post('/login', async (req, res) => {
       termStart: user.termStart,
       termEnd: user.termEnd,
       avatarColor: user.avatarColor,
+      avatarLetter: user.avatarLetter,
+      darkMode: user.darkMode,
       createdAt: user.createdAt,
     };
 
@@ -139,6 +143,8 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
         termStart: true,
         termEnd: true,
         avatarColor: true,
+        avatarLetter: true,
+        darkMode: true,
         snsLinks: true, // SNSリンクを含める
         createdAt: true,
         updatedAt: true,

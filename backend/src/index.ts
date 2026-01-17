@@ -24,6 +24,7 @@ import adminRoutes from './routes/admin';
 import inboxRoutes from './routes/inbox';
 import dashboardConfigRoutes from './routes/dashboardConfig';
 import snsLinksRoutes from './routes/snsLinks';
+import profileRoutes from './routes/profile';
 import nudgesRoutes from './routes/nudges';
 import supportRecordsRoutes from './routes/supportRecords';
 import { errorHandler } from './middleware/errorHandler';
@@ -104,6 +105,7 @@ app.use('/api/admin', adminRoutes); // 管理者用API
 app.use('/api/inbox', inboxRoutes); // 受信箱API
 app.use('/api/me/dashboard-config', dashboardConfigRoutes); // ダッシュボード設定API
 app.use('/api/me/sns-links', snsLinksRoutes); // SNSリンクAPI
+app.use('/api/me/profile', profileRoutes); // プロフィール表示設定（アイコン・ダークモード）
 app.use('/api/nudges', nudgesRoutes); // 協力隊催促API
 app.use('/api/support-records', supportRecordsRoutes); // 支援記録API
 

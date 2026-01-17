@@ -74,7 +74,7 @@ export function ScheduleSuggestionNotification({
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold"
                     style={{ backgroundColor: suggestion.schedule.user?.avatarColor || '#6B7280' }}
                   >
-                    {suggestion.schedule.user?.name.charAt(0) || '?'}
+                    {(suggestion.schedule.user?.avatarLetter || suggestion.schedule.user?.name || '').charAt(0) || '?'}
                   </div>
                   <span className="font-medium">{suggestion.schedule.user?.name}さんからの提案</span>
                 </div>

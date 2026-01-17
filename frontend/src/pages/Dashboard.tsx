@@ -376,7 +376,7 @@ export const Dashboard: React.FC = () => {
                                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
                                 style={{ backgroundColor: invite.fromUser.avatarColor }}
                               >
-                                {invite.fromUser.name.charAt(0)}
+                                {(invite.fromUser.avatarLetter || invite.fromUser.name || '').charAt(0)}
                               </div>
                               <div>
                                 <p className="font-medium text-gray-900">{invite.fromUser.name}さんからの招待</p>
@@ -428,7 +428,7 @@ export const Dashboard: React.FC = () => {
                             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
                             style={{ backgroundColor: response.toUser.avatarColor }}
                           >
-                            {response.toUser.name.charAt(0)}
+                            {(response.toUser.avatarLetter || response.toUser.name || '').charAt(0)}
                           </div>
                           <p className="text-sm text-gray-700">
                             <span className="font-medium">{response.toUser.name}</span>さんが
@@ -464,7 +464,7 @@ export const Dashboard: React.FC = () => {
                                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
                                 style={{ backgroundColor: request.requester.avatarColor }}
                               >
-                                {request.requester.name.charAt(0)}
+                                {(request.requester.avatarLetter || request.requester.name || '').charAt(0)}
                               </div>
                               <div>
                                 <p className="font-medium text-gray-900">
@@ -541,7 +541,7 @@ export const Dashboard: React.FC = () => {
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
                     style={{ backgroundColor: schedule.user?.avatarColor || '#6B7280' }}
                   >
-                    {schedule.user?.name?.charAt(0) || '?'}
+                    {(schedule.user?.avatarLetter || schedule.user?.name || '').charAt(0) || '?'}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">

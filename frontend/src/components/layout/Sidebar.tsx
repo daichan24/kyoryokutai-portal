@@ -172,16 +172,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-border h-full flex flex-col shadow-lg md:shadow-none">
+    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-border dark:border-gray-700 h-full flex flex-col shadow-lg md:shadow-none">
       {/* モバイル: 閉じるボタン、デスクトップ: 非表示 */}
-      <div className="flex justify-between items-center p-4 border-b md:hidden">
-        <h2 className="text-lg font-semibold text-gray-900">メニュー</h2>
+      <div className="flex justify-between items-center p-4 border-b border-border dark:border-gray-700 md:hidden">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">メニュー</h2>
         <button
           onClick={onClose}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           aria-label="メニューを閉じる"
         >
-          <X className="h-5 w-5 text-gray-700" />
+          <X className="h-5 w-5 text-gray-700 dark:text-gray-300" />
         </button>
       </div>
       
@@ -195,7 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                 'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
                 isActive
                   ? 'bg-primary text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               )
             }
           >
@@ -208,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {directionItems.length > 0 && (
           <>
             <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 大目標
               </p>
             </div>
@@ -221,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                     'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
                     isActive
                       ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   )
                 }
               >
@@ -236,7 +236,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {activeWorkItems.length > 0 && (
           <>
             <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 中・小目標
               </p>
             </div>
@@ -249,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                     'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
                     isActive
                       ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   )
                 }
               >
@@ -263,7 +263,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {reportItems.length > 0 && (
           <>
             <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 報告
               </p>
             </div>
@@ -276,7 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                     'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
                     isActive
                       ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   )
                 }
               >
@@ -290,7 +290,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {statusItems.length > 0 && (
           <>
             <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 状況
               </p>
             </div>
@@ -303,7 +303,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                     'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
                     isActive
                       ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   )
                 }
               >
@@ -317,7 +317,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {(userMenuItems.length > 0) && (
           <>
             <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 {user?.role === 'MASTER' ? '管理' : '情報'}
               </p>
             </div>
@@ -330,7 +330,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                     'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
                     isActive
                       ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   )
                 }
               >

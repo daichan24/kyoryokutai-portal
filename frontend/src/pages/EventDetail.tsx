@@ -159,7 +159,7 @@ export const EventDetail: React.FC = () => {
                   className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
                   style={{ backgroundColor: event.creator.avatarColor }}
                 >
-                  {event.creator.name.charAt(0)}
+                  {(event.creator.avatarLetter || event.creator.name || '').charAt(0)}
                 </div>
               )}
               <span className="text-gray-900">{event.creator.name}</span>
@@ -180,7 +180,7 @@ export const EventDetail: React.FC = () => {
                         className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
                         style={{ backgroundColor: participation.user.avatarColor }}
                       >
-                        {participation.user.name.charAt(0)}
+                        {(participation.user.avatarLetter || participation.user.name || '').charAt(0)}
                       </div>
                     )}
                     <span className="text-gray-900">{participation.user.name}</span>

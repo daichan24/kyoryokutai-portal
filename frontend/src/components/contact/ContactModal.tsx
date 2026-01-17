@@ -190,7 +190,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium"
                           style={{ backgroundColor: u.avatarColor }}
                         >
-                          {u.name.charAt(0)}
+                          {(u.avatarLetter || u.name || '').charAt(0)}
                         </div>
                         <span className="text-sm text-gray-900">{u.name}</span>
                         <span className="text-xs text-gray-500">({u.role})</span>

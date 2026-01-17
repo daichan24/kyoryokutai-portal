@@ -109,7 +109,7 @@ export const SupportRecords: React.FC = () => {
                       backgroundColor: record.user.avatarColor || '#6B7280',
                     }}
                   >
-                    {record.user.name.charAt(0)}
+                    {(record.user.avatarLetter || record.user.name || '').charAt(0)}
                   </div>
                   <h3 className="font-semibold text-lg text-gray-900">{record.user.name}</h3>
                 </div>

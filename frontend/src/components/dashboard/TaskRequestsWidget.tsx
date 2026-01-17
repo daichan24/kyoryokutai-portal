@@ -76,7 +76,7 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
                   className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
                   style={{ backgroundColor: request.requester.avatarColor || '#6B7280' }}
                 >
-                  {request.requester.name.charAt(0)}
+                  {(request.requester.avatarLetter || request.requester.name || '').charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">

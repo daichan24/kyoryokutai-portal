@@ -34,12 +34,16 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 };
 
 const App: React.FC = () => {
-  const { isLoading, fetchMe } = useAuthStore();
+  const { isLoading, fetchMe, user } = useAuthStore();
 
   useEffect(() => {
     fetchMe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 初回マウント時のみ実行
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', !!user?.darkMode);
+  }, [user?.darkMode]);
 
   if (isLoading) {
     return (

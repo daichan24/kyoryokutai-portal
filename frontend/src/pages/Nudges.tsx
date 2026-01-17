@@ -256,7 +256,7 @@ export const Nudges: React.FC = () => {
                             backgroundColor: revision.updatedBy.avatarColor || '#6B7280',
                           }}
                         >
-                          {revision.updatedBy.name.charAt(0)}
+                          {(revision.updatedBy.avatarLetter || revision.updatedBy.name || '').charAt(0)}
                         </div>
                         <span className="font-medium">{revision.updatedBy.name}</span>
                       </div>

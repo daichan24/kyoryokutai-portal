@@ -139,7 +139,7 @@ export function DraggableCalendar({ schedules, onScheduleMove }: DraggableCalend
                                       className="w-4 h-4 rounded-full flex items-center justify-center text-white text-xs"
                                       style={{ backgroundColor: schedule.user.avatarColor }}
                                     >
-                                      {schedule.user.name.charAt(0)}
+                                      {(schedule.user.avatarLetter || schedule.user.name || '').charAt(0)}
                                     </div>
                                     <span className="text-xs text-gray-600">
                                       {schedule.user.name}

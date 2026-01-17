@@ -332,7 +332,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                   className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
                   style={{ backgroundColor: schedule.user.avatarColor || '#6B7280' }}
                 >
-                  {schedule.user.name?.charAt(0) || '?'}
+                  {(schedule.user.avatarLetter || schedule.user.name || '').charAt(0) || '?'}
                 </div>
                 <span className="text-sm font-medium text-gray-900">{schedule.user.name}</span>
                 <span className="text-xs text-gray-500">({schedule.user.role})</span>
@@ -361,7 +361,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
                               style={{ backgroundColor: participant.user?.avatarColor || '#6B7280' }}
                             >
-                              {participant.user?.name?.charAt(0) || '?'}
+                              {(participant.user?.avatarLetter || participant.user?.name || '').charAt(0) || '?'}
                             </div>
                             <span className="text-sm text-gray-700 flex-1">{participant.user?.name || '不明'}</span>
                             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">承認済</span>
@@ -389,7 +389,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
                               style={{ backgroundColor: participant.user?.avatarColor || '#6B7280' }}
                             >
-                              {participant.user?.name?.charAt(0) || '?'}
+                              {(participant.user?.avatarLetter || participant.user?.name || '').charAt(0) || '?'}
                             </div>
                             <span className="text-sm text-gray-700 flex-1">{participant.user?.name || '不明'}</span>
                             <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">未承認</span>
@@ -418,7 +418,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
                             style={{ backgroundColor: participant.user?.avatarColor || '#6B7280' }}
                           >
-                            {participant.user?.name?.charAt(0) || '?'}
+                            {(participant.user?.avatarLetter || participant.user?.name || '').charAt(0) || '?'}
                           </div>
                           <span className="text-sm text-gray-500 flex-1">{participant.user?.name || '不明'}</span>
                           <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">却下</span>
@@ -474,7 +474,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2"
                             style={{ backgroundColor: user.avatarColor }}
                           >
-                            {user.name.charAt(0)}
+                            {(user.avatarLetter || user.name || '').charAt(0)}
                           </div>
                           <span className="text-sm text-gray-700">{user.name}</span>
                           <span className="ml-2 text-xs text-gray-500">({user.role})</span>

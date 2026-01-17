@@ -21,7 +21,9 @@ model User {
   termEnd     DateTime?
 
   // カスタマイズ
-  avatarColor String @default("#3B82F6")
+  avatarColor  String  @default("#3B82F6")
+  avatarLetter String? // アイコンに表示する1文字（未設定時は名前の頭文字）
+  darkMode    Boolean @default(false)
 
   // Phase 1 Relations
   schedules     Schedule[]

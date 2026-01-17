@@ -10,7 +10,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-background dark:bg-gray-900">
       <Header onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
       <div className="flex-1 flex overflow-hidden relative">
         {/* モバイル時のオーバーレイ */}
@@ -35,7 +35,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
         
         {/* メインコンテンツエリア（モバイル: 全画面、デスクトップ: サイドバー横） */}
-        <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6 w-full">
+        <main className="flex-1 overflow-y-auto bg-background dark:bg-gray-900 p-4 md:p-6 w-full">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

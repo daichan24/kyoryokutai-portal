@@ -184,7 +184,7 @@ export const UsersSettings: React.FC = () => {
                         className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
                         style={{ backgroundColor: user.avatarColor }}
                       >
-                        {user.name.charAt(0)}
+                        {(user.avatarLetter || user.name || '').charAt(0)}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{user.name}</div>
