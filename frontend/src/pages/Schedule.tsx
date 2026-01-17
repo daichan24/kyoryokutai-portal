@@ -165,9 +165,9 @@ export const Schedule: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           スケジュール管理
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 ml-2">（自分のスケジュール）</span>}
+          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分のスケジュール）</span>}
         </h1>
         <Button onClick={() => handleCreateSchedule(new Date())}>
           <Plus className="h-4 w-4 mr-2" />
@@ -175,7 +175,7 @@ export const Schedule: React.FC = () => {
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-border p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
         <div className="flex justify-between items-center mb-6">
           <Button variant="outline" onClick={handlePrev}>
             <ChevronLeft className="h-4 w-4" />
@@ -227,7 +227,7 @@ export const Schedule: React.FC = () => {
               <div
                 key={idx}
                 className={`text-center text-sm font-semibold py-2 ${
-                  idx === 0 ? 'text-red-600' : idx === 6 ? 'text-blue-600' : 'text-gray-700'
+                  idx === 0 ? 'text-red-600 dark:text-red-400' : idx === 6 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
                 }`}
               >
                 {day}
@@ -258,28 +258,28 @@ export const Schedule: React.FC = () => {
               const isSat = isSaturday(date);
 
               // 色分け: 祝日 > 日曜 > 土曜
-              let dayBgColor = 'bg-white';
-              let dayTextColor = 'text-gray-900';
-              let dayLabelColor = 'text-gray-500';
+              let dayBgColor = 'bg-white dark:bg-gray-800';
+              let dayTextColor = 'text-gray-900 dark:text-gray-100';
+              let dayLabelColor = 'text-gray-500 dark:text-gray-400';
 
               if (isHoliday) {
-                dayBgColor = 'bg-red-50';
-                dayTextColor = 'text-red-700';
-                dayLabelColor = 'text-red-600';
+                dayBgColor = 'bg-red-50 dark:bg-red-900/20';
+                dayTextColor = 'text-red-700 dark:text-red-300';
+                dayLabelColor = 'text-red-600 dark:text-red-400';
               } else if (isSun) {
-                dayBgColor = 'bg-red-50';
-                dayTextColor = 'text-red-600';
-                dayLabelColor = 'text-red-500';
+                dayBgColor = 'bg-red-50 dark:bg-red-900/20';
+                dayTextColor = 'text-red-600 dark:text-red-400';
+                dayLabelColor = 'text-red-500 dark:text-red-400';
               } else if (isSat) {
-                dayBgColor = 'bg-blue-50';
-                dayTextColor = 'text-blue-600';
-                dayLabelColor = 'text-blue-500';
+                dayBgColor = 'bg-blue-50 dark:bg-blue-900/20';
+                dayTextColor = 'text-blue-600 dark:text-blue-400';
+                dayLabelColor = 'text-blue-500 dark:text-blue-400';
               }
 
               // 今日の場合は強調
               if (isToday) {
-                dayBgColor = 'bg-primary/10 border-primary border-2';
-                dayTextColor = 'text-primary font-bold';
+                dayBgColor = 'bg-primary/10 dark:bg-primary/20 border-primary border-2';
+                dayTextColor = 'text-primary dark:text-blue-400 font-bold';
               }
 
               return (
@@ -306,7 +306,7 @@ export const Schedule: React.FC = () => {
                         <button
                           key={schedule.id}
                           onClick={() => handleEditSchedule(schedule)}
-                          className="w-full text-left p-2 rounded text-xs border border-border hover:bg-gray-50"
+                          className="w-full text-left p-2 rounded text-xs border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800"
                           style={{
                             borderLeftWidth: '3px',
                             borderLeftColor: schedule.user?.avatarColor,
@@ -317,12 +317,12 @@ export const Schedule: React.FC = () => {
                               <p className="font-medium truncate">
                                 {schedule.activityDescription}
                               </p>
-                              <p className="text-gray-600">
+                              <p className="text-gray-600 dark:text-gray-400">
                                 {schedule.startTime}-{schedule.endTime}
                               </p>
                             </div>
                             {participantCount > 0 && (
-                              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded whitespace-nowrap">
+                              <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded whitespace-nowrap">
                                 +{participantCount}
                               </span>
                             )}
@@ -334,9 +334,9 @@ export const Schedule: React.FC = () => {
                     {/* イベント表示（read-only） */}
                     {getEventsForDate(date).map((event) => {
                       const eventTypeColors = {
-                        TOWN_OFFICIAL: 'bg-blue-100 border-blue-300 text-blue-800',
-                        TEAM: 'bg-green-100 border-green-300 text-green-800',
-                        OTHER: 'bg-gray-100 border-gray-300 text-gray-800',
+                        TOWN_OFFICIAL: 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-300',
+                        TEAM: 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-800 dark:text-green-300',
+                        OTHER: 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200',
                       };
                       const colorClass = eventTypeColors[event.eventType] || eventTypeColors.OTHER;
                       
@@ -369,7 +369,7 @@ export const Schedule: React.FC = () => {
 
                   <button
                     onClick={() => handleCreateSchedule(date)}
-                    className="w-full mt-2 text-xs text-gray-500 hover:text-primary"
+                    className="w-full mt-2 text-xs text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-blue-400"
                   >
                     + 追加
                   </button>

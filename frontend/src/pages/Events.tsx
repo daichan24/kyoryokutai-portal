@@ -59,17 +59,17 @@ export const Events: React.FC = () => {
 
   const getTypeColor = (type: string) => {
     const colors = {
-      TOWN_OFFICIAL: 'bg-blue-100 text-blue-800',
-      TEAM: 'bg-green-100 text-green-800',
-      OTHER: 'bg-gray-100 text-gray-800'
+      TOWN_OFFICIAL: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      TEAM: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+      OTHER: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
     };
-    return colors[type as keyof typeof colors] || 'bg-gray-100';
+    return colors[type as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-700';
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">読み込み中...</div>
+        <div className="text-gray-500 dark:text-gray-400">読み込み中...</div>
       </div>
     );
   }
@@ -77,7 +77,7 @@ export const Events: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">イベント管理</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">イベント管理</h1>
         <button 
           onClick={() => {
             console.log('🔵 [UI] 新規イベントボタンがクリックされました');
@@ -94,7 +94,7 @@ export const Events: React.FC = () => {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="all">すべて</option>
           <option value="upcoming">未実施</option>
@@ -103,7 +103,7 @@ export const Events: React.FC = () => {
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="all">全てのイベント</option>
           <option value="TOWN_OFFICIAL">町主催</option>
@@ -116,7 +116,7 @@ export const Events: React.FC = () => {
         {filteredEvents?.map((event) => (
           <div 
             key={event.id} 
-            className={`bg-white border rounded-lg p-5 cursor-pointer hover:bg-gray-50 transition-colors ${
+            className={`bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
               event.isCompleted ? 'opacity-60' : ''
             }`}
             onClick={() => {
@@ -131,37 +131,37 @@ export const Events: React.FC = () => {
                     {getTypeLabel(event.eventType)}
                   </span>
                   {event.isCompleted && (
-                    <span className="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">
+                    <span className="text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                       実施済み
                     </span>
                   )}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
                   {format(new Date(event.date), 'yyyy年M月d日')}
                   {event.startTime && ` ${event.startTime}〜`}
                   {event.endTime && event.endTime}
                 </div>
                 {event.location && (
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     場所: {event.location.name}
                   </div>
                 )}
                 {event.locationText && !event.location && (
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     場所: {event.locationText}
                   </div>
                 )}
               </div>
             </div>
             {event.description && (
-              <p className="text-sm text-gray-600 mb-3">{event.description}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{event.description}</p>
             )}
           </div>
         ))}
       </div>
 
       {filteredEvents?.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           イベントがありません
         </div>
       )}

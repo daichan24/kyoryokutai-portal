@@ -152,20 +152,20 @@ export const Contacts: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">町民データベース</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">町民データベース</h1>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 border border-gray-300 rounded-lg">
             <button
               onClick={() => setViewMode('card')}
-              className={`p-2 ${viewMode === 'card' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+              className={`p-2 ${viewMode === 'card' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
               title="カード表示"
             >
               <LayoutGrid className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+              className={`p-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
               title="リスト表示"
             >
               <List className="h-4 w-4" />
@@ -184,12 +184,12 @@ export const Contacts: React.FC = () => {
           placeholder="名前・組織で検索"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="flex-1 min-w-[200px] border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="">全てのジャンル</option>
           {categories.map(cat => (
@@ -199,7 +199,7 @@ export const Contacts: React.FC = () => {
         <select
           value={filterRelationship}
           onChange={(e) => setFilterRelationship(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="">全ての関わり方</option>
           {relationshipTypes.map(rel => (
@@ -209,7 +209,7 @@ export const Contacts: React.FC = () => {
         <select
           value={selectedTag}
           onChange={(e) => setSelectedTag(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="">全てのタグ</option>
           <option value="協力的">協力的</option>
@@ -222,13 +222,13 @@ export const Contacts: React.FC = () => {
       {viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredContacts?.map((contact) => (
-            <div key={contact.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
+            <div key={contact.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold text-lg text-gray-900">{contact.name}</h3>
+                <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{contact.name}</h3>
                 {contact.tags.length > 0 && (
                   <div className="flex gap-1">
                     {contact.tags.map((tag) => (
-                      <span key={tag} className="text-xs px-2 py-1 bg-gray-100 rounded">
+                      <span key={tag} className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
                         {tag}
                       </span>
                     ))}
@@ -238,7 +238,7 @@ export const Contacts: React.FC = () => {
 
               {/* ジャンル */}
               {contact.category && (
-                <p className="text-sm text-gray-600 mb-1">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                   <span className="font-medium">ジャンル:</span> {contact.category}
                 </p>
               )}
@@ -248,12 +248,12 @@ export const Contacts: React.FC = () => {
                 <p className="text-sm mb-2">
                   <span className={`px-2 py-1 rounded-full text-xs ${
                     contact.relationshipType === '協力的' 
-                      ? 'bg-green-100 text-green-800'
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
                       : contact.relationshipType === '要注意'
-                      ? 'bg-red-100 text-red-800'
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
                       : contact.relationshipType === '未知'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-gray-100 text-gray-800'
+                      ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                   }`}>
                     {contact.relationshipType}
                   </span>
@@ -262,14 +262,14 @@ export const Contacts: React.FC = () => {
 
               {/* 所属 */}
               {contact.role && (
-                <p className="text-sm text-gray-600 mb-1">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                   <span className="font-medium">所属:</span> {contact.role}
                 </p>
               )}
 
               {/* 任期 */}
               {(contact.startYear || contact.endYear) && (
-                <p className="text-sm text-gray-600 mb-1">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                   <span className="font-medium">任期:</span>{' '}
                   {contact.startYear || '?'}年 ～ {contact.endYear || '現在'}
                 </p>
@@ -280,8 +280,8 @@ export const Contacts: React.FC = () => {
                 <p className="text-sm mb-2">
                   <span className={`px-2 py-1 rounded-full text-xs ${
                     contact.status === '在籍中' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-gray-100 text-gray-800'
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                   }`}>
                     {contact.status}
                   </span>
@@ -289,17 +289,17 @@ export const Contacts: React.FC = () => {
               )}
 
               {contact.organization && (
-                <p className="text-sm text-gray-600">{contact.organization}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{contact.organization}</p>
               )}
 
               {contact.memo && (
-                <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mt-2 line-clamp-2">
                   {contact.memo}
                 </p>
               )}
 
-              <div className="flex justify-between items-center mt-3 pt-3 border-t">
-                <span className="text-xs text-gray-500">
+              <div className="flex justify-between items-center mt-3 pt-3 border-t dark:border-gray-700">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                   接触履歴: {contact.histories.length}件
                 </span>
                 <div className="flex gap-2">
@@ -324,28 +324,28 @@ export const Contacts: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名前</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">所属</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ジャンル</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">関わり方</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">接触履歴</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名前</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">所属</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ジャンル</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">関わり方</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">接触履歴</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredContacts?.map((contact) => (
-                <tr key={contact.id} className="hover:bg-gray-50">
+                <tr key={contact.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="text-sm font-medium text-gray-900">{contact.name}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{contact.name}</div>
                       {contact.tags.length > 0 && (
                         <div className="ml-2 flex gap-1">
                           {contact.tags.slice(0, 2).map((tag) => (
-                            <span key={tag} className="text-xs px-1.5 py-0.5 bg-gray-100 rounded">
+                            <span key={tag} className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
                               {tag}
                             </span>
                           ))}
