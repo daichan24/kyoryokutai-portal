@@ -26,7 +26,7 @@ interface InboxData {
   scheduleInvites: Array<{
     participantId: string;
     scheduleId: string;
-    fromUser: { id: string; name: string; avatarColor: string };
+    fromUser: { id: string; name: string; avatarColor: string; avatarLetter?: string | null };
     title: string;
     date: string;
     startTime: string;
@@ -37,13 +37,13 @@ interface InboxData {
   scheduleResponses: Array<{
     scheduleId: string;
     scheduleTitle: string;
-    toUser: { id: string; name: string; avatarColor: string };
+    toUser: { id: string; name: string; avatarColor: string; avatarLetter?: string | null };
     decision: 'APPROVED' | 'REJECTED';
     respondedAt: string;
   }>;
   taskRequests: Array<{ // 後方互換性のため残す（実際はrequests）
     id: string;
-    requester: { id: string; name: string; avatarColor: string };
+    requester: { id: string; name: string; avatarColor: string; avatarLetter?: string | null };
     requestTitle: string;
     requestDescription: string;
     deadline?: string;
