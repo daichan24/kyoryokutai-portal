@@ -528,8 +528,9 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
               <p className="text-gray-500 dark:text-gray-400">隊員別シートがありません</p>
             )}
           </div>
+            </div>
+          )}
         </div>
-        )}
       </div>
     </div>
   );
