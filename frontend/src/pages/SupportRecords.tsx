@@ -33,6 +33,8 @@ export const SupportRecords: React.FC = () => {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<SupportRecord | null>(null);
+  const [sortByMonth, setSortByMonth] = useState<string>('all');
+  const [sortByUser, setSortByUser] = useState<string>('all');
 
   const { data: records = [], isLoading } = useQuery<SupportRecord[]>({
     queryKey: ['support-records'],
@@ -41,6 +43,52 @@ export const SupportRecords: React.FC = () => {
       return response.data;
     },
   });
+
+  // ソート機能
+  const filteredRecords = React.useMemo(() => {
+    let filtered = [...records];
+
+    // 月でフィルタ
+    if (sortByMonth !== 'all') {
+      filtered = filtered.filter(record => {
+        const recordMonth = format(new Date(record.supportDate), 'yyyy-MM');
+        return recordMonth === sortByMonth;
+      });
+    }
+
+    // ユーザーでフィルタ
+    if (sortByUser !== 'all') {
+      filtered = filtered.filter(record => record.userId === sortByUser);
+    }
+
+    // 日付順でソート（新しい順）
+    filtered.sort((a, b) => {
+      return new Date(b.supportDate).getTime() - new Date(a.supportDate).getTime();
+    });
+
+    return filtered;
+  }, [records, sortByMonth, sortByUser]);
+
+  // 利用可能な月の一覧
+  const availableMonths = React.useMemo(() => {
+    const months = new Set<string>();
+    records.forEach(record => {
+      const month = format(new Date(record.supportDate), 'yyyy-MM');
+      months.add(month);
+    });
+    return Array.from(months).sort().reverse();
+  }, [records]);
+
+  // 利用可能なユーザーの一覧
+  const availableUsers = React.useMemo(() => {
+    const usersMap = new Map<string, { id: string; name: string }>();
+    records.forEach(record => {
+      if (!usersMap.has(record.userId)) {
+        usersMap.set(record.userId, { id: record.userId, name: record.user.name });
+      }
+    });
+    return Array.from(usersMap.values());
+  }, [records]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -94,8 +142,48 @@ export const SupportRecords: React.FC = () => {
         </Button>
       </div>
 
+      {/* ソート・フィルタ */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              対応月で絞り込み
+            </label>
+            <select
+              value={sortByMonth}
+              onChange={(e) => setSortByMonth(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            >
+              <option value="all">全ての月</option>
+              {availableMonths.map(month => (
+                <option key={month} value={month}>
+                  {format(new Date(`${month}-01`), 'yyyy年M月')}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              対象者で絞り込み
+            </label>
+            <select
+              value={sortByUser}
+              onChange={(e) => setSortByUser(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            >
+              <option value="all">全ての対象者</option>
+              {availableUsers.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-4">
-        {records.map((record) => (
+        {filteredRecords.map((record) => (
           <div
             key={record.id}
             className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-md transition-shadow"
@@ -161,9 +249,9 @@ export const SupportRecords: React.FC = () => {
         ))}
       </div>
 
-      {records.length === 0 && (
+      {filteredRecords.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          支援記録がありません
+          {records.length === 0 ? '支援記録がありません' : '該当する支援記録がありません'}
         </div>
       )}
 
