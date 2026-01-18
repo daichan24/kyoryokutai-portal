@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, FileDown, Edit2, History, Save, Trash2 } from 'lucide-react';
+import { X, FileDown, Edit2, History, Save, Trash2, Eye } from 'lucide-react';
 import { api } from '../../utils/api';
 import { format } from 'date-fns';
 import { Button } from '../common/Button';
@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { useAuthStore } from '../../stores/authStore';
 import { Input } from '../common/Input';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
+import { MonthlyReportPreview } from './MonthlyReportPreview';
 
 interface MonthlyReport {
   id: string;
@@ -50,6 +51,7 @@ interface MonthlyReportDetailModalProps {
   onClose: () => void;
   onEdit?: () => void;
   onUpdated?: () => void;
+  viewMode?: 'edit' | 'preview'; // 表示モード（デフォルトはedit）
 }
 
 export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> = ({
@@ -57,10 +59,12 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   onClose,
   onEdit,
   onUpdated,
+  viewMode: initialViewMode = 'edit',
 }) => {
   const { user } = useAuthStore();
   const [showRevisions, setShowRevisions] = useState(false);
-  const [isEditing, setIsEditing] = useState(true); // デフォルトで編集モードで開く
+  const [isEditing, setIsEditing] = useState(initialViewMode === 'edit'); // 初期表示モードに応じて設定
+  const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [coverRecipient, setCoverRecipient] = useState('');
   const [coverSender, setCoverSender] = useState('');
   const [memberSheets, setMemberSheets] = useState<any[]>([]);
@@ -188,13 +192,52 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     );
   }
 
+  // プレビュー用の報告データを作成（編集中のデータも反映）
+  const previewReport: MonthlyReport | null = report ? {
+    ...report,
+    coverRecipient,
+    coverSender,
+    memberSheets,
+  } : null;
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col">
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
           <h2 className="text-2xl font-bold dark:text-gray-100">{report?.month || ''} 月次報告</h2>
           <div className="flex items-center gap-2">
-            {canEdit && !isEditing && (
+            {/* タブ切り替え（既存報告がある場合のみ表示） */}
+            {report && (
+              <>
+                <button
+                  onClick={() => {
+                    setViewMode('edit');
+                    setIsEditing(true);
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors rounded ${
+                    viewMode === 'edit'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  編集
+                </button>
+                <button
+                  onClick={() => {
+                    setViewMode('preview');
+                    setIsEditing(false);
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors rounded ${
+                    viewMode === 'preview'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  プレビュー
+                </button>
+              </>
+            )}
+            {canEdit && !isEditing && viewMode === 'edit' && (
               <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
                 <Edit2 className="h-4 w-4 mr-1" />
                 編集
@@ -244,7 +287,15 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto">
+          {viewMode === 'preview' && previewReport ? (
+            <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+              <div className="shadow-lg">
+                <MonthlyReportPreview report={previewReport} />
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 space-y-6">
           {report && showRevisions && report.revisions && report.revisions.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <h3 className="font-bold text-lg mb-3">変更履歴</h3>
@@ -478,6 +529,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

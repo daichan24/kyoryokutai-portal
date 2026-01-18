@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileDown, Edit2 } from 'lucide-react';
+import { X, FileDown, Edit2, Eye } from 'lucide-react';
 import { api } from '../../utils/api';
 import { format } from 'date-fns';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { useAuthStore } from '../../stores/authStore';
+import { InspectionPreview } from './InspectionPreview';
 
 interface Inspection {
   id: string;
@@ -25,16 +26,19 @@ interface InspectionDetailModalProps {
   inspectionId: string;
   onClose: () => void;
   onUpdated?: () => void;
+  viewMode?: 'edit' | 'preview'; // 表示モード（デフォルトはedit）
 }
 
 export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
   inspectionId,
   onClose,
   onUpdated,
+  viewMode: initialViewMode = 'edit',
 }) => {
   const { user } = useAuthStore();
   const [inspection, setInspection] = useState<Inspection | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(initialViewMode === 'edit');
+  const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -123,20 +127,56 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
     return null;
   }
 
+  // プレビュー用の視察データを作成（編集中のデータも反映）
+  const previewInspection: Inspection | null = inspection ? {
+    ...inspection,
+    inspectionPurpose,
+    inspectionContent,
+    reflection,
+    futureAction,
+  } : null;
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col">
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
           <h2 className="text-2xl font-bold dark:text-gray-100">視察復命書</h2>
           <div className="flex items-center gap-2">
-            {!isEditing && (
+            {/* タブ切り替え */}
+            <button
+              onClick={() => {
+                setViewMode('edit');
+                setIsEditing(true);
+              }}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors rounded ${
+                viewMode === 'edit'
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              編集
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('preview');
+                setIsEditing(false);
+              }}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors rounded ${
+                viewMode === 'preview'
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              プレビュー
+            </button>
+            {!isEditing && viewMode === 'edit' && (
               <>
-                <Button variant="outline" onClick={handleDownloadPDF}>
+                <Button variant="outline" onClick={handleDownloadPDF} size="sm">
                   <FileDown className="w-4 h-4 mr-2" />
                   PDF出力
                 </Button>
                 {canEdit && (
-                  <Button variant="outline" onClick={() => setIsEditing(true)}>
+                  <Button variant="outline" onClick={() => setIsEditing(true)} size="sm">
                     <Edit2 className="w-4 h-4 mr-2" />
                     編集
                   </Button>
@@ -149,7 +189,15 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
           </div>
         </div>
 
-        <div className="p-6 space-y-6" style={{ maxWidth: '210mm' }}>
+        <div className="flex-1 overflow-y-auto">
+          {viewMode === 'preview' && previewInspection ? (
+            <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+              <div className="shadow-lg">
+                <InspectionPreview inspection={previewInspection} />
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 space-y-6" style={{ maxWidth: '210mm' }}>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">視察日</label>
@@ -250,6 +298,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );
