@@ -369,27 +369,27 @@ export const Contacts: React.FC = () => {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {contact.organization || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {contact.category || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {contact.relationshipType ? (
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         contact.relationshipType === '協力的' 
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
                           : contact.relationshipType === '要注意'
-                          ? 'bg-red-100 text-red-800'
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
                           : contact.relationshipType === '未知'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
+                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                       }`}>
                         {contact.relationshipType}
                       </span>
                     ) : (
-                      '-'
+                      <span className="text-sm text-gray-900 dark:text-gray-100">-</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

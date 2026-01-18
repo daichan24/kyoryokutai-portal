@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import { api } from '../../utils/api';
 import { Location } from '../../types';
 import { Button } from '../../components/common/Button';
+import { Input } from '../../components/common/Input';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 export const LocationsSettings: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLocationName, setNewLocationName] = useState('');
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [editLocationName, setEditLocationName] = useState('');
+  const [editLocationOrder, setEditLocationOrder] = useState(0);
 
   useEffect(() => {
     fetchLocations();
@@ -52,6 +56,47 @@ export const LocationsSettings: React.FC = () => {
     } catch (error) {
       console.error('Failed to toggle location:', error);
       alert('更新に失敗しました');
+    }
+  };
+
+  const handleEditLocation = (location: Location) => {
+    setEditingLocation(location);
+    setEditLocationName(location.name);
+    setEditLocationOrder(location.order);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLocation(null);
+    setEditLocationName('');
+    setEditLocationOrder(0);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLocation || !editLocationName.trim()) return;
+
+    try {
+      await api.put(`/api/locations/${editingLocation.id}`, {
+        name: editLocationName,
+        order: editLocationOrder,
+      });
+      handleCancelEdit();
+      fetchLocations();
+    } catch (error) {
+      console.error('Failed to update location:', error);
+      alert('更新に失敗しました');
+    }
+  };
+
+  const handleDeleteLocation = async (location: Location) => {
+    if (!confirm(`「${location.name}」を削除しますか？`)) return;
+
+    try {
+      await api.delete(`/api/locations/${location.id}`);
+      fetchLocations();
+    } catch (error) {
+      console.error('Failed to delete location:', error);
+      alert('削除に失敗しました');
     }
   };
 
@@ -99,32 +144,102 @@ export const LocationsSettings: React.FC = () => {
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {locations.map((location) => (
                 <tr key={location.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {location.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {location.order}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        location.isActive
-                          ? 'bg-secondary/10 dark:bg-secondary/20 text-secondary'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      {location.isActive ? '有効' : '無効'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleActive(location)}
-                    >
-                      {location.isActive ? '無効化' : '有効化'}
-                    </Button>
-                  </td>
+                  {editingLocation?.id === location.id ? (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Input
+                          type="text"
+                          value={editLocationName}
+                          onChange={(e) => setEditLocationName(e.target.value)}
+                          className="w-full"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Input
+                          type="number"
+                          value={editLocationOrder}
+                          onChange={(e) => setEditLocationOrder(Number(e.target.value))}
+                          className="w-full"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            location.isActive
+                              ? 'bg-secondary/10 dark:bg-secondary/20 text-secondary'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                          }`}
+                        >
+                          {location.isActive ? '有効' : '無効'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleSaveEdit}
+                          >
+                            保存
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelEdit}
+                          >
+                            キャンセル
+                          </Button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {location.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {location.order}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            location.isActive
+                              ? 'bg-secondary/10 dark:bg-secondary/20 text-secondary'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                          }`}
+                        >
+                          {location.isActive ? '有効' : '無効'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditLocation(location)}
+                          >
+                            <Edit2 className="h-4 w-4 mr-1" />
+                            編集
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleActive(location)}
+                          >
+                            {location.isActive ? '無効化' : '有効化'}
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleDeleteLocation(location)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            削除
+                          </Button>
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>

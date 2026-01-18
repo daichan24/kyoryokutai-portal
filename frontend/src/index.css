@@ -14,6 +14,29 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
+  /* カレンダーアイコンのダークモード対応 */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(0);
+    cursor: pointer;
+  }
+  
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+  
+  /* 日付・時刻入力フィールドのテキスト色 */
+  input[type="date"],
+  input[type="time"] {
+    color-scheme: light;
+  }
+  
+  .dark input[type="date"],
+  .dark input[type="time"] {
+    color-scheme: dark;
+  }
 }
 
 @layer utilities {
