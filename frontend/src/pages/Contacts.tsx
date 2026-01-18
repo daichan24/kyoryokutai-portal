@@ -64,16 +64,19 @@ export const Contacts: React.FC = () => {
   // URLパラメータからcontactIdを取得して、自動的に詳細モーダルを開く
   useEffect(() => {
     const contactId = searchParams.get('contactId');
-    if (contactId && contacts && Array.isArray(contacts) && contacts.length > 0) {
-      const contact = contacts.find(c => c && c.id === contactId);
-      if (contact) {
-        setSelectedContact(contact);
-        setIsDetailModalOpen(true);
-        // URLパラメータをクリア
-        setSearchParams({}, { replace: true });
-      }
+    if (!contactId || !contacts || !Array.isArray(contacts) || contacts.length === 0) {
+      return;
     }
-  }, [searchParams, contacts, setSearchParams]);
+    
+    const contact = contacts.find(c => c && c.id === contactId);
+    if (contact) {
+      setSelectedContact(contact);
+      setIsDetailModalOpen(true);
+      // URLパラメータをクリア
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, contacts]);
 
   const filteredContacts = contacts?.filter(contact => {
     const matchesSearch = 
