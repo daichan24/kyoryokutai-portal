@@ -297,8 +297,9 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
               </div>
             </>
           )}
+            </div>
+          )}
         </div>
-        )}
       </div>
     </div>
   );
