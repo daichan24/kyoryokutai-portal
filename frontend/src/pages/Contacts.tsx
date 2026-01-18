@@ -52,8 +52,8 @@ export const Contacts: React.FC = () => {
   // URLパラメータからcontactIdを取得して、自動的に詳細モーダルを開く
   useEffect(() => {
     const contactId = searchParams.get('contactId');
-    if (contactId && contacts && contacts.length > 0) {
-      const contact = contacts.find(c => c.id === contactId);
+    if (contactId && contacts && Array.isArray(contacts) && contacts.length > 0) {
+      const contact = contacts.find(c => c && c.id === contactId);
       if (contact) {
         setSelectedContact(contact);
         setIsDetailModalOpen(true);
@@ -61,7 +61,7 @@ export const Contacts: React.FC = () => {
         setSearchParams({}, { replace: true });
       }
     }
-  }, [searchParams, contacts, setSearchParams]);
+  }, [searchParams, contacts]);
 
   // 【データ取得】UIイベント → API → DB の流れ
   // useQueryが自動的にGET /api/citizensを呼び出す

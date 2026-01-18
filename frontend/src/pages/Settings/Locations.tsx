@@ -5,8 +5,10 @@ import { Location } from '../../types';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { useAuthStore } from '../../stores/authStore';
 
 export const LocationsSettings: React.FC = () => {
+  const { user } = useAuthStore();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLocationName, setNewLocationName] = useState('');
@@ -32,7 +34,15 @@ export const LocationsSettings: React.FC = () => {
 
   const handleAddLocation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLocationName.trim()) return;
+    if (!newLocationName.trim()) {
+      alert('場所名を入力してください');
+      return;
+    }
+
+    if (user?.role !== 'MASTER') {
+      alert('場所の追加は管理者のみ可能です');
+      return;
+    }
 
     try {
       await api.post('/api/locations', {
@@ -41,9 +51,9 @@ export const LocationsSettings: React.FC = () => {
       });
       setNewLocationName('');
       fetchLocations();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add location:', error);
-      alert('場所の追加に失敗しました');
+      alert(error?.response?.data?.error || '場所の追加に失敗しました');
     }
   };
 

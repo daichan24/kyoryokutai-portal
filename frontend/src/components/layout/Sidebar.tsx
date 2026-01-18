@@ -34,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const commonItems = [
     { to: '/dashboard', icon: Home, label: 'ダッシュボード' },
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
-    { to: '/events', icon: CalendarDays, label: 'イベント' },
+    { to: '/events', icon: CalendarDays, label: 'イベント', end: true },
   ];
 
   // 大目標カテゴリ（Mission）
@@ -190,6 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           <NavLink
             key={item.to}
             to={item.to}
+            end={(item as any).end}
             className={({ isActive }) =>
               cn(
                 'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',

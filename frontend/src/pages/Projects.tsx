@@ -188,7 +188,7 @@ export const Projects: React.FC = () => {
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
-                作成
+                個人
               </button>
             </div>
           )}

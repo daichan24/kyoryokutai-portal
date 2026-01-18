@@ -172,9 +172,11 @@ export const WeeklyReport: React.FC = () => {
       ) : reports.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-12 text-center">
           <p className="text-gray-500 dark:text-gray-400">週次報告がありません</p>
-          <Button onClick={handleCreateReport} className="mt-4">
-            最初の報告を作成
-          </Button>
+          {canCreate && (
+            <Button onClick={handleCreateReport} className="mt-4">
+              最初の報告を作成
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
@@ -205,6 +207,13 @@ export const WeeklyReport: React.FC = () => {
                         <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">（{report.user?.role}）</span>
                       )}
                     </p>
+                    {user?.role !== 'MEMBER' && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {isNaN(weekStart.getTime()) 
+                          ? report.week 
+                          : `${formatDate(weekStart, 'yyyy年M月d日')}週の報告`}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {report.submittedAt && (
