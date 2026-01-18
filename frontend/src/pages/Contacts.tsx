@@ -49,6 +49,18 @@ export const Contacts: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
+  // 【データ取得】UIイベント → API → DB の流れ
+  // useQueryが自動的にGET /api/citizensを呼び出す
+  const { data: contacts, isLoading } = useQuery<Contact[]>({
+    queryKey: ['contacts'],
+    queryFn: async () => {
+      console.log('🔵 [UI] 町民一覧を取得中...');
+      const response = await api.get('/api/citizens');
+      console.log('✅ [UI] 町民一覧取得成功:', response.data?.length, '件');
+      return response.data;
+    }
+  });
+
   // URLパラメータからcontactIdを取得して、自動的に詳細モーダルを開く
   useEffect(() => {
     const contactId = searchParams.get('contactId');
@@ -61,19 +73,7 @@ export const Contacts: React.FC = () => {
         setSearchParams({}, { replace: true });
       }
     }
-  }, [searchParams, contacts]);
-
-  // 【データ取得】UIイベント → API → DB の流れ
-  // useQueryが自動的にGET /api/citizensを呼び出す
-  const { data: contacts, isLoading } = useQuery<Contact[]>({
-    queryKey: ['contacts'],
-    queryFn: async () => {
-      console.log('🔵 [UI] 町民一覧を取得中...');
-      const response = await api.get('/api/citizens');
-      console.log('✅ [UI] 町民一覧取得成功:', response.data?.length, '件');
-      return response.data;
-    }
-  });
+  }, [searchParams, contacts, setSearchParams]);
 
   const filteredContacts = contacts?.filter(contact => {
     const matchesSearch = 
