@@ -149,13 +149,13 @@ export const TaskRequestModal: React.FC<TaskRequestModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               関連プロジェクト（任意）
             </label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="">選択しない</option>
               {projects.map((project) => (

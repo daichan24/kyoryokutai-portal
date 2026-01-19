@@ -113,26 +113,26 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               説明（任意）
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="タスクの説明を入力"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               関連プロジェクト（任意）
             </label>
             <select
               value={projectId || ''}
               onChange={(e) => setProjectId(e.target.value || null)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="">プロジェクトを選択しない</option>
               {projects.map((project) => (
@@ -144,13 +144,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               ステータス
             </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as typeof status)}
-              className="w-full px-3 py-2 border border-border rounded-md"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="NOT_STARTED">未着手</option>
               <option value="IN_PROGRESS">進行中</option>

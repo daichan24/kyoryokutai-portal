@@ -39,7 +39,7 @@ export const SNSPosts: React.FC = () => {
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<SNSPost | null>(null);
-  const [viewMode, setViewMode] = useState<'personal' | 'view'>('personal'); // 表示モード
+  const [viewMode, setViewMode] = useState<'personal' | 'view'>(user?.role === 'MEMBER' ? 'personal' : 'view'); // 表示モード（メンバー以外はデフォルトで「閲覧」）
   const [selectedMonth, setSelectedMonth] = useState<string>(''); // 月のフィルタ（閲覧モード用）
   const [selectedUserId, setSelectedUserId] = useState<string>(''); // ユーザーのフィルタ（閲覧モード用）
 
@@ -77,9 +77,17 @@ export const SNSPosts: React.FC = () => {
       const response = await api.get('/api/users');
       return response.data.filter((u: any) => 
         u.role === 'MEMBER' && u.name !== '佐藤大地'
-      );
+      ).sort((a: any, b: any) => {
+        // displayOrderでソート（小さい順）、同じ場合は名前でソート
+        const orderA = a.displayOrder || 0;
+        const orderB = b.displayOrder || 0;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return (a.name || '').localeCompare(b.name || '');
+      });
     },
-    enabled: user?.role !== 'MEMBER' && viewMode === 'view',
+    enabled: user?.role !== 'MEMBER',
   });
 
   // 個人タブ用の投稿取得
