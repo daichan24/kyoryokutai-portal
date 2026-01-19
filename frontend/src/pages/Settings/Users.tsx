@@ -221,15 +221,55 @@ export const UsersSettings: React.FC = () => {
                       <input
                         type="number"
                         min="0"
-                        value={user.displayOrder || 0}
+                        value={user.displayOrder ?? 0}
                         onChange={async (e) => {
-                          const newOrder = parseInt(e.target.value, 10) || 0;
+                          const inputValue = e.target.value;
+                          const newOrder = inputValue === '' ? 0 : parseInt(inputValue, 10);
+                          
+                          if (isNaN(newOrder)) {
+                            return; // 無効な値の場合は何もしない
+                          }
+                          
+                          // 即座にローカル状態を更新
+                          const updatedUsers = users.map(u => 
+                            u.id === user.id ? { ...u, displayOrder: newOrder } : u
+                          );
+                          setUsers(updatedUsers);
+                          
+                          // allUsersも更新
+                          const updatedAllUsers = allUsers.map(u => 
+                            u.id === user.id ? { ...u, displayOrder: newOrder } : u
+                          );
+                          setAllUsers(updatedAllUsers);
+                          
+                          // APIを呼び出し
+                          try {
+                            await api.put(`/api/users/${user.id}`, { displayOrder: newOrder });
+                            // 成功したら再取得（念のため）
+                            await fetchUsers();
+                          } catch (error) {
+                            console.error('Failed to update display order:', error);
+                            alert('表示順の更新に失敗しました');
+                            // エラー時は元に戻す
+                            await fetchUsers();
+                          }
+                        }}
+                        onBlur={async (e) => {
+                          // フォーカスが外れた時に最終的な値を確定
+                          const inputValue = e.target.value;
+                          const newOrder = inputValue === '' ? 0 : parseInt(inputValue, 10);
+                          
+                          if (isNaN(newOrder)) {
+                            return;
+                          }
+                          
                           try {
                             await api.put(`/api/users/${user.id}`, { displayOrder: newOrder });
                             await fetchUsers();
                           } catch (error) {
                             console.error('Failed to update display order:', error);
                             alert('表示順の更新に失敗しました');
+                            await fetchUsers();
                           }
                         }}
                         className="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
