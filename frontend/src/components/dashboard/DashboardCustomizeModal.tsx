@@ -262,15 +262,15 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">ダッシュボードをカスタマイズ</h2>
           <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             ウィジェットの表示/非表示、追加ボタンの表示、並び順を設定できます。
           </p>
@@ -381,15 +381,15 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
                 </div>
               ))}
           </div>
+        </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-            <Button variant="outline" onClick={onClose}>
-              キャンセル
-            </Button>
-            <Button onClick={handleSave} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? '保存中...' : '保存'}
-            </Button>
-          </div>
+        <div className="flex justify-end gap-3 p-6 border-t dark:border-gray-700 flex-shrink-0">
+          <Button variant="outline" onClick={onClose}>
+            キャンセル
+          </Button>
+          <Button onClick={handleSave} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? '保存中...' : '保存'}
+          </Button>
         </div>
       </div>
     </div>

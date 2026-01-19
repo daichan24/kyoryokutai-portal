@@ -22,20 +22,44 @@ const dashboardConfigSchema = z.object({
 });
 
 // 全ウィジェットのテンプレート（カスタマイズ画面に必ず表示するため）
-const FULL_WIDGET_TEMPLATE = [
-  { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 1 },
-  { key: 'taskRequests', enabled: true, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 2 as const, order: 2 },
-  { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 3 },
-  { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
-  { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 5 },
-  { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 6 },
-  { key: 'contacts', enabled: false, displayMode: 'add-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 7 },
-  { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const, order: 8 },
-];
+// メンバー以外の場合はgoals-personalとgoals-viewを分離
+const getFullWidgetTemplate = (role: string) => {
+  const base = [
+    { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 1 },
+    { key: 'taskRequests', enabled: true, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 2 as const, order: 2 },
+    { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 3 },
+    { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 5 },
+    { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 6 },
+    { key: 'contacts', enabled: false, displayMode: 'add-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 7 },
+    { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const, order: 8 },
+    { key: 'nextWish', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 9 },
+  ];
+  
+  // メンバー以外の場合はgoals-personalとgoals-viewを追加
+  if (role !== 'MEMBER') {
+    return [
+      ...base.slice(0, 3),
+      { key: 'goals-personal', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
+      { key: 'goals-view', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4.5 },
+      ...base.slice(3),
+    ];
+  }
+  
+  // メンバーの場合は従来通りgoalsのみ
+  return [
+    ...base.slice(0, 3),
+    { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
+    ...base.slice(3),
+  ];
+};
+
+// 後方互換性のため、MEMBER用のテンプレートを保持
+const FULL_WIDGET_TEMPLATE = getFullWidgetTemplate('MEMBER');
 
 // デフォルト設定（role別）
 const getDefaultConfig = (role: string) => {
-  const base = FULL_WIDGET_TEMPLATE.map((w, i) => ({ ...w, order: i + 1 }));
+  const template = getFullWidgetTemplate(role);
+  const base = template.map((w, i) => ({ ...w, order: i + 1 }));
 
   if (role === 'MEMBER') {
     return {
@@ -46,6 +70,9 @@ const getDefaultConfig = (role: string) => {
         { ...base[3], enabled: true },
         { ...base[4], enabled: true },
         { ...base[5], enabled: true },
+        { ...base[6], enabled: false },
+        { ...base[7], enabled: false },
+        { ...base[8], enabled: false },
       ],
     };
   } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
@@ -54,11 +81,13 @@ const getDefaultConfig = (role: string) => {
         { ...base[0], enabled: false },
         { ...base[1], enabled: true },
         { ...base[2], enabled: true },
-        { ...base[3], enabled: false },
-        { ...base[4], enabled: true },
+        { ...base[3], enabled: false }, // goals-personal
+        { ...base[4], enabled: false }, // goals-view
         { ...base[5], enabled: true },
         { ...base[6], enabled: true },
         { ...base[7], enabled: true },
+        { ...base[8], enabled: true },
+        { ...base[9], enabled: false }, // nextWish
       ],
     };
   } else if (role === 'MASTER') {
@@ -68,7 +97,7 @@ const getDefaultConfig = (role: string) => {
   return { widgets: base };
 };
 
-// 保存済み設定とテンプレートをマージし、常に全8件を返す
+// 保存済み設定とテンプレートをマージし、常に全ウィジェットを返す
 function mergeWithTemplate(saved: { widgets: any[] } | null, role: string): { widgets: any[] } {
   const defaults = getDefaultConfig(role);
   if (!saved?.widgets?.length) return defaults;
@@ -76,7 +105,16 @@ function mergeWithTemplate(saved: { widgets: any[] } | null, role: string): { wi
   const byKey = new Map<string, any>();
   for (const w of saved.widgets) byKey.set(w.key, w);
 
-  const merged = FULL_WIDGET_TEMPLATE.map((t, i) => {
+  // 古いgoalsウィジェットをgoals-personalとgoals-viewに変換（メンバー以外の場合）
+  if (role !== 'MEMBER' && byKey.has('goals') && !byKey.has('goals-personal') && !byKey.has('goals-view')) {
+    const oldGoals = byKey.get('goals');
+    byKey.set('goals-personal', { ...oldGoals, key: 'goals-personal', order: oldGoals.order });
+    byKey.set('goals-view', { ...oldGoals, key: 'goals-view', order: (oldGoals.order || 0) + 0.5, enabled: false });
+    byKey.delete('goals');
+  }
+
+  const template = getFullWidgetTemplate(role);
+  const merged = template.map((t, i) => {
     const savedW = byKey.get(t.key);
     if (savedW) {
       return {

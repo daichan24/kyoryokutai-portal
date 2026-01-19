@@ -114,8 +114,8 @@ export const WishModal: React.FC<WishModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">
             {wish ? 'やりたいことを編集' : 'やりたいことを追加'}
           </h2>
@@ -124,7 +124,7 @@ export const WishModal: React.FC<WishModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto">
           <Input
             label="タイトル *"
             type="text"
@@ -401,16 +401,16 @@ export const WishModal: React.FC<WishModalProps> = ({
               placeholder="メモを入力..."
             />
           </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              キャンセル
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? '保存中...' : '保存'}
-            </Button>
-          </div>
         </form>
+
+        <div className="flex justify-end space-x-3 p-6 border-t dark:border-gray-700 flex-shrink-0">
+          <Button type="button" variant="outline" onClick={onClose}>
+            キャンセル
+          </Button>
+          <Button type="button" onClick={handleSubmit} disabled={loading}>
+            {loading ? '保存中...' : '保存'}
+          </Button>
+        </div>
       </div>
     </div>
   );
