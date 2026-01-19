@@ -11,6 +11,20 @@ interface ActivityItem {
  * その月の支援記録を自動的に含める
  */
 export async function generateMonthlyReport(month: string, createdBy: string) {
+  // テンプレート設定を取得
+  const templateConfig = await prisma.systemConfig.findUnique({
+    where: { key: 'template_monthlyReport' },
+  });
+
+  let coverRecipient = '長沼町長　齋　藤　良　彦　様';
+  let coverSender = '一般社団法人まおいのはこ<br>代表理事　坂本　一志';
+
+  if (templateConfig && templateConfig.value) {
+    const template = templateConfig.value as any;
+    if (template.coverRecipient) coverRecipient = template.coverRecipient;
+    if (template.coverSender) coverSender = template.coverSender;
+  }
+
   const users = await prisma.user.findMany({
     where: { role: 'MEMBER' },
   });
@@ -36,6 +50,8 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     data: {
       month,
       createdBy,
+      coverRecipient,
+      coverSender,
       memberSheets: memberSheets as any,
     },
   });

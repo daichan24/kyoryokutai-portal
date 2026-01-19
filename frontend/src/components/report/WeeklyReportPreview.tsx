@@ -18,9 +18,16 @@ interface TemplateSettings {
 
 export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report }) => {
   const [templateSettings, setTemplateSettings] = useState<TemplateSettings | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     fetchTemplateSettings();
+    // ダークモードの検出
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDarkMode(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
   const fetchTemplateSettings = async () => {
@@ -107,7 +114,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
       <div style={{ marginBottom: '30px' }}>
         <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
           fontWeight: 'bold', 
-          backgroundColor: '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
           padding: '8px',
           marginBottom: '15px'
         }}>
@@ -127,7 +134,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
                   padding: '8px',
                   width: '30%',
                   textAlign: 'left',
-                  backgroundColor: '#f0f0f0'
+                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0'
                 }}>
                   日時
                 </th>
@@ -135,7 +142,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
                   border: '1px solid #000', 
                   padding: '8px',
                   textAlign: 'left',
-                  backgroundColor: '#f0f0f0'
+                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0'
                 }}>
                   活動内容
                 </th>
@@ -172,7 +179,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         <div style={{ marginBottom: '30px' }}>
           <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
             fontWeight: 'bold', 
-            backgroundColor: '#f0f0f0', 
+            backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
             padding: '8px',
             marginBottom: '15px'
           }}>
@@ -193,7 +200,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         <div style={{ marginBottom: '30px' }}>
           <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
             fontWeight: 'bold', 
-            backgroundColor: '#f0f0f0', 
+            backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
             padding: '8px',
             marginBottom: '15px'
           }}>
