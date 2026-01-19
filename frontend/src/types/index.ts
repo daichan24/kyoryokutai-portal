@@ -1,5 +1,10 @@
 export type Role = 'MASTER' | 'MEMBER' | 'SUPPORT' | 'GOVERNMENT';
 export type MissionType = 'FREE' | 'MISSION';
+export type WishStatus = 'ACTIVE' | 'DONE' | 'PAUSED';
+export type WishDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
+export type WishEstimate = 'S' | 'M' | 'L';
+export type WishPriority = 'LOW' | 'MID' | 'HIGH';
+export type WishCheckinType = 'REFLECTION' | 'NOTE';
 
 export interface User {
   id: string;
@@ -331,4 +336,33 @@ export interface Notification {
   isRead: boolean;
   readAt?: string;
   createdAt: string;
+}
+
+export interface WishCheckin {
+  id: string;
+  wishId: string;
+  userId: string;
+  user?: User;
+  type: WishCheckinType;
+  content: string;
+  createdAt: string;
+}
+
+export interface Wish {
+  id: string;
+  userId: string;
+  user?: User;
+  title: string;
+  category?: string;
+  status: WishStatus;
+  difficulty?: WishDifficulty;
+  estimate?: WishEstimate;
+  priority?: WishPriority;
+  dueMonth?: number;
+  tags: string[];
+  memo?: string;
+  completedAt?: string;
+  checkins?: WishCheckin[];
+  createdAt: string;
+  updatedAt: string;
 }

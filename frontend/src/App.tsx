@@ -27,6 +27,7 @@ import { Inspections } from './pages/Inspections';
 import { Contacts } from './pages/Contacts';
 import { MonthlyReport } from './pages/MonthlyReport';
 import { SupportRecords } from './pages/SupportRecords';
+import { Wishes } from './pages/Wishes';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -275,6 +276,17 @@ const App: React.FC = () => {
               <SupportRecords />
             </Layout>
           </RoleProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/wishes"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <Wishes />
+            </Layout>
+          </PrivateRoute>
         }
       />
 

@@ -38,9 +38,10 @@ const widgetLabels: Record<string, string> = {
   events: 'イベント',
   contacts: '町民データベース',
   eventParticipation: 'イベント参加状況',
+  nextWish: '次にやる1つ',
 };
 
-// カスタマイズ画面に必ず表示する全8ウィジェットのテンプレート
+// カスタマイズ画面に必ず表示する全9ウィジェットのテンプレート
 const FULL_WIDGET_TEMPLATE: Omit<WidgetConfig, 'order'>[] = [
   { key: 'snsHistory', enabled: true, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
   { key: 'taskRequests', enabled: true, displayMode: 'view-only', showAddButton: false, size: 'L', columnSpan: 2 },
@@ -50,6 +51,7 @@ const FULL_WIDGET_TEMPLATE: Omit<WidgetConfig, 'order'>[] = [
   { key: 'events', enabled: false, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
   { key: 'contacts', enabled: false, displayMode: 'add-only', showAddButton: false, size: 'M', columnSpan: 2, contactCount: 3 },
   { key: 'eventParticipation', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'L', columnSpan: 1 },
+  { key: 'nextWish', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'M', columnSpan: 2 },
 ];
 
 // APIレスポンスとテンプレートをマージし、常に全8件を返す（APIが古い・空・不正でも選択肢を表示）

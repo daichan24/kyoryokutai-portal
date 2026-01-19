@@ -20,6 +20,7 @@ import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
 import { ContactsWidget } from '../components/dashboard/ContactsWidget';
 import { EventParticipationWidget } from '../components/dashboard/EventParticipationWidget';
+import { NextWishWidget } from '../components/dashboard/NextWishWidget';
 import { ContactModal } from '../components/contact/ContactModal';
 
 interface InboxData {
@@ -101,6 +102,7 @@ export const Dashboard: React.FC = () => {
       { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 6 },
       { key: 'contacts', enabled: false, displayMode: 'add-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 7 },
       { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const, order: 8 },
+      { key: 'nextWish', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 9 },
     ];
 
     if (role === 'MEMBER') {
@@ -112,6 +114,7 @@ export const Dashboard: React.FC = () => {
           { ...baseWidgets[3], enabled: true },
           { ...baseWidgets[4], enabled: true },
           { ...baseWidgets[5], enabled: true },
+          { ...baseWidgets[8], enabled: false }, // nextWish
         ],
       };
     } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
@@ -125,6 +128,7 @@ export const Dashboard: React.FC = () => {
           { ...baseWidgets[5], enabled: true },
           { ...baseWidgets[6], enabled: true },
           { ...baseWidgets[7], enabled: true },
+          { ...baseWidgets[8], enabled: false }, // nextWish
         ],
       };
     } else if (role === 'MASTER') {
@@ -242,6 +246,8 @@ export const Dashboard: React.FC = () => {
           return <ContactsWidget key={widget.key} {...commonProps} />;
         case 'eventParticipation':
           return <EventParticipationWidget key={widget.key} {...commonProps} />;
+        case 'nextWish':
+          return <NextWishWidget key={widget.key} {...commonProps} />;
         default:
           return null;
       }

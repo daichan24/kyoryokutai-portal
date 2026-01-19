@@ -52,6 +52,8 @@ model User {
   requestsSent         Request[]             @relation("Requester")
   requestsReceived     Request[]             @relation("Requestee")
   inspections          Inspection[]
+  wishes               Wish[]
+  wishCheckins         WishCheckin[]
   personalModeEnabled  Boolean               @default(false)
   personalProjects     PersonalProject[]
   personalSchedules    PersonalSchedule[]
@@ -958,5 +960,82 @@ model NudgeRevision {
   createdAt DateTime @default(now())
 
   @@index([documentId])
+  @@index([createdAt])
+}
+
+// ========================================
+// やりたいこと100（Bucket List 100）
+// ========================================
+
+enum WishStatus {
+  ACTIVE
+  DONE
+  PAUSED
+}
+
+enum WishDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum WishEstimate {
+  S
+  M
+  L
+}
+
+enum WishPriority {
+  LOW
+  MID
+  HIGH
+}
+
+enum WishCheckinType {
+  REFLECTION
+  NOTE
+}
+
+model Wish {
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title       String        // 必須、短い
+  category    String?       // 任意：文字列（自由入力）
+  status      WishStatus    @default(ACTIVE)
+  difficulty  WishDifficulty?
+  estimate    WishEstimate?
+  priority    WishPriority?
+  dueMonth    Int?          // 1..12（日付ではなく月まで）
+  tags        String[]      // 文字列配列
+  memo        String?       @db.Text
+  completedAt DateTime?
+  
+  checkins    WishCheckin[]
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([dueMonth])
+  @@index([createdAt])
+}
+
+model WishCheckin {
+  id        String          @id @default(uuid())
+  wishId    String
+  wish      Wish            @relation(fields: [wishId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      WishCheckinType
+  content   String          @db.Text
+  
+  createdAt DateTime        @default(now())
+  
+  @@index([wishId])
+  @@index([userId])
   @@index([createdAt])
 }

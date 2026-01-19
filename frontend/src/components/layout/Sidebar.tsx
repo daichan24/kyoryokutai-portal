@@ -18,6 +18,7 @@ import {
   MessageSquareText,
   Inbox,
   Check,
+  ListChecks,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     { to: '/dashboard', icon: Home, label: 'ダッシュボード' },
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
     { to: '/events', icon: CalendarDays, label: 'イベント', end: true },
+    { to: '/wishes', icon: ListChecks, label: 'やりたいこと100' },
   ];
 
   // 大目標カテゴリ（Mission）

@@ -28,6 +28,7 @@ import profileRoutes from './routes/profile';
 import nudgesRoutes from './routes/nudges';
 import supportRecordsRoutes from './routes/supportRecords';
 import documentTemplatesRoutes from './routes/documentTemplates';
+import wishesRoutes from './routes/wishes';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -110,6 +111,7 @@ app.use('/api/me/profile', profileRoutes); // プロフィール表示設定（�
 app.use('/api/nudges', nudgesRoutes); // 協力隊催促API
 app.use('/api/support-records', supportRecordsRoutes); // 支援記録API
 app.use('/api/document-templates', documentTemplatesRoutes); // テンプレート設定API
+app.use('/api/wishes', wishesRoutes); // やりたいこと100 API
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');
