@@ -1,9 +1,18 @@
 import prisma from '../lib/prisma';
-import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, addMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachWeekOfInterval, addWeeks, parse } from 'date-fns';
 
 interface ActivityItem {
   date: string;
-  description: string;
+  activity: string;
+}
+
+interface WeeklyReport {
+  id: string;
+  userId: string;
+  week: string;
+  thisWeekActivities: any;
+  nextWeekPlan: string | null;
+  note: string | null;
 }
 
 /**
@@ -47,21 +56,42 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     const memberSheets = [];
 
     for (const user of users) {
+      // テスト用のメンバー属性の佐藤大地を除外
+      if (user.name === '佐藤大地') {
+        continue;
+      }
+
       try {
-        const activities = await extractMonthlyActivities(user.id, month);
+        // 対象月に含まれる週を計算
+        const weeksInMonth = getWeeksInMonth(month);
+        
+        // 各週の週次報告を取得
+        const weeklyReports = await prisma.weeklyReport.findMany({
+          where: {
+            userId: user.id,
+            week: { in: weeksInMonth }
+          },
+          orderBy: { week: 'asc' }
+        });
+
+        // 週次報告から活動内容を抽出
+        const thisMonthActivities = extractActivitiesFromWeeklyReports(weeklyReports, month);
+        const nextMonthPlan = aggregateNextWeekPlans(weeklyReports, month);
+        const workQuestions = extractWorkQuestions(weeklyReports);
+        const lifeNotes = extractLifeNotes(weeklyReports);
 
         memberSheets.push({
           userId: user.id,
           userName: user.name,
           missionType: user.missionType,
-          thisMonthActivities: activities,
-          nextMonthPlan: '',
-          workQuestions: '',
-          lifeNotes: '',
+          thisMonthActivities,
+          nextMonthPlan,
+          workQuestions,
+          lifeNotes,
         });
       } catch (error) {
         console.error(`Error extracting activities for user ${user.id}:`, error);
-        // エラーが発生しても空の活動リストで続行
+        // エラーが発生しても空のデータで隊員別シートを作成
         memberSheets.push({
           userId: user.id,
           userName: user.name,
@@ -184,102 +214,243 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
 }
 
 /**
- * 月の主な活動を抽出
+ * 対象月に含まれる週を計算
+ * 月初・月末の週も含む
  */
-async function extractMonthlyActivities(
-  userId: string,
-  month: string
-): Promise<ActivityItem[]> {
-  const startDate = startOfMonth(new Date(`${month}-01`));
-  const endDate = endOfMonth(startDate);
-
-  const schedules = await prisma.schedule.findMany({
-    where: {
-      userId,
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
-      OR: [
-        {
-          project: null,
-        },
-        {
-          project: {
-            projectName: {
-              not: '役場業務',
-            },
-          },
-        },
-      ],
-    },
-    include: {
-      project: true,
-    },
-    orderBy: {
-      date: 'asc',
-    },
+function getWeeksInMonth(month: string): string[] {
+  // month: "YYYY-MM"形式
+  const monthDate = new Date(`${month}-01`);
+  const start = startOfMonth(monthDate);
+  const end = endOfMonth(monthDate);
+  
+  // 月の最初の週の開始日（月曜日）
+  const firstWeekStart = startOfWeek(start, { weekStartsOn: 1 });
+  // 月の最後の週の終了日（日曜日）
+  const lastWeekEnd = endOfWeek(end, { weekStartsOn: 1 });
+  
+  // 月に含まれる週を取得（月初・月末の週も含む）
+  const weeks = eachWeekOfInterval(
+    { start: firstWeekStart, end: lastWeekEnd },
+    { weekStartsOn: 1 }
+  );
+  
+  // 週の形式に変換（YYYY-WW）
+  return weeks.map(weekStart => {
+    const year = weekStart.getFullYear();
+    const weekNum = getWeekNumber(weekStart);
+    return `${year}-${weekNum.toString().padStart(2, '0')}`;
   });
-
-  const grouped = new Map<string, typeof schedules>();
-
-  for (const schedule of schedules) {
-    const dateKey = format(schedule.date, 'yyyy-MM-dd');
-    if (!grouped.has(dateKey)) {
-      grouped.set(dateKey, []);
-    }
-    grouped.get(dateKey)!.push(schedule);
-  }
-
-  const important: ActivityItem[] = [];
-
-  for (const [dateKey, daySchedules] of grouped.entries()) {
-    const sorted = daySchedules.sort((a, b) => {
-      const durationA = calculateDuration(a.startTime || '', a.endTime || '');
-      const durationB = calculateDuration(b.startTime || '', b.endTime || '');
-      return durationB - durationA;
-    });
-
-    const topActivities = sorted.slice(0, 2);
-
-    for (const activity of topActivities) {
-      if (activity.activityDescription) {
-        important.push({
-          date: format(new Date(dateKey), 'd日'),
-          description: activity.activityDescription,
-        });
-      }
-    }
-  }
-
-  return important;
 }
 
 /**
- * 時間の長さを分で計算
+ * 週番号を取得（ISO週番号）
  */
-function calculateDuration(startTime: string | null, endTime: string | null): number {
-  if (!startTime || !endTime) {
-    return 0;
-  }
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
 
+/**
+ * 週文字列を日付に変換
+ */
+function parseWeekString(weekStr: string): Date {
   try {
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-
-    if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
-      return 0;
+    // YYYY-WW形式（例: 2024-01）をパース
+    const match = weekStr.match(/^(\d{4})-(\d{2})$/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const weekNum = parseInt(match[2], 10);
+      
+      // 年の最初の月曜日を基準に週を計算
+      const yearStart = new Date(year, 0, 1);
+      const dayOfWeek = yearStart.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7;
+      const firstMonday = new Date(yearStart);
+      firstMonday.setDate(yearStart.getDate() + daysToMonday);
+      
+      // 指定された週の開始日
+      const weekStart = new Date(firstMonday);
+      weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+      
+      return weekStart;
     }
-
-    const startMinutes = startHour * 60 + startMinute;
-    const endMinutes = endHour * 60 + endMinute;
-
-    return endMinutes - startMinutes;
+    
+    // フォールバック: 既存のパース方法を試す
+    return parse(weekStr, "yyyy-'W'II", new Date());
   } catch (error) {
-    console.error('Error calculating duration:', error);
-    return 0;
+    console.error('Failed to parse week string:', weekStr, error);
+    // エラー時は現在の日付を返す
+    return new Date();
   }
 }
+
+/**
+ * 活動の日付を解析
+ */
+function parseActivityDate(dateStr: string, weekStr: string): Date | null {
+  try {
+    if (!dateStr) return null;
+    
+    // yyyy-MM-dd形式を試す（データベースに保存されている形式）
+    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10);
+      const day = parseInt(isoMatch[3], 10);
+      return new Date(year, month - 1, day);
+    }
+    
+    // M月d日形式を試す（表示用の形式）
+    const monthDayMatch = dateStr.match(/(\d+)月(\d+)日/);
+    if (monthDayMatch) {
+      const weekStart = parseWeekString(weekStr);
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      const month = parseInt(monthDayMatch[1], 10);
+      const day = parseInt(monthDayMatch[2], 10);
+      const year = weekStart.getFullYear();
+      const activityDate = new Date(year, month - 1, day);
+      
+      // 週の範囲内か確認
+      if (activityDate >= weekStart && activityDate <= weekEnd) {
+        return activityDate;
+      }
+      // 前年または翌年の可能性を確認
+      const prevYearDate = new Date(year - 1, month - 1, day);
+      if (prevYearDate >= weekStart && prevYearDate <= weekEnd) {
+        return prevYearDate;
+      }
+      const nextYearDate = new Date(year + 1, month - 1, day);
+      if (nextYearDate >= weekStart && nextYearDate <= weekEnd) {
+        return nextYearDate;
+      }
+    }
+    
+    // d日形式を試す
+    const dayMatch = dateStr.match(/(\d+)日/);
+    if (dayMatch) {
+      const weekStart = parseWeekString(weekStr);
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      const day = parseInt(dayMatch[1], 10);
+      const year = weekStart.getFullYear();
+      const month = weekStart.getMonth();
+      
+      // 週の範囲内で該当する日付を探す
+      for (let i = 0; i < 7; i++) {
+        const candidateDate = new Date(weekStart);
+        candidateDate.setDate(weekStart.getDate() + i);
+        if (candidateDate.getDate() === day) {
+          return candidateDate;
+        }
+      }
+      
+      // 前月または翌月の可能性を確認
+      const prevMonthDate = new Date(year, month - 1, day);
+      if (prevMonthDate >= weekStart && prevMonthDate <= weekEnd) {
+        return prevMonthDate;
+      }
+      const nextMonthDate = new Date(year, month + 1, day);
+      if (nextMonthDate >= weekStart && nextMonthDate <= weekEnd) {
+        return nextMonthDate;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Failed to parse activity date:', dateStr, weekStr, error);
+    return null;
+  }
+}
+
+/**
+ * 週次報告から活動内容を抽出（対象月に含まれる日付のみ）
+ */
+function extractActivitiesFromWeeklyReports(
+  weeklyReports: WeeklyReport[],
+  targetMonth: string
+): ActivityItem[] {
+  const activities: ActivityItem[] = [];
+  const monthStart = startOfMonth(new Date(`${targetMonth}-01`));
+  const monthEnd = endOfMonth(monthStart);
+  
+  for (const report of weeklyReports) {
+    if (Array.isArray(report.thisWeekActivities)) {
+      for (const activity of report.thisWeekActivities) {
+        // 日付を解析して対象月に含まれるか確認
+        const activityDate = parseActivityDate(activity.date || '', report.week);
+        if (activityDate && activityDate >= monthStart && activityDate <= monthEnd) {
+          activities.push({
+            date: format(activityDate, 'd日'),
+            activity: activity.activity || ''
+          });
+        }
+      }
+    }
+  }
+  
+  return activities;
+}
+
+/**
+ * 週次報告から翌月の予定を集約
+ */
+function aggregateNextWeekPlans(
+  weeklyReports: WeeklyReport[],
+  targetMonth: string
+): string {
+  const plans: string[] = [];
+  const nextMonth = addMonths(new Date(`${targetMonth}-01`), 1);
+  const nextMonthStart = startOfMonth(nextMonth);
+  const nextMonthEnd = endOfMonth(nextMonth);
+  
+  for (const report of weeklyReports) {
+    if (report.nextWeekPlan) {
+      // 週の情報から次の週の開始日を計算
+      const weekStart = parseWeekString(report.week);
+      const nextWeekStart = addWeeks(weekStart, 1);
+      
+      // 次の週が対象月の次の月に含まれる場合のみ追加
+      if (nextWeekStart >= nextMonthStart && nextWeekStart <= nextMonthEnd) {
+        plans.push(report.nextWeekPlan);
+      }
+    }
+  }
+  
+  return plans.join('\n\n');
+}
+
+/**
+ * 週次報告から勤務に関する質問などを抽出
+ */
+function extractWorkQuestions(weeklyReports: WeeklyReport[]): string {
+  // 暫定的には、noteをそのまま設定するか、空にする
+  // 将来的には、noteから勤務に関する質問を抽出する必要があるかもしれない
+  const notes: string[] = [];
+  for (const report of weeklyReports) {
+    if (report.note) {
+      notes.push(report.note);
+    }
+  }
+  return notes.join('\n\n');
+}
+
+/**
+ * 週次報告から生活面の留意事項その他を抽出
+ */
+function extractLifeNotes(weeklyReports: WeeklyReport[]): string {
+  // 暫定的には、noteをそのまま設定するか、空にする
+  // 将来的には、noteから生活面の留意事項を抽出する必要があるかもしれない
+  const notes: string[] = [];
+  for (const report of weeklyReports) {
+    if (report.note) {
+      notes.push(report.note);
+    }
+  }
+  return notes.join('\n\n');
+}
+
 
 /**
  * 月次報告を取得（詳細データ付き）
