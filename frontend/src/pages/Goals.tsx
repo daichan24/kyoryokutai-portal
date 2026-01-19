@@ -311,7 +311,14 @@ export const Goals: React.FC = () => {
                   <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                     {expandedGoals.has(goal.id) ? '▼' : '▶'}
                   </button>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
+                    {viewMode === 'view' && isNonMember && !selectedUserId && (
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        （{goal.user.name}）
+                      </span>
+                    )}
+                  </div>
                   <span className={`text-xs px-2 py-1 rounded-full ${
                     (goal.missionType || goal.goalType) === 'PRIMARY' 
                       ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 

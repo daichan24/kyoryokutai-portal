@@ -53,26 +53,10 @@ export const Projects: React.FC = () => {
     }
   });
 
-  const approveMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return api.post(`/api/projects/${id}/approve`, { approvalStatus: status });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-    }
-  });
-
   const filteredProjects = projects?.filter(p => {
     const matchesPhase = filterPhase === 'all' || p.phase === filterPhase;
-    const matchesApproval = filterApproval === 'all' || p.approvalStatus === filterApproval;
-    return matchesPhase && matchesApproval;
+    return matchesPhase;
   });
-
-  const handleApprove = (id: string, status: string) => {
-    if (confirm(`このプロジェクトを${status === 'APPROVED' ? '承認' : '差し戻し'}しますか？`)) {
-      approveMutation.mutate({ id, status });
-    }
-  };
 
   const handleCreateProject = () => {
     setSelectedProject(null);
@@ -114,25 +98,6 @@ export const Projects: React.FC = () => {
     return colors[phase as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-700';
   };
 
-  const getApprovalLabel = (status: string) => {
-    const labels = {
-      DRAFT: '下書き',
-      PENDING: '承認待ち',
-      APPROVED: '承認済',
-      REJECTED: '差し戻し'
-    };
-    return labels[status as keyof typeof labels] || status;
-  };
-
-  const getApprovalColor = (status: string) => {
-    const colors = {
-      DRAFT: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
-      PENDING: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300',
-      APPROVED: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-      REJECTED: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-    };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-700';
-  };
 
   if (isLoading) {
     return (
@@ -223,18 +188,6 @@ export const Projects: React.FC = () => {
               <option value="REVIEW">振り返り</option>
             </select>
 
-            {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
-              <select
-                value={filterApproval}
-                onChange={(e) => setFilterApproval(e.target.value)}
-                className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">全ての承認状態</option>
-                <option value="PENDING">承認待ち</option>
-                <option value="APPROVED">承認済</option>
-                <option value="REJECTED">差し戻し</option>
-              </select>
-            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -289,10 +242,7 @@ export const Projects: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <span className={`text-xs px-2 py-1 rounded-full ${getApprovalColor(project.approvalStatus)}`}>
-                    {getApprovalLabel(project.approvalStatus)}
-                  </span>
+                <div className="flex items-center justify-end pt-3 border-t border-gray-100">
                   {viewMode === 'create' && (
                     <Button
                       variant="primary"
@@ -303,24 +253,6 @@ export const Projects: React.FC = () => {
                     </Button>
                   )}
                 </div>
-
-                {viewMode === 'create' && (user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') &&
-                  project.approvalStatus === 'PENDING' && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t">
-                      <button
-                        onClick={() => handleApprove(project.id, 'APPROVED')}
-                        className="flex-1 bg-green-500 text-white text-sm px-3 py-2 rounded hover:bg-green-600 transition-colors"
-                      >
-                        承認
-                      </button>
-                      <button
-                        onClick={() => handleApprove(project.id, 'REJECTED')}
-                        className="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        差し戻し
-                      </button>
-                    </div>
-                  )}
               </div>
             ))}
           </div>

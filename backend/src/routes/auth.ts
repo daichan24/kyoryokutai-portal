@@ -116,6 +116,8 @@ router.post('/login', async (req, res) => {
       avatarColor: user.avatarColor,
       avatarLetter: user.avatarLetter,
       darkMode: user.darkMode,
+      displayOrder: user.displayOrder ?? 0,
+      wishesEnabled: user.wishesEnabled ?? true,
       createdAt: user.createdAt,
     };
 
@@ -125,7 +127,13 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: error.errors });
     }
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Login error details:', { errorMessage, errorStack });
+    res.status(500).json({ 
+      error: 'Login failed',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 });
 
@@ -145,6 +153,8 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
         avatarColor: true,
         avatarLetter: true,
         darkMode: true,
+        displayOrder: true,
+        wishesEnabled: true,
         snsLinks: true, // SNSリンクを含める
         createdAt: true,
         updatedAt: true,
@@ -158,7 +168,12 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
     res.json(user);
   } catch (error) {
     console.error('Get me error:', error);
-    res.status(500).json({ error: 'Failed to get user' });
+    const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+    console.error('Get me error details:', { errorMessage });
+    res.status(500).json({ 
+      error: 'Failed to get user',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 });
 
