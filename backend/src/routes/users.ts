@@ -67,6 +67,7 @@ const updateUserSchema = z.object({
   termStart: z.string().optional(),
   termEnd: z.string().optional(),
   avatarColor: z.string().optional(),
+  displayOrder: z.number().int().optional(), // 表示順（メンバー以外が設定可能）
 });
 
 router.get('/', authorize('MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, res) => {
@@ -103,10 +104,14 @@ router.get('/', authorize('MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT'), async (r
         termEnd: true,
         avatarColor: true,
         avatarLetter: true,
+        displayOrder: true,
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { displayOrder: 'asc' },
+        { createdAt: 'desc' },
+      ],
     });
 
     console.log(`🔵 [API] GET /api/users - Role: ${req.user!.role}, Filter: ${role || 'all'}, Count: ${users.length}`);
@@ -138,6 +143,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
         termEnd: true,
         avatarColor: true,
         avatarLetter: true,
+        displayOrder: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -158,8 +164,33 @@ router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
+    // displayOrderの更新はメンバー以外のみ可能
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      select: { role: true },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // displayOrderの更新権限チェック
+    if (req.body.displayOrder !== undefined) {
+      if (req.user!.role === 'MEMBER') {
+        return res.status(403).json({ error: 'メンバーは表示順を変更できません' });
+      }
+      // メンバー以外のユーザーのdisplayOrderは変更できない
+      if (targetUser.role !== 'MEMBER') {
+        return res.status(403).json({ error: 'メンバー以外の表示順は変更できません' });
+      }
+    }
+
+    // その他の更新権限チェック
     if (req.user!.role !== 'MASTER' && req.user!.id !== id) {
-      return res.status(403).json({ error: 'Forbidden' });
+      // displayOrder以外の更新は本人またはMASTERのみ
+      if (req.body.displayOrder === undefined) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
     }
 
     const data = updateUserSchema.parse(req.body);
@@ -191,6 +222,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         termStart: true,
         termEnd: true,
         avatarColor: true,
+        displayOrder: true,
         createdAt: true,
         updatedAt: true,
       },

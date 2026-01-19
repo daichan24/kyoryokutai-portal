@@ -37,7 +37,13 @@ export const WeeklyReport: React.FC = () => {
         const response = await api.get('/api/users');
         const memberUsers = response.data.filter((u: any) => 
           u.role === 'MEMBER' && u.name !== '佐藤大地'
-        );
+        ).sort((a: any, b: any) => {
+          // displayOrderでソート（小さい順）、同じ場合は名前でソート
+          if (a.displayOrder !== b.displayOrder) {
+            return (a.displayOrder || 0) - (b.displayOrder || 0);
+          }
+          return (a.name || '').localeCompare(b.name || '');
+        });
         setUsers(memberUsers);
       } catch (error) {
         console.error('Failed to fetch users:', error);
@@ -179,14 +185,36 @@ export const WeeklyReport: React.FC = () => {
     return Array.from(months).sort().reverse();
   }, [reports]);
 
-  // 利用可能な週の一覧
+  // 全員の報告を取得（週別表示用）
+  const [allReports, setAllReports] = useState<WeeklyReportType[]>([]);
+  
+  useEffect(() => {
+    const fetchAllReports = async () => {
+      if (user?.role === 'MEMBER') return;
+      
+      try {
+        const response = await api.get<WeeklyReportType[]>('/api/weekly-reports');
+        setAllReports(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch all reports:', error);
+        setAllReports([]);
+      }
+    };
+    
+    if (viewMode === 'weekly') {
+      fetchAllReports();
+    }
+  }, [viewMode, user]);
+
+  // 利用可能な週の一覧（週別表示の場合は全員の報告から、個人別表示の場合は選択したユーザーの報告から）
   const availableWeeks = useMemo(() => {
     const weeks = new Set<string>();
-    reports.forEach(report => {
+    const sourceReports = viewMode === 'weekly' ? allReports : reports;
+    sourceReports.forEach(report => {
       weeks.add(report.week);
     });
     return Array.from(weeks).sort().reverse();
-  }, [reports]);
+  }, [reports, allReports, viewMode]);
 
   // 全員分表示用：メンバーと報告のマッピング
   const memberReportMap = useMemo(() => {

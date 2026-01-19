@@ -35,12 +35,24 @@ export const UsersSettings: React.FC = () => {
 
   // 全ロールでroleフィルター適用
   useEffect(() => {
-    if (roleFilter !== 'all') {
-      const filtered = allUsers.filter((user) => user.role === roleFilter);
-      setUsers(filtered);
-    } else {
-      setUsers(allUsers);
+    let filtered = roleFilter !== 'all' 
+      ? allUsers.filter((user) => user.role === roleFilter)
+      : allUsers;
+    
+    // メンバーの場合はdisplayOrderでソート
+    if (roleFilter === 'MEMBER') {
+      filtered = filtered.sort((a, b) => {
+        const orderA = a.displayOrder || 0;
+        const orderB = b.displayOrder || 0;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        // 同じ順位の場合は名前でソート
+        return (a.name || '').localeCompare(b.name || '');
+      });
     }
+    
+    setUsers(filtered);
   }, [roleFilter, allUsers]);
 
   const fetchUsers = async (filterRole?: string) => {
@@ -167,6 +179,11 @@ export const UsersSettings: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   役割
                 </th>
+                {roleFilter === 'MEMBER' && (currentUser?.role === 'MASTER' || currentUser?.role === 'SUPPORT' || currentUser?.role === 'GOVERNMENT') && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    表示順
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   任期
                 </th>
@@ -199,6 +216,26 @@ export const UsersSettings: React.FC = () => {
                       {user.role}
                     </span>
                   </td>
+                  {roleFilter === 'MEMBER' && (currentUser?.role === 'MASTER' || currentUser?.role === 'SUPPORT' || currentUser?.role === 'GOVERNMENT') && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="number"
+                        min="0"
+                        value={user.displayOrder || 0}
+                        onChange={async (e) => {
+                          const newOrder = parseInt(e.target.value, 10) || 0;
+                          try {
+                            await api.put(`/api/users/${user.id}`, { displayOrder: newOrder });
+                            await fetchUsers();
+                          } catch (error) {
+                            console.error('Failed to update display order:', error);
+                            alert('表示順の更新に失敗しました');
+                          }
+                        }}
+                        className="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {user.termStart && user.termEnd
                       ? `${formatDate(user.termStart, 'yyyy/M/d')} - ${formatDate(user.termEnd, 'yyyy/M/d')}`

@@ -13,6 +13,7 @@ export interface User {
   avatarColor: string;
   avatarLetter?: string | null;
   darkMode?: boolean;
+  displayOrder?: number;
   createdAt: string;
   updatedAt?: string;
 }
