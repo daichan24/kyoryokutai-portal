@@ -431,7 +431,7 @@ export const Wishes: React.FC = () => {
         )}
       </div>
 
-      {/* モーダル */}
+      {/* 編集モーダル */}
       {isModalOpen && (
         <WishModal
           wish={selectedWish}
@@ -439,9 +439,84 @@ export const Wishes: React.FC = () => {
           onSaved={() => {
             queryClient.invalidateQueries({ queryKey: ['wishes'] });
             queryClient.invalidateQueries({ queryKey: ['wishes', 'stats'] });
+            queryClient.invalidateQueries({ queryKey: ['wishes', 'next'] });
             handleCloseModal();
           }}
         />
+      )}
+
+      {/* 詳細モーダル */}
+      {isDetailModalOpen && detailWish && (
+        <WishDetailModal
+          wish={detailWish}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setDetailWish(null);
+          }}
+          onUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['wishes'] });
+            queryClient.invalidateQueries({ queryKey: ['wishes', 'stats'] });
+          }}
+        />
+      )}
+
+      {/* 完了時の振り返りモーダル */}
+      {showReflectionModal && completedWish && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">おめでとうございます！</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-4">
+              「{completedWish.title}」を完了しました。
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              振り返りを記録しますか？（任意）
+            </p>
+            <div className="space-y-3">
+              <textarea
+                id="reflection-input"
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                placeholder="何が良かった？次もやるなら一言"
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={async () => {
+                    const input = document.getElementById('reflection-input') as HTMLTextAreaElement;
+                    const content = input?.value?.trim();
+                    if (content) {
+                      try {
+                        await api.post(`/api/wishes/${completedWish.id}/checkins`, {
+                          type: 'REFLECTION',
+                          content,
+                        });
+                        queryClient.invalidateQueries({ queryKey: ['wishes'] });
+                        queryClient.invalidateQueries({ queryKey: ['wishes', completedWish.id, 'checkins'] });
+                      } catch (error) {
+                        console.error('Failed to add reflection:', error);
+                      }
+                    }
+                    setShowReflectionModal(false);
+                    setCompletedWish(null);
+                  }}
+                  variant="primary"
+                  className="flex-1"
+                >
+                  記録する
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowReflectionModal(false);
+                    setCompletedWish(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  スキップ
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
