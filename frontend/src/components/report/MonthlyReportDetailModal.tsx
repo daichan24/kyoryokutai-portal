@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, FileDown, Edit2, History, Save, Trash2, Eye } from 'lucide-react';
+import { X, FileDown, Edit2, History, Save, Trash2, Eye, Plus } from 'lucide-react';
 import { api } from '../../utils/api';
 import { format } from 'date-fns';
 import { Button } from '../common/Button';
@@ -54,7 +54,19 @@ interface MonthlyReportDetailModalProps {
   viewMode?: 'edit' | 'preview'; // 表示モード（デフォルトはedit）
 }
 
-type PageTab = 'cover' | 'members' | 'member' | 'support' | 'full';
+type PageTab = 'cover' | 'member' | 'support' | 'full';
+
+interface SupportRecord {
+  id?: string;
+  userId: string;
+  supportDate: string;
+  supportContent: string;
+  supportBy: string;
+  user?: {
+    id: string;
+    name: string;
+  };
+}
 
 export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> = ({
   reportId,
@@ -64,6 +76,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   viewMode: initialViewMode = 'edit',
 }) => {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [showRevisions, setShowRevisions] = useState(false);
   const [isEditing, setIsEditing] = useState(initialViewMode === 'edit');
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
@@ -72,7 +85,11 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   const [coverRecipient, setCoverRecipient] = useState('');
   const [coverSender, setCoverSender] = useState('');
   const [memberSheets, setMemberSheets] = useState<any[]>([]);
+  const [supportRecords, setSupportRecords] = useState<SupportRecord[]>([]);
   const [saving, setSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const initialDataRef = useRef<{ coverRecipient: string; coverSender: string; memberSheets: any[]; supportRecords: SupportRecord[] } | null>(null);
 
   const { data: report, isLoading, refetch, error } = useQuery<MonthlyReport>({
     queryKey: ['monthly-report', reportId],
@@ -88,6 +105,25 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     retry: false,
   });
 
+  // メンバー一覧を取得（支援記録の編集用）
+  const { data: members = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['users', 'members'],
+    queryFn: async () => {
+      const response = await api.get('/api/users');
+      return response.data.filter((u: any) => 
+        u.role === 'MEMBER' && u.name !== '佐藤大地'
+      ).sort((a: any, b: any) => {
+        const orderA = a.displayOrder || 0;
+        const orderB = b.displayOrder || 0;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    },
+    enabled: !!report,
+  });
+
   // テンプレート設定を取得
   const { data: templateSettings } = useQuery({
     queryKey: ['documentTemplates', 'monthlyReport'],
@@ -100,9 +136,31 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
 
   useEffect(() => {
     if (report) {
-      setCoverRecipient(report.coverRecipient || templateSettings?.recipient || '');
-      setCoverSender(report.coverSender || templateSettings?.sender || '');
-      setMemberSheets(report.memberSheets || []);
+      const coverRecipientValue = report.coverRecipient || templateSettings?.recipient || '';
+      const coverSenderValue = report.coverSender || templateSettings?.sender || '';
+      const memberSheetsValue = report.memberSheets || [];
+      const supportRecordsValue = (report.supportRecords || []).map((r: any) => ({
+        id: r.id,
+        userId: r.user.id,
+        supportDate: r.supportDate,
+        supportContent: r.supportContent,
+        supportBy: r.supportBy,
+        user: r.user,
+      }));
+
+      setCoverRecipient(coverRecipientValue);
+      setCoverSender(coverSenderValue);
+      setMemberSheets(memberSheetsValue);
+      setSupportRecords(supportRecordsValue);
+
+      // 初期データを保存
+      initialDataRef.current = {
+        coverRecipient: coverRecipientValue,
+        coverSender: coverSenderValue,
+        memberSheets: JSON.parse(JSON.stringify(memberSheetsValue)),
+        supportRecords: JSON.parse(JSON.stringify(supportRecordsValue)),
+      };
+      setHasUnsavedChanges(false);
     } else if (templateSettings) {
       setCoverRecipient(templateSettings.recipient || '');
       setCoverSender(templateSettings.sender || '');
@@ -110,6 +168,19 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
       setViewMode('edit');
     }
   }, [report, templateSettings]);
+
+  // 変更を検知してhasUnsavedChangesを更新
+  useEffect(() => {
+    if (!initialDataRef.current) return;
+
+    const hasChanges = 
+      coverRecipient !== initialDataRef.current.coverRecipient ||
+      coverSender !== initialDataRef.current.coverSender ||
+      JSON.stringify(memberSheets) !== JSON.stringify(initialDataRef.current.memberSheets) ||
+      JSON.stringify(supportRecords) !== JSON.stringify(initialDataRef.current.supportRecords);
+
+    setHasUnsavedChanges(hasChanges);
+  }, [coverRecipient, coverSender, memberSheets, supportRecords]);
 
   const downloadPDF = async () => {
     try {
@@ -130,7 +201,6 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     }
   };
 
-  const queryClient = useQueryClient();
   const canEdit = user?.role === 'MASTER' || (!report?.submittedAt && (user?.role === 'SUPPORT' || user?.role === 'MASTER'));
   const canDelete = user?.role === 'SUPPORT' || user?.role === 'MASTER';
 
@@ -138,15 +208,65 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     setSaving(true);
     try {
       if (report) {
+        // 月次報告の基本情報を更新
         await api.put(`/api/monthly-reports/${reportId}`, {
           coverRecipient,
           coverSender,
           memberSheets,
         });
+
+        // 支援記録を更新（新規作成、更新、削除）
+        const existingRecordIds = new Set((report.supportRecords || []).map((r: any) => r.id));
+        const currentRecordIds = new Set(supportRecords.filter(r => r.id).map(r => r.id!));
+
+        // 削除されたレコードを削除
+        for (const id of existingRecordIds) {
+          if (!currentRecordIds.has(id)) {
+            try {
+              await api.delete(`/api/support-records/${id}`);
+            } catch (error) {
+              console.error(`Failed to delete support record ${id}:`, error);
+            }
+          }
+        }
+
+        // 新規作成または更新
+        for (const record of supportRecords) {
+          const recordData = {
+            userId: record.userId,
+            supportDate: record.supportDate,
+            supportContent: record.supportContent,
+            monthlyReportId: reportId,
+          };
+
+          if (record.id) {
+            // 更新
+            try {
+              await api.put(`/api/support-records/${record.id}`, recordData);
+            } catch (error) {
+              console.error(`Failed to update support record ${record.id}:`, error);
+            }
+          } else {
+            // 新規作成
+            try {
+              const response = await api.post('/api/support-records', recordData);
+              // 作成されたレコードのIDを設定
+              const newRecord = supportRecords.find(r => !r.id && r.userId === record.userId && r.supportDate === record.supportDate);
+              if (newRecord) {
+                newRecord.id = response.data.id;
+              }
+            } catch (error) {
+              console.error('Failed to create support record:', error);
+            }
+          }
+        }
+
         setIsEditing(false);
+        setHasUnsavedChanges(false);
         refetch();
         if (onUpdated) onUpdated();
         queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+        queryClient.invalidateQueries({ queryKey: ['support-records'] });
       } else {
         console.warn('新規作成は月次報告ページから行ってください');
       }
@@ -170,6 +290,53 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
       console.error('Failed to delete monthly report:', error);
       alert(`削除に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
     }
+  };
+
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+    } else {
+      setIsEditing(false);
+      if (report && initialDataRef.current) {
+        setCoverRecipient(initialDataRef.current.coverRecipient);
+        setCoverSender(initialDataRef.current.coverSender);
+        setMemberSheets(JSON.parse(JSON.stringify(initialDataRef.current.memberSheets)));
+        setSupportRecords(JSON.parse(JSON.stringify(initialDataRef.current.supportRecords)));
+      }
+    }
+  };
+
+  const handleConfirmClose = () => {
+    setShowUnsavedDialog(false);
+    setHasUnsavedChanges(false);
+    onClose();
+  };
+
+  const handleCancelClose = () => {
+    setShowUnsavedDialog(false);
+  };
+
+  // 姓名を分割して表示用にフォーマット
+  const formatNameForTab = (name: string) => {
+    if (name.length <= 2) return name;
+    // 姓名を分割（簡易版：2文字目で分割）
+    const firstName = name.substring(0, 1);
+    const lastName = name.substring(1);
+    return (
+      <>
+        {firstName}
+        <br />
+        {lastName}
+      </>
+    );
   };
 
   if (isLoading) {
@@ -211,7 +378,13 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     coverRecipient,
     coverSender,
     memberSheets,
-    supportRecords: report.supportRecords || [],
+    supportRecords: supportRecords.map(r => ({
+      id: r.id || '',
+      supportDate: r.supportDate,
+      supportContent: r.supportContent,
+      supportBy: r.supportBy,
+      user: r.user || members.find(m => m.id === r.userId) || { id: r.userId, name: '' },
+    })),
   } : null;
 
   // 表紙プレビュー用のデータ
@@ -302,149 +475,6 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
               <div className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: report?.coverSender || coverSender || '未設定' }} />
             </div>
           </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderMemberSheets = () => {
-    if (viewMode === 'preview' && previewReport) {
-      return (
-        <div className="p-4 bg-gray-100 dark:bg-gray-900 space-y-4">
-          {previewReport.memberSheets.map((sheet: any, index: number) => {
-            const memberPreview = getMemberPreviewData(index);
-            if (!memberPreview) return null;
-            return (
-              <div key={index} className="shadow-lg mb-4" style={{ borderTop: index > 0 ? '2px solid #e5e7eb' : 'none', paddingTop: index > 0 ? '1rem' : '0' }}>
-                <MonthlyReportPreview report={memberPreview} />
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-
-    return (
-      <div className="p-6 space-y-4">
-        {Array.isArray(memberSheets) && memberSheets.length > 0 ? (
-          memberSheets.map((sheet: any, index: number) => (
-            <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
-              <h4 className="font-medium mb-3 dark:text-gray-100">{sheet.userName}</h4>
-              {isEditing ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      今月の活動
-                    </label>
-                    <SimpleRichTextEditor
-                      value={sheet.thisMonthActivities ? sheet.thisMonthActivities.map((a: any) => `${a.date}: ${a.description}`).join('\n') : ''}
-                      onChange={(value) => {
-                        const newSheets = [...memberSheets];
-                        newSheets[index] = {
-                          ...sheet,
-                          thisMonthActivities: value.split('\n').filter(v => v.trim()).map(line => {
-                            const match = line.match(/^(.+?):\s*(.+)$/);
-                            if (match) {
-                              return { date: match[1], description: match[2] };
-                            }
-                            return { date: '', description: line };
-                          }),
-                        };
-                        setMemberSheets(newSheets);
-                      }}
-                      placeholder="活動内容を入力..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      翌月以降の活動予定
-                    </label>
-                    <SimpleRichTextEditor
-                      value={sheet.nextMonthPlan || ''}
-                      onChange={(value) => {
-                        const newSheets = [...memberSheets];
-                        newSheets[index] = {
-                          ...sheet,
-                          nextMonthPlan: value,
-                        };
-                        setMemberSheets(newSheets);
-                      }}
-                      placeholder="翌月以降の活動予定を入力..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      勤務に関する質問など
-                    </label>
-                    <SimpleRichTextEditor
-                      value={sheet.workQuestions || ''}
-                      onChange={(value) => {
-                        const newSheets = [...memberSheets];
-                        newSheets[index] = {
-                          ...sheet,
-                          workQuestions: value,
-                        };
-                        setMemberSheets(newSheets);
-                      }}
-                      placeholder="勤務に関する質問・相談を入力..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      生活面の留意事項その他
-                    </label>
-                    <SimpleRichTextEditor
-                      value={sheet.lifeNotes || ''}
-                      onChange={(value) => {
-                        const newSheets = [...memberSheets];
-                        newSheets[index] = {
-                          ...sheet,
-                          lifeNotes: value,
-                        };
-                        setMemberSheets(newSheets);
-                      }}
-                      placeholder="生活面の留意事項その他を入力..."
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {sheet.thisMonthActivities && sheet.thisMonthActivities.length > 0 && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">今月の活動:</span>
-                      <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 ml-2 mt-1">
-                        {sheet.thisMonthActivities.map((activity: any, i: number) => (
-                          <li key={i}>
-                            {activity.date}: {activity.description}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {sheet.nextMonthPlan && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">来月の予定:</span>
-                      <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.nextMonthPlan }} />
-                    </div>
-                  )}
-                  {sheet.workQuestions && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">業務上の質問・相談:</span>
-                      <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.workQuestions }} />
-                    </div>
-                  )}
-                  {sheet.lifeNotes && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">生活面の備考:</span>
-                      <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.lifeNotes }} />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500 dark:text-gray-400">隊員別シートがありません</p>
         )}
       </div>
     );
@@ -601,29 +631,132 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     }
 
     return (
-      <div className="p-6">
-        {report && report.supportRecords && report.supportRecords.length > 0 ? (
-          <div className="space-y-3">
-            {report.supportRecords.map((record) => (
-              <div key={record.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="font-medium dark:text-gray-100">{record.user.name}</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
-                      {format(new Date(record.supportDate), 'M月d日')}
-                    </span>
+      <div className="p-6 space-y-4">
+        {isEditing ? (
+          <>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold dark:text-gray-100">支援記録</h3>
+              <Button
+                onClick={() => {
+                  const newRecord: SupportRecord = {
+                    userId: members[0]?.id || '',
+                    supportDate: format(new Date(), 'yyyy-MM-dd'),
+                    supportContent: '',
+                    supportBy: user?.name || '',
+                  };
+                  setSupportRecords([...supportRecords, newRecord]);
+                }}
+                variant="outline"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                追加
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {supportRecords.map((record, index) => (
+                <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        対象者
+                      </label>
+                      <select
+                        value={record.userId}
+                        onChange={(e) => {
+                          const newRecords = [...supportRecords];
+                          newRecords[index] = { ...record, userId: e.target.value };
+                          setSupportRecords(newRecords);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="">選択してください</option>
+                        {members.map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        支援日
+                      </label>
+                      <Input
+                        type="date"
+                        value={record.supportDate}
+                        onChange={(e) => {
+                          const newRecords = [...supportRecords];
+                          newRecords[index] = { ...record, supportDate: e.target.value };
+                          setSupportRecords(newRecords);
+                        }}
+                      />
+                    </div>
                   </div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{record.supportBy}</span>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      支援内容
+                    </label>
+                    <SimpleRichTextEditor
+                      value={record.supportContent}
+                      onChange={(value) => {
+                        const newRecords = [...supportRecords];
+                        newRecords[index] = { ...record, supportContent: value };
+                        setSupportRecords(newRecords);
+                      }}
+                      placeholder="支援内容を入力..."
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => {
+                        const newRecords = supportRecords.filter((_, i) => i !== index);
+                        setSupportRecords(newRecords);
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      削除
+                    </Button>
+                  </div>
                 </div>
-                <div
-                  className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: record.supportContent }}
-                />
-              </div>
-            ))}
-          </div>
+              ))}
+              {supportRecords.length === 0 && (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">支援記録がありません。追加ボタンから追加してください。</p>
+              )}
+            </div>
+          </>
         ) : (
-          <p className="text-gray-500 dark:text-gray-400">支援記録がありません</p>
+          <>
+            <h3 className="text-lg font-semibold dark:text-gray-100 mb-4">支援記録</h3>
+            {supportRecords.length > 0 ? (
+              <div className="space-y-3">
+                {supportRecords.map((record, index) => {
+                  const member = members.find(m => m.id === record.userId);
+                  return (
+                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="font-medium dark:text-gray-100">{member?.name || '不明'}</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                            {format(new Date(record.supportDate), 'M月d日')}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{record.supportBy}</span>
+                      </div>
+                      <div
+                        className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert"
+                        dangerouslySetInnerHTML={{ __html: record.supportContent }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400">支援記録がありません</p>
+            )}
+          </>
         )}
       </div>
     );
@@ -641,194 +774,198 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-          <h2 className="text-xl font-bold dark:text-gray-100">{report?.month || ''} 月次報告</h2>
-          <div className="flex items-center gap-2">
-            {canEdit && !isEditing && (
-              <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
-                <Edit2 className="h-4 w-4 mr-1" />
-                編集
-              </Button>
-            )}
-            {isEditing && (
-              <>
-                <Button onClick={handleSave} variant="primary" size="sm" disabled={saving}>
-                  <Save className="h-4 w-4 mr-1" />
-                  {saving ? '保存中...' : '保存'}
+    <>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+            <h2 className="text-xl font-bold dark:text-gray-100">{report?.month || ''} 月次報告</h2>
+            <div className="flex items-center gap-2">
+              {canEdit && !isEditing && pageTab !== 'full' && (
+                <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
+                  <Edit2 className="h-4 w-4 mr-1" />
+                  編集
                 </Button>
-                <Button onClick={() => {
-                  setIsEditing(false);
-                  if (report) {
-                    setCoverRecipient(report.coverRecipient);
-                    setCoverSender(report.coverSender);
-                    setMemberSheets(report.memberSheets || []);
-                  }
-                }} variant="outline" size="sm">
-                  キャンセル
-                </Button>
-              </>
-            )}
-            <Button onClick={downloadPDF} variant="outline" size="sm">
-              <FileDown className="h-4 w-4 mr-1" />
-              PDF出力
-            </Button>
-            {canDelete && (
-              <Button onClick={handleDelete} variant="outline" size="sm">
-                <Trash2 className="h-4 w-4 mr-1" />
-                削除
-              </Button>
-            )}
-            {report && report.revisions && report.revisions.length > 0 && (
-              <Button
-                onClick={() => setShowRevisions(!showRevisions)}
-                variant="outline"
+              )}
+              {isEditing && pageTab !== 'full' && (
+                <>
+                  <Button onClick={handleSave} variant="primary" size="sm" disabled={saving}>
+                    <Save className="h-4 w-4 mr-1" />
+                    {saving ? '保存中...' : '保存'}
+                  </Button>
+                  <Button onClick={handleCancel} variant="outline" size="sm">
+                    キャンセル
+                  </Button>
+                </>
+              )}
+              <Button 
+                onClick={() => setPageTab(pageTab === 'full' ? 'cover' : 'full')} 
+                variant={pageTab === 'full' ? 'primary' : 'outline'} 
                 size="sm"
               >
-                <History className="h-4 w-4 mr-1" />
-                変更履歴
+                <Eye className="h-4 w-4 mr-1" />
+                全体プレビュー
               </Button>
-            )}
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-              <X className="h-6 w-6" />
-            </button>
+              <Button onClick={downloadPDF} variant="outline" size="sm">
+                <FileDown className="h-4 w-4 mr-1" />
+                PDF出力
+              </Button>
+              {canDelete && (
+                <Button onClick={handleDelete} variant="outline" size="sm">
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  削除
+                </Button>
+              )}
+              {report && report.revisions && report.revisions.length > 0 && (
+                <Button
+                  onClick={() => setShowRevisions(!showRevisions)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <History className="h-4 w-4 mr-1" />
+                  変更履歴
+                </Button>
+              )}
+              <button onClick={handleClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* ページタブ */}
-        <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-[73px] z-10">
-          <div className="flex gap-1 px-4">
-            <button
-              onClick={() => setPageTab('cover')}
-              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                pageTab === 'cover'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              表紙
-            </button>
-            <button
-              onClick={() => {
-                setPageTab('members');
-                setSelectedMemberIndex(0);
-              }}
-              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                pageTab === 'members'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              隊員別シート
-            </button>
-            {memberSheets.length > 0 && memberSheets.map((sheet: any, index: number) => (
+          {/* ページタブ */}
+          <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-[73px] z-10">
+            <div className="flex gap-1 px-4 overflow-x-auto">
               <button
-                key={index}
-                onClick={() => {
-                  setPageTab('member');
-                  setSelectedMemberIndex(index);
-                }}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                  pageTab === 'member' && selectedMemberIndex === index
+                onClick={() => setPageTab('cover')}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 ${
+                  pageTab === 'cover'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
-                {sheet.userName || `隊員${index + 1}`}
+                表紙
               </button>
-            ))}
-            <button
-              onClick={() => setPageTab('support')}
-              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                pageTab === 'support'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              支援記録
-            </button>
-            <button
-              onClick={() => setPageTab('full')}
-              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                pageTab === 'full'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              全体プレビュー
-            </button>
-          </div>
-        </div>
-
-        {/* 編集/プレビュータブ */}
-        {pageTab !== 'full' && (
-          <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-[121px] z-10">
-            <div className="flex gap-1 px-4">
-              <button
-                onClick={() => {
-                  setViewMode('edit');
-                  setIsEditing(true);
-                }}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors rounded-t ${
-                  viewMode === 'edit'
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                編集
-              </button>
-              <button
-                onClick={() => {
-                  setViewMode('preview');
-                  setIsEditing(false);
-                }}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors rounded-t ${
-                  viewMode === 'preview'
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                プレビュー
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 変更履歴 */}
-        {report && showRevisions && report.revisions && report.revisions.length > 0 && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 m-4">
-            <h3 className="font-bold text-lg mb-3 dark:text-gray-100">変更履歴</h3>
-            <div className="space-y-3">
-              {report.revisions.map((revision) => (
-                <div key={revision.id} className="border-l-4 border-yellow-400 pl-3">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-medium dark:text-gray-100">{revision.changer.name}</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {format(new Date(revision.createdAt), 'yyyy年M月d日 H:mm')}
-                    </span>
-                  </div>
-                  {revision.reason && (
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">理由: {revision.reason}</p>
-                  )}
-                  <pre className="text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded overflow-auto">
-                    {JSON.stringify(revision.changes, null, 2)}
-                  </pre>
-                </div>
+              {memberSheets.length > 0 && memberSheets.map((sheet: any, index: number) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setPageTab('member');
+                    setSelectedMemberIndex(index);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 min-w-[60px] text-center ${
+                    pageTab === 'member' && selectedMemberIndex === index
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {formatNameForTab(sheet.userName || `隊員${index + 1}`)}
+                </button>
               ))}
+              <button
+                onClick={() => setPageTab('support')}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap flex-shrink-0 ${
+                  pageTab === 'support'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                支援記録
+              </button>
             </div>
           </div>
-        )}
 
-        {/* コンテンツ */}
-        <div className="flex-1 overflow-y-auto">
-          {pageTab === 'cover' && renderCoverPage()}
-          {pageTab === 'members' && renderMemberSheets()}
-          {pageTab === 'member' && renderSingleMemberSheet(selectedMemberIndex)}
-          {pageTab === 'support' && renderSupportRecords()}
-          {pageTab === 'full' && renderFullPreview()}
+          {/* 編集/プレビュータブ */}
+          {pageTab !== 'full' && (
+            <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-[121px] z-10">
+              <div className="flex gap-1 px-4">
+                <button
+                  onClick={() => {
+                    setViewMode('edit');
+                    setIsEditing(true);
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors rounded-t ${
+                    viewMode === 'edit'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  編集
+                </button>
+                <button
+                  onClick={() => {
+                    setViewMode('preview');
+                    setIsEditing(false);
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors rounded-t ${
+                    viewMode === 'preview'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  プレビュー
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 変更履歴 */}
+          {report && showRevisions && report.revisions && report.revisions.length > 0 && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 m-4">
+              <h3 className="font-bold text-lg mb-3 dark:text-gray-100">変更履歴</h3>
+              <div className="space-y-3">
+                {report.revisions.map((revision) => (
+                  <div key={revision.id} className="border-l-4 border-yellow-400 pl-3">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-medium dark:text-gray-100">{revision.changer.name}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {format(new Date(revision.createdAt), 'yyyy年M月d日 H:mm')}
+                      </span>
+                    </div>
+                    {revision.reason && (
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">理由: {revision.reason}</p>
+                    )}
+                    <pre className="text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded overflow-auto">
+                      {JSON.stringify(revision.changes, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* コンテンツ */}
+          {pageTab === 'full' ? (
+            <div className="flex-1 overflow-y-auto">
+              {renderFullPreview()}
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto">
+              {pageTab === 'cover' && renderCoverPage()}
+              {pageTab === 'member' && renderSingleMemberSheet(selectedMemberIndex)}
+              {pageTab === 'support' && renderSupportRecords()}
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* 未保存の変更がある場合の確認ダイアログ */}
+      {showUnsavedDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+            <h3 className="text-lg font-bold dark:text-gray-100 mb-4">保存されていません</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">
+              保存されていない変更があります。閉じますか？
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button onClick={handleCancelClose} variant="outline">
+                キャンセル
+              </Button>
+              <Button onClick={handleConfirmClose} variant="primary">
+                OK
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
