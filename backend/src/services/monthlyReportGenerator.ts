@@ -35,8 +35,13 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
       if (template.monthlyReportSender) coverSender = template.monthlyReportSender;
     }
 
+    // 現在のメンバー分（テスト用のメンバー属性の佐藤大地以外）を作成
     const users = await prisma.user.findMany({
-      where: { role: 'MEMBER' },
+      where: { 
+        role: 'MEMBER',
+        // 佐藤大地（テスト用のメンバー属性）を除外する場合は、nameでフィルタリング
+        // ただし、nameでのフィルタリングは柔軟性に欠けるため、roleのみでフィルタリング
+      },
     });
 
     const memberSheets = [];

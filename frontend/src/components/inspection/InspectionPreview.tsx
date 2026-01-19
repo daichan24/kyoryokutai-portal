@@ -13,7 +13,7 @@ interface Inspection {
   reflection: string;
   futureAction: string;
   participants: string[];
-  user: { id: string; name: string };
+  user: { id: string; name: string; department?: string | null; missionType?: 'FREE' | 'MISSION' | null };
   project?: { id: string; projectName: string };
 }
 
@@ -91,7 +91,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
   // テンプレート設定から値を取得
   const recipient = templateSettings?.inspection.recipient || '長沼町長　齋　藤　良　彦　様';
   const title = templateSettings?.inspection.title || '復命書';
-  const namePrefix = templateSettings?.inspection.namePrefix || '〇〇課　地域おこし協力隊';
+  // ユーザーのdepartmentを使用、なければテンプレート設定のnamePrefixを使用
+  const department = inspection.user.department || '';
+  const namePrefixTemplate = templateSettings?.inspection.namePrefix || '〇〇課　地域おこし協力隊';
+  const namePrefix = department ? `${department}　地域おこし協力隊` : namePrefixTemplate;
   const userName = `${namePrefix}　${inspection.user.name}`;
   const text1 = templateSettings?.inspection.text1 || '次の通り復命します。';
 
@@ -100,7 +103,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       width: '210mm', 
       minHeight: '297mm',
       padding: '20mm',
-      fontFamily: "'MS Gothic', 'Yu Gothic', 'Meiryo', monospace",
+      fontFamily: "'MS Mincho', 'Yu Mincho', 'Mincho', serif",
       fontSize: '12pt',
       lineHeight: '1.8',
       margin: '0 auto',
@@ -116,7 +119,8 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
         textAlign: 'center', 
         fontSize: '18pt', 
         fontWeight: 'bold',
-        marginBottom: '40px'
+        marginBottom: '40px',
+        color: isDarkMode ? '#1f2937' : '#000000'
       }}>
         {title}
       </h1>

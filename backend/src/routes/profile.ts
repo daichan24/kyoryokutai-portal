@@ -10,6 +10,8 @@ const updateProfileSchema = z.object({
   avatarColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/i).optional(),
   avatarLetter: z.union([z.string().max(1), z.null(), z.literal('')]).optional(),
   darkMode: z.boolean().optional(),
+  department: z.string().optional().nullable(),
+  missionType: z.enum(['FREE', 'MISSION']).optional().nullable(),
 });
 
 /**
@@ -27,13 +29,15 @@ router.put('/', async (req: AuthRequest, res) => {
     }
     const data = raw.data;
 
-    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean } = {};
+    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null } = {};
     if (data.avatarColor !== undefined) updateData.avatarColor = data.avatarColor;
     if (data.avatarLetter !== undefined) {
       // 空文字列、null、undefinedの場合はnullに変換
       updateData.avatarLetter = (data.avatarLetter === '' || data.avatarLetter === null || data.avatarLetter === undefined) ? null : String(data.avatarLetter).slice(0, 1);
     }
     if (data.darkMode !== undefined) updateData.darkMode = data.darkMode;
+    if (data.department !== undefined) updateData.department = data.department === '' ? null : data.department;
+    if (data.missionType !== undefined) updateData.missionType = data.missionType;
 
     console.log('[API] Update data:', updateData);
 
@@ -44,6 +48,8 @@ router.put('/', async (req: AuthRequest, res) => {
         avatarColor: true,
         avatarLetter: true,
         darkMode: true,
+        department: true,
+        missionType: true,
       },
     });
 

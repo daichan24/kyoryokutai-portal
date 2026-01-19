@@ -18,7 +18,7 @@ interface Inspection {
   reflection: string;
   futureAction: string;
   participants: string[];
-  user: { id: string; name: string };
+  user: { id: string; name: string; department?: string | null; missionType?: 'FREE' | 'MISSION' | null };
   project?: { id: string; projectName: string };
 }
 
@@ -48,7 +48,8 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
   const [reflection, setReflection] = useState('');
   const [futureAction, setFutureAction] = useState('');
 
-  const canEdit = user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'MASTER';
+  // 作成者のみ編集可能
+  const canEdit = inspection && user && inspection.user.id === user.id;
 
   useEffect(() => {
     fetchInspection();

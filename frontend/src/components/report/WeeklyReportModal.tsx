@@ -34,6 +34,9 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
   const { user } = useAuthStore();
+  
+  // 作成者のみ編集可能
+  const canEdit = !report || (user && report.user?.id === user.id);
 
   useEffect(() => {
     if (report) {
@@ -245,6 +248,11 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
             </div>
           ) : (
             <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-6">
+              {!canEdit && (
+                <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm">
+                  この報告は作成者のみが編集できます。
+                </div>
+              )}
               {loadingSchedules && (
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
                   スケジュールから活動内容と予定を自動取得中...
@@ -257,9 +265,10 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                 onChange={(e) => setWeek(e.target.value)}
                 placeholder="2024-01"
                 required
+                disabled={!canEdit}
               />
               
-              {!report && (
+              {!report && canEdit && (
                 <div className="flex justify-end">
                   <Button
                     type="button"

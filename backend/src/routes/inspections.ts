@@ -72,7 +72,14 @@ router.get('/:id', async (req, res) => {
     const inspection = await prisma.inspection.findUnique({
       where: { id },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            department: true,
+            missionType: true,
+          },
+        },
         project: true,
       },
     });

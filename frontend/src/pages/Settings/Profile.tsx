@@ -21,12 +21,16 @@ export const ProfileSettings: React.FC = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [avatarColor, setAvatarColor] = useState('#3B82F6');
   const [avatarLetter, setAvatarLetter] = useState('');
+  const [department, setDepartment] = useState('');
+  const [missionType, setMissionType] = useState<'FREE' | 'MISSION' | ''>('');
 
   useEffect(() => {
     if (user) {
       setDarkMode(!!user.darkMode);
       setAvatarColor(user.avatarColor || '#3B82F6');
       setAvatarLetter(user.avatarLetter ?? '');
+      setDepartment(user.department || '');
+      setMissionType(user.missionType || '');
     }
   }, [user]);
 
@@ -45,7 +49,7 @@ export const ProfileSettings: React.FC = () => {
   }, [currentLinks]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean }) => {
+    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null }) => {
       const response = await api.put('/api/me/profile', data);
       return response.data;
     },
@@ -100,6 +104,8 @@ export const ProfileSettings: React.FC = () => {
       darkMode: darkMode,
       avatarColor: avatarColor,
       avatarLetter: avatarLetter === '' ? null : avatarLetter.slice(0, 1),
+      department: department === '' ? null : department,
+      missionType: missionType === '' ? null : missionType as 'FREE' | 'MISSION',
     });
   };
 
@@ -192,6 +198,31 @@ export const ProfileSettings: React.FC = () => {
               {(avatarLetter || user?.name || '').charAt(0)}
             </div>
             <span className="text-sm text-gray-500 dark:text-gray-400">プレビュー</span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">所属課</label>
+            <Input
+              type="text"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              placeholder="例: 総務課"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">復命書などで使用される「〇〇課」の部分を設定します</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ミッション型</label>
+            <select
+              value={missionType}
+              onChange={(e) => setMissionType(e.target.value as 'FREE' | 'MISSION' | '')}
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            >
+              <option value="">選択してください</option>
+              <option value="FREE">フリーミッション型</option>
+              <option value="MISSION">ミッション型</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">協力隊のタイプを選択します</p>
           </div>
         </div>
 

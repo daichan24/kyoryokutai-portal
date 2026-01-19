@@ -113,7 +113,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         width: '210mm', 
         minHeight: '297mm',
         padding: '20mm',
-        fontFamily: "'MS Gothic', 'Yu Gothic', 'Meiryo', monospace",
+        fontFamily: "'MS Mincho', 'Yu Mincho', 'Mincho', serif",
         fontSize: '12pt',
         lineHeight: '1.8',
         margin: '0 auto',
@@ -145,7 +145,8 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
           textAlign: 'center', 
           fontSize: '18pt', 
           fontWeight: 'bold',
-          marginBottom: '40px'
+          marginBottom: '40px',
+          color: isDarkMode ? '#1f2937' : '#000000'
         }}>
           {title}
         </h1>
@@ -211,7 +212,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
               width: '210mm', 
               minHeight: '297mm',
               padding: '20mm',
-              fontFamily: "'MS Gothic', 'Yu Gothic', 'Meiryo', monospace",
+              fontFamily: "'MS Mincho', 'Yu Mincho', 'Mincho', serif",
               fontSize: '12pt',
               lineHeight: '1.8',
               margin: '0 auto',
@@ -314,7 +315,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         width: '210mm', 
         minHeight: '297mm',
         padding: '20mm',
-        fontFamily: "'MS Gothic', 'Yu Gothic', 'Meiryo', monospace",
+        fontFamily: "'MS Mincho', 'Yu Mincho', 'Mincho', serif",
         fontSize: '12pt',
         lineHeight: '1.8',
         margin: '0 auto',
@@ -328,7 +329,8 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
           textAlign: 'center', 
           fontSize: '16pt', 
           fontWeight: 'bold',
-          marginBottom: '40px'
+          marginBottom: '40px',
+          color: isDarkMode ? '#1f2937' : '#000000'
         }}>
           一般社団法人まおいのはこの支援内容（{monthStr}）
         </h2>
