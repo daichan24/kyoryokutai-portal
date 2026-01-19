@@ -433,57 +433,54 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            来月の予定
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            翌月以降の活動予定
                           </label>
-                          <textarea
+                          <SimpleRichTextEditor
                             value={sheet.nextMonthPlan || ''}
-                            onChange={(e) => {
+                            onChange={(value) => {
                               const newSheets = [...memberSheets];
                               newSheets[index] = {
                                 ...sheet,
-                                nextMonthPlan: e.target.value,
+                                nextMonthPlan: value,
                               };
                               setMemberSheets(newSheets);
                             }}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            placeholder="翌月以降の活動予定を入力..."
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            業務上の質問・相談
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            勤務に関する質問など
                           </label>
-                          <textarea
+                          <SimpleRichTextEditor
                             value={sheet.workQuestions || ''}
-                            onChange={(e) => {
+                            onChange={(value) => {
                               const newSheets = [...memberSheets];
                               newSheets[index] = {
                                 ...sheet,
-                                workQuestions: e.target.value,
+                                workQuestions: value,
                               };
                               setMemberSheets(newSheets);
                             }}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            placeholder="勤務に関する質問・相談を入力..."
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            生活面の備考
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            生活面の留意事項その他
                           </label>
-                          <textarea
+                          <SimpleRichTextEditor
                             value={sheet.lifeNotes || ''}
-                            onChange={(e) => {
+                            onChange={(value) => {
                               const newSheets = [...memberSheets];
                               newSheets[index] = {
                                 ...sheet,
-                                lifeNotes: e.target.value,
+                                lifeNotes: value,
                               };
                               setMemberSheets(newSheets);
                             }}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            placeholder="生活面の留意事項その他を入力..."
                           />
                         </div>
                       </div>
