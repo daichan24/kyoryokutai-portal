@@ -64,9 +64,26 @@ export const DocumentTemplatesSettings: React.FC = () => {
     try {
       await api.put('/api/document-templates', settings);
       alert('テンプレート設定を保存しました');
+      await fetchSettings();
     } catch (error: any) {
       console.error('Failed to save template settings:', error);
       alert(error?.response?.data?.error || '保存に失敗しました');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInit = async () => {
+    if (!confirm('テンプレート設定をデフォルト値で初期化しますか？')) return;
+
+    setSaving(true);
+    try {
+      await api.post('/api/document-templates/init');
+      alert('テンプレート設定を初期化しました');
+      await fetchSettings();
+    } catch (error: any) {
+      console.error('Failed to initialize template settings:', error);
+      alert(error?.response?.data?.error || '初期化に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -89,10 +106,15 @@ export const DocumentTemplatesSettings: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">テンプレート設定</h1>
         {canEdit && (
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? '保存中...' : '保存'}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleInit} variant="outline" disabled={saving}>
+              初期化
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? '保存中...' : '保存'}
+            </Button>
+          </div>
         )}
       </div>
 
