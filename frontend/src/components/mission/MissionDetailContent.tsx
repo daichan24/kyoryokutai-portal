@@ -93,9 +93,9 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* プロジェクト（中目標）セクション */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">プロジェクト（中目標）</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">プロジェクト（中目標）</h3>
             {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
               <Button
                 size="sm"
@@ -111,19 +111,19 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
             )}
           </div>
           {projectsLoading ? (
-            <div className="text-center py-4 text-gray-500">読み込み中...</div>
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">読み込み中...</div>
           ) : projects.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">プロジェクトがありません</div>
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">プロジェクトがありません</div>
           ) : (
             <div className="space-y-2">
               {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="p-3 bg-gray-50 border border-gray-200 rounded hover:bg-gray-100 transition-colors"
+                  className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900">{project.projectName}</span>
-                    <span className="text-xs text-gray-500">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{project.projectName}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       {project.phase === 'PREPARATION' && '準備中'}
                       {project.phase === 'EXECUTION' && '実行中'}
                       {project.phase === 'COMPLETED' && '完了'}
@@ -137,9 +137,9 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
         </div>
 
         {/* タスク（小目標）セクション */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">タスク（小目標）</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（小目標）</h3>
             {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
               <Button size="sm" variant="outline" onClick={handleCreateTask}>
                 <Plus className="h-4 w-4 mr-1" />
@@ -148,32 +148,32 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
             )}
           </div>
           {tasksLoading ? (
-            <div className="text-center py-4 text-gray-500">読み込み中...</div>
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">読み込み中...</div>
           ) : tasks.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">タスクがありません</div>
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">タスクがありません</div>
           ) : (
             <div className="space-y-2">
               {tasks.map((task) => (
                 <div
                   key={task.id}
-                  className="p-3 bg-gray-50 border border-gray-200 rounded hover:bg-gray-100 transition-colors"
+                  className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       {getStatusIcon(task.status)}
-                      <span className="font-medium text-gray-900">{task.title}</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{task.title}</span>
                     </div>
                     {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleEditTask(task)}
-                          className="p-1 text-gray-500 hover:text-blue-600"
+                          className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteTask(task.id)}
-                          className="p-1 text-gray-500 hover:text-red-600"
+                          className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -181,12 +181,12 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
                     )}
                   </div>
                   {task.description && (
-                    <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{task.description}</p>
                   )}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">{getStatusLabel(task.status)}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{getStatusLabel(task.status)}</span>
                     {task.project && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         関連: {task.project.projectName}
                       </span>
                     )}

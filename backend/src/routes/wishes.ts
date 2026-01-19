@@ -247,6 +247,7 @@ router.post('/', async (req: AuthRequest, res) => {
         ...data,
         userId: req.user!.id,
         tags: data.tags || [],
+        status: data.status || 'ACTIVE', // デフォルト値を設定
       },
       include: {
         user: {
@@ -261,7 +262,8 @@ router.post('/', async (req: AuthRequest, res) => {
     res.status(201).json(wish);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      const errorMessage = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      return res.status(400).json({ error: errorMessage });
     }
     console.error('Create wish error:', error);
     res.status(500).json({ error: 'やりたいことの作成に失敗しました' });
