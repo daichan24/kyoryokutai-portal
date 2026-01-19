@@ -9,9 +9,20 @@ router.use(authenticate);
 // テンプレート設定初期化（デフォルト値を保存）
 router.post('/init', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) => {
   try {
-    const existing = await prisma.documentTemplate.findFirst({
-      orderBy: { updatedAt: 'desc' },
-    });
+    let existing = null;
+    try {
+      existing = await prisma.documentTemplate.findFirst({
+        orderBy: { updatedAt: 'desc' },
+      });
+    } catch (error: any) {
+      // テーブルが存在しない場合はエラーを返す
+      if (error?.message?.includes('does not exist') || error?.code === 'P2021') {
+        return res.status(500).json({ 
+          error: 'DocumentTemplateテーブルが存在しません。マイグレーションを実行してください。' 
+        });
+      }
+      throw error;
+    }
 
     if (existing) {
       return res.json({ message: 'テンプレート設定は既に存在します' });
@@ -52,9 +63,43 @@ router.post('/init', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, re
 // テンプレート設定取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const templates = await prisma.documentTemplate.findMany({
-      orderBy: { updatedAt: 'desc' },
-    });
+    let templates = [];
+    try {
+      templates = await prisma.documentTemplate.findMany({
+        orderBy: { updatedAt: 'desc' },
+      });
+    } catch (error: any) {
+      // テーブルが存在しない場合はデフォルト値を返す
+      if (error?.message?.includes('does not exist') || error?.code === 'P2021') {
+        return res.json({
+          weeklyReport: {
+            recipient: '○○市役所　○○課長　様',
+            title: '地域おこし協力隊活動報告',
+          },
+          monthlyReport: {
+            recipient: '長沼町長　齋　藤　良　彦　様',
+            sender: '一般社団法人まおいのはこ<br>代表理事　坂本　一志',
+            title: '長沼町地域おこし協力隊サポート業務月次報告',
+            text1: '表記業務の結果について別紙のとおり報告いたします。',
+            text2: '報告内容\n・隊員別ヒアリングシート ◯名分\n・一般社団法人まおいのはこの支援内容\n・月次勤怠表',
+            contact: '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org',
+          },
+          inspection: {
+            recipient: '長沼町長　齋　藤　良　彦　様',
+            text1: '次の通り復命します。',
+            item1: '（参考: 視察日時を記入してください）',
+            item2: '（参考: 視察先の場所を記入してください）',
+            item3: '（参考: 視察の用務内容を記入してください）',
+            item4: '（参考: 視察の目的を記入してください）',
+            item5: '（参考: 視察の内容を記入してください）',
+            item6: '（参考: 処理の経過や結果を記入してください）',
+            item7: '（参考: 所感や今後の予定を記入してください）',
+            item8: '（参考: その他の報告事項があれば記入してください）',
+          },
+        });
+      }
+      throw error;
+    }
 
     // テンプレートが存在しない場合はデフォルト値を返す
     if (templates.length === 0) {
@@ -154,17 +199,38 @@ router.put('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =>
     const data = schema.parse(req.body);
 
     // 既存のテンプレートを取得または作成
-    let template = await prisma.documentTemplate.findFirst({
-      orderBy: { updatedAt: 'desc' },
-    });
+    let template = null;
+    try {
+      template = await prisma.documentTemplate.findFirst({
+        orderBy: { updatedAt: 'desc' },
+      });
+    } catch (error: any) {
+      // テーブルが存在しない場合はエラーを返す
+      if (error?.message?.includes('does not exist') || error?.code === 'P2021') {
+        return res.status(500).json({ 
+          error: 'DocumentTemplateテーブルが存在しません。マイグレーションを実行してください。' 
+        });
+      }
+      throw error;
+    }
 
     if (!template) {
-      template = await prisma.documentTemplate.create({
-        data: {
-          templateType: 'weekly_report',
-          updatedBy: req.user!.id,
-        },
-      });
+      try {
+        template = await prisma.documentTemplate.create({
+          data: {
+            templateType: 'weekly_report',
+            updatedBy: req.user!.id,
+          },
+        });
+      } catch (error: any) {
+        // テーブルが存在しない場合はエラーを返す
+        if (error?.message?.includes('does not exist') || error?.code === 'P2021') {
+          return res.status(500).json({ 
+            error: 'DocumentTemplateテーブルが存在しません。マイグレーションを実行してください。' 
+          });
+        }
+        throw error;
+      }
     }
 
     // 更新

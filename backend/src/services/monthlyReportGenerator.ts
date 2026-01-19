@@ -12,10 +12,20 @@ interface ActivityItem {
  */
 export async function generateMonthlyReport(month: string, createdBy: string) {
   try {
-    // テンプレート設定を取得
-    const template = await prisma.documentTemplate.findFirst({
-      orderBy: { updatedAt: 'desc' },
-    });
+    // テンプレート設定を取得（テーブルが存在しない場合はスキップ）
+    let template = null;
+    try {
+      template = await prisma.documentTemplate.findFirst({
+        orderBy: { updatedAt: 'desc' },
+      });
+    } catch (error: any) {
+      // テーブルが存在しない場合はデフォルト値を使用
+      if (error?.message?.includes('does not exist') || error?.code === 'P2021') {
+        console.warn('DocumentTemplate table does not exist, using default values');
+      } else {
+        throw error;
+      }
+    }
 
     let coverRecipient = '長沼町長　齋　藤　良　彦　様';
     let coverSender = '一般社団法人まおいのはこ<br>代表理事　坂本　一志';
