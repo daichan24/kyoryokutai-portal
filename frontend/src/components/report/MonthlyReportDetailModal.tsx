@@ -54,7 +54,7 @@ interface MonthlyReportDetailModalProps {
   viewMode?: 'edit' | 'preview'; // 表示モード（デフォルトはedit）
 }
 
-type PageTab = 'cover' | 'members' | 'support' | 'full';
+type PageTab = 'cover' | 'members' | 'member' | 'support' | 'full';
 
 export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> = ({
   reportId,
@@ -68,6 +68,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   const [isEditing, setIsEditing] = useState(initialViewMode === 'edit');
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [pageTab, setPageTab] = useState<PageTab>('cover');
+  const [selectedMemberIndex, setSelectedMemberIndex] = useState<number>(0);
   const [coverRecipient, setCoverRecipient] = useState('');
   const [coverSender, setCoverSender] = useState('');
   const [memberSheets, setMemberSheets] = useState<any[]>([]);
@@ -314,7 +315,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             const memberPreview = getMemberPreviewData(index);
             if (!memberPreview) return null;
             return (
-              <div key={index} className="shadow-lg">
+              <div key={index} className="shadow-lg mb-4" style={{ borderTop: index > 0 ? '2px solid #e5e7eb' : 'none', paddingTop: index > 0 ? '1rem' : '0' }}>
                 <MonthlyReportPreview report={memberPreview} />
               </div>
             );
@@ -449,6 +450,145 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     );
   };
 
+  const renderSingleMemberSheet = (index: number) => {
+    if (index < 0 || index >= memberSheets.length) {
+      return <div className="p-6 text-gray-500 dark:text-gray-400">隊員が見つかりません</div>;
+    }
+
+    const sheet = memberSheets[index];
+
+    if (viewMode === 'preview' && previewReport) {
+      const memberPreview = getMemberPreviewData(index);
+      if (!memberPreview) return null;
+      return (
+        <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+          <div className="shadow-lg">
+            <MonthlyReportPreview report={memberPreview} />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-6 space-y-4">
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
+          <h4 className="font-medium mb-3 dark:text-gray-100">{sheet.userName}</h4>
+          {isEditing ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  今月の活動
+                </label>
+                <SimpleRichTextEditor
+                  value={sheet.thisMonthActivities ? sheet.thisMonthActivities.map((a: any) => `${a.date}: ${a.description}`).join('\n') : ''}
+                  onChange={(value) => {
+                    const newSheets = [...memberSheets];
+                    newSheets[index] = {
+                      ...sheet,
+                      thisMonthActivities: value.split('\n').filter(v => v.trim()).map(line => {
+                        const match = line.match(/^(.+?):\s*(.+)$/);
+                        if (match) {
+                          return { date: match[1], description: match[2] };
+                        }
+                        return { date: '', description: line };
+                      }),
+                    };
+                    setMemberSheets(newSheets);
+                  }}
+                  placeholder="活動内容を入力..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  翌月以降の活動予定
+                </label>
+                <SimpleRichTextEditor
+                  value={sheet.nextMonthPlan || ''}
+                  onChange={(value) => {
+                    const newSheets = [...memberSheets];
+                    newSheets[index] = {
+                      ...sheet,
+                      nextMonthPlan: value,
+                    };
+                    setMemberSheets(newSheets);
+                  }}
+                  placeholder="翌月以降の活動予定を入力..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  勤務に関する質問など
+                </label>
+                <SimpleRichTextEditor
+                  value={sheet.workQuestions || ''}
+                  onChange={(value) => {
+                    const newSheets = [...memberSheets];
+                    newSheets[index] = {
+                      ...sheet,
+                      workQuestions: value,
+                    };
+                    setMemberSheets(newSheets);
+                  }}
+                  placeholder="勤務に関する質問・相談を入力..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  生活面の留意事項その他
+                </label>
+                <SimpleRichTextEditor
+                  value={sheet.lifeNotes || ''}
+                  onChange={(value) => {
+                    const newSheets = [...memberSheets];
+                    newSheets[index] = {
+                      ...sheet,
+                      lifeNotes: value,
+                    };
+                    setMemberSheets(newSheets);
+                  }}
+                  placeholder="生活面の留意事項その他を入力..."
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sheet.thisMonthActivities && sheet.thisMonthActivities.length > 0 && (
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">今月の活動:</span>
+                  <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 ml-2 mt-1">
+                    {sheet.thisMonthActivities.map((activity: any, i: number) => (
+                      <li key={i}>
+                        {activity.date}: {activity.description}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {sheet.nextMonthPlan && (
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">来月の予定:</span>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.nextMonthPlan }} />
+                </div>
+              )}
+              {sheet.workQuestions && (
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">業務上の質問・相談:</span>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.workQuestions }} />
+                </div>
+              )}
+              {sheet.lifeNotes && (
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">生活面の備考:</span>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.lifeNotes }} />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderSupportRecords = () => {
     if (viewMode === 'preview' && supportPreviewData) {
       return (
@@ -570,7 +710,10 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
               表紙
             </button>
             <button
-              onClick={() => setPageTab('members')}
+              onClick={() => {
+                setPageTab('members');
+                setSelectedMemberIndex(0);
+              }}
               className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                 pageTab === 'members'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
@@ -579,6 +722,22 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             >
               隊員別シート
             </button>
+            {memberSheets.length > 0 && memberSheets.map((sheet: any, index: number) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setPageTab('member');
+                  setSelectedMemberIndex(index);
+                }}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                  pageTab === 'member' && selectedMemberIndex === index
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {sheet.userName || `隊員${index + 1}`}
+              </button>
+            ))}
             <button
               onClick={() => setPageTab('support')}
               className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
@@ -665,6 +824,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         <div className="flex-1 overflow-y-auto">
           {pageTab === 'cover' && renderCoverPage()}
           {pageTab === 'members' && renderMemberSheets()}
+          {pageTab === 'member' && renderSingleMemberSheet(selectedMemberIndex)}
           {pageTab === 'support' && renderSupportRecords()}
           {pageTab === 'full' && renderFullPreview()}
         </div>

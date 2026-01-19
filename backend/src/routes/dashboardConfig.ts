@@ -15,6 +15,7 @@ const dashboardConfigSchema = z.object({
       displayMode: z.enum(['view-only', 'view-with-add', 'add-only']).optional(),
       size: z.enum(['S', 'M', 'L']).optional(),
       columnSpan: z.union([z.literal(1), z.literal(2)]).optional(),
+      contactCount: z.number().int().min(1).max(3).optional(), // 町民データベースの表示人数
       order: z.number(),
     })
   ),

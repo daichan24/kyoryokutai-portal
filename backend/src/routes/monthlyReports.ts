@@ -14,7 +14,7 @@ const createMonthlyReportSchema = z.object({
 const updateMonthlyReportSchema = z.object({
   coverRecipient: z.string().optional(),
   coverSender: z.string().optional(),
-  memberSheets: z.any().optional(),
+  memberSheets: z.array(z.any()).optional(), // 配列として明示的に定義
   submittedAt: z.string().optional(),
   reason: z.string().optional(), // 変更理由（MASTERのみ）
 });

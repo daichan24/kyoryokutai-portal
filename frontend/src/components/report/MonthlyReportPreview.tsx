@@ -118,7 +118,10 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         lineHeight: '1.8',
         margin: '0 auto',
         boxSizing: 'border-box',
-        pageBreakAfter: 'always'
+        pageBreakAfter: 'always',
+        borderTop: '2px solid #e5e7eb',
+        borderBottom: '2px solid #e5e7eb',
+        marginBottom: '1rem'
       }}>
         {/* 報告日（右寄せ） */}
         <div style={{ textAlign: 'right', marginBottom: '30px' }}>
@@ -217,7 +220,11 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
               lineHeight: '1.8',
               margin: '0 auto',
               boxSizing: 'border-box',
-              pageBreakAfter: index < report.memberSheets.length - 1 ? 'always' : 'auto'
+              pageBreakAfter: index < report.memberSheets.length - 1 ? 'always' : 'auto',
+              borderTop: index > 0 ? '2px solid #e5e7eb' : '2px solid #e5e7eb',
+              borderBottom: '2px solid #e5e7eb',
+              marginTop: index > 0 ? '1rem' : '0',
+              marginBottom: '1rem'
             }}>
               {/* 協力隊活動ヒアリングシート（右寄せ） */}
               <div style={{ textAlign: 'right', marginBottom: '30px' }}>
@@ -319,7 +326,11 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         fontSize: '12pt',
         lineHeight: '1.8',
         margin: '0 auto',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        borderTop: '2px solid #e5e7eb',
+        borderBottom: '2px solid #e5e7eb',
+        marginTop: '1rem',
+        marginBottom: '1rem'
       }}>
         <div style={{ textAlign: 'right', marginBottom: '30px' }}>
           {currentDate}
