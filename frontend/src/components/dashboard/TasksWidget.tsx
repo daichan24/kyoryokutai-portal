@@ -77,7 +77,7 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
   // 追加ボタンのみモード
   if (displayMode === 'add-only') {
     return (
-      <div className="bg-white rounded-lg shadow border border-border p-6 flex items-center justify-center min-h-[200px]">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 flex items-center justify-center min-h-[200px]">
         <Link to="/tasks">
           <Button className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
@@ -90,9 +90,9 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
 
   // 表示のみ or 表示+追加ボタンモード
   return (
-    <div className="bg-white rounded-lg shadow border border-border p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">タスク</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク</h3>
         {(displayMode === 'view-with-add' || showAddButton) && (user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'MASTER') && (
           <Link to="/tasks">
             <Button size="sm" className="flex items-center gap-1">
@@ -108,30 +108,30 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
           {isLoading ? (
             <LoadingSpinner />
           ) : !allTasks || allTasks.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">タスクがありません</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">タスクがありません</p>
           ) : (
             <div className="space-y-2">
               {allTasks.map((task) => (
                 <Link
                   key={task.id}
                   to="/tasks"
-                  className="block p-2 border-2 border-gray-300 rounded hover:bg-gray-50"
+                  className="block p-2 border-2 border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {getStatusIcon(task.status)}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">
+                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
                           {task.title}
                         </p>
                         {task.project && (
-                          <p className="text-xs text-gray-500 truncate">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                             {task.project.projectName}
                           </p>
                         )}
                       </div>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700 ml-2">
+                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 ml-2">
                       {getStatusLabel(task.status)}
                     </span>
                   </div>

@@ -213,6 +213,8 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     coverRecipient,
     coverSender,
     memberSheets,
+    // supportRecordsは既存のものを保持（更新時も消えないように）
+    supportRecords: report.supportRecords || [],
   } : null;
 
   return (

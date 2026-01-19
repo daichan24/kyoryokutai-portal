@@ -63,20 +63,20 @@ export const EventsWidget: React.FC<EventsWidgetProps> = ({
   const getEventTypeColor = (type: string) => {
     switch (type) {
       case 'TOWN_OFFICIAL':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
       case 'TEAM':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
       case 'OTHER':
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
     }
   };
 
   // 追加ボタンのみモード
   if (displayMode === 'add-only') {
     return (
-      <div className="bg-white rounded-lg shadow border border-border p-6 flex items-center justify-center min-h-[200px]">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 flex items-center justify-center min-h-[200px]">
         <Link to="/events">
           <Button className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
@@ -89,9 +89,9 @@ export const EventsWidget: React.FC<EventsWidgetProps> = ({
 
   // 表示のみ or 表示+追加ボタンモード
   return (
-    <div className="bg-white rounded-lg shadow border border-border p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">イベント</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">イベント</h3>
         {(displayMode === 'view-with-add' || showAddButton) && (user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'MASTER') && (
           <Link to="/events">
             <Button size="sm" className="flex items-center gap-1">
@@ -107,27 +107,27 @@ export const EventsWidget: React.FC<EventsWidgetProps> = ({
           {isLoading ? (
             <LoadingSpinner />
           ) : !events || events.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">イベントがありません</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">イベントがありません</p>
           ) : (
             <div className="space-y-2">
               {events.map((event) => (
                 <Link
                   key={event.id}
                   to={`/events/${event.id}`}
-                  className="block p-2 border border-gray-200 rounded hover:bg-gray-50"
+                  className="block p-2 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                         {event.eventName}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <CalendarDays className="h-3 w-3 text-gray-400" />
-                        <p className="text-xs text-gray-500">
+                        <CalendarDays className="h-3 w-3 text-gray-400 dark:text-gray-500" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {formatDate(new Date(event.date))}
                         </p>
                         {event.startTime && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             {event.startTime}
                           </p>
                         )}

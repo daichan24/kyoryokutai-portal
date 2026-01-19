@@ -262,14 +262,41 @@ export const Dashboard: React.FC = () => {
     .filter((w) => w.enabled)
     .sort((a, b) => a.order - b.order) || []).slice();
 
+  // カラムルールを守るため、ウィジェットを再配置
   // 1カラム(幅広)ウィジェットが偶数番目(右側)になる場合、はみ出しを防ぐため前のウィジェットと入れ替え
-  for (let i = 1; i < enabledWidgets.length; i++) {
-    const isEvenPosition = (i + 1) % 2 === 0;
-    const isFullWidth = (enabledWidgets[i].columnSpan ?? 2) === 1;
-    if (isEvenPosition && isFullWidth) {
-      [enabledWidgets[i], enabledWidgets[i - 1]] = [enabledWidgets[i - 1], enabledWidgets[i]];
+  // また、連続する幅広ウィジェットが2つ以上ある場合は、次の行に配置
+  let currentRowPosition = 0;
+  const reorderedWidgets: WidgetConfig[] = [];
+  
+  for (let i = 0; i < enabledWidgets.length; i++) {
+    const widget = enabledWidgets[i];
+    const isFullWidth = (widget.columnSpan ?? 2) === 1;
+    
+    if (isFullWidth) {
+      // 幅広ウィジェットは常に新しい行の先頭に配置
+      if (currentRowPosition > 0) {
+        // 現在の行が空でない場合は、次の行に配置
+        currentRowPosition = 0;
+      }
+      reorderedWidgets.push(widget);
+      currentRowPosition += 2; // 幅広ウィジェットは2カラム分を占める
+    } else {
+      // 通常のウィジェット
+      if (currentRowPosition >= 2) {
+        // 現在の行が満杯の場合は、次の行に配置
+        currentRowPosition = 0;
+      }
+      reorderedWidgets.push(widget);
+      currentRowPosition += 1; // 通常のウィジェットは1カラム分を占める
+    }
+    
+    // 行が満杯になったら次の行へ
+    if (currentRowPosition >= 2) {
+      currentRowPosition = 0;
     }
   }
+  
+  enabledWidgets = reorderedWidgets;
 
   return (
     <div className="space-y-6">
