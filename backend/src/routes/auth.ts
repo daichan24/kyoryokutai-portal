@@ -84,11 +84,26 @@ router.post('/login', async (req, res) => {
   try {
     const data = loginSchema.parse(req.body);
 
-    // まず、基本的なフィールドのみでユーザーを取得（存在しないカラムを避ける）
+    // 存在するフィールドのみを明示的に指定して取得（wishesEnabledとdisplayOrderは除外）
     let user: any;
     try {
       user = await prisma.user.findUnique({
         where: { email: data.email },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          password: true,
+          role: true,
+          missionType: true,
+          department: true,
+          termStart: true,
+          termEnd: true,
+          avatarColor: true,
+          avatarLetter: true,
+          darkMode: true,
+          createdAt: true,
+        },
       });
     } catch (dbError: any) {
       // P2022エラー（カラムが存在しない）の場合、生SQLで取得を試みる
@@ -123,7 +138,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // displayOrderとwishesEnabledが存在しない場合でもエラーにならないようにする
+    // displayOrderとwishesEnabledは常にデフォルト値を設定（データベースに存在しない場合でも）
     const userResponse: any = {
       id: user.id,
       name: user.name,
@@ -136,21 +151,10 @@ router.post('/login', async (req, res) => {
       avatarColor: user.avatarColor,
       avatarLetter: user.avatarLetter,
       darkMode: user.darkMode,
+      displayOrder: 0, // デフォルト値
+      wishesEnabled: true, // デフォルト値
       createdAt: user.createdAt,
     };
-
-    // フィールドが存在する場合のみ追加（存在しない場合はデフォルト値を設定）
-    if ('displayOrder' in user) {
-      userResponse.displayOrder = (user as any).displayOrder ?? 0;
-    } else {
-      userResponse.displayOrder = 0;
-    }
-
-    if ('wishesEnabled' in user) {
-      userResponse.wishesEnabled = (user as any).wishesEnabled ?? true;
-    } else {
-      userResponse.wishesEnabled = true;
-    }
 
     res.json({ user: userResponse, token });
   } catch (error) {
@@ -170,11 +174,27 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', authenticate, async (req: AuthRequest, res) => {
   try {
-    // まず、基本的なフィールドのみでユーザーを取得（存在しないカラムを避ける）
+    // 存在するフィールドのみを明示的に指定して取得（wishesEnabledとdisplayOrderは除外）
     let user: any;
     try {
       user = await prisma.user.findUnique({
         where: { id: req.user!.id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          missionType: true,
+          department: true,
+          termStart: true,
+          termEnd: true,
+          avatarColor: true,
+          avatarLetter: true,
+          darkMode: true,
+          snsLinks: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
     } catch (dbError: any) {
       // P2022エラー（カラムが存在しない）の場合、生SQLで取得を試みる
@@ -197,7 +217,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // レスポンスオブジェクトを構築（存在しないフィールドはデフォルト値を設定）
+    // displayOrderとwishesEnabledは常にデフォルト値を設定（データベースに存在しない場合でも）
     const userResponse: any = {
       id: user.id,
       name: user.name,
@@ -210,26 +230,12 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
       avatarColor: user.avatarColor,
       avatarLetter: user.avatarLetter,
       darkMode: user.darkMode,
+      displayOrder: 0, // デフォルト値
+      wishesEnabled: true, // デフォルト値
+      snsLinks: user.snsLinks,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
-
-    // フィールドが存在する場合のみ追加（存在しない場合はデフォルト値を設定）
-    if ('displayOrder' in user) {
-      userResponse.displayOrder = (user as any).displayOrder ?? 0;
-    } else {
-      userResponse.displayOrder = 0;
-    }
-
-    if ('wishesEnabled' in user) {
-      userResponse.wishesEnabled = (user as any).wishesEnabled ?? true;
-    } else {
-      userResponse.wishesEnabled = true;
-    }
-
-    if ('snsLinks' in user) {
-      userResponse.snsLinks = (user as any).snsLinks;
-    }
 
     res.json(userResponse);
   } catch (error) {
