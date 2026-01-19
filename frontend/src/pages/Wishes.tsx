@@ -33,6 +33,10 @@ export const Wishes: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>('default');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedWish, setSelectedWish] = useState<Wish | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailWish, setDetailWish] = useState<Wish | null>(null);
+  const [showReflectionModal, setShowReflectionModal] = useState(false);
+  const [completedWish, setCompletedWish] = useState<Wish | null>(null);
 
   // 統計情報を取得
   const { data: stats } = useQuery({
@@ -63,9 +67,13 @@ export const Wishes: React.FC = () => {
     mutationFn: async (id: string) => {
       return api.post(`/api/wishes/${id}/complete`);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['wishes'] });
       queryClient.invalidateQueries({ queryKey: ['wishes', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['wishes', 'next'] });
+      // 完了後に振り返りモーダルを表示
+      setCompletedWish(data.data);
+      setShowReflectionModal(true);
     },
   });
 
