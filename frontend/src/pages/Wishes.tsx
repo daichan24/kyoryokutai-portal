@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
@@ -43,20 +43,62 @@ export const Wishes: React.FC = () => {
   const [completedWish, setCompletedWish] = useState<Wish | null>(null);
   const [members, setMembers] = useState<Array<{ id: string; name: string }>>([]);
 
+  // メンバー一覧を取得（メンバー以外のみ）
+  useEffect(() => {
+    const loadMembers = async () => {
+      if (user?.role === 'MEMBER') {
+        setMembers([]);
+        return;
+      }
+      
+      try {
+        const response = await api.get('/api/users');
+        const memberUsers = response.data
+          .filter((u: any) => u.role === 'MEMBER' && u.name !== '佐藤大地')
+          .sort((a: any, b: any) => {
+            const orderA = a.displayOrder || 0;
+            const orderB = b.displayOrder || 0;
+            if (orderA !== orderB) {
+              return orderA - orderB;
+            }
+            return (a.name || '').localeCompare(b.name || '');
+          });
+        setMembers(memberUsers);
+        // 閲覧モードでメンバーが選択されていない場合は、最初のメンバーを選択
+        if (viewMode === 'view' && !selectedUserId && memberUsers.length > 0) {
+          setSelectedUserId(memberUsers[0].id);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+        setMembers([]);
+      }
+    };
+    loadMembers();
+  }, [user?.role, viewMode, selectedUserId]);
+
   // 統計情報を取得
   const { data: stats } = useQuery({
-    queryKey: ['wishes', 'stats'],
+    queryKey: ['wishes', 'stats', viewMode === 'view' ? selectedUserId : user?.id],
     queryFn: async () => {
-      const response = await api.get('/api/wishes/stats');
+      const params = new URLSearchParams();
+      if (viewMode === 'view' && selectedUserId) {
+        params.append('userId', selectedUserId);
+      }
+      const url = `/api/wishes/stats${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await api.get(url);
       return response.data;
     },
+    enabled: viewMode === 'personal' || (viewMode === 'view' && selectedUserId !== ''),
   });
 
   // やりたいこと一覧を取得
   const { data: wishes, isLoading } = useQuery<Wish[]>({
-    queryKey: ['wishes', statusFilter, categoryFilter, searchQuery, sortBy],
+    queryKey: ['wishes', viewMode === 'view' ? selectedUserId : user?.id, statusFilter, categoryFilter, searchQuery, sortBy],
     queryFn: async () => {
       const params = new URLSearchParams();
+      if (viewMode === 'view' && selectedUserId) {
+        params.append('userId', selectedUserId);
+      }
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (categoryFilter !== 'all') params.append('category', categoryFilter);
       if (searchQuery) params.append('search', searchQuery);
@@ -66,6 +108,7 @@ export const Wishes: React.FC = () => {
       const response = await api.get(url);
       return response.data;
     },
+    enabled: viewMode === 'personal' || (viewMode === 'view' && selectedUserId !== ''),
   });
 
   const completeMutation = useMutation({
@@ -212,11 +255,59 @@ export const Wishes: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">やりたいこと100</h1>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          新規追加
-        </Button>
+        <div className="flex gap-2">
+          {user?.role !== 'MEMBER' && (
+            <div className="flex gap-2 border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
+              <button
+                onClick={() => setViewMode('view')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  viewMode === 'view'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                閲覧
+              </button>
+              <button
+                onClick={() => setViewMode('personal')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  viewMode === 'personal'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                個人
+              </button>
+            </div>
+          )}
+          {viewMode === 'personal' && (
+            <Button onClick={handleCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              新規追加
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* メンバー選択（閲覧モード時のみ） */}
+      {viewMode === 'view' && members.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            メンバーを選択
+          </label>
+          <select
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          >
+            {members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* 統計情報 */}
       {stats && (
