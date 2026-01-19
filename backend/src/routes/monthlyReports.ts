@@ -69,7 +69,8 @@ router.post('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =
       return res.status(400).json({ error: error.errors });
     }
     console.error('Create monthly report error:', error);
-    res.status(500).json({ error: '月次報告の作成に失敗しました' });
+    const errorMessage = error instanceof Error ? error.message : '月次報告の作成に失敗しました';
+    res.status(500).json({ error: errorMessage });
   }
 });
 

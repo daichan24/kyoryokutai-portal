@@ -11,115 +11,93 @@ interface ActivityItem {
  * その月の支援記録を自動的に含める
  */
 export async function generateMonthlyReport(month: string, createdBy: string) {
-  // テンプレート設定を取得
-  const template = await prisma.documentTemplate.findFirst({
-    orderBy: { updatedAt: 'desc' },
-  });
-
-  let coverRecipient = '長沼町長　齋　藤　良　彦　様';
-  let coverSender = '一般社団法人まおいのはこ<br>代表理事　坂本　一志';
-
-  if (template) {
-    if (template.monthlyReportRecipient) coverRecipient = template.monthlyReportRecipient;
-    if (template.monthlyReportSender) coverSender = template.monthlyReportSender;
-  }
-
-  const users = await prisma.user.findMany({
-    where: { role: 'MEMBER' },
-  });
-
-  const memberSheets = [];
-
-  for (const user of users) {
-    const activities = await extractMonthlyActivities(user.id, month);
-
-    memberSheets.push({
-      userId: user.id,
-      userName: user.name,
-      missionType: user.missionType,
-      thisMonthActivities: activities,
-      nextMonthPlan: '',
-      workQuestions: '',
-      lifeNotes: '',
+  try {
+    // テンプレート設定を取得
+    const template = await prisma.documentTemplate.findFirst({
+      orderBy: { updatedAt: 'desc' },
     });
-  }
 
-  // その月の支援記録を取得して、月次報告に紐付け
-  const startDate = startOfMonth(new Date(`${month}-01`));
-  const endDate = endOfMonth(startDate);
+    let coverRecipient = '長沼町長　齋　藤　良　彦　様';
+    let coverSender = '一般社団法人まおいのはこ<br>代表理事　坂本　一志';
 
-  // その月の支援記録を取得（まだ月次報告に紐付けられていないもの）
-  const allSupportRecords = await prisma.supportRecord.findMany({
-    where: {
-      supportDate: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
+    if (template) {
+      if (template.monthlyReportRecipient) coverRecipient = template.monthlyReportRecipient;
+      if (template.monthlyReportSender) coverSender = template.monthlyReportSender;
+    }
+
+    const users = await prisma.user.findMany({
+      where: { role: 'MEMBER' },
+    });
+
+    const memberSheets = [];
+
+    for (const user of users) {
+      try {
+        const activities = await extractMonthlyActivities(user.id, month);
+
+        memberSheets.push({
+          userId: user.id,
+          userName: user.name,
+          missionType: user.missionType,
+          thisMonthActivities: activities,
+          nextMonthPlan: '',
+          workQuestions: '',
+          lifeNotes: '',
+        });
+      } catch (error) {
+        console.error(`Error extracting activities for user ${user.id}:`, error);
+        // エラーが発生しても空の活動リストで続行
+        memberSheets.push({
+          userId: user.id,
+          userName: user.name,
+          missionType: user.missionType,
+          thisMonthActivities: [],
+          nextMonthPlan: '',
+          workQuestions: '',
+          lifeNotes: '',
+        });
+      }
+    }
+
+    // その月の支援記録を取得して、月次報告に紐付け
+    const startDate = startOfMonth(new Date(`${month}-01`));
+    const endDate = endOfMonth(startDate);
+
+    // その月の支援記録を取得（まだ月次報告に紐付けられていないもの）
+    const allSupportRecords = await prisma.supportRecord.findMany({
+      where: {
+        supportDate: {
+          gte: startDate,
+          lte: endDate,
         },
       },
-    },
-    orderBy: {
-      supportDate: 'asc',
-    },
-  });
-
-  // 月次報告に紐付けられていないもの（nullまたは空文字列）をフィルタリング
-  const supportRecords = allSupportRecords.filter(record => 
-    !record.monthlyReportId || record.monthlyReportId === ''
-  );
-
-  // 月次報告を作成
-  const report = await prisma.monthlyReport.create({
-    data: {
-      month,
-      createdBy,
-      coverRecipient,
-      coverSender,
-      memberSheets: memberSheets as any,
-    },
-    include: {
-      creator: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-      supportRecords: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-            },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
           },
         },
-        orderBy: {
-          supportDate: 'asc',
-        },
       },
-    },
-  });
-
-  // 支援記録を月次報告に紐付け
-  if (supportRecords.length > 0) {
-    await prisma.supportRecord.updateMany({
-      where: {
-        id: { in: supportRecords.map(r => r.id) },
-      },
-      data: {
-        monthlyReportId: report.id,
+      orderBy: {
+        supportDate: 'asc',
       },
     });
 
-    // 紐付け後の支援記録を再取得
-    const updatedReport = await prisma.monthlyReport.findUnique({
-      where: { id: report.id },
+    // 月次報告に紐付けられていないもの（nullまたは空文字列）をフィルタリング
+    const supportRecords = allSupportRecords.filter(record => 
+      !record.monthlyReportId || record.monthlyReportId === ''
+    );
+
+    // 月次報告を作成
+    const report = await prisma.monthlyReport.create({
+      data: {
+        month,
+        createdBy,
+        coverRecipient,
+        coverSender,
+        memberSheets: memberSheets as any,
+      },
       include: {
         creator: {
           select: {
@@ -143,10 +121,51 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
       },
     });
 
-    return updatedReport || report;
-  }
+    // 支援記録を月次報告に紐付け
+    if (supportRecords.length > 0) {
+      await prisma.supportRecord.updateMany({
+        where: {
+          id: { in: supportRecords.map(r => r.id) },
+        },
+        data: {
+          monthlyReportId: report.id,
+        },
+      });
 
-  return report;
+      // 紐付け後の支援記録を再取得
+      const updatedReport = await prisma.monthlyReport.findUnique({
+        where: { id: report.id },
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          supportRecords: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+            orderBy: {
+              supportDate: 'asc',
+            },
+          },
+        },
+      });
+
+      return updatedReport || report;
+    }
+
+    return report;
+  } catch (error) {
+    console.error('Error in generateMonthlyReport:', error);
+    throw new Error(`月次報告の生成中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+  }
 }
 
 /**
@@ -166,11 +185,18 @@ async function extractMonthlyActivities(
         gte: startDate,
         lte: endDate,
       },
-      project: {
-        projectName: {
-          not: '役場業務',
+      OR: [
+        {
+          project: null,
         },
-      },
+        {
+          project: {
+            projectName: {
+              not: '役場業務',
+            },
+          },
+        },
+      ],
     },
     include: {
       project: true,
@@ -194,18 +220,20 @@ async function extractMonthlyActivities(
 
   for (const [dateKey, daySchedules] of grouped.entries()) {
     const sorted = daySchedules.sort((a, b) => {
-      const durationA = calculateDuration(a.startTime, a.endTime);
-      const durationB = calculateDuration(b.startTime, b.endTime);
+      const durationA = calculateDuration(a.startTime || '', a.endTime || '');
+      const durationB = calculateDuration(b.startTime || '', b.endTime || '');
       return durationB - durationA;
     });
 
     const topActivities = sorted.slice(0, 2);
 
     for (const activity of topActivities) {
-      important.push({
-        date: format(new Date(dateKey), 'd日'),
-        description: activity.activityDescription,
-      });
+      if (activity.activityDescription) {
+        important.push({
+          date: format(new Date(dateKey), 'd日'),
+          description: activity.activityDescription,
+        });
+      }
     }
   }
 
@@ -215,14 +243,27 @@ async function extractMonthlyActivities(
 /**
  * 時間の長さを分で計算
  */
-function calculateDuration(startTime: string, endTime: string): number {
-  const [startHour, startMinute] = startTime.split(':').map(Number);
-  const [endHour, endMinute] = endTime.split(':').map(Number);
+function calculateDuration(startTime: string | null, endTime: string | null): number {
+  if (!startTime || !endTime) {
+    return 0;
+  }
 
-  const startMinutes = startHour * 60 + startMinute;
-  const endMinutes = endHour * 60 + endMinute;
+  try {
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
 
-  return endMinutes - startMinutes;
+    if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
+      return 0;
+    }
+
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+
+    return endMinutes - startMinutes;
+  } catch (error) {
+    console.error('Error calculating duration:', error);
+    return 0;
+  }
 }
 
 /**
