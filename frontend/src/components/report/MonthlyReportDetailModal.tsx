@@ -348,11 +348,10 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   差出人
                 </label>
-                <textarea
+                <SimpleRichTextEditor
                   value={coverSender}
-                  onChange={(e) => setCoverSender(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  onChange={setCoverSender}
+                  placeholder="差出人を入力..."
                 />
               </div>
             </div>
@@ -366,7 +365,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
               </div>
               <div>
                 <span className="text-gray-600 dark:text-gray-400">差出人:</span>
-                <p className="text-gray-900 dark:text-gray-100 whitespace-pre-line">{report.coverSender || '未設定'}</p>
+                <div className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: report.coverSender || '未設定' }} />
               </div>
             </div>
           )}

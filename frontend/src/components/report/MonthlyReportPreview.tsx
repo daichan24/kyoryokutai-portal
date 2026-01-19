@@ -132,7 +132,12 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
         {/* 差出人（右寄せ） */}
         <div style={{ textAlign: 'right', marginBottom: '40px' }}>
-          <div dangerouslySetInnerHTML={{ __html: sender }} />
+          {sender.split('<br>').map((line, i) => (
+            <React.Fragment key={i}>
+              {line}
+              {i < sender.split('<br>').length - 1 && <br />}
+            </React.Fragment>
+          ))}
         </div>
 
         {/* タイトル */}

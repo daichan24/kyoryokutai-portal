@@ -6,6 +6,49 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 const router = Router();
 router.use(authenticate);
 
+// テンプレート設定初期化（デフォルト値を保存）
+router.post('/init', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) => {
+  try {
+    const existing = await prisma.documentTemplate.findFirst({
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (existing) {
+      return res.json({ message: 'テンプレート設定は既に存在します' });
+    }
+
+    const template = await prisma.documentTemplate.create({
+      data: {
+        templateType: 'weekly_report',
+        weeklyReportRecipient: '○○市役所　○○課長　様',
+        weeklyReportTitle: '地域おこし協力隊活動報告',
+        monthlyReportRecipient: '長沼町長　齋　藤　良　彦　様',
+        monthlyReportSender: '一般社団法人まおいのはこ<br>代表理事　坂本　一志',
+        monthlyReportTitle: '長沼町地域おこし協力隊サポート業務月次報告',
+        monthlyReportText1: '表記業務の結果について別紙のとおり報告いたします。',
+        monthlyReportText2: '報告内容\n・隊員別ヒアリングシート ◯名分\n・一般社団法人まおいのはこの支援内容\n・月次勤怠表',
+        monthlyReportContact: '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org',
+        inspectionRecipient: '長沼町長　齋　藤　良　彦　様',
+        inspectionText1: '次の通り復命します。',
+        inspectionItem1: '（参考: 視察日時を記入してください）',
+        inspectionItem2: '（参考: 視察先の場所を記入してください）',
+        inspectionItem3: '（参考: 視察の用務内容を記入してください）',
+        inspectionItem4: '（参考: 視察の目的を記入してください）',
+        inspectionItem5: '（参考: 視察の内容を記入してください）',
+        inspectionItem6: '（参考: 処理の経過や結果を記入してください）',
+        inspectionItem7: '（参考: 所感や今後の予定を記入してください）',
+        inspectionItem8: '（参考: その他の報告事項があれば記入してください）',
+        updatedBy: req.user!.id,
+      },
+    });
+
+    res.json(template);
+  } catch (error) {
+    console.error('Init document templates error:', error);
+    res.status(500).json({ error: 'Failed to initialize document templates' });
+  }
+});
+
 // テンプレート設定取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
