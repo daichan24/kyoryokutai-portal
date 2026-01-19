@@ -21,10 +21,10 @@ model User {
   termEnd     DateTime?
 
   // カスタマイズ
-  avatarColor  String  @default("#3B82F6")
-  avatarLetter String? // アイコンに表示する1文字（未設定時は名前の頭文字）
-  darkMode    Boolean @default(false)
-  displayOrder Int    @default(0) // 表示順（メンバー以外が設定可能）
+  avatarColor   String  @default("#3B82F6")
+  avatarLetter  String? // アイコンに表示する1文字（未設定時は名前の頭文字）
+  darkMode      Boolean @default(false)
+  displayOrder  Int     @default(0) // 表示順（メンバー以外が設定可能）
   wishesEnabled Boolean @default(true) // やりたいこと100の表示/非表示
 
   // Phase 1 Relations
@@ -70,7 +70,7 @@ model User {
   // 協力隊催促関連
   nudgeDocumentsUpdated NudgeDocument[] @relation("NudgeUpdater")
   nudgeRevisions        NudgeRevision[] @relation("NudgeRevisionUpdater")
-  
+
   // テンプレート設定関連
   documentTemplatesUpdated DocumentTemplate[] @relation("TemplateUpdater")
 
@@ -111,7 +111,7 @@ model Schedule {
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   taskId String?
-  task   Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
 
   activityDescription String   @db.Text
   participants        String[] // User IDの配列（後方互換性のため残す）
@@ -183,11 +183,11 @@ model Mission {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  missionName      String
-  missionType      MissionTypeEnum @default(PRIMARY)
-  targetPercentage Int             @default(100)
-  startDate        DateTime?       @db.Date
-  endDate          DateTime?       @db.Date
+  missionName       String
+  missionType       MissionTypeEnum @default(PRIMARY)
+  targetPercentage  Int             @default(100)
+  startDate         DateTime?       @db.Date
+  endDate           DateTime?       @db.Date
   achievementBorder String?         @db.Text
 
   approvalStatus  ApprovalStatus @default(DRAFT)
@@ -486,7 +486,7 @@ model Event {
   creator   User   @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Cascade)
 
   updatedBy String?
-  updater   User?  @relation("EventUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+  updater   User?   @relation("EventUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
 
   participations EventParticipation[]
 
@@ -737,13 +737,13 @@ model SystemConfig {
 // ========================================
 
 model DocumentTemplate {
-  id        String   @id @default(uuid())
+  id           String @id @default(uuid())
   templateType String @unique // 'weekly_report' | 'monthly_report' | 'inspection'
-  
+
   // 週次報告テンプレート設定
   weeklyReportRecipient String? // 宛先
   weeklyReportTitle     String? // タイトル
-  
+
   // 月次報告テンプレート設定
   monthlyReportRecipient String? // 宛先
   monthlyReportSender    String? // 差出人
@@ -751,24 +751,24 @@ model DocumentTemplate {
   monthlyReportText1     String? // テキスト1
   monthlyReportText2     String? // テキスト2
   monthlyReportContact   String? // 担当者情報
-  
+
   // 復命書テンプレート設定
-  inspectionRecipient    String? // 宛先
-  inspectionTitle        String? // タイトル
-  inspectionNamePrefix   String? // 氏名のプレフィックス（例：〇〇課　地域おこし協力隊）
-  inspectionText1        String? // テキスト1
-  inspectionItem1        String? // 項目1（日時）の参考テキスト
-  inspectionItem2        String? // 項目2（場所）の参考テキスト
-  inspectionItem3        String? // 項目3（用務）の参考テキスト
-  inspectionItem4        String? // 項目4（目的）の参考テキスト
-  inspectionItem5        String? // 項目5（内容）の参考テキスト
-  inspectionItem6        String? // 項目6（処理てん末）の参考テキスト
-  inspectionItem7        String? // 項目7（所感・今後）の参考テキスト
-  inspectionItem8        String? // 項目8（その他報告）の参考テキスト
-  
+  inspectionRecipient  String? // 宛先
+  inspectionTitle      String? // タイトル
+  inspectionNamePrefix String? // 氏名のプレフィックス（例：〇〇課　地域おこし協力隊）
+  inspectionText1      String? // テキスト1
+  inspectionItem1      String? // 項目1（日時）の参考テキスト
+  inspectionItem2      String? // 項目2（場所）の参考テキスト
+  inspectionItem3      String? // 項目3（用務）の参考テキスト
+  inspectionItem4      String? // 項目4（目的）の参考テキスト
+  inspectionItem5      String? // 項目5（内容）の参考テキスト
+  inspectionItem6      String? // 項目6（処理てん末）の参考テキスト
+  inspectionItem7      String? // 項目7（所感・今後）の参考テキスト
+  inspectionItem8      String? // 項目8（その他報告）の参考テキスト
+
   updatedBy String?
   updater   User?   @relation("TemplateUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -998,26 +998,26 @@ enum WishCheckinType {
 }
 
 model Wish {
-  id          String        @id @default(uuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  title       String        // 必須、短い
-  category    String?       // 任意：文字列（自由入力）
-  status      WishStatus    @default(ACTIVE)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String // 必須、短い
+  category    String? // 任意：文字列（自由入力）
+  status      WishStatus      @default(ACTIVE)
   difficulty  WishDifficulty?
   estimate    WishEstimate?
   priority    WishPriority?
-  dueMonth    Int?          // 1..12（日付ではなく月まで）
-  tags        String[]      // 文字列配列
-  memo        String?       @db.Text
+  dueMonth    Int? // 1..12（日付ではなく月まで）
+  tags        String[] // 文字列配列
+  memo        String?         @db.Text
   completedAt DateTime?
-  
-  checkins    WishCheckin[]
-  
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  
+
+  checkins WishCheckin[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([userId])
   @@index([status])
   @@index([dueMonth])
@@ -1025,17 +1025,17 @@ model Wish {
 }
 
 model WishCheckin {
-  id        String          @id @default(uuid())
-  wishId    String
-  wish      Wish            @relation(fields: [wishId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type      WishCheckinType
-  content   String          @db.Text
-  
-  createdAt DateTime        @default(now())
-  
+  id     String @id @default(uuid())
+  wishId String
+  wish   Wish   @relation(fields: [wishId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    WishCheckinType
+  content String          @db.Text
+
+  createdAt DateTime @default(now())
+
   @@index([wishId])
   @@index([userId])
   @@index([createdAt])

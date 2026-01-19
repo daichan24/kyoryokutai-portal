@@ -266,7 +266,14 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: errorMessage });
     }
     console.error('Create wish error:', error);
-    res.status(500).json({ error: 'やりたいことの作成に失敗しました' });
+    // より詳細なエラー情報を返す
+    const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Error details:', { errorMessage, errorStack, body: req.body });
+    res.status(500).json({ 
+      error: 'やりたいことの作成に失敗しました',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 });
 
