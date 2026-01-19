@@ -385,16 +385,18 @@ export const Goals: React.FC = () => {
                     {/* 小目標一覧 */}
                     {expandedMidGoals.has(midGoal.id) && (
                       <div className="bg-gray-50 px-4 pb-4">
-                        <div className="mb-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCreateSubGoal(midGoal.id)}
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            小目標を追加
-                          </Button>
-                        </div>
+                        {viewMode === 'create' && (
+                          <div className="mb-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCreateSubGoal(midGoal.id)}
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              小目標を追加
+                            </Button>
+                          </div>
+                        )}
                         {midGoal.subGoals.map((subGoal) => (
                           <div key={subGoal.id} className="mt-3 bg-white border border-gray-200 rounded-lg overflow-hidden">
                             {/* 小目標ヘッダー */}
