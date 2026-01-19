@@ -233,9 +233,10 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
               {/* 今月の主な活動内容 */}
               <div style={{ marginBottom: '30px' }}>
-                <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+                <div style={{ 
                   fontWeight: 'bold', 
-                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+                  color: isDarkMode ? '#f3f4f6' : '#000000',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -256,9 +257,10 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
               {/* 翌月以降の活動予定 */}
               <div style={{ marginBottom: '30px' }}>
-                <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+                <div style={{ 
                   fontWeight: 'bold', 
-                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+                  color: isDarkMode ? '#f3f4f6' : '#000000',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -271,9 +273,10 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
               {/* 勤務に関する質問など */}
               <div style={{ marginBottom: '30px' }}>
-                <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+                <div style={{ 
                   fontWeight: 'bold', 
-                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+                  color: isDarkMode ? '#f3f4f6' : '#000000',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -286,9 +289,10 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
               {/* 生活面の留意事項その他 */}
               <div style={{ marginBottom: '30px' }}>
-                <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+                <div style={{ 
                   fontWeight: 'bold', 
-                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+                  color: isDarkMode ? '#f3f4f6' : '#000000',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>

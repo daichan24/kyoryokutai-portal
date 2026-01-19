@@ -9,7 +9,20 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuthStore();
-  const version = import.meta.env.VITE_BUILD_ID || 'dev-local';
+  const [version, setVersion] = React.useState<string>('dev-local');
+
+  React.useEffect(() => {
+    // version.jsonからバージョンを読み込む
+    fetch('/version.json')
+      .then(res => res.json())
+      .then(data => {
+        setVersion(`${data.major}.${data.minor}`);
+      })
+      .catch(() => {
+        // フォールバック: 環境変数から取得
+        setVersion(import.meta.env.VITE_BUILD_ID || 'dev-local');
+      });
+  }, []);
 
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-border dark:border-gray-700 shadow-sm">

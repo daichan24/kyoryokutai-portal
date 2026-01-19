@@ -143,9 +143,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 1. 日時 */}
       <div style={{ marginBottom: '20px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -159,9 +160,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 2. 場所 */}
       <div style={{ marginBottom: '20px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -174,9 +176,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 3. 用務 */}
       <div style={{ marginBottom: '20px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -189,9 +192,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 4. 目的 */}
       <div style={{ marginBottom: '20px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -204,9 +208,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 5. 内容 */}
       <div style={{ marginBottom: '20px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -219,9 +224,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 6. 処理てん末 */}
       <div style={{ marginBottom: '20px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -234,9 +240,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 7. 所感・今後 */}
       <div style={{ marginBottom: '20px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -249,9 +256,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 8. その他報告 */}
       <div style={{ marginBottom: '20px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '10px'
         }}>

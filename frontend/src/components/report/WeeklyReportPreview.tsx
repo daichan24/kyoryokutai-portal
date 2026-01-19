@@ -112,9 +112,10 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
 
       {/* 1. 活動内容（先週の振り返り） */}
       <div style={{ marginBottom: '30px' }}>
-        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+        <div style={{ 
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+          color: isDarkMode ? '#f3f4f6' : '#000000',
           padding: '8px',
           marginBottom: '15px'
         }}>

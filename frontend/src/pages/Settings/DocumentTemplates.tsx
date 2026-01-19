@@ -48,10 +48,68 @@ export const DocumentTemplatesSettings: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await api.get<TemplateSettings>('/api/document-templates');
-      setSettings(response.data);
+      const response = await api.get('/api/document-templates');
+      // APIレスポンスの形式を確認
+      if (response.data && (response.data.weeklyReport || response.data.monthlyReport || response.data.inspection)) {
+        setSettings(response.data as TemplateSettings);
+      } else {
+        // デフォルト値を設定
+        setSettings({
+          weeklyReport: {
+            recipient: '○○市役所　○○課長　様',
+            title: '地域おこし協力隊活動報告',
+          },
+          monthlyReport: {
+            recipient: '長沼町長　齋　藤　良　彦　様',
+            sender: '一般社団法人まおいのはこ<br>代表理事　坂本　一志',
+            title: '長沼町地域おこし協力隊サポート業務月次報告',
+            text1: '表記業務の結果について別紙のとおり報告いたします。',
+            text2: '報告内容\n・隊員別ヒアリングシート ◯名分\n・一般社団法人まおいのはこの支援内容\n・月次勤怠表',
+            contact: '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org',
+          },
+          inspection: {
+            recipient: '長沼町長　齋　藤　良　彦　様',
+            text1: '次の通り復命します。',
+            item1: '（参考: 視察日時を記入してください）',
+            item2: '（参考: 視察先の場所を記入してください）',
+            item3: '（参考: 視察の用務内容を記入してください）',
+            item4: '（参考: 視察の目的を記入してください）',
+            item5: '（参考: 視察の内容を記入してください）',
+            item6: '（参考: 処理の経過や結果を記入してください）',
+            item7: '（参考: 所感や今後の予定を記入してください）',
+            item8: '（参考: その他の報告事項があれば記入してください）',
+          },
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch template settings:', error);
+      // エラー時もデフォルト値を設定
+      setSettings({
+        weeklyReport: {
+          recipient: '○○市役所　○○課長　様',
+          title: '地域おこし協力隊活動報告',
+        },
+        monthlyReport: {
+          recipient: '長沼町長　齋　藤　良　彦　様',
+          sender: '一般社団法人まおいのはこ<br>代表理事　坂本　一志',
+          title: '長沼町地域おこし協力隊サポート業務月次報告',
+          text1: '表記業務の結果について別紙のとおり報告いたします。',
+          text2: '報告内容\n・隊員別ヒアリングシート ◯名分\n・一般社団法人まおいのはこの支援内容\n・月次勤怠表',
+          contact: '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org',
+        },
+        inspection: {
+          recipient: '長沼町長　齋　藤　良　彦　様',
+          text1: '次の通り復命します。',
+          item1: '（参考: 視察日時を記入してください）',
+          item2: '（参考: 視察先の場所を記入してください）',
+          item3: '（参考: 視察の用務内容を記入してください）',
+          item4: '（参考: 視察の目的を記入してください）',
+          item5: '（参考: 視察の内容を記入してください）',
+          item6: '（参考: 処理の経過や結果を記入してください）',
+          item7: '（参考: 所感や今後の予定を記入してください）',
+          item8: '（参考: その他の報告事項があれば記入してください）',
+        },
+      });
     } finally {
       setLoading(false);
     }

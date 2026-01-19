@@ -12,17 +12,16 @@ interface ActivityItem {
  */
 export async function generateMonthlyReport(month: string, createdBy: string) {
   // テンプレート設定を取得
-  const templateConfig = await prisma.systemConfig.findUnique({
-    where: { key: 'template_monthlyReport' },
+  const template = await prisma.documentTemplate.findFirst({
+    orderBy: { updatedAt: 'desc' },
   });
 
   let coverRecipient = '長沼町長　齋　藤　良　彦　様';
   let coverSender = '一般社団法人まおいのはこ<br>代表理事　坂本　一志';
 
-  if (templateConfig && templateConfig.value) {
-    const template = templateConfig.value as any;
-    if (template.coverRecipient) coverRecipient = template.coverRecipient;
-    if (template.coverSender) coverSender = template.coverSender;
+  if (template) {
+    if (template.monthlyReportRecipient) coverRecipient = template.monthlyReportRecipient;
+    if (template.monthlyReportSender) coverSender = template.monthlyReportSender;
   }
 
   const users = await prisma.user.findMany({
