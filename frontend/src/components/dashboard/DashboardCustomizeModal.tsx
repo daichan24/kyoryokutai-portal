@@ -48,7 +48,7 @@ const FULL_WIDGET_TEMPLATE: Omit<WidgetConfig, 'order'>[] = [
   { key: 'goals', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'M', columnSpan: 1 },
   { key: 'tasks', enabled: false, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
   { key: 'events', enabled: false, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
-  { key: 'contacts', enabled: false, displayMode: 'add-only', showAddButton: false, size: 'M', columnSpan: 2 },
+  { key: 'contacts', enabled: false, displayMode: 'add-only', showAddButton: false, size: 'M', columnSpan: 2, contactCount: 3 },
   { key: 'eventParticipation', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'L', columnSpan: 1 },
 ];
 
@@ -169,6 +169,16 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
       ...config,
       widgets: config.widgets.map((w) =>
         w.key === key ? { ...w, columnSpan: span } : w
+      ),
+    });
+  };
+
+  const handleChangeContactCount = (key: string, count: number) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      widgets: config.widgets.map((w) =>
+        w.key === key ? { ...w, contactCount: count } : w
       ),
     });
   };
