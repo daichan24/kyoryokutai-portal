@@ -750,6 +750,8 @@ model DocumentTemplate {
   
   // 復命書テンプレート設定
   inspectionRecipient    String? // 宛先
+  inspectionTitle        String? // タイトル
+  inspectionNamePrefix   String? // 氏名のプレフィックス（例：〇〇課　地域おこし協力隊）
   inspectionText1        String? // テキスト1
   inspectionItem1        String? // 項目1（日時）の参考テキスト
   inspectionItem2        String? // 項目2（場所）の参考テキスト

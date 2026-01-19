@@ -22,6 +22,8 @@ interface TemplateSettings {
   };
   inspection: {
     recipient: string;
+    title: string;
+    namePrefix: string;
     text1: string;
     item1: string;
     item2: string;
@@ -69,6 +71,8 @@ export const DocumentTemplatesSettings: React.FC = () => {
           },
           inspection: {
             recipient: '長沼町長　齋　藤　良　彦　様',
+            title: '復命書',
+            namePrefix: '〇〇課　地域おこし協力隊',
             text1: '次の通り復命します。',
             item1: '（参考: 視察日時を記入してください）',
             item2: '（参考: 視察先の場所を記入してください）',
@@ -308,6 +312,28 @@ export const DocumentTemplatesSettings: React.FC = () => {
               setSettings({
                 ...settings,
                 inspection: { ...settings.inspection, recipient: e.target.value },
+              })
+            }
+            disabled={!canEdit}
+          />
+          <Input
+            label="タイトル"
+            value={settings.inspection.title}
+            onChange={(e) =>
+              setSettings({
+                ...settings,
+                inspection: { ...settings.inspection, title: e.target.value },
+              })
+            }
+            disabled={!canEdit}
+          />
+          <Input
+            label="氏名プレフィックス（例：〇〇課　地域おこし協力隊）"
+            value={settings.inspection.namePrefix}
+            onChange={(e) =>
+              setSettings({
+                ...settings,
+                inspection: { ...settings.inspection, namePrefix: e.target.value },
               })
             }
             disabled={!canEdit}

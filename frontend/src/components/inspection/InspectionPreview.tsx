@@ -24,6 +24,8 @@ interface InspectionPreviewProps {
 interface TemplateSettings {
   inspection: {
     recipient: string;
+    title: string;
+    namePrefix: string;
     text1: string;
     item1: string;
     item2: string;
@@ -63,6 +65,8 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       setTemplateSettings({
         inspection: {
           recipient: '長沼町長　齋　藤　良　彦　様',
+          title: '復命書',
+          namePrefix: '〇〇課　地域おこし協力隊',
           text1: '次の通り復命します。',
           item1: '（参考: 視察日時を記入してください）',
           item2: '（参考: 視察先の場所を記入してください）',
@@ -86,6 +90,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
   // テンプレート設定から値を取得
   const recipient = templateSettings?.inspection.recipient || '長沼町長　齋　藤　良　彦　様';
+  const title = templateSettings?.inspection.title || '復命書';
   const namePrefix = templateSettings?.inspection.namePrefix || '〇〇課　地域おこし協力隊';
   const userName = `${namePrefix}　${inspection.user.name}`;
   const text1 = templateSettings?.inspection.text1 || '次の通り復命します。';
@@ -113,7 +118,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
         fontWeight: 'bold',
         marginBottom: '40px'
       }}>
-        復命書
+        {title}
       </h1>
 
       {/* 宛先 */}
