@@ -409,7 +409,7 @@ export const Wishes: React.FC = () => {
                   >
                     <Eye className="w-4 h-4" />
                   </button>
-                  {wish.status === 'ACTIVE' && (
+                  {viewMode === 'personal' && wish.status === 'ACTIVE' && (
                     <button
                       onClick={() => handleComplete(wish)}
                       className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
@@ -418,20 +418,24 @@ export const Wishes: React.FC = () => {
                       <CheckCircle2 className="w-4 h-4" />
                     </button>
                   )}
-                  <button
-                    onClick={() => handleEdit(wish)}
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                    title="編集"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(wish)}
-                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                    title="削除"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {viewMode === 'personal' && (
+                    <>
+                      <button
+                        onClick={() => handleEdit(wish)}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                        title="編集"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(wish)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        title="削除"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
