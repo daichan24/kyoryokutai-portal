@@ -144,6 +144,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     label: 'プロフィール設定',
   });
   
+  // テンプレート設定（SUPPORT/MASTERのみ）
+  if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
+    userMenuItems.push({
+      to: '/settings/document-templates',
+      icon: FileText,
+      label: 'テンプレート設定',
+    });
+  }
+  
   // MEMBER/SUPPORT/GOVERNMENT もユーザー情報を見れるようにする
   if (user?.role === 'MASTER' || user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') {
     userMenuItems.push({
