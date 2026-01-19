@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { api } from '../../utils/api';
 
 interface Inspection {
   id: string;
@@ -20,10 +21,54 @@ interface InspectionPreviewProps {
   inspection: Inspection;
 }
 
+interface TemplateSettings {
+  inspection: {
+    recipient: string;
+    text1: string;
+    item1: string;
+    item2: string;
+    item3: string;
+    item4: string;
+    item5: string;
+    item6: string;
+    item7: string;
+    item8: string;
+  };
+}
+
 export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection }) => {
+  const [templateSettings, setTemplateSettings] = useState<TemplateSettings | null>(null);
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
   const inspectionDate = format(new Date(inspection.date), 'yyyy年M月d日', { locale: ja });
   const inspectionTime = ''; // 時間情報があれば使用
+
+  useEffect(() => {
+    fetchTemplateSettings();
+  }, []);
+
+  const fetchTemplateSettings = async () => {
+    try {
+      const response = await api.get<{ inspection: TemplateSettings['inspection'] }>('/api/document-templates');
+      setTemplateSettings({ inspection: response.data.inspection });
+    } catch (error) {
+      console.error('Failed to fetch template settings:', error);
+      // デフォルト値を使用
+      setTemplateSettings({
+        inspection: {
+          recipient: '長沼町長　齋　藤　良　彦　様',
+          text1: '次の通り復命します。',
+          item1: '（参考: 視察日時を記入してください）',
+          item2: '（参考: 視察先の場所を記入してください）',
+          item3: '（参考: 視察の用務内容を記入してください）',
+          item4: '（参考: 視察の目的を記入してください）',
+          item5: '（参考: 視察の内容を記入してください）',
+          item6: '（参考: 処理の経過や結果を記入してください）',
+          item7: '（参考: 所感や今後の予定を記入してください）',
+          item8: '（参考: その他の報告事項があれば記入してください）',
+        },
+      });
+    }
+  };
 
   // HTMLコンテンツをテキストに変換（簡易版）
   const stripHtml = (html: string) => {
@@ -32,10 +77,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
     return tmp.textContent || tmp.innerText || '';
   };
 
-  // デフォルト値（テンプレート設定から取得する場合は後で実装）
-  const recipient = '長沼町長　齋　藤　良　彦　様';
+  // テンプレート設定から値を取得
+  const recipient = templateSettings?.inspection.recipient || '長沼町長　齋　藤　良　彦　様';
   const userName = `${inspection.user.name}`; // 〇〇課　地域おこし協力隊　氏名の形式にする場合は後で実装
-  const text1 = '次の通り復命します。';
+  const text1 = templateSettings?.inspection.text1 || '次の通り復命します。';
 
   return (
     <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
@@ -101,7 +146,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
         </div>
         <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
           {inspectionDate}{inspectionTime ? ` ${inspectionTime}` : ''}
-          {!inspection.inspectionPurpose && '（参考: 視察日時を記入してください）'}
+          {!inspection.inspectionPurpose && templateSettings?.inspection.item1 && `\n${templateSettings.inspection.item1}`}
         </div>
       </div>
 
@@ -116,7 +161,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
           2. 場所
         </div>
         <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-          {inspection.destination || '（参考: 視察先の場所を記入してください）'}
+          {inspection.destination || templateSettings?.inspection.item2 || '（参考: 視察先の場所を記入してください）'}
         </div>
       </div>
 
@@ -131,7 +176,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
           3. 用務
         </div>
         <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-          {inspection.purpose || '（参考: 視察の用務内容を記入してください）'}
+          {inspection.purpose || templateSettings?.inspection.item3 || '（参考: 視察の用務内容を記入してください）'}
         </div>
       </div>
 
@@ -146,7 +191,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
           4. 目的
         </div>
         <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-          {stripHtml(inspection.inspectionPurpose) || '（参考: 視察の目的を記入してください）'}
+          {stripHtml(inspection.inspectionPurpose) || templateSettings?.inspection.item4 || '（参考: 視察の目的を記入してください）'}
         </div>
       </div>
 
@@ -161,7 +206,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
           5. 内容
         </div>
         <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-          {stripHtml(inspection.inspectionContent) || '（参考: 視察の内容を記入してください）'}
+          {stripHtml(inspection.inspectionContent) || templateSettings?.inspection.item5 || '（参考: 視察の内容を記入してください）'}
         </div>
       </div>
 
@@ -176,7 +221,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
           6. 処理てん末
         </div>
         <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-          {stripHtml(inspection.reflection) || '（参考: 処理の経過や結果を記入してください）'}
+          {stripHtml(inspection.reflection) || templateSettings?.inspection.item6 || '（参考: 処理の経過や結果を記入してください）'}
         </div>
       </div>
 
@@ -191,7 +236,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
           7. 所感・今後
         </div>
         <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-          {stripHtml(inspection.futureAction) || '（参考: 所感や今後の予定を記入してください）'}
+          {stripHtml(inspection.futureAction) || templateSettings?.inspection.item7 || '（参考: 所感や今後の予定を記入してください）'}
         </div>
       </div>
 
@@ -208,7 +253,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
         <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
           {inspection.participants.length > 0 
             ? `参加者: ${inspection.user.name}、${inspection.participants.join('、')}`
-            : '（参考: その他の報告事項があれば記入してください）'}
+            : templateSettings?.inspection.item8 || '（参考: その他の報告事項があれば記入してください）'}
         </div>
       </div>
 

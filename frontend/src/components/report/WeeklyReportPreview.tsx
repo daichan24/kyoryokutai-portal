@@ -1,14 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { WeeklyReport } from '../../types';
 import { parseWeekString, formatDate } from '../../utils/date';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { api } from '../../utils/api';
 
 interface WeeklyReportPreviewProps {
   report: WeeklyReport;
 }
 
+interface TemplateSettings {
+  weeklyReport: {
+    recipient: string;
+    title: string;
+  };
+}
+
 export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report }) => {
+  const [templateSettings, setTemplateSettings] = useState<TemplateSettings | null>(null);
+
+  useEffect(() => {
+    fetchTemplateSettings();
+  }, []);
+
+  const fetchTemplateSettings = async () => {
+    try {
+      const response = await api.get<TemplateSettings>('/api/document-templates');
+      setTemplateSettings(response.data);
+    } catch (error) {
+      console.error('Failed to fetch template settings:', error);
+      // デフォルト値を使用
+      setTemplateSettings({
+        weeklyReport: {
+          recipient: '○○市役所　○○課長　様',
+          title: '地域おこし協力隊活動報告',
+        },
+      });
+    }
+  };
   let weekStart: Date;
   try {
     weekStart = parseWeekString(report.week);
@@ -45,13 +74,13 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         fontWeight: 'bold',
         marginBottom: '40px'
       }}>
-        地域おこし協力隊活動報告
+        {templateSettings?.weeklyReport.title || '地域おこし協力隊活動報告'}
       </h1>
 
       {/* 宛先 */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ marginBottom: '10px' }}>
-          <strong>宛先</strong>　○○市役所　○○課長　様
+          <strong>宛先</strong>　{templateSettings?.weeklyReport.recipient || '○○市役所　○○課長　様'}
         </div>
         <div>
           <strong>報告者</strong>　{report.user?.name || ''}

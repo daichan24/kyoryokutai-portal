@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { api } from '../../utils/api';
 
 interface MonthlyReport {
   id: string;
@@ -30,12 +31,48 @@ interface MonthlyReportPreviewProps {
   report: MonthlyReport;
 }
 
+interface TemplateSettings {
+  monthlyReport: {
+    recipient: string;
+    sender: string;
+    title: string;
+    text1: string;
+    text2: string;
+    contact: string;
+  };
+}
+
 export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ report }) => {
+  const [templateSettings, setTemplateSettings] = useState<TemplateSettings | null>(null);
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
   const monthStr = report.month ? format(new Date(`${report.month}-01`), 'yyyy年M月', { locale: ja }) : '';
   const reportDate = report.submittedAt 
     ? format(new Date(report.submittedAt), 'yyyy年M月d日', { locale: ja })
     : currentDate;
+
+  useEffect(() => {
+    fetchTemplateSettings();
+  }, []);
+
+  const fetchTemplateSettings = async () => {
+    try {
+      const response = await api.get<{ monthlyReport: TemplateSettings['monthlyReport'] }>('/api/document-templates');
+      setTemplateSettings({ monthlyReport: response.data.monthlyReport });
+    } catch (error) {
+      console.error('Failed to fetch template settings:', error);
+      // デフォルト値を使用
+      setTemplateSettings({
+        monthlyReport: {
+          recipient: '長沼町長　齋　藤　良　彦　様',
+          sender: '一般社団法人まおいのはこ<br>代表理事　坂本　一志',
+          title: '長沼町地域おこし協力隊サポート業務月次報告',
+          text1: '表記業務の結果について別紙のとおり報告いたします。',
+          text2: '報告内容\n・隊員別ヒアリングシート ◯名分\n・一般社団法人まおいのはこの支援内容\n・月次勤怠表',
+          contact: '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org',
+        },
+      });
+    }
+  };
 
   // HTMLコンテンツをテキストに変換（簡易版）
   const stripHtml = (html: string) => {
@@ -44,13 +81,15 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
     return tmp.textContent || tmp.innerText || '';
   };
 
-  // デフォルト値
-  const recipient = report.coverRecipient || '長沼町長　齋　藤　良　彦　様';
-  const sender = report.coverSender || '一般社団法人まおいのはこ<br>代表理事　坂本　一志';
-  const title = `長沼町地域おこし協力隊サポート業務月次報告（${monthStr}）`;
-  const text1 = '表記業務の結果について別紙のとおり報告いたします。';
-  const text2 = `報告内容\n・隊員別ヒアリングシート ${report.memberSheets?.length || 0}名分\n・一般社団法人まおいのはこの支援内容\n・月次勤怠表`;
-  const contact = '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org';
+  // テンプレート設定から値を取得（置換処理）
+  const recipient = report.coverRecipient || templateSettings?.monthlyReport.recipient || '長沼町長　齋　藤　良　彦　様';
+  const sender = report.coverSender || templateSettings?.monthlyReport.sender || '一般社団法人まおいのはこ<br>代表理事　坂本　一志';
+  const titleTemplate = templateSettings?.monthlyReport.title || '長沼町地域おこし協力隊サポート業務月次報告（{month}）';
+  const title = titleTemplate.replace('{month}', monthStr);
+  const text1 = templateSettings?.monthlyReport.text1 || '表記業務の結果について別紙のとおり報告いたします。';
+  const text2Template = templateSettings?.monthlyReport.text2 || '報告内容\n・隊員別ヒアリングシート ◯名分\n・一般社団法人まおいのはこの支援内容\n・月次勤怠表';
+  const text2 = text2Template.replace('{count}', String(report.memberSheets?.length || 0)).replace('◯名分', `${report.memberSheets?.length || 0}名分`);
+  const contact = templateSettings?.monthlyReport.contact || '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org';
 
   return (
     <div className="space-y-4">
