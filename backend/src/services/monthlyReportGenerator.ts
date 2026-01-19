@@ -44,12 +44,12 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
       if (template.monthlyReportSender) coverSender = template.monthlyReportSender;
     }
 
-    // 現在のメンバー分（テスト用のメンバー属性の佐藤大地以外）を作成
+    // 現在のメンバー分（テスト用のメンバー属性のさとうだいち以外）を作成
     // displayOrderでソート
     const users = await prisma.user.findMany({
       where: { 
         role: 'MEMBER',
-        name: { not: '佐藤大地' }, // 佐藤大地を除外
+        name: { not: 'さとうだいち' }, // さとうだいちを除外
       },
       orderBy: [
         { displayOrder: 'asc' },
@@ -60,8 +60,8 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     const memberSheets = [];
 
     for (const user of users) {
-      // テスト用のメンバー属性の佐藤大地を除外
-      if (user.name === '佐藤大地') {
+      // テスト用のメンバー属性のさとうだいちを除外
+      if (user.name === 'さとうだいち' && user.role === 'MEMBER') {
         continue;
       }
 

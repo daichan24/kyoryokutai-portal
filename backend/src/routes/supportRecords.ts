@@ -63,7 +63,8 @@ router.post('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =
       return res.status(400).json({ error: '支援対象者はメンバーのみです' });
     }
 
-    if (targetUser.name === '佐藤大地') {
+    // テスト用メンバー（さとうだいち）を除外
+    if (targetUser.name === 'さとうだいち' && targetUser.role === 'MEMBER') {
       return res.status(400).json({ error: 'このユーザーは選択できません' });
     }
 
@@ -125,7 +126,8 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
       return res.status(400).json({ error: '支援対象者はメンバーのみです' });
     }
 
-    if (targetUser.name === '佐藤大地') {
+    // テスト用メンバー（さとうだいち）を除外
+    if (targetUser.name === 'さとうだいち' && targetUser.role === 'MEMBER') {
       return res.status(400).json({ error: 'このユーザーは選択できません' });
     }
 
