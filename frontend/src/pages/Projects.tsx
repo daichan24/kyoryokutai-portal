@@ -293,16 +293,18 @@ export const Projects: React.FC = () => {
                   <span className={`text-xs px-2 py-1 rounded-full ${getApprovalColor(project.approvalStatus)}`}>
                     {getApprovalLabel(project.approvalStatus)}
                   </span>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleEditProject(project)}
-                  >
-                    詳細
-                  </Button>
+                  {viewMode === 'create' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleEditProject(project)}
+                    >
+                      詳細
+                    </Button>
+                  )}
                 </div>
 
-                {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') &&
+                {viewMode === 'create' && (user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') &&
                   project.approvalStatus === 'PENDING' && (
                     <div className="flex gap-2 mt-3 pt-3 border-t">
                       <button

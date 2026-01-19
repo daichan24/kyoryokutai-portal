@@ -292,18 +292,20 @@ export const Goals: React.FC = () => {
               className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               onClick={() => toggleGoal(goal.id)}
             >
-              <div className="flex justify-end mb-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditGoal(goal);
-                  }}
-                >
-                  編集
-                </Button>
-              </div>
+              {viewMode === 'create' && (
+                <div className="flex justify-end mb-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditGoal(goal);
+                    }}
+                  >
+                    編集
+                  </Button>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
@@ -339,16 +341,18 @@ export const Goals: React.FC = () => {
                 {/* 中目標階層（既存の階層構造） */}
                 <div className="mt-6 pt-6 border-t border-gray-300">
                   <h4 className="text-md font-semibold text-gray-900 mb-3">中目標階層（詳細管理）</h4>
-                  <div className="mb-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCreateMidGoal(goal.id)}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      中目標を追加
-                    </Button>
-                  </div>
+                  {viewMode === 'create' && (
+                    <div className="mb-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleCreateMidGoal(goal.id)}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        中目標を追加
+                      </Button>
+                    </div>
+                  )}
                 {goal.midGoals.map((midGoal) => (
                   <div key={midGoal.id} className="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
                     {/* 中目標ヘッダー */}
@@ -423,16 +427,18 @@ export const Goals: React.FC = () => {
                             {/* タスク一覧 */}
                             {expandedSubGoals.has(subGoal.id) && (
                               <div className="bg-gray-50 px-3 pb-3">
-                                <div className="mb-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleCreateTask(subGoal.id)}
-                                  >
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    タスクを追加
-                                  </Button>
-                                </div>
+                                {viewMode === 'create' && (
+                                  <div className="mb-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleCreateTask(subGoal.id)}
+                                    >
+                                      <Plus className="h-4 w-4 mr-1" />
+                                      タスクを追加
+                                    </Button>
+                                  </div>
+                                )}
                                 {subGoal.tasks.map((task) => (
                                   <div key={task.id} className="mt-2 p-2 bg-white border border-gray-200 rounded">
                                     <div className="flex items-center justify-between">

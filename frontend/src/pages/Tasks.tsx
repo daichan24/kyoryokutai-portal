@@ -350,7 +350,7 @@ export const Tasks: React.FC = () => {
                     {task.title}
                   </h3>
                 </div>
-                {canCreate && (
+                {canCreate && viewMode === 'create' && (
                   <div className="flex items-center gap-1">
                     <Button
                       variant="secondary"
