@@ -54,6 +54,8 @@ interface MonthlyReportDetailModalProps {
   viewMode?: 'edit' | 'preview'; // 表示モード（デフォルトはedit）
 }
 
+type PageTab = 'cover' | 'members' | 'support' | 'full';
+
 export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> = ({
   reportId,
   onClose,
@@ -63,8 +65,9 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
 }) => {
   const { user } = useAuthStore();
   const [showRevisions, setShowRevisions] = useState(false);
-  const [isEditing, setIsEditing] = useState(initialViewMode === 'edit'); // 初期表示モードに応じて設定
+  const [isEditing, setIsEditing] = useState(initialViewMode === 'edit');
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
+  const [pageTab, setPageTab] = useState<PageTab>('cover');
   const [coverRecipient, setCoverRecipient] = useState('');
   const [coverSender, setCoverSender] = useState('');
   const [memberSheets, setMemberSheets] = useState<any[]>([]);
@@ -78,7 +81,6 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         return response.data;
       } catch (err: any) {
         console.error('Failed to fetch monthly report:', err);
-        // エラーが発生した場合でもモーダルを開く（空のデータで）
         return null;
       }
     },
@@ -101,10 +103,8 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
       setCoverSender(report.coverSender || templateSettings?.sender || '');
       setMemberSheets(report.memberSheets || []);
     } else if (templateSettings) {
-      // テンプレートから初期値を設定
       setCoverRecipient(templateSettings.recipient || '');
       setCoverSender(templateSettings.sender || '');
-      // 新規作成時は編集モードで開始
       setIsEditing(true);
       setViewMode('edit');
     }
@@ -137,7 +137,6 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     setSaving(true);
     try {
       if (report) {
-        // 既存の報告を更新
         await api.put(`/api/monthly-reports/${reportId}`, {
           coverRecipient,
           coverSender,
@@ -148,7 +147,6 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         if (onUpdated) onUpdated();
         queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
       } else {
-        // 新規作成（このケースは通常発生しないが、念のため）
         console.warn('新規作成は月次報告ページから行ってください');
       }
     } catch (error: any) {
@@ -184,7 +182,6 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     );
   }
 
-  // エラー時はエラーメッセージを表示
   if (error) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -207,76 +204,331 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     );
   }
 
-  // プレビュー用の報告データを作成（編集中のデータも反映）
+  // プレビュー用の報告データを作成
   const previewReport: MonthlyReport | null = report ? {
     ...report,
     coverRecipient,
     coverSender,
     memberSheets,
-    // supportRecordsは既存のものを保持（更新時も消えないように）
     supportRecords: report.supportRecords || [],
   } : null;
+
+  // 表紙プレビュー用のデータ
+  const coverPreviewData = previewReport ? {
+    ...previewReport,
+    memberSheets: [],
+    supportRecords: [],
+  } : null;
+
+  // 隊員別シートプレビュー用のデータ（特定の隊員のみ）
+  const getMemberPreviewData = (memberIndex: number) => {
+    if (!previewReport) return null;
+    return {
+      ...previewReport,
+      coverRecipient: '',
+      coverSender: '',
+      memberSheets: previewReport.memberSheets.filter((_, i) => i === memberIndex),
+      supportRecords: [],
+    };
+  };
+
+  // 支援記録プレビュー用のデータ
+  const supportPreviewData = previewReport ? {
+    ...previewReport,
+    coverRecipient: '',
+    coverSender: '',
+    memberSheets: [],
+  } : null;
+
+  const renderCoverPage = () => {
+    if (viewMode === 'preview' && coverPreviewData) {
+      return (
+        <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+          <div className="shadow-lg">
+            <MonthlyReportPreview report={coverPreviewData} />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-6 space-y-4">
+        {report && (
+          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">作成者:</span>
+              <p className="text-gray-900 dark:text-gray-100">{report.creator.name}</p>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">作成日:</span>
+              <p className="text-gray-900 dark:text-gray-100">{format(new Date(report.createdAt), 'yyyy年M月d日')}</p>
+            </div>
+            {report.submittedAt && (
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">提出日:</span>
+                <p className="text-gray-900 dark:text-gray-100">{format(new Date(report.submittedAt), 'yyyy年M月d日')}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isEditing ? (
+          <div className="space-y-4">
+            <Input
+              label="宛先"
+              value={coverRecipient}
+              onChange={(e) => setCoverRecipient(e.target.value)}
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                差出人
+              </label>
+              <SimpleRichTextEditor
+                value={coverSender}
+                onChange={setCoverSender}
+                placeholder="差出人を入力..."
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">宛先:</span>
+              <p className="text-gray-900 dark:text-gray-100">{report?.coverRecipient || coverRecipient || '未設定'}</p>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">差出人:</span>
+              <div className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: report?.coverSender || coverSender || '未設定' }} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMemberSheets = () => {
+    if (viewMode === 'preview' && previewReport) {
+      return (
+        <div className="p-4 bg-gray-100 dark:bg-gray-900 space-y-4">
+          {previewReport.memberSheets.map((sheet: any, index: number) => {
+            const memberPreview = getMemberPreviewData(index);
+            if (!memberPreview) return null;
+            return (
+              <div key={index} className="shadow-lg">
+                <MonthlyReportPreview report={memberPreview} />
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-6 space-y-4">
+        {Array.isArray(memberSheets) && memberSheets.length > 0 ? (
+          memberSheets.map((sheet: any, index: number) => (
+            <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
+              <h4 className="font-medium mb-3 dark:text-gray-100">{sheet.userName}</h4>
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      今月の活動
+                    </label>
+                    <SimpleRichTextEditor
+                      value={sheet.thisMonthActivities ? sheet.thisMonthActivities.map((a: any) => `${a.date}: ${a.description}`).join('\n') : ''}
+                      onChange={(value) => {
+                        const newSheets = [...memberSheets];
+                        newSheets[index] = {
+                          ...sheet,
+                          thisMonthActivities: value.split('\n').filter(v => v.trim()).map(line => {
+                            const match = line.match(/^(.+?):\s*(.+)$/);
+                            if (match) {
+                              return { date: match[1], description: match[2] };
+                            }
+                            return { date: '', description: line };
+                          }),
+                        };
+                        setMemberSheets(newSheets);
+                      }}
+                      placeholder="活動内容を入力..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      翌月以降の活動予定
+                    </label>
+                    <SimpleRichTextEditor
+                      value={sheet.nextMonthPlan || ''}
+                      onChange={(value) => {
+                        const newSheets = [...memberSheets];
+                        newSheets[index] = {
+                          ...sheet,
+                          nextMonthPlan: value,
+                        };
+                        setMemberSheets(newSheets);
+                      }}
+                      placeholder="翌月以降の活動予定を入力..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      勤務に関する質問など
+                    </label>
+                    <SimpleRichTextEditor
+                      value={sheet.workQuestions || ''}
+                      onChange={(value) => {
+                        const newSheets = [...memberSheets];
+                        newSheets[index] = {
+                          ...sheet,
+                          workQuestions: value,
+                        };
+                        setMemberSheets(newSheets);
+                      }}
+                      placeholder="勤務に関する質問・相談を入力..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      生活面の留意事項その他
+                    </label>
+                    <SimpleRichTextEditor
+                      value={sheet.lifeNotes || ''}
+                      onChange={(value) => {
+                        const newSheets = [...memberSheets];
+                        newSheets[index] = {
+                          ...sheet,
+                          lifeNotes: value,
+                        };
+                        setMemberSheets(newSheets);
+                      }}
+                      placeholder="生活面の留意事項その他を入力..."
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sheet.thisMonthActivities && sheet.thisMonthActivities.length > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">今月の活動:</span>
+                      <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 ml-2 mt-1">
+                        {sheet.thisMonthActivities.map((activity: any, i: number) => (
+                          <li key={i}>
+                            {activity.date}: {activity.description}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {sheet.nextMonthPlan && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">来月の予定:</span>
+                      <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.nextMonthPlan }} />
+                    </div>
+                  )}
+                  {sheet.workQuestions && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">業務上の質問・相談:</span>
+                      <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.workQuestions }} />
+                    </div>
+                  )}
+                  {sheet.lifeNotes && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">生活面の備考:</span>
+                      <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.lifeNotes }} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="text-gray-500 dark:text-gray-400">隊員別シートがありません</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderSupportRecords = () => {
+    if (viewMode === 'preview' && supportPreviewData) {
+      return (
+        <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+          <div className="shadow-lg">
+            <MonthlyReportPreview report={supportPreviewData} />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-6">
+        {report && report.supportRecords && report.supportRecords.length > 0 ? (
+          <div className="space-y-3">
+            {report.supportRecords.map((record) => (
+              <div key={record.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="font-medium dark:text-gray-100">{record.user.name}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                      {format(new Date(record.supportDate), 'M月d日')}
+                    </span>
+                  </div>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{record.supportBy}</span>
+                </div>
+                <div
+                  className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{ __html: record.supportContent }}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 dark:text-gray-400">支援記録がありません</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderFullPreview = () => {
+    if (!previewReport) return null;
+    return (
+      <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+        <div className="shadow-lg">
+          <MonthlyReportPreview report={previewReport} />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-          <h2 className="text-2xl font-bold dark:text-gray-100">{report?.month || ''} 月次報告</h2>
+        <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+          <h2 className="text-xl font-bold dark:text-gray-100">{report?.month || ''} 月次報告</h2>
           <div className="flex items-center gap-2">
-            {/* タブ切り替え（既存報告がある場合のみ表示） */}
-            {report && (
-              <>
-                <button
-                  onClick={() => {
-                    setViewMode('edit');
-                    setIsEditing(true);
-                  }}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors rounded ${
-                    viewMode === 'edit'
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  編集
-                </button>
-                <button
-                  onClick={() => {
-                    setViewMode('preview');
-                    setIsEditing(false);
-                  }}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors rounded ${
-                    viewMode === 'preview'
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  プレビュー
-                </button>
-              </>
-            )}
-            {canEdit && !isEditing && viewMode === 'edit' && (
+            {canEdit && !isEditing && (
               <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
                 <Edit2 className="h-4 w-4 mr-1" />
                 編集
               </Button>
             )}
             {isEditing && (
-              <Button onClick={handleSave} variant="primary" size="sm" disabled={saving}>
-                <Save className="h-4 w-4 mr-1" />
-                {saving ? '保存中...' : '保存'}
-              </Button>
-            )}
-            {isEditing && (
-              <Button onClick={() => {
-                setIsEditing(false);
-                if (report) {
-                  setCoverRecipient(report.coverRecipient);
-                  setCoverSender(report.coverSender);
-                  setMemberSheets(report.memberSheets || []);
-                }
-              }} variant="outline" size="sm">
-                キャンセル
-              </Button>
+              <>
+                <Button onClick={handleSave} variant="primary" size="sm" disabled={saving}>
+                  <Save className="h-4 w-4 mr-1" />
+                  {saving ? '保存中...' : '保存'}
+                </Button>
+                <Button onClick={() => {
+                  setIsEditing(false);
+                  if (report) {
+                    setCoverRecipient(report.coverRecipient);
+                    setCoverSender(report.coverSender);
+                    setMemberSheets(report.memberSheets || []);
+                  }
+                }} variant="outline" size="sm">
+                  キャンセル
+                </Button>
+              </>
             )}
             <Button onClick={downloadPDF} variant="outline" size="sm">
               <FileDown className="h-4 w-4 mr-1" />
@@ -298,256 +550,125 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 変更履歴
               </Button>
             )}
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
               <X className="h-6 w-6" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {viewMode === 'preview' && previewReport ? (
-            <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
-              <div className="shadow-lg">
-                <MonthlyReportPreview report={previewReport} />
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 space-y-6">
-          {report && showRevisions && report.revisions && report.revisions.length > 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h3 className="font-bold text-lg mb-3">変更履歴</h3>
-              <div className="space-y-3">
-                {report.revisions.map((revision) => (
-                  <div key={revision.id} className="border-l-4 border-yellow-400 pl-3">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-medium">{revision.changer.name}</span>
-                      <span className="text-sm text-gray-600">
-                        {format(new Date(revision.createdAt), 'yyyy年M月d日 H:mm')}
-                      </span>
-                    </div>
-                    {revision.reason && (
-                      <p className="text-sm text-gray-700 mb-1">理由: {revision.reason}</p>
-                    )}
-                    <pre className="text-xs text-gray-600 bg-white p-2 rounded overflow-auto">
-                      {JSON.stringify(revision.changes, null, 2)}
-                    </pre>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {report && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">作成者:</span>
-                <p className="text-gray-900 dark:text-gray-100">{report.creator.name}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">作成日:</span>
-                <p className="text-gray-900 dark:text-gray-100">{format(new Date(report.createdAt), 'yyyy年M月d日')}</p>
-              </div>
-              {report.submittedAt && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">提出日:</span>
-                  <p className="text-gray-900 dark:text-gray-100">{format(new Date(report.submittedAt), 'yyyy年M月d日')}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {isEditing && (
-            <div className="space-y-4 border-t pt-4">
-              <Input
-                label="宛先"
-                value={coverRecipient}
-                onChange={(e) => setCoverRecipient(e.target.value)}
-              />
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  差出人
-                </label>
-                <SimpleRichTextEditor
-                  value={coverSender}
-                  onChange={setCoverSender}
-                  placeholder="差出人を入力..."
-                />
-              </div>
-            </div>
-          )}
-
-          {!isLoading && report && !isEditing && (
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">宛先:</span>
-                <p className="text-gray-900 dark:text-gray-100">{report.coverRecipient || '未設定'}</p>
-              </div>
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">差出人:</span>
-                <div className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: report.coverSender || '未設定' }} />
-              </div>
-            </div>
-          )}
-
-          {(report || (isEditing && !report)) && (
-            <div>
-              <h3 className="font-bold text-lg mb-3 dark:text-gray-100">支援内容</h3>
-              {report && report.supportRecords && report.supportRecords.length > 0 ? (
-                <div className="space-y-3">
-                  {report.supportRecords.map((record) => (
-                    <div key={record.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <span className="font-medium dark:text-gray-100">{record.user.name}</span>
-                          <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
-                            {format(new Date(record.supportDate), 'M月d日')}
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{record.supportBy}</span>
-                      </div>
-                      <div
-                        className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert"
-                        dangerouslySetInnerHTML={{ __html: record.supportContent }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 dark:text-gray-400">支援記録がありません</p>
-              )}
-            </div>
-          )}
-
-          <div>
-            <h3 className="font-bold text-lg mb-3 dark:text-gray-100">隊員別シート</h3>
-            {Array.isArray(memberSheets) && memberSheets.length > 0 ? (
-              <div className="space-y-4">
-                {memberSheets.map((sheet: any, index: number) => (
-                  <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
-                    <h4 className="font-medium mb-2 dark:text-gray-100">{sheet.userName}</h4>
-                    {isEditing ? (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            今月の活動
-                          </label>
-                          <SimpleRichTextEditor
-                            value={sheet.thisMonthActivities ? sheet.thisMonthActivities.map((a: any) => `${a.date}: ${a.description}`).join('\n') : ''}
-                            onChange={(value) => {
-                              const newSheets = [...memberSheets];
-                              newSheets[index] = {
-                                ...sheet,
-                                thisMonthActivities: value.split('\n').filter(v => v.trim()).map(line => {
-                                  const match = line.match(/^(.+?):\s*(.+)$/);
-                                  if (match) {
-                                    return { date: match[1], description: match[2] };
-                                  }
-                                  return { date: '', description: line };
-                                }),
-                              };
-                              setMemberSheets(newSheets);
-                            }}
-                            placeholder="活動内容を入力..."
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            翌月以降の活動予定
-                          </label>
-                          <SimpleRichTextEditor
-                            value={sheet.nextMonthPlan || ''}
-                            onChange={(value) => {
-                              const newSheets = [...memberSheets];
-                              newSheets[index] = {
-                                ...sheet,
-                                nextMonthPlan: value,
-                              };
-                              setMemberSheets(newSheets);
-                            }}
-                            placeholder="翌月以降の活動予定を入力..."
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            勤務に関する質問など
-                          </label>
-                          <SimpleRichTextEditor
-                            value={sheet.workQuestions || ''}
-                            onChange={(value) => {
-                              const newSheets = [...memberSheets];
-                              newSheets[index] = {
-                                ...sheet,
-                                workQuestions: value,
-                              };
-                              setMemberSheets(newSheets);
-                            }}
-                            placeholder="勤務に関する質問・相談を入力..."
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            生活面の留意事項その他
-                          </label>
-                          <SimpleRichTextEditor
-                            value={sheet.lifeNotes || ''}
-                            onChange={(value) => {
-                              const newSheets = [...memberSheets];
-                              newSheets[index] = {
-                                ...sheet,
-                                lifeNotes: value,
-                              };
-                              setMemberSheets(newSheets);
-                            }}
-                            placeholder="生活面の留意事項その他を入力..."
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {sheet.thisMonthActivities && sheet.thisMonthActivities.length > 0 && (
-                          <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">今月の活動:</span>
-                            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300 ml-2">
-                              {sheet.thisMonthActivities.map((activity: any, i: number) => (
-                                <li key={i}>
-                                  {activity.date}: {activity.description}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {sheet.nextMonthPlan && (
-                          <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">来月の予定:</span>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line ml-2">{sheet.nextMonthPlan}</p>
-                          </div>
-                        )}
-                        {sheet.workQuestions && (
-                          <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">業務上の質問・相談:</span>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line ml-2">{sheet.workQuestions}</p>
-                          </div>
-                        )}
-                        {sheet.lifeNotes && (
-                          <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">生活面の備考:</span>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line ml-2">{sheet.lifeNotes}</p>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 dark:text-gray-400">隊員別シートがありません</p>
-            )}
+        {/* ページタブ */}
+        <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-[73px] z-10">
+          <div className="flex gap-1 px-4">
+            <button
+              onClick={() => setPageTab('cover')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                pageTab === 'cover'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              表紙
+            </button>
+            <button
+              onClick={() => setPageTab('members')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                pageTab === 'members'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              隊員別シート
+            </button>
+            <button
+              onClick={() => setPageTab('support')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                pageTab === 'support'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              支援記録
+            </button>
+            <button
+              onClick={() => setPageTab('full')}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                pageTab === 'full'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              全体プレビュー
+            </button>
           </div>
+        </div>
+
+        {/* 編集/プレビュータブ */}
+        {pageTab !== 'full' && (
+          <div className="border-b dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-[121px] z-10">
+            <div className="flex gap-1 px-4">
+              <button
+                onClick={() => {
+                  setViewMode('edit');
+                  setIsEditing(true);
+                }}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors rounded-t ${
+                  viewMode === 'edit'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                編集
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('preview');
+                  setIsEditing(false);
+                }}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors rounded-t ${
+                  viewMode === 'preview'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                プレビュー
+              </button>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* 変更履歴 */}
+        {report && showRevisions && report.revisions && report.revisions.length > 0 && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 m-4">
+            <h3 className="font-bold text-lg mb-3 dark:text-gray-100">変更履歴</h3>
+            <div className="space-y-3">
+              {report.revisions.map((revision) => (
+                <div key={revision.id} className="border-l-4 border-yellow-400 pl-3">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-medium dark:text-gray-100">{revision.changer.name}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {format(new Date(revision.createdAt), 'yyyy年M月d日 H:mm')}
+                    </span>
+                  </div>
+                  {revision.reason && (
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">理由: {revision.reason}</p>
+                  )}
+                  <pre className="text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded overflow-auto">
+                    {JSON.stringify(revision.changes, null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* コンテンツ */}
+        <div className="flex-1 overflow-y-auto">
+          {pageTab === 'cover' && renderCoverPage()}
+          {pageTab === 'members' && renderMemberSheets()}
+          {pageTab === 'support' && renderSupportRecords()}
+          {pageTab === 'full' && renderFullPreview()}
         </div>
       </div>
     </div>
   );
 };
-

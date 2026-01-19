@@ -45,12 +45,16 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     }
 
     // 現在のメンバー分（テスト用のメンバー属性の佐藤大地以外）を作成
+    // displayOrderでソート
     const users = await prisma.user.findMany({
       where: { 
         role: 'MEMBER',
-        // 佐藤大地（テスト用のメンバー属性）を除外する場合は、nameでフィルタリング
-        // ただし、nameでのフィルタリングは柔軟性に欠けるため、roleのみでフィルタリング
+        name: { not: '佐藤大地' }, // 佐藤大地を除外
       },
+      orderBy: [
+        { displayOrder: 'asc' },
+        { name: 'asc' },
+      ],
     });
 
     const memberSheets = [];

@@ -120,6 +120,8 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-config'] });
+      // 町民データベースのクエリも無効化（contactCountが変更された場合に再取得されるように）
+      queryClient.invalidateQueries({ queryKey: ['contacts-recent'] });
       onClose();
     },
   });
