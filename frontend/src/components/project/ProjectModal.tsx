@@ -128,9 +128,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       }
 
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save project:', error);
-      alert('保存に失敗しました');
+      const errorMessage = error.response?.data?.error || error.response?.data?.details || error.message || '保存に失敗しました';
+      alert(`保存に失敗しました: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

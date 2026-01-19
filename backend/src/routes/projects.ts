@@ -96,16 +96,31 @@ router.post('/', async (req: AuthRequest, res) => {
   try {
     const data = projectSchema.parse(req.body);
 
+    // missionIdが空文字列の場合はnullに変換
+    const missionId = data.missionId && data.missionId.trim() !== '' ? data.missionId : null;
+
+    // missionIdが指定されている場合、そのミッションが存在するか確認
+    if (missionId) {
+      const mission = await prisma.mission.findUnique({
+        where: { id: missionId },
+        select: { id: true },
+      });
+
+      if (!mission) {
+        return res.status(400).json({ error: '指定されたミッションが見つかりません' });
+      }
+    }
+
     const project = await prisma.project.create({
       data: {
         userId: req.user!.id,
         projectName: data.projectName,
-        description: data.description,
+        description: data.description || null,
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null,
         phase: data.phase || 'PREPARATION',
-        missionId: data.missionId,
-        tags: data.tags,
+        missionId: missionId,
+        tags: data.tags || [],
       },
       include: { user: true, mission: true },
     });
@@ -113,10 +128,35 @@ router.post('/', async (req: AuthRequest, res) => {
     res.status(201).json(project);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ 
+        error: 'バリデーションエラー',
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+      });
     }
+    
+    // Prismaエラーの詳細を取得
+    let errorMessage = 'プロジェクトの作成に失敗しました';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Prismaエラーの場合、より詳細な情報を返す
+      if ((error as any).code) {
+        const prismaError = error as any;
+        if (prismaError.code === 'P2002') {
+          errorMessage = 'プロジェクト名が既に存在します';
+        } else if (prismaError.code === 'P2003') {
+          errorMessage = '参照先のリソースが見つかりません（ユーザーまたはミッション）';
+        } else if (prismaError.code === 'P2025') {
+          errorMessage = '参照先のリソースが見つかりません';
+        }
+      }
+    }
+    
     console.error('Create project error:', error);
-    res.status(500).json({ error: 'Failed to create project' });
+    res.status(500).json({ 
+      error: errorMessage,
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 });
 
@@ -129,16 +169,32 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
 
     const data = projectSchema.parse(req.body);
+
+    // missionIdが空文字列の場合はnullに変換
+    const missionId = data.missionId && data.missionId.trim() !== '' ? data.missionId : null;
+
+    // missionIdが指定されている場合、そのミッションが存在するか確認
+    if (missionId) {
+      const mission = await prisma.mission.findUnique({
+        where: { id: missionId },
+        select: { id: true },
+      });
+
+      if (!mission) {
+        return res.status(400).json({ error: '指定されたミッションが見つかりません' });
+      }
+    }
+
     const project = await prisma.project.update({
       where: { id: req.params.id },
       data: {
         projectName: data.projectName,
-        description: data.description,
+        description: data.description || null,
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null,
         phase: data.phase,
-        missionId: data.missionId,
-        tags: data.tags,
+        missionId: missionId,
+        tags: data.tags || [],
       },
       include: { user: true, mission: true },
     });
@@ -146,10 +202,35 @@ router.put('/:id', async (req: AuthRequest, res) => {
     res.json(project);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ 
+        error: 'バリデーションエラー',
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+      });
     }
+    
+    // Prismaエラーの詳細を取得
+    let errorMessage = 'プロジェクトの更新に失敗しました';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Prismaエラーの場合、より詳細な情報を返す
+      if ((error as any).code) {
+        const prismaError = error as any;
+        if (prismaError.code === 'P2002') {
+          errorMessage = 'プロジェクト名が既に存在します';
+        } else if (prismaError.code === 'P2003') {
+          errorMessage = '参照先のリソースが見つかりません（ユーザーまたはミッション）';
+        } else if (prismaError.code === 'P2025') {
+          errorMessage = '参照先のリソースが見つかりません';
+        }
+      }
+    }
+    
     console.error('Update project error:', error);
-    res.status(500).json({ error: 'Failed to update project' });
+    res.status(500).json({ 
+      error: errorMessage,
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 });
 
