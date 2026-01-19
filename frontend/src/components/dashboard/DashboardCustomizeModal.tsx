@@ -34,6 +34,8 @@ const widgetLabels: Record<string, string> = {
   taskRequests: '依頼',
   projects: 'プロジェクト',
   goals: 'ミッション',
+  'goals-personal': 'ミッション（個人）',
+  'goals-view': 'ミッション（閲覧）',
   tasks: 'タスク',
   events: 'イベント',
   contacts: '町民データベース',
@@ -41,20 +43,39 @@ const widgetLabels: Record<string, string> = {
   nextWish: '次にやる1つ',
 };
 
-// カスタマイズ画面に必ず表示する全9ウィジェットのテンプレート
-const FULL_WIDGET_TEMPLATE: Omit<WidgetConfig, 'order'>[] = [
-  { key: 'snsHistory', enabled: true, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
-  { key: 'taskRequests', enabled: true, displayMode: 'view-only', showAddButton: false, size: 'L', columnSpan: 2 },
-  { key: 'projects', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'M', columnSpan: 2 },
-  { key: 'goals', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'M', columnSpan: 1 },
-  { key: 'tasks', enabled: false, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
-  { key: 'events', enabled: false, displayMode: 'view-with-add', showAddButton: true, size: 'M', columnSpan: 2 },
-  { key: 'contacts', enabled: false, displayMode: 'add-only', showAddButton: false, size: 'M', columnSpan: 2, contactCount: 3 },
-  { key: 'eventParticipation', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'L', columnSpan: 1 },
-  { key: 'nextWish', enabled: false, displayMode: 'view-only', showAddButton: false, size: 'M', columnSpan: 2 },
-];
+// カスタマイズ画面に必ず表示する全ウィジェットのテンプレート
+// メンバー以外の場合はgoals-personalとgoals-viewを分離
+const getFullWidgetTemplate = (role: string): Omit<WidgetConfig, 'order'>[] => {
+  const base = [
+    { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const },
+    { key: 'taskRequests', enabled: true, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 2 as const },
+    { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const },
+    { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const },
+    { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const },
+    { key: 'contacts', enabled: false, displayMode: 'add-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, contactCount: 3 },
+    { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const },
+    { key: 'nextWish', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const },
+  ];
+  
+  // メンバー以外の場合はgoals-personalとgoals-viewを追加
+  if (role !== 'MEMBER') {
+    return [
+      ...base.slice(0, 3),
+      { key: 'goals-personal', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
+      { key: 'goals-view', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
+      ...base.slice(3),
+    ];
+  }
+  
+  // メンバーの場合は従来通りgoalsのみ
+  return [
+    ...base.slice(0, 3),
+    { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
+    ...base.slice(3),
+  ];
+};
 
-// APIレスポンスとテンプレートをマージし、常に全8件を返す（APIが古い・空・不正でも選択肢を表示）
+// APIレスポンスとテンプレートをマージし、常に全ウィジェットを返す（APIが古い・空・不正でも選択肢を表示）
 function mergeWithTemplate(apiConfig: DashboardConfig | null | undefined, role: string): DashboardConfig {
   const raw = apiConfig?.widgets;
   if (!raw || !Array.isArray(raw) || raw.length === 0) {
@@ -62,7 +83,17 @@ function mergeWithTemplate(apiConfig: DashboardConfig | null | undefined, role: 
   }
   const byKey = new Map<string, any>();
   raw.forEach((w) => byKey.set(w.key, w));
-  const merged = FULL_WIDGET_TEMPLATE.map((t, i) => {
+  
+  // 古いgoalsウィジェットをgoals-personalとgoals-viewに変換（メンバー以外の場合）
+  if (role !== 'MEMBER' && byKey.has('goals') && !byKey.has('goals-personal') && !byKey.has('goals-view')) {
+    const oldGoals = byKey.get('goals');
+    byKey.set('goals-personal', { ...oldGoals, key: 'goals-personal', order: oldGoals.order });
+    byKey.set('goals-view', { ...oldGoals, key: 'goals-view', order: (oldGoals.order || 0) + 0.5, enabled: false });
+    byKey.delete('goals');
+  }
+  
+  const template = getFullWidgetTemplate(role);
+  const merged = template.map((t, i) => {
     const saved = byKey.get(t.key);
     if (saved) {
       return { ...t, ...saved, key: t.key, order: typeof saved.order === 'number' ? saved.order : i + 1 } as WidgetConfig;
@@ -72,14 +103,25 @@ function mergeWithTemplate(apiConfig: DashboardConfig | null | undefined, role: 
   return { widgets: merged.sort((a, b) => a.order - b.order) };
 }
 
-// デフォルト設定（role別）※常に8件
+// デフォルト設定（role別）
 function getDefaultConfig(role: string = 'MEMBER'): DashboardConfig {
-  const base = FULL_WIDGET_TEMPLATE.map((w, i) => ({ ...w, order: i + 1 } as WidgetConfig));
+  const template = getFullWidgetTemplate(role);
+  const base = template.map((w, i) => ({ ...w, order: i + 1 } as WidgetConfig));
+  
   if (role === 'MEMBER') {
     return { widgets: [base[0], { ...base[1], enabled: false }, base[2], base[3], base[4], base[5], base[6], base[7]].map((w, i) => ({ ...w, order: i + 1 })) };
   }
   if (role === 'SUPPORT' || role === 'GOVERNMENT') {
-    return { widgets: [base[0], base[1], base[2], base[3], base[4], base[5], base[6], base[7]].map((w, i) => ({ ...w, enabled: [0, 3].includes(i) ? false : true, order: i + 1 })) };
+    // goals-personalとgoals-viewのインデックスを考慮
+    const goalsPersonalIndex = base.findIndex(w => w.key === 'goals-personal');
+    const goalsViewIndex = base.findIndex(w => w.key === 'goals-view');
+    return { 
+      widgets: base.map((w, i) => ({ 
+        ...w, 
+        enabled: (goalsPersonalIndex !== -1 && i === goalsPersonalIndex) ? false : (goalsViewIndex !== -1 && i === goalsViewIndex) ? false : [0, 3].includes(i) ? false : true, 
+        order: i + 1 
+      })) 
+    };
   }
   if (role === 'MASTER') {
     return { widgets: base.map((w, i) => ({ ...w, enabled: true, order: i + 1 })) };

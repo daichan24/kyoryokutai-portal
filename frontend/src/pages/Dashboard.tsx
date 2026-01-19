@@ -237,7 +237,11 @@ export const Dashboard: React.FC = () => {
         case 'projects':
           return <ProjectsWidget key={widget.key} {...commonProps} />;
         case 'goals':
-          return <GoalsWidget key={widget.key} {...commonProps} />;
+          return <GoalsWidget key={widget.key} {...commonProps} viewMode="personal" />;
+        case 'goals-personal':
+          return <GoalsWidget key={widget.key} {...commonProps} viewMode="personal" />;
+        case 'goals-view':
+          return <GoalsWidget key={widget.key} {...commonProps} viewMode="view" />;
         case 'tasks':
           return <TasksWidget key={widget.key} {...commonProps} />;
         case 'events':

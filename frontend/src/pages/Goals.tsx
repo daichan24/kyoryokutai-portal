@@ -320,11 +320,11 @@ export const Goals: React.FC = () => {
                     {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
                   </span>
                 </div>
-                <span className="text-xl font-bold text-gray-900">{goal.progress}%</span>
+                <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
               </div>
 
               {/* プログレスバー */}
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                 <div
                   className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
                   style={{ width: `${goal.progress}%` }}
@@ -334,13 +334,13 @@ export const Goals: React.FC = () => {
 
             {/* ミッション詳細 */}
             {expandedGoals.has(goal.id) && (
-              <div className="bg-gray-50 px-5 pb-5">
+              <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5">
                 {/* プロジェクト（中目標）とタスク（小目標）を並列表示 */}
                 <MissionDetailContent missionId={goal.id} />
                 
                 {/* 中目標階層（既存の階層構造） */}
-                <div className="mt-6 pt-6 border-t border-gray-300">
-                  <h4 className="text-md font-semibold text-gray-900 mb-3">中目標階層（詳細管理）</h4>
+                <div className="mt-6 pt-6 border-t border-gray-300 dark:border-gray-600">
+                  <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">中目標階層（詳細管理）</h4>
                   {viewMode === 'create' && (
                     <div className="mb-3">
                       <Button
@@ -354,10 +354,10 @@ export const Goals: React.FC = () => {
                     </div>
                   )}
                 {goal.midGoals.map((midGoal) => (
-                  <div key={midGoal.id} className="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div key={midGoal.id} className="mt-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                     {/* 中目標ヘッダー */}
                     <div
-                      className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleMidGoal(midGoal.id);
@@ -365,16 +365,16 @@ export const Goals: React.FC = () => {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <button className="text-gray-400 hover:text-gray-600">
+                          <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                             {expandedMidGoals.has(midGoal.id) ? '▼' : '▶'}
                           </button>
-                          <h3 className="font-medium text-gray-900">{midGoal.name}</h3>
-                          <span className="text-xs text-gray-500">重み: {midGoal.weight}%</span>
+                          <h3 className="font-medium text-gray-900 dark:text-gray-100">{midGoal.name}</h3>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">重み: {midGoal.weight}%</span>
                         </div>
-                        <span className="font-semibold text-gray-900">{midGoal.progress}%</span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">{midGoal.progress}%</span>
                       </div>
 
-                      <div className="ml-7 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div className="ml-7 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                         <div
                           className={`h-full transition-all duration-300 ${getProgressColor(midGoal.progress)}`}
                           style={{ width: `${midGoal.progress}%` }}
@@ -384,7 +384,7 @@ export const Goals: React.FC = () => {
 
                     {/* 小目標一覧 */}
                     {expandedMidGoals.has(midGoal.id) && (
-                      <div className="bg-gray-50 px-4 pb-4">
+                      <div className="bg-gray-50 dark:bg-gray-800/50 px-4 pb-4">
                         {viewMode === 'create' && (
                           <div className="mb-2">
                             <Button
@@ -398,10 +398,10 @@ export const Goals: React.FC = () => {
                           </div>
                         )}
                         {midGoal.subGoals.map((subGoal) => (
-                          <div key={subGoal.id} className="mt-3 bg-white border border-gray-200 rounded-lg overflow-hidden">
+                          <div key={subGoal.id} className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                             {/* 小目標ヘッダー */}
                             <div
-                              className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleSubGoal(subGoal.id);
@@ -409,16 +409,16 @@ export const Goals: React.FC = () => {
                             >
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                  <button className="text-gray-400 hover:text-gray-600 text-sm">
+                                  <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm">
                                     {expandedSubGoals.has(subGoal.id) ? '▼' : '▶'}
                                   </button>
-                                  <span className="text-sm font-medium text-gray-900">{subGoal.name}</span>
-                                  <span className="text-xs text-gray-500">重み: {subGoal.weight}%</span>
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{subGoal.name}</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">重み: {subGoal.weight}%</span>
                                 </div>
-                                <span className="text-sm font-semibold text-gray-900">{subGoal.progress}%</span>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{subGoal.progress}%</span>
                               </div>
 
-                              <div className="ml-6 w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                              <div className="ml-6 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
                                 <div
                                   className={`h-full transition-all duration-300 ${getProgressColor(subGoal.progress)}`}
                                   style={{ width: `${subGoal.progress}%` }}
@@ -428,7 +428,7 @@ export const Goals: React.FC = () => {
 
                             {/* タスク一覧 */}
                             {expandedSubGoals.has(subGoal.id) && (
-                              <div className="bg-gray-50 px-3 pb-3">
+                              <div className="bg-gray-50 dark:bg-gray-800/50 px-3 pb-3">
                                 {viewMode === 'create' && (
                                   <div className="mb-2">
                                     <Button
@@ -442,11 +442,11 @@ export const Goals: React.FC = () => {
                                   </div>
                                 )}
                                 {subGoal.tasks.map((task) => (
-                                  <div key={task.id} className="mt-2 p-2 bg-white border border-gray-200 rounded">
+                                  <div key={task.id} className="mt-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded">
                                     <div className="flex items-center justify-between">
-                                      <span className="text-sm text-gray-700">{task.name}</span>
+                                      <span className="text-sm text-gray-700 dark:text-gray-300">{task.name}</span>
                                       <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-gray-900">{task.progress}%</span>
+                                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{task.progress}%</span>
                                         <Button
                                           size="sm"
                                           variant="outline"

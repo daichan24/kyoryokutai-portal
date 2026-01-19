@@ -341,12 +341,12 @@ export const Tasks: React.FC = () => {
           return (
             <div
               key={task.id}
-              className="bg-white border-2 border-gray-300 rounded-lg p-5 hover:shadow-lg transition-shadow"
+              className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2 flex-1">
                   {getStatusIcon(task.status)}
-                  <h3 className="font-bold text-lg text-gray-900 flex-1">
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex-1">
                     {task.title}
                   </h3>
                 </div>
@@ -375,7 +375,7 @@ export const Tasks: React.FC = () => {
               </div>
 
               {task.description && (
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
                   {task.description}
                 </p>
               )}
@@ -383,10 +383,10 @@ export const Tasks: React.FC = () => {
               {/* プロジェクト情報（必須表示） */}
               {task.project && (
                 <div className="mb-2">
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     プロジェクト: 
                   </span>
-                  <span className="text-sm text-gray-900 ml-1">
+                  <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
                     {task.project.projectName}
                   </span>
                 </div>
@@ -395,7 +395,7 @@ export const Tasks: React.FC = () => {
               {/* 方向性（Mission、薄く表示） */}
               {missionName && (
                 <div className="mb-3">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
                     方向性: {missionName}
                   </span>
                 </div>
