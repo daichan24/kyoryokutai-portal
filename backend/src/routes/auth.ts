@@ -84,9 +84,28 @@ router.post('/login', async (req, res) => {
   try {
     const data = loginSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({
-      where: { email: data.email },
-    });
+    // まず、基本的なフィールドのみでユーザーを取得（存在しないカラムを避ける）
+    let user: any;
+    try {
+      user = await prisma.user.findUnique({
+        where: { email: data.email },
+      });
+    } catch (dbError: any) {
+      // P2022エラー（カラムが存在しない）の場合、生SQLで取得を試みる
+      if (dbError.code === 'P2022') {
+        console.warn('Column does not exist, trying alternative query:', dbError.meta);
+        // 基本的なフィールドのみで取得を試みる
+        const result = await prisma.$queryRaw`
+          SELECT id, name, email, password, role, "missionType", department, "termStart", "termEnd", 
+                 "avatarColor", "avatarLetter", "darkMode", "createdAt"
+          FROM "User"
+          WHERE email = ${data.email}
+        `;
+        user = Array.isArray(result) && result.length > 0 ? result[0] : null;
+      } else {
+        throw dbError;
+      }
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -151,10 +170,28 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', authenticate, async (req: AuthRequest, res) => {
   try {
-    // まず全フィールドを取得してから、存在するフィールドのみを返す
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-    });
+    // まず、基本的なフィールドのみでユーザーを取得（存在しないカラムを避ける）
+    let user: any;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+      });
+    } catch (dbError: any) {
+      // P2022エラー（カラムが存在しない）の場合、生SQLで取得を試みる
+      if (dbError.code === 'P2022') {
+        console.warn('Column does not exist, trying alternative query:', dbError.meta);
+        // 基本的なフィールドのみで取得を試みる
+        const result = await prisma.$queryRaw`
+          SELECT id, name, email, role, "missionType", department, "termStart", "termEnd", 
+                 "avatarColor", "avatarLetter", "darkMode", "snsLinks", "createdAt", "updatedAt"
+          FROM "User"
+          WHERE id = ${req.user!.id}
+        `;
+        user = Array.isArray(result) && result.length > 0 ? result[0] : null;
+      } else {
+        throw dbError;
+      }
+    }
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
