@@ -17,7 +17,7 @@ interface TimeAxisViewProps {
   }>;
   onScheduleClick: (schedule: ScheduleType) => void;
   onEventClick: (eventId: string) => void;
-  onCreateSchedule: (date: Date) => void;
+  onCreateSchedule: (date: Date, startTime?: string, endTime?: string) => void;
   viewMode: 'week' | 'day';
 }
 
@@ -75,13 +75,13 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   };
 
   return (
-    <div className="flex border border-gray-200 rounded-lg overflow-hidden bg-white">
+    <div className="flex border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
       {/* 時間軸 */}
-      <div className="w-16 border-r border-gray-200 bg-gray-50 flex-shrink-0">
-        <div className="h-12 border-b border-gray-200"></div>
+      <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+        <div className="h-12 border-b border-gray-200 dark:border-gray-700"></div>
         {hours.map((hour) => (
-          <div key={hour} className="h-16 border-b border-gray-200 flex items-start justify-end pr-2">
-            <span className="text-xs text-gray-600 font-medium">{hour}:00</span>
+          <div key={hour} className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2">
+            <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{hour}:00</span>
           </div>
         ))}
       </div>
@@ -96,18 +96,18 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
           return (
             <div
               key={dateIndex}
-              className={`flex-1 border-r border-gray-200 min-w-[200px] ${
-                isToday ? 'bg-blue-50' : 'bg-white'
+              className={`flex-1 border-r border-gray-200 dark:border-gray-700 min-w-[200px] ${
+                isToday ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
               }`}
             >
               {/* 日付ヘッダー */}
-              <div className={`h-12 border-b border-gray-200 flex flex-col items-center justify-center ${
-                isToday ? 'bg-blue-100 font-bold' : 'bg-gray-50'
+              <div className={`h-12 border-b border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center ${
+                isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : 'bg-gray-50 dark:bg-gray-900'
               }`}>
-                <div className="text-xs text-gray-600">
+                <div className="text-xs text-gray-600 dark:text-gray-400">
                   {formatDate(date, 'E')}
                 </div>
-                <div className={`text-lg ${isToday ? 'text-blue-700' : 'text-gray-900'}`}>
+                <div className={`text-lg ${isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
                   {formatDate(date, 'd')}
                 </div>
               </div>
@@ -118,7 +118,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                 {hours.map((hour) => (
                   <div
                     key={hour}
-                    className="absolute w-full border-b border-gray-100"
+                    className="absolute w-full border-b border-gray-100 dark:border-gray-700"
                     style={{ top: `${hour * 4}rem`, height: '4rem' }}
                   />
                 ))}
@@ -199,21 +199,81 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                   );
                 })}
 
-                {/* 新規作成ボタン（各時間帯に配置） */}
-                {hours.map((hour) => (
-                  <button
-                    key={hour}
-                    onClick={() => onCreateSchedule(date)}
-                    className="absolute w-full opacity-0 hover:opacity-100 transition-opacity border-dashed border-2 border-gray-300 hover:border-blue-400 rounded"
-                    style={{
-                      top: `${hour * 4}rem`,
-                      height: '4rem',
-                    }}
-                    title="クリックしてスケジュールを追加"
-                  >
-                    <span className="text-xs text-gray-400">+</span>
-                  </button>
-                ))}
+                {/* 時間ブロック（ドラッグ可能） */}
+                {hours.map((hour) => {
+                  // 15分単位のブロック（1時間 = 4ブロック）
+                  return Array.from({ length: 4 }, (_, blockIndex) => {
+                    const blockMinutes = hour * 60 + blockIndex * 15;
+                    const blockTop = (blockMinutes / 60) * 4; // rem単位
+                    const blockHeight = 1; // 15分 = 1rem
+                    
+                    return (
+                      <div
+                        key={`${hour}-${blockIndex}`}
+                        className="absolute w-full opacity-0 hover:opacity-100 transition-opacity border-dashed border border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 rounded cursor-pointer"
+                        style={{
+                          top: `${blockTop}rem`,
+                          height: `${blockHeight}rem`,
+                        }}
+                        onMouseDown={(e) => {
+                          // ドラッグ開始
+                          const startY = e.clientY;
+                          const startMinutes = blockMinutes;
+                          let currentMinutes = startMinutes;
+                          
+                          const handleMouseMove = (moveEvent: MouseEvent) => {
+                            const deltaY = moveEvent.clientY - startY;
+                            const deltaMinutes = Math.round((deltaY / (4 * 16)) * 60); // 1rem = 16px, 4rem = 1時間
+                            currentMinutes = Math.max(0, Math.min(1439, startMinutes + deltaMinutes)); // 0-23:59の範囲
+                            
+                            // 視覚的フィードバック（ハイライト）
+                            const highlightEl = document.getElementById(`time-block-highlight-${dateIndex}-${hour}-${blockIndex}`);
+                            if (highlightEl) {
+                              const duration = currentMinutes - startMinutes;
+                              highlightEl.style.top = `${(startMinutes / 60) * 4}rem`;
+                              highlightEl.style.height = `${Math.max(0.25, (duration / 60) * 4)}rem`;
+                            }
+                          };
+                          
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                            
+                            // ドラッグ終了時にスケジュール作成
+                            const startTime = minutesToTime(startMinutes);
+                            const endTime = minutesToTime(currentMinutes);
+                            
+                            // ハイライトを削除
+                            const highlightEl = document.getElementById(`time-block-highlight-${dateIndex}-${hour}-${blockIndex}`);
+                            if (highlightEl) {
+                              highlightEl.remove();
+                            }
+                            
+                            // スケジュール作成（日時と時間を渡す）
+                            onCreateSchedule(date, startTime, endTime);
+                          };
+                          
+                          // ハイライト要素を作成
+                          const highlightEl = document.createElement('div');
+                          highlightEl.id = `time-block-highlight-${dateIndex}-${hour}-${blockIndex}`;
+                          highlightEl.className = 'absolute left-0 right-0 bg-blue-200 dark:bg-blue-800/50 border-2 border-blue-400 dark:border-blue-500 rounded z-20';
+                          highlightEl.style.top = `${blockTop}rem`;
+                          highlightEl.style.height = `${blockHeight}rem`;
+                          const timeAxisArea = e.currentTarget.parentElement;
+                          if (timeAxisArea) {
+                            timeAxisArea.appendChild(highlightEl);
+                          }
+                          
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                        title="ドラッグしてスケジュールを追加"
+                      >
+                        <span className="text-xs text-gray-400 dark:text-gray-500">+</span>
+                      </div>
+                    );
+                  });
+                })}
               </div>
             </div>
           );

@@ -10,6 +10,8 @@ import { useAuthStore } from '../../stores/authStore';
 interface ScheduleModalProps {
   schedule?: Schedule | null;
   defaultDate?: Date | null;
+  defaultStartTime?: string | null;
+  defaultEndTime?: string | null;
   defaultTaskId?: string | null;
   defaultProjectId?: string | null;
   defaultActivityDescription?: string | null;
@@ -20,6 +22,8 @@ interface ScheduleModalProps {
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   schedule,
   defaultDate,
+  defaultStartTime,
+  defaultEndTime,
   defaultTaskId,
   defaultProjectId,
   defaultActivityDescription,
@@ -58,11 +62,24 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setFreeNote(schedule.freeNote || '');
       setSelectedTaskId(schedule.taskId || null);
       setSelectedProjectId(schedule.projectId || null);
-      // 編集時は参加者選択を無効化（作成者のみ編集可能）
-      setIsCollaborative(false);
+      // 編集時も参加者を追加・変更できるようにする
+      setIsCollaborative(true);
+      // 既存の参加者を選択状態にする
+      if (schedule.scheduleParticipants) {
+        const existingParticipantIds = schedule.scheduleParticipants
+          .filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId)
+          .map(p => p.userId);
+        setSelectedParticipantIds(existingParticipantIds);
+      }
     } else {
       if (defaultDate) {
         setDate(formatDate(defaultDate));
+      }
+      if (defaultStartTime) {
+        setStartTime(defaultStartTime);
+      }
+      if (defaultEndTime) {
+        setEndTime(defaultEndTime);
       }
       if (defaultTaskId) {
         setSelectedTaskId(defaultTaskId);
@@ -74,7 +91,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         setActivityDescription(defaultActivityDescription);
       }
     }
-  }, [schedule, defaultDate, defaultTaskId, defaultProjectId, defaultActivityDescription]);
+  }, [schedule, defaultDate, defaultStartTime, defaultEndTime, defaultTaskId, defaultProjectId, defaultActivityDescription]);
 
   const fetchTasks = async () => {
     try {
@@ -158,8 +175,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         data.projectId = selectedProjectId;
       }
 
-      // 新規作成時のみ参加者を追加
-      if (!schedule && isCollaborative && selectedParticipantIds.length > 0) {
+      // 新規作成時・編集時ともに参加者を追加・変更可能
+      if (isCollaborative && selectedParticipantIds.length > 0) {
         data.participantsUserIds = selectedParticipantIds;
       }
 
@@ -212,20 +229,50 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           />
 
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="開始時刻"
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              required
-            />
-            <Input
-              label="終了時刻"
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                開始時刻 *
+              </label>
+              <select
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                required
+              >
+                {Array.from({ length: 24 * 4 }, (_, i) => {
+                  const hour = Math.floor(i / 4);
+                  const minute = (i % 4) * 15;
+                  const timeValue = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                  return (
+                    <option key={timeValue} value={timeValue}>
+                      {timeValue}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                終了時刻 *
+              </label>
+              <select
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                required
+              >
+                {Array.from({ length: 24 * 4 }, (_, i) => {
+                  const hour = Math.floor(i / 4);
+                  const minute = (i % 4) * 15;
+                  const timeValue = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                  return (
+                    <option key={timeValue} value={timeValue}>
+                      {timeValue}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
 
           <div>
@@ -430,65 +477,63 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             </div>
           )}
 
-          {/* 共同作業（新規作成時のみ） */}
-          {!schedule && (
-            <div className="border-t pt-4">
-              <div className="flex items-center mb-3">
-                <input
-                  type="checkbox"
-                  id="isCollaborative"
-                  checked={isCollaborative}
-                  onChange={(e) => setIsCollaborative(e.target.checked)}
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                />
-                <label htmlFor="isCollaborative" className="ml-2 text-sm font-medium text-gray-700">
-                  共同作業（他メンバーを巻き込む）
-                </label>
-              </div>
-
-              {isCollaborative && (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    参加メンバーを選択
-                  </label>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {availableUsers.map((user) => (
-                      <label
-                        key={user.id}
-                        className="flex items-center p-2 hover:bg-white rounded cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedParticipantIds.includes(user.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedParticipantIds([...selectedParticipantIds, user.id]);
-                            } else {
-                              setSelectedParticipantIds(selectedParticipantIds.filter(id => id !== user.id));
-                            }
-                          }}
-                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                        />
-                        <div className="ml-3 flex items-center">
-                          <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2"
-                            style={{ backgroundColor: user.avatarColor }}
-                          >
-                            {(user.avatarLetter || user.name || '').charAt(0)}
-                          </div>
-                          <span className="text-sm text-gray-700">{user.name}</span>
-                          <span className="ml-2 text-xs text-gray-500">({user.role})</span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  {availableUsers.length === 0 && (
-                    <p className="text-sm text-gray-500">選択可能なメンバーがいません</p>
-                  )}
-                </div>
-              )}
+          {/* 共同作業（新規作成時・編集時ともに表示） */}
+          <div className="border-t dark:border-gray-700 pt-4">
+            <div className="flex items-center mb-3">
+              <input
+                type="checkbox"
+                id="isCollaborative"
+                checked={isCollaborative}
+                onChange={(e) => setIsCollaborative(e.target.checked)}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-600 rounded"
+              />
+              <label htmlFor="isCollaborative" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                共同作業（他メンバーを巻き込む）
+              </label>
             </div>
-          )}
+
+            {isCollaborative && (
+              <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  参加メンバーを選択
+                </label>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {availableUsers.map((user) => (
+                    <label
+                      key={user.id}
+                      className="flex items-center p-2 hover:bg-white dark:hover:bg-gray-600 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedParticipantIds.includes(user.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedParticipantIds([...selectedParticipantIds, user.id]);
+                          } else {
+                            setSelectedParticipantIds(selectedParticipantIds.filter(id => id !== user.id));
+                          }
+                        }}
+                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-600 rounded"
+                      />
+                      <div className="ml-3 flex items-center">
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2"
+                          style={{ backgroundColor: user.avatarColor }}
+                        >
+                          {(user.avatarLetter || user.name || '').charAt(0)}
+                        </div>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{user.name}</span>
+                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">({user.role})</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {availableUsers.length === 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">選択可能なメンバーがいません</p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex justify-between pt-4">
             <div>

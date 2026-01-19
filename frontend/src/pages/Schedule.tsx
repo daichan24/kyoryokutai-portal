@@ -35,6 +35,8 @@ export const Schedule: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleType | null>(null);
+  const [defaultStartTime, setDefaultStartTime] = useState<string | undefined>(undefined);
+  const [defaultEndTime, setDefaultEndTime] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (viewMode === 'week') {
@@ -124,9 +126,11 @@ export const Schedule: React.FC = () => {
     setCurrentDate(newDate);
   };
 
-  const handleCreateSchedule = (date: Date) => {
+  const handleCreateSchedule = (date: Date, startTime?: string, endTime?: string) => {
     setSelectedDate(date);
     setSelectedSchedule(null);
+    setDefaultStartTime(startTime);
+    setDefaultEndTime(endTime);
     setIsModalOpen(true);
   };
 
@@ -140,6 +144,8 @@ export const Schedule: React.FC = () => {
     setIsModalOpen(false);
     setSelectedDate(null);
     setSelectedSchedule(null);
+    setDefaultStartTime(undefined);
+    setDefaultEndTime(undefined);
   };
 
   const handleSaved = () => {
@@ -204,7 +210,7 @@ export const Schedule: React.FC = () => {
                 月
               </Button>
             </div>
-            <h2 className="text-xl font-bold">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               {viewMode === 'day' && weekDates[0] && formatDate(weekDates[0], 'yyyy年M月d日')}
               {viewMode === 'week' && weekDates[0] && weekDates[6] && (
                 <>
@@ -384,6 +390,8 @@ export const Schedule: React.FC = () => {
         <ScheduleModal
           schedule={selectedSchedule}
           defaultDate={selectedDate}
+          defaultStartTime={defaultStartTime}
+          defaultEndTime={defaultEndTime}
           onClose={handleCloseModal}
           onSaved={handleSaved}
         />
