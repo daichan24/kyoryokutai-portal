@@ -46,7 +46,7 @@ export const TaskRequestsWidget: React.FC<TaskRequestsWidgetProps> = ({
   const widgetTitle = user?.role === 'MEMBER' ? '依頼ボックス' : '依頼';
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4 h-full flex flex-col">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{widgetTitle}</h3>
         {showAddButton && onAddClick && (

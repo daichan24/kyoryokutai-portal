@@ -41,7 +41,7 @@ export const EventParticipationWidget: React.FC<EventParticipationWidgetProps> =
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">イベント参加状況</h3>
         <Link to="/events/participation-summary">

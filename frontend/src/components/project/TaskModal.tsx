@@ -7,6 +7,7 @@ import { api } from '../../utils/api';
 
 interface TaskModalProps {
   missionId: string;
+  projectId?: string;
   task?: Task | null;
   onClose: () => void;
   onSaved: () => void;
@@ -14,6 +15,7 @@ interface TaskModalProps {
 
 export const TaskModal: React.FC<TaskModalProps> = ({
   missionId,
+  projectId: initialProjectId,
   task,
   onClose,
   onSaved,
@@ -21,7 +23,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'>('NOT_STARTED');
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(initialProjectId || null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,14 +51,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
-      setProjectId(task.projectId || null);
+      setProjectId(task.projectId || initialProjectId || null);
     } else {
       setTitle('');
       setDescription('');
       setStatus('NOT_STARTED');
-      setProjectId(null);
+      setProjectId(initialProjectId || null);
     }
-  }, [task]);
+  }, [task, initialProjectId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -267,8 +267,14 @@ export const Dashboard: React.FC = () => {
     // 1カラム(columnSpan=1) = 幅広 = md:col-span-2 / 2カラム(2) = 通常 = 1ブロック
     const isFullWidth = (widget.columnSpan ?? 2) === 1;
     return (
-      <div key={widget.key} className={isFullWidth ? 'md:col-span-2' : ''}>
-        {widgetElement}
+      <div 
+        key={widget.key} 
+        className={`${isFullWidth ? 'md:col-span-2' : ''} flex flex-col`}
+        style={{ minHeight: '100%' }}
+      >
+        <div className="flex-1 flex flex-col">
+          {widgetElement}
+        </div>
       </div>
     );
   };
@@ -617,7 +623,7 @@ export const Dashboard: React.FC = () => {
 
       {/* カスタムウィジェットエリア */}
       {enabledWidgets.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" style={{ gridAutoRows: 'min-content', alignItems: 'stretch' }}>
           {enabledWidgets.map((widget) => renderWidget(widget))}
         </div>
       )}

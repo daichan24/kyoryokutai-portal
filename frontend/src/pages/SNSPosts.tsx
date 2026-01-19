@@ -131,10 +131,11 @@ export const SNSPosts: React.FC = () => {
 
   // 現在の週の投稿状況を計算（閲覧モード用）
   const currentWeekStatus = useMemo<MemberStatus[]>(() => {
-    if (!allPosts || !members.length) return [];
+    if (!members.length) return [];
 
+    // すべてのメンバーを表示（投稿がない場合も含む）
     return members.map(member => {
-      const memberPosts = allPosts.filter(p => 
+      const memberPosts = (allPosts || []).filter(p => 
         p.userId === member.id && 
         p.postedAt &&
         new Date(p.postedAt) >= weekStart &&
@@ -186,9 +187,10 @@ export const SNSPosts: React.FC = () => {
   const isLoading = viewMode === 'personal' ? isLoadingPersonal : isLoadingView;
   const posts = viewMode === 'personal' ? personalPosts : historicalPosts;
 
-  // 利用可能な月の一覧
+  // 利用可能な月の一覧（年度単位、3ヶ月遡れるように）
   const availableMonths = useMemo(() => {
     if (!allPosts) return [];
+    
     const months = new Set<string>();
     allPosts.forEach(post => {
       if (post.postedAt) {
@@ -196,6 +198,31 @@ export const SNSPosts: React.FC = () => {
         months.add(month);
       }
     });
+    
+    // 現在の年度を計算（4月〜翌年3月）
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const fiscalYearStart = currentMonth >= 4 ? currentYear : currentYear - 1;
+    const fiscalYearEnd = fiscalYearStart + 1;
+    
+    // 現在の年度の月を追加（4月〜翌年3月）
+    for (let month = 4; month <= 12; month++) {
+      months.add(`${fiscalYearStart}-${String(month).padStart(2, '0')}`);
+    }
+    for (let month = 1; month <= 3; month++) {
+      months.add(`${fiscalYearEnd}-${String(month).padStart(2, '0')}`);
+    }
+    
+    // 前年度の最後の3ヶ月を追加（1月、2月、3月）
+    const prevFiscalYearStart = fiscalYearStart - 1;
+    for (let month = 1; month <= 3; month++) {
+      months.add(`${prevFiscalYearStart + 1}-${String(month).padStart(2, '0')}`);
+    }
+    
+    // 年度が変わっても3ヶ月は遡れるように（前年度の最後の3ヶ月）
+    // 既に追加済み
+    
     return Array.from(months).sort().reverse();
   }, [allPosts]);
 

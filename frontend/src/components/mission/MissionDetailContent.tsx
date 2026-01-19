@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Task, Project } from '../../types';
 import { TaskModal } from '../project/TaskModal';
+import { ProjectModal } from '../project/ProjectModal';
 import { useAuthStore } from '../../stores/authStore';
 
 interface MissionDetailContentProps {
   missionId: string;
+}
+
+interface ProjectWithTasks extends Project {
+  relatedTasks?: Task[];
 }
 
 export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ missionId }) => {
@@ -16,9 +21,13 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
   const queryClient = useQueryClient();
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   // プロジェクト一覧を取得（このミッションに紐づくプロジェクトのみ）
-  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
+  const { data: projects = [], isLoading: projectsLoading } = useQuery<ProjectWithTasks[]>({
     queryKey: ['projects', missionId],
     queryFn: async () => {
       // まずミッションの所有者を取得
@@ -26,35 +35,62 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
       const mission = missionResponse.data;
       
       // このミッションに紐づくプロジェクトで、かつ所有者がこのミッションの所有者と同じもののみを取得
+      // relatedTasksは既にAPIレスポンスに含まれている
       const response = await api.get(`/api/projects?missionId=${missionId}&userId=${mission.userId}`);
-      return response.data || [];
+      return (response.data || []).map((project: any) => ({
+        ...project,
+        relatedTasks: project.relatedTasks || [],
+      }));
     },
   });
 
-  // タスク一覧を取得
-  const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
-    queryKey: ['tasks', missionId],
-    queryFn: async () => {
-      const response = await api.get(`/api/missions/${missionId}/tasks`);
-      return response.data || [];
-    },
-  });
+  const toggleProject = (projectId: string) => {
+    const newSet = new Set(expandedProjects);
+    if (newSet.has(projectId)) {
+      newSet.delete(projectId);
+    } else {
+      newSet.add(projectId);
+    }
+    setExpandedProjects(newSet);
+  };
 
-  const handleCreateTask = () => {
+  const handleCreateProject = () => {
+    setSelectedProject(null);
+    setIsProjectModalOpen(true);
+  };
+
+  const handleEditProject = (project: Project) => {
+    setSelectedProject(project);
+    setIsProjectModalOpen(true);
+  };
+
+  const handleProjectSaved = () => {
+    queryClient.invalidateQueries({ queryKey: ['projects', missionId] });
+    setIsProjectModalOpen(false);
+    setSelectedProject(null);
+  };
+
+  const handleCreateTask = (projectId: string) => {
     setSelectedTask(null);
+    setSelectedProjectId(projectId);
     setIsNewTaskModalOpen(true);
   };
 
   const handleEditTask = (task: Task) => {
     setSelectedTask(task);
+    setSelectedProjectId(task.projectId || null);
     setIsNewTaskModalOpen(true);
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = async (taskId: string, projectId?: string) => {
     if (!confirm('このタスクを削除しますか？')) return;
     try {
-      await api.delete(`/api/missions/${missionId}/tasks/${taskId}`);
-      queryClient.invalidateQueries({ queryKey: ['tasks', missionId] });
+      if (projectId) {
+        await api.delete(`/api/projects/${projectId}/tasks/${taskId}`);
+      } else {
+        await api.delete(`/api/missions/${missionId}/tasks/${taskId}`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['projects', missionId] });
     } catch (error) {
       console.error('Failed to delete task:', error);
       alert('削除に失敗しました');
@@ -62,9 +98,16 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
   };
 
   const handleTaskSaved = () => {
-    queryClient.invalidateQueries({ queryKey: ['tasks', missionId] });
+    queryClient.invalidateQueries({ queryKey: ['projects', missionId] });
     setIsNewTaskModalOpen(false);
     setSelectedTask(null);
+    setSelectedProjectId(null);
+  };
+
+  // プロジェクトの重みを計算（ミッション内の全プロジェクト数で等分）
+  const calculateProjectWeight = (projectIndex: number, totalProjects: number) => {
+    if (totalProjects === 0) return 0;
+    return Math.round(100 / totalProjects);
   };
 
   const getStatusIcon = (status: string) => {
@@ -91,121 +134,186 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* プロジェクト（中目標）セクション */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">プロジェクト（中目標）</h3>
-            {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  // プロジェクト作成は別のページで行う
-                  window.location.href = '/projects';
-                }}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                追加
-              </Button>
-            )}
-          </div>
-          {projectsLoading ? (
-            <div className="text-center py-4 text-gray-500 dark:text-gray-400">読み込み中...</div>
-          ) : projects.length === 0 ? (
-            <div className="text-center py-4 text-gray-500 dark:text-gray-400">プロジェクトがありません</div>
-          ) : (
-            <div className="space-y-2">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900 dark:text-gray-100">{project.projectName}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {project.phase === 'PREPARATION' && '準備中'}
-                      {project.phase === 'EXECUTION' && '実行中'}
-                      {project.phase === 'COMPLETED' && '完了'}
-                      {project.phase === 'REVIEW' && 'レビュー中'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* プロジェクト一覧（タスクはプロジェクト配下に表示） */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">プロジェクト</h3>
+          {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCreateProject}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              追加
+            </Button>
           )}
         </div>
 
-        {/* タスク（小目標）セクション */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（小目標）</h3>
-            {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
-              <Button size="sm" variant="outline" onClick={handleCreateTask}>
-                <Plus className="h-4 w-4 mr-1" />
-                追加
-              </Button>
-            )}
-          </div>
-          {tasksLoading ? (
-            <div className="text-center py-4 text-gray-500 dark:text-gray-400">読み込み中...</div>
-          ) : tasks.length === 0 ? (
-            <div className="text-center py-4 text-gray-500 dark:text-gray-400">タスクがありません</div>
-          ) : (
-            <div className="space-y-2">
-              {tasks.map((task) => (
+        {projectsLoading ? (
+          <div className="text-center py-4 text-gray-500 dark:text-gray-400">読み込み中...</div>
+        ) : projects.length === 0 ? (
+          <div className="text-center py-4 text-gray-500 dark:text-gray-400">プロジェクトがありません</div>
+        ) : (
+          <div className="space-y-3">
+            {projects.map((project, index) => {
+              const weight = calculateProjectWeight(index, projects.length);
+              const isExpanded = expandedProjects.has(project.id);
+              const projectTasks = project.relatedTasks || [];
+              
+              return (
                 <div
-                  key={task.id}
-                  className="p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  key={project.id}
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(task.status)}
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{task.title}</span>
-                    </div>
-                    {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
-                      <div className="flex items-center gap-1">
+                  {/* プロジェクトヘッダー */}
+                  <div
+                    className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    onClick={() => toggleProject(project.id)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                          {isExpanded ? (
+                            <ChevronDown className="h-5 w-5" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5" />
+                          )}
+                        </button>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{project.projectName}</span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                          重み: {weight}%
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {project.phase === 'PREPARATION' && '準備中'}
+                          {project.phase === 'EXECUTION' && '実行中'}
+                          {project.phase === 'COMPLETED' && '完了'}
+                          {project.phase === 'REVIEW' && 'レビュー中'}
+                        </span>
+                      </div>
+                      {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
                         <button
-                          onClick={() => handleEditTask(task)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditProject(project);
+                          }}
                           className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                          title="編集"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      )}
+                    </div>
+                    
+                    {/* 重みの視覚的表示 */}
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 transition-all duration-300"
+                        style={{ width: `${weight}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* タスク一覧（プロジェクト配下） */}
+                  {isExpanded && (
+                    <div className="bg-gray-50 dark:bg-gray-800/50 px-4 pb-4">
+                      <div className="flex justify-between items-center mb-3 mt-2">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">タスク</h4>
+                        {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateTask(project.id);
+                            }}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            追加
+                          </Button>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  {task.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{task.description}</p>
+                      
+                      {projectTasks.length === 0 ? (
+                        <div className="text-center py-3 text-sm text-gray-500 dark:text-gray-400">
+                          タスクがありません
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {projectTasks.map((task) => (
+                            <div
+                              key={task.id}
+                              className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon(task.status)}
+                                  <span className="font-medium text-gray-900 dark:text-gray-100">{task.title}</span>
+                                </div>
+                                {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditTask(task);
+                                      }}
+                                      className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteTask(task.id, project.id);
+                                      }}
+                                      className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              {task.description && (
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{task.description}</p>
+                              )}
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">{getStatusLabel(task.status)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{getStatusLabel(task.status)}</span>
-                    {task.project && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        関連: {task.project.projectName}
-                      </span>
-                    )}
-                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* プロジェクトモーダル */}
+      {isProjectModalOpen && (
+        <ProjectModal
+          project={selectedProject}
+          onClose={() => {
+            setIsProjectModalOpen(false);
+            setSelectedProject(null);
+          }}
+          onSaved={handleProjectSaved}
+        />
+      )}
 
       {/* タスクモーダル */}
       {isNewTaskModalOpen && (
         <TaskModal
           missionId={missionId}
+          projectId={selectedProjectId || undefined}
           task={selectedTask}
           onClose={() => {
             setIsNewTaskModalOpen(false);
             setSelectedTask(null);
+            setSelectedProjectId(null);
           }}
           onSaved={handleTaskSaved}
         />

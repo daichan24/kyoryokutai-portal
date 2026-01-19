@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -245,6 +246,23 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
     setConfig({ ...config, widgets });
   };
 
+  const handleDragEnd = (result: DropResult) => {
+    if (!config || !result.destination) return;
+    
+    const widgets = Array.from(config.widgets);
+    const sortedWidgets = widgets.sort((a, b) => a.order - b.order);
+    const [reorderedItem] = sortedWidgets.splice(result.source.index, 1);
+    sortedWidgets.splice(result.destination.index, 0, reorderedItem);
+    
+    // orderを更新
+    const updatedWidgets = sortedWidgets.map((widget, index) => ({
+      ...widget,
+      order: index + 1,
+    }));
+    
+    setConfig({ ...config, widgets: updatedWidgets });
+  };
+
   const handleSave = () => {
     if (!config) return;
     saveMutation.mutate(config);
@@ -272,42 +290,37 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
 
         <div className="p-6 space-y-4 flex-1 overflow-y-auto">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            ウィジェットの表示/非表示、追加ボタンの表示、並び順を設定できます。
+            ウィジェットの表示/非表示、追加ボタンの表示、並び順を設定できます。ドラッグ&ドロップで順序を変更できます。
           </p>
 
-          <div className="space-y-3">
-            {(config?.widgets ?? [])
-              .sort((a, b) => a.order - b.order)
-              .map((widget) => (
-                <div
-                  key={widget.key}
-                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => handleMoveOrder(widget.key, 'up')}
-                          disabled={widget.order === 1}
-                          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleMoveOrder(widget.key, 'down')}
-                          disabled={widget.order === config.widgets.length}
-                          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                          {widgetLabels[widget.key] || widget.key}
-                        </h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">順序: {widget.order}</p>
-                      </div>
-                    </div>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="widgets">
+              {(provided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+                  {(config?.widgets ?? [])
+                    .sort((a, b) => a.order - b.order)
+                    .map((widget, index) => (
+                      <Draggable key={widget.key} draggableId={widget.key} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3 ${
+                              snapshot.isDragging ? 'bg-blue-50 dark:bg-blue-900/20 shadow-lg' : 'bg-white dark:bg-gray-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                  <GripVertical className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                </div>
+                                <div>
+                                  <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                                    {widgetLabels[widget.key] || widget.key}
+                                  </h3>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">順序: {widget.order}</p>
+                                </div>
+                              </div>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -378,9 +391,15 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
                       </label>
                     </div>
                   )}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                  {provided.placeholder}
                 </div>
-              ))}
-          </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </div>
 
         <div className="flex justify-end gap-3 p-6 border-t dark:border-gray-700 flex-shrink-0">

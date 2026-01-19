@@ -112,7 +112,7 @@ export const ContactsWidget: React.FC<ContactsWidgetProps> = ({
 
   // 表示のみ / 表示+追加ボタン: 直近で更新された人を表示
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4 h-full flex flex-col">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">町民データベース</h3>
         {showAddButton && (
