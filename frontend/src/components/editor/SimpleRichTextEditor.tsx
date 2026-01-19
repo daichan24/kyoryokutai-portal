@@ -213,6 +213,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         className="min-h-[300px] p-4 focus:outline-none prose max-w-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-b-lg dark:prose-invert"
         style={{
           wordBreak: 'break-word',
+          color: 'inherit',
         }}
         data-placeholder={placeholder}
         suppressContentEditableWarning
@@ -226,6 +227,12 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         }
         .dark [contenteditable][data-placeholder]:empty:before {
           color: #6b7280;
+        }
+        [contenteditable] {
+          color: inherit;
+        }
+        [contenteditable] * {
+          color: inherit;
         }
         [contenteditable] h1 {
           font-size: 1.875rem;
@@ -260,6 +267,12 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         }
         [contenteditable] p {
           margin: 0.5rem 0;
+        }
+        .dark [contenteditable] {
+          color: #f3f4f6;
+        }
+        .dark [contenteditable] * {
+          color: #f3f4f6;
         }
       `}</style>
     </div>

@@ -44,6 +44,36 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     });
   }
 
+  // その月の支援記録を取得して、月次報告に紐付け
+  const startDate = startOfMonth(new Date(`${month}-01`));
+  const endDate = endOfMonth(startDate);
+
+  // その月の支援記録を取得（まだ月次報告に紐付けられていないもの）
+  const allSupportRecords = await prisma.supportRecord.findMany({
+    where: {
+      supportDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      supportDate: 'asc',
+    },
+  });
+
+  // 月次報告に紐付けられていないもの（nullまたは空文字列）をフィルタリング
+  const supportRecords = allSupportRecords.filter(record => 
+    !record.monthlyReportId || record.monthlyReportId === ''
+  );
+
   // 月次報告を作成
   const report = await prisma.monthlyReport.create({
     data: {
@@ -53,27 +83,28 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
       coverSender,
       memberSheets: memberSheets as any,
     },
-  });
-
-  // その月の支援記録を取得して、月次報告に紐付け
-  const startDate = startOfMonth(new Date(`${month}-01`));
-  const endDate = endOfMonth(startDate);
-
-  // その月の支援記録を取得（まだ月次報告に紐付けられていないもの）
-  // 一時的なID（temp-で始まる）または実際の月次報告IDが存在しないものを取得
-  const allSupportRecords = await prisma.supportRecord.findMany({
-    where: {
-      supportDate: {
-        gte: startDate,
-        lte: endDate,
+    include: {
+      creator: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      supportRecords: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          supportDate: 'asc',
+        },
       },
     },
   });
-
-  // 月次報告に紐付けられていないもの（nullまたは空文字列）をフィルタリング
-  const supportRecords = allSupportRecords.filter(record => 
-    !record.monthlyReportId || record.monthlyReportId === ''
-  );
 
   // 支援記録を月次報告に紐付け
   if (supportRecords.length > 0) {
@@ -85,6 +116,34 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
         monthlyReportId: report.id,
       },
     });
+
+    // 紐付け後の支援記録を再取得
+    const updatedReport = await prisma.monthlyReport.findUnique({
+      where: { id: report.id },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        supportRecords: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            supportDate: 'asc',
+          },
+        },
+      },
+    });
+
+    return updatedReport || report;
   }
 
   return report;

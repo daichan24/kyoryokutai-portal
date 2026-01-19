@@ -210,6 +210,10 @@ export const MonthlyReport: React.FC = () => {
                     queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
                     setShowMonthSelector(false);
                     setSelectedMonth('');
+                    // 作成後に詳細モーダルを開く
+                    if (response.data?.id) {
+                      setSelectedReportId(response.data.id);
+                    }
                   } catch (error: any) {
                     alert(`月次報告の作成に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
                   } finally {
@@ -233,6 +237,7 @@ export const MonthlyReport: React.FC = () => {
           onUpdated={() => {
             queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
           }}
+          viewMode="edit"
         />
       )}
     </div>

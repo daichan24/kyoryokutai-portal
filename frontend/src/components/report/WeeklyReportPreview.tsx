@@ -84,11 +84,8 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         {templateSettings?.weeklyReport.title || '地域おこし協力隊活動報告'}
       </h1>
 
-      {/* 宛先 */}
+      {/* 報告者 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ marginBottom: '10px' }}>
-          <strong>宛先</strong>　{templateSettings?.weeklyReport.recipient || '○○市役所　○○課長　様'}
-        </div>
         <div>
           <strong>報告者</strong>　{report.user?.name || ''}
         </div>
@@ -178,9 +175,10 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
       {/* 2. 来週の予定 */}
       {report.nextWeekPlan && (
         <div style={{ marginBottom: '30px' }}>
-          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          <div style={{ 
             fontWeight: 'bold', 
-            backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+            backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+            color: isDarkMode ? '#f3f4f6' : '#000000',
             padding: '8px',
             marginBottom: '15px'
           }}>
@@ -199,9 +197,10 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
       {/* 3. 備考 */}
       {report.note && (
         <div style={{ marginBottom: '30px' }}>
-          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          <div style={{ 
             fontWeight: 'bold', 
-            backgroundColor: isDarkMode ? '#374151' : '#f0f0f0', 
+            backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
+            color: isDarkMode ? '#f3f4f6' : '#000000',
             padding: '8px',
             marginBottom: '15px'
           }}>

@@ -200,9 +200,11 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
       {Array.isArray(report.memberSheets) && report.memberSheets.length > 0 && (
         report.memberSheets.map((sheet: any, index: number) => {
           const sheetDate = format(new Date(`${report.month}-01`), 'yyyy年M月', { locale: ja });
-          const reiwaYear = new Date(`${report.month}-01`).getFullYear() - 2018; // 令和年計算
-          const monthNum = new Date(`${report.month}-01`).getMonth() + 1;
-          const dayNum = new Date(`${report.month}-01`).getDate();
+          const monthDate = new Date(`${report.month}-01`);
+          const reiwaYear = monthDate.getFullYear() - 2018; // 令和年計算
+          const monthNum = monthDate.getMonth() + 1;
+          const currentDate = new Date();
+          const dayNum = currentDate.getDate();
           
           return (
             <div key={index} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
@@ -246,7 +248,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                   <ul style={{ marginLeft: '20px', marginTop: '5px' }}>
                     {sheet.thisMonthActivities.map((activity: any, i: number) => (
                       <li key={i} style={{ marginBottom: '5px' }}>
-                        {activity.date}: {activity.description}
+                        {typeof activity === 'string' ? activity : `${activity.date || ''}: ${stripHtml(activity.description || activity.activity || '')}`}
                       </li>
                     ))}
                   </ul>
@@ -267,7 +269,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                   【翌月以降の活動予定】
                 </div>
                 <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-                  {sheet.nextMonthPlan || '（未記入）'}
+                  {stripHtml(sheet.nextMonthPlan) || '（未記入）'}
                 </div>
               </div>
 
@@ -283,7 +285,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                   【勤務に関する質問など】
                 </div>
                 <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-                  {sheet.workQuestions || '（未記入）'}
+                  {stripHtml(sheet.workQuestions) || '（未記入）'}
                 </div>
               </div>
 
@@ -299,7 +301,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                   【生活面の留意事項その他】
                 </div>
                 <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-                  {sheet.lifeNotes || '（未記入）'}
+                  {stripHtml(sheet.lifeNotes) || '（未記入）'}
                 </div>
               </div>
             </div>

@@ -189,17 +189,6 @@ export const DocumentTemplatesSettings: React.FC = () => {
         <h2 className="text-xl font-bold mb-4 dark:text-gray-100">週次報告テンプレート</h2>
         <div className="space-y-4">
           <Input
-            label="宛先"
-            value={settings.weeklyReport.recipient}
-            onChange={(e) =>
-              setSettings({
-                ...settings,
-                weeklyReport: { ...settings.weeklyReport, recipient: e.target.value },
-              })
-            }
-            disabled={!canEdit}
-          />
-          <Input
             label="タイトル"
             value={settings.weeklyReport.title}
             onChange={(e) =>
@@ -244,7 +233,7 @@ export const DocumentTemplatesSettings: React.FC = () => {
             />
           </div>
           <Input
-            label="タイトル（{month}は対象月に置換されます）"
+            label="タイトル（&#123;month&#125;は対象月に置換されます）"
             value={settings.monthlyReport.title}
             onChange={(e) =>
               setSettings({
@@ -273,7 +262,7 @@ export const DocumentTemplatesSettings: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              テキスト2（改行可、{count}は隊員数に置換されます）
+              テキスト2（改行可、&#123;count&#125;は隊員数に置換されます）
             </label>
             <textarea
               value={settings.monthlyReport.text2}

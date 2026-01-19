@@ -85,13 +85,30 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     retry: false,
   });
 
+  // テンプレート設定を取得
+  const { data: templateSettings } = useQuery({
+    queryKey: ['documentTemplates', 'monthlyReport'],
+    queryFn: async () => {
+      const response = await api.get('/api/document-templates');
+      return response.data?.monthlyReport;
+    },
+    staleTime: Infinity,
+  });
+
   useEffect(() => {
     if (report) {
-      setCoverRecipient(report.coverRecipient);
-      setCoverSender(report.coverSender);
+      setCoverRecipient(report.coverRecipient || templateSettings?.recipient || '');
+      setCoverSender(report.coverSender || templateSettings?.sender || '');
       setMemberSheets(report.memberSheets || []);
+    } else if (templateSettings) {
+      // テンプレートから初期値を設定
+      setCoverRecipient(templateSettings.recipient || '');
+      setCoverSender(templateSettings.sender || '');
+      // 新規作成時は編集モードで開始
+      setIsEditing(true);
+      setViewMode('edit');
     }
-  }, [report]);
+  }, [report, templateSettings]);
 
   const downloadPDF = async () => {
     try {
@@ -117,18 +134,23 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   const canDelete = user?.role === 'SUPPORT' || user?.role === 'MASTER';
 
   const handleSave = async () => {
-    if (!report) return;
     setSaving(true);
     try {
-      await api.put(`/api/monthly-reports/${reportId}`, {
-        coverRecipient,
-        coverSender,
-        memberSheets,
-      });
-      setIsEditing(false);
-      refetch();
-      if (onUpdated) onUpdated();
-      queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+      if (report) {
+        // 既存の報告を更新
+        await api.put(`/api/monthly-reports/${reportId}`, {
+          coverRecipient,
+          coverSender,
+          memberSheets,
+        });
+        setIsEditing(false);
+        refetch();
+        if (onUpdated) onUpdated();
+        queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+      } else {
+        // 新規作成（このケースは通常発生しないが、念のため）
+        console.warn('新規作成は月次報告ページから行ってください');
+      }
     } catch (error: any) {
       console.error('Failed to save monthly report:', error);
       alert(`保存に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
@@ -154,38 +176,31 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-          <LoadingSpinner />
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
           <LoadingSpinner />
+          <div className="text-center text-gray-700 dark:text-gray-300 mt-4">月次報告を読み込み中...</div>
         </div>
       </div>
     );
   }
 
-  if (!report && !isLoading) {
+  // エラー時はエラーメッセージを表示
+  if (error) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-[210mm] w-full m-4 max-h-[90vh] overflow-y-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
-          <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-            <h2 className="text-2xl font-bold dark:text-gray-100">月次報告</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold dark:text-gray-100">エラー</h2>
             <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
               <X className="h-6 w-6" />
             </button>
           </div>
-          <div className="p-6 space-y-6">
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-              <p>月次報告のデータが見つかりませんでした。</p>
-              <p className="text-sm mt-2">新しい月次報告を作成してください。</p>
-            </div>
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <p>月次報告の読み込みに失敗しました。</p>
+            <p className="text-sm mt-2">もう一度お試しください。</p>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={onClose}>閉じる</Button>
           </div>
         </div>
       </div>
@@ -320,22 +335,24 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-sm font-medium text-gray-700">作成者:</span>
-              <p className="text-gray-900">{report.creator.name}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-700">作成日:</span>
-              <p className="text-gray-900">{format(new Date(report.createdAt), 'yyyy年M月d日')}</p>
-            </div>
-            {report.submittedAt && (
+          {report && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <span className="text-sm font-medium text-gray-700">提出日:</span>
-                <p className="text-gray-900">{format(new Date(report.submittedAt), 'yyyy年M月d日')}</p>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">作成者:</span>
+                <p className="text-gray-900 dark:text-gray-100">{report.creator.name}</p>
               </div>
-            )}
-          </div>
+              <div>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">作成日:</span>
+                <p className="text-gray-900 dark:text-gray-100">{format(new Date(report.createdAt), 'yyyy年M月d日')}</p>
+              </div>
+              {report.submittedAt && (
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">提出日:</span>
+                  <p className="text-gray-900 dark:text-gray-100">{format(new Date(report.submittedAt), 'yyyy年M月d日')}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {isEditing && (
             <div className="space-y-4 border-t pt-4">
@@ -370,14 +387,12 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             </div>
           )}
 
-          {report && (
+          {(report || (isEditing && !report)) && (
             <div>
               <h3 className="font-bold text-lg mb-3 dark:text-gray-100">支援内容</h3>
-              {report.supportRecords && report.supportRecords.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400">支援記録がありません</p>
-              ) : (
+              {report && report.supportRecords && report.supportRecords.length > 0 ? (
                 <div className="space-y-3">
-                  {report.supportRecords?.map((record) => (
+                  {report.supportRecords.map((record) => (
                     <div key={record.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700/50">
                       <div className="flex justify-between items-start mb-2">
                         <div>
@@ -395,6 +410,8 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400">支援記録がありません</p>
               )}
             </div>
           )}

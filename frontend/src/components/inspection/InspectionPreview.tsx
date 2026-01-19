@@ -86,7 +86,8 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
   // テンプレート設定から値を取得
   const recipient = templateSettings?.inspection.recipient || '長沼町長　齋　藤　良　彦　様';
-  const userName = `${inspection.user.name}`; // 〇〇課　地域おこし協力隊　氏名の形式にする場合は後で実装
+  const namePrefix = templateSettings?.inspection.namePrefix || '〇〇課　地域おこし協力隊';
+  const userName = `${namePrefix}　${inspection.user.name}`;
   const text1 = templateSettings?.inspection.text1 || '次の通り復命します。';
 
   return (
