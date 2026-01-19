@@ -91,6 +91,14 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
   const text2 = text2Template.replace('{count}', String(report.memberSheets?.length || 0)).replace('◯名分', `${report.memberSheets?.length || 0}名分`);
   const contact = templateSettings?.monthlyReport.contact || '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org';
 
+  if (!templateSettings) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500 dark:text-gray-400">テンプレート設定を読み込み中...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* 表紙（1ページ目） */}
