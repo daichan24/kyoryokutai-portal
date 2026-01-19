@@ -27,6 +27,10 @@ const CATEGORY_SUGGESTIONS = [
 export const Wishes: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const [viewMode, setViewMode] = useState<'personal' | 'view'>(
+    user?.role === 'MEMBER' ? 'personal' : 'view'
+  );
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<WishStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -37,6 +41,7 @@ export const Wishes: React.FC = () => {
   const [detailWish, setDetailWish] = useState<Wish | null>(null);
   const [showReflectionModal, setShowReflectionModal] = useState(false);
   const [completedWish, setCompletedWish] = useState<Wish | null>(null);
+  const [members, setMembers] = useState<Array<{ id: string; name: string }>>([]);
 
   // 統計情報を取得
   const { data: stats } = useQuery({

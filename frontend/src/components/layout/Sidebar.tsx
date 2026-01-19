@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     { to: '/dashboard', icon: Home, label: 'ダッシュボード' },
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
     { to: '/events', icon: CalendarDays, label: 'イベント', end: true },
-    { to: '/wishes', icon: ListChecks, label: 'やりたいこと100' },
+    ...(user?.wishesEnabled !== false ? [{ to: '/wishes', icon: ListChecks, label: 'やりたいこと100' }] : []),
   ];
 
   // 大目標カテゴリ（Mission）

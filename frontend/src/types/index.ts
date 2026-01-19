@@ -19,6 +19,7 @@ export interface User {
   avatarLetter?: string | null;
   darkMode?: boolean;
   displayOrder?: number;
+  wishesEnabled?: boolean;
   createdAt: string;
   updatedAt?: string;
 }

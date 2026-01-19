@@ -23,6 +23,7 @@ export const ProfileSettings: React.FC = () => {
   const [avatarLetter, setAvatarLetter] = useState('');
   const [department, setDepartment] = useState('');
   const [missionType, setMissionType] = useState<'FREE' | 'MISSION' | ''>('');
+  const [wishesEnabled, setWishesEnabled] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -31,6 +32,7 @@ export const ProfileSettings: React.FC = () => {
       setAvatarLetter(user.avatarLetter ?? '');
       setDepartment(user.department || '');
       setMissionType(user.missionType || '');
+      setWishesEnabled(user.wishesEnabled !== undefined ? user.wishesEnabled : true);
     }
   }, [user]);
 
@@ -49,7 +51,7 @@ export const ProfileSettings: React.FC = () => {
   }, [currentLinks]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null }) => {
+    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean }) => {
       const response = await api.put('/api/me/profile', data);
       return response.data;
     },
@@ -106,6 +108,7 @@ export const ProfileSettings: React.FC = () => {
       avatarLetter: avatarLetter === '' ? null : avatarLetter.slice(0, 1),
       department: department === '' ? null : department,
       missionType: missionType === '' ? null : missionType as 'FREE' | 'MISSION',
+      wishesEnabled: wishesEnabled,
     });
   };
 
@@ -223,6 +226,23 @@ export const ProfileSettings: React.FC = () => {
               <option value="MISSION">ミッション型</option>
             </select>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">協力隊のタイプを選択します</p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">やりたいこと100</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">サイドバーに「やりたいこと100」を表示する</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={wishesEnabled}
+                onChange={(e) => setWishesEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{wishesEnabled ? 'ON' : 'OFF'}</span>
+            </label>
           </div>
         </div>
 

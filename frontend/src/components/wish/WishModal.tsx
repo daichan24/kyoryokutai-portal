@@ -175,51 +175,126 @@ export const WishModal: React.FC<WishModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 難易度
               </label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value as WishDifficulty | '')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              >
-                <option value="">選択しない</option>
-                <option value="EASY">簡単</option>
-                <option value="MEDIUM">普通</option>
-                <option value="HARD">難しい</option>
-              </select>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDifficulty(difficulty === 'EASY' ? '' : 'EASY')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    difficulty === 'EASY'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  簡単
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDifficulty(difficulty === 'MEDIUM' ? '' : 'MEDIUM')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    difficulty === 'MEDIUM'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  普通
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDifficulty(difficulty === 'HARD' ? '' : 'HARD')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    difficulty === 'HARD'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  難しい
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 所要感
               </label>
-              <select
-                value={estimate}
-                onChange={(e) => setEstimate(e.target.value as WishEstimate | '')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              >
-                <option value="">選択しない</option>
-                <option value="S">短</option>
-                <option value="M">中</option>
-                <option value="L">長</option>
-              </select>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEstimate(estimate === 'S' ? '' : 'S')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    estimate === 'S'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  短
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEstimate(estimate === 'M' ? '' : 'M')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    estimate === 'M'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  中
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEstimate(estimate === 'L' ? '' : 'L')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    estimate === 'L'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  長
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 優先度
               </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as WishPriority | '')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              >
-                <option value="">選択しない</option>
-                <option value="LOW">低</option>
-                <option value="MID">中</option>
-                <option value="HIGH">高</option>
-              </select>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPriority(priority === 'LOW' ? '' : 'LOW')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    priority === 'LOW'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  低
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority(priority === 'MID' ? '' : 'MID')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    priority === 'MID'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  中
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority(priority === 'HIGH' ? '' : 'HIGH')}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    priority === 'HIGH'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  高
+                </button>
+              </div>
             </div>
           </div>
 

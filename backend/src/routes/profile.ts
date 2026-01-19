@@ -12,6 +12,7 @@ const updateProfileSchema = z.object({
   darkMode: z.boolean().optional(),
   department: z.string().optional().nullable(),
   missionType: z.enum(['FREE', 'MISSION']).optional().nullable(),
+  wishesEnabled: z.boolean().optional(),
 });
 
 /**
@@ -29,7 +30,7 @@ router.put('/', async (req: AuthRequest, res) => {
     }
     const data = raw.data;
 
-    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null } = {};
+    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean } = {};
     if (data.avatarColor !== undefined) updateData.avatarColor = data.avatarColor;
     if (data.avatarLetter !== undefined) {
       // 空文字列、null、undefinedの場合はnullに変換
@@ -38,6 +39,7 @@ router.put('/', async (req: AuthRequest, res) => {
     if (data.darkMode !== undefined) updateData.darkMode = data.darkMode;
     if (data.department !== undefined) updateData.department = data.department === '' ? null : data.department;
     if (data.missionType !== undefined) updateData.missionType = data.missionType;
+    if (data.wishesEnabled !== undefined) updateData.wishesEnabled = data.wishesEnabled;
 
     console.log('[API] Update data:', updateData);
 
@@ -50,6 +52,7 @@ router.put('/', async (req: AuthRequest, res) => {
         darkMode: true,
         department: true,
         missionType: true,
+        wishesEnabled: true,
       },
     });
 

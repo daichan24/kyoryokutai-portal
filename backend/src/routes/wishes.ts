@@ -25,12 +25,18 @@ const createCheckinSchema = z.object({
   content: z.string().min(1),
 });
 
-// GET /api/wishes - 自分のやりたいこと一覧
+// GET /api/wishes - 自分のやりたいこと一覧（または指定ユーザーの一覧）
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { status, category, search, sort } = req.query;
+    const { status, category, search, sort, userId } = req.query;
+    // メンバー以外の役職は、userIdパラメータで他のメンバーのリストを見れる
+    // メンバーは自分のもののみ
+    const targetUserId = req.user!.role === 'MEMBER' 
+      ? req.user!.id 
+      : (userId ? userId as string : req.user!.id);
+    
     const where: any = {
-      userId: req.user!.id,
+      userId: targetUserId,
     };
 
     if (status) {
@@ -88,6 +94,12 @@ router.get('/', async (req: AuthRequest, res) => {
 // GET /api/wishes/stats - 統計情報
 router.get('/stats', async (req: AuthRequest, res) => {
   try {
+    const { userId } = req.query;
+    // メンバー以外の役職は、userIdパラメータで他のメンバーの統計を見れる
+    const targetUserId = req.user!.role === 'MEMBER' 
+      ? req.user!.id 
+      : (userId ? userId as string : req.user!.id);
+    
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
@@ -96,17 +108,17 @@ router.get('/stats', async (req: AuthRequest, res) => {
 
     const [total, done, thisMonthDone, active] = await Promise.all([
       prisma.wish.count({
-        where: { userId: req.user!.id },
+        where: { userId: targetUserId },
       }),
       prisma.wish.count({
         where: {
-          userId: req.user!.id,
+          userId: targetUserId,
           status: 'DONE',
         },
       }),
       prisma.wish.count({
         where: {
-          userId: req.user!.id,
+          userId: targetUserId,
           status: 'DONE',
           completedAt: {
             gte: startOfMonth,
@@ -116,7 +128,7 @@ router.get('/stats', async (req: AuthRequest, res) => {
       }),
       prisma.wish.count({
         where: {
-          userId: req.user!.id,
+          userId: targetUserId,
           status: 'ACTIVE',
         },
       }),
