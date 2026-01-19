@@ -44,6 +44,16 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
     },
   });
 
+  // プロジェクトなしのタスク一覧を取得
+  const { data: tasksWithoutProject = [], isLoading: tasksWithoutProjectLoading } = useQuery<Task[]>({
+    queryKey: ['tasks', missionId, 'without-project'],
+    queryFn: async () => {
+      const response = await api.get(`/api/missions/${missionId}/tasks`);
+      // projectIdがnullまたはundefinedのタスクのみを返す
+      return (response.data || []).filter((task: Task) => !task.projectId);
+    },
+  });
+
   const toggleProject = (projectId: string) => {
     const newSet = new Set(expandedProjects);
     if (newSet.has(projectId)) {
@@ -70,9 +80,9 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
     setSelectedProject(null);
   };
 
-  const handleCreateTask = (projectId: string) => {
+  const handleCreateTask = (projectId?: string) => {
     setSelectedTask(null);
-    setSelectedProjectId(projectId);
+    setSelectedProjectId(projectId || null);
     setIsNewTaskModalOpen(true);
   };
 
@@ -91,6 +101,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
         await api.delete(`/api/missions/${missionId}/tasks/${taskId}`);
       }
       queryClient.invalidateQueries({ queryKey: ['projects', missionId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', missionId, 'without-project'] });
     } catch (error) {
       console.error('Failed to delete task:', error);
       alert('削除に失敗しました');
@@ -99,6 +110,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
 
   const handleTaskSaved = () => {
     queryClient.invalidateQueries({ queryKey: ['projects', missionId] });
+    queryClient.invalidateQueries({ queryKey: ['tasks', missionId, 'without-project'] });
     setIsNewTaskModalOpen(false);
     setSelectedTask(null);
     setSelectedProjectId(null);
@@ -290,6 +302,67 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
             })}
           </div>
         )}
+
+        {/* プロジェクトなしのタスクセクション */}
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（プロジェクトなし）</h3>
+            {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleCreateTask()}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                追加
+              </Button>
+            )}
+          </div>
+
+          {tasksWithoutProjectLoading ? (
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">読み込み中...</div>
+          ) : tasksWithoutProject.length === 0 ? (
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">タスクがありません</div>
+          ) : (
+            <div className="space-y-2">
+              {tasksWithoutProject.map((task) => (
+                <div
+                  key={task.id}
+                  className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(task.status)}
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{task.title}</span>
+                    </div>
+                    {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleEditTask(task)}
+                          className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {task.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{task.description}</p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{getStatusLabel(task.status)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* プロジェクトモーダル */}
