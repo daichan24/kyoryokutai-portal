@@ -69,8 +69,12 @@ router.get('/', async (req: AuthRequest, res) => {
       where.week = week;
     }
 
+    // postedAtがnullのレコードを除外
     const posts = await prisma.sNSPost.findMany({
-      where,
+      where: {
+        ...where,
+        postedAt: { not: null }, // nullのレコードを除外
+      },
       include: { user: { select: { id: true, name: true } } },
       orderBy: { postedAt: 'desc' },
     });

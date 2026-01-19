@@ -82,7 +82,8 @@ router.get('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
-    const report = await prisma.monthlyReport.findUnique({
+    // まずrevisionsを含めずに取得を試みる
+    let report = await prisma.monthlyReport.findUnique({
       where: { id },
       include: {
         creator: { select: { id: true, name: true } },
@@ -92,17 +93,45 @@ router.get('/:id', async (req: AuthRequest, res) => {
           },
           orderBy: { supportDate: 'asc' },
         },
-        revisions: {
-          include: {
-            changer: { select: { id: true, name: true } },
-          },
-          orderBy: { createdAt: 'desc' },
-        },
       },
     });
 
     if (!report) {
       return res.status(404).json({ error: '月次報告が見つかりません' });
+    }
+
+    // revisionsテーブルが存在する場合は追加で取得を試みる
+    try {
+      const reportWithRevisions = await prisma.monthlyReport.findUnique({
+        where: { id },
+        include: {
+          creator: { select: { id: true, name: true } },
+          supportRecords: {
+            include: {
+              user: { select: { id: true, name: true } },
+            },
+            orderBy: { supportDate: 'asc' },
+          },
+          revisions: {
+            include: {
+              changer: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      });
+
+      if (reportWithRevisions) {
+        report = reportWithRevisions;
+      }
+    } catch (error: any) {
+      // MonthlyReportRevisionテーブルが存在しない場合は無視
+      if (error?.code === 'P2021' && error?.meta?.table === 'public.MonthlyReportRevision') {
+        console.warn('MonthlyReportRevision table does not exist, skipping revisions');
+      } else {
+        // その他のエラーは再スロー
+        throw error;
+      }
     }
 
     res.json(report);
