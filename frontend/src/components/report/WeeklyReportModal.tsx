@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../../utils/api';
-import { WeeklyReport } from '../../types';
-import { getWeekString } from '../../utils/date';
+import { WeeklyReport, Schedule } from '../../types';
+import { getWeekString, parseWeekString, formatDate } from '../../utils/date';
+import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
+import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { WeeklyReportPreview } from './WeeklyReportPreview';
@@ -29,6 +31,8 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [currentReport, setCurrentReport] = useState<WeeklyReport | null>(report || null);
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     if (report) {
@@ -42,10 +46,91 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       setNextWeekPlan(report.nextWeekPlan || '');
       setNote(report.note || '');
     } else {
-      setWeek(getWeekString());
+      const initialWeek = getWeekString();
+      setWeek(initialWeek);
       setCurrentReport(null);
     }
   }, [report]);
+
+  // 新規作成時または週が変更された時にスケジュールから自動取得
+  useEffect(() => {
+    if (!report && week && user) {
+      loadSchedulesForTemplate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [week, user]);
+
+  // スケジュールからテンプレートを自動取得
+  const loadSchedulesForTemplate = async () => {
+    if (!user || !week) return;
+    
+    try {
+      setLoadingSchedules(true);
+      
+      // 対象週の開始日と終了日を取得
+      const weekStart = parseWeekString(week);
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 }); // 月曜始まり
+      
+      // 先週（振り返り用）
+      const lastWeekStart = subWeeks(weekStart, 1);
+      const lastWeekEnd = endOfWeek(lastWeekStart, { weekStartsOn: 1 });
+      
+      // 来週（予定用）
+      const nextWeekStart = addWeeks(weekStart, 1);
+      const nextWeekEnd = endOfWeek(nextWeekStart, { weekStartsOn: 1 });
+      
+      // 先週のスケジュールを取得（活動内容）
+      const lastWeekResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(lastWeekStart, 'yyyy-MM-dd')}&endDate=${format(lastWeekEnd, 'yyyy-MM-dd')}`);
+      const lastWeekSchedules = lastWeekResponse.data || [];
+      
+      // 来週のスケジュールを取得（予定）
+      const nextWeekResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(nextWeekStart, 'yyyy-MM-dd')}&endDate=${format(nextWeekEnd, 'yyyy-MM-dd')}`);
+      const nextWeekSchedules = nextWeekResponse.data || [];
+      
+      // 先週の活動内容をフォーマット（when/where/what/who）
+      if (lastWeekSchedules.length > 0 && activities.length === 1 && !activities[0].date && !activities[0].activity) {
+        const formattedActivities = lastWeekSchedules.map(schedule => {
+          const date = formatDate(new Date(schedule.date), 'M月d日');
+          const location = schedule.location?.name || schedule.locationText || '';
+          const activity = schedule.activityDescription;
+          const participants = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').map(p => p.user?.name).filter(Boolean).join('、') || '';
+          
+          // 「◯月◯日/場所/何をした/誰と」の形式
+          let activityText = `${date}`;
+          if (location) activityText += `/${location}`;
+          activityText += `/${activity}`;
+          if (participants) activityText += `/${participants}`;
+          
+          return {
+            date: formatDate(new Date(schedule.date), 'yyyy-MM-dd'),
+            activity: activityText
+          };
+        });
+        
+        setActivities(formattedActivities.length > 0 ? formattedActivities : [{ date: '', activity: '' }]);
+      }
+      
+      // 来週の予定をフォーマット
+      if (nextWeekSchedules.length > 0 && !nextWeekPlan) {
+        const formattedPlan = nextWeekSchedules.map(schedule => {
+          const date = formatDate(new Date(schedule.date), 'M月d日');
+          const time = schedule.startTime && schedule.endTime 
+            ? `${schedule.startTime}〜${schedule.endTime}`
+            : schedule.startTime || '';
+          const location = schedule.location?.name || schedule.locationText || '';
+          const activity = schedule.activityDescription;
+          
+          return `${date}${time ? ` ${time}` : ''}${location ? ` @${location}` : ''} ${activity}`;
+        }).join('\n');
+        
+        setNextWeekPlan(formattedPlan);
+      }
+    } catch (error) {
+      console.error('Failed to load schedules for template:', error);
+    } finally {
+      setLoadingSchedules(false);
+    }
+  };
 
   const handleAddActivity = () => {
     setActivities([...activities, { date: '', activity: '' }]);
@@ -159,6 +244,12 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
             </div>
           ) : (
             <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-6">
+              {loadingSchedules && (
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
+                  スケジュールから活動内容と予定を自動取得中...
+                </div>
+              )}
+              
               <Input
                 label="週 (YYYY-WW形式)"
                 value={week}
@@ -166,6 +257,20 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                 placeholder="2024-01"
                 required
               />
+              
+              {!report && (
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={loadSchedulesForTemplate}
+                    disabled={loadingSchedules}
+                  >
+                    {loadingSchedules ? '取得中...' : 'スケジュールから自動取得'}
+                  </Button>
+                </div>
+              )}
 
               <div>
                 <div className="flex justify-between items-center mb-2">

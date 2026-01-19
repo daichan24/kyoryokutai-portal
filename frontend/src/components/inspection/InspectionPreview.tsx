@@ -23,6 +23,7 @@ interface InspectionPreviewProps {
 export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection }) => {
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
   const inspectionDate = format(new Date(inspection.date), 'yyyy年M月d日', { locale: ja });
+  const inspectionTime = ''; // 時間情報があれば使用
 
   // HTMLコンテンツをテキストに変換（簡易版）
   const stripHtml = (html: string) => {
@@ -30,6 +31,11 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
     tmp.innerHTML = html;
     return tmp.textContent || tmp.innerText || '';
   };
+
+  // デフォルト値（テンプレート設定から取得する場合は後で実装）
+  const recipient = '長沼町長　齋　藤　良　彦　様';
+  const userName = `${inspection.user.name}`; // 〇〇課　地域おこし協力隊　氏名の形式にする場合は後で実装
+  const text1 = '次の通り復命します。';
 
   return (
     <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
@@ -54,20 +60,25 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
         fontWeight: 'bold',
         marginBottom: '40px'
       }}>
-        視察復命書
+        復命書
       </h1>
 
       {/* 宛先 */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ marginBottom: '10px' }}>
-          <strong>宛先</strong>　○○市役所　○○課長　様
+          {recipient}
         </div>
         <div>
-          <strong>報告者</strong>　{inspection.user.name}
+          氏名　{userName}
         </div>
       </div>
 
-      {/* 記 */}
+      {/* テキスト1 */}
+      <div style={{ marginBottom: '20px' }}>
+        {text1}
+      </div>
+
+      {/* 記（中央揃え、前後に改行） */}
       <div style={{ 
         textAlign: 'center', 
         marginTop: '30px', 
@@ -78,173 +89,128 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
         記
       </div>
 
-      {/* 基本情報 */}
-      <div style={{ marginBottom: '30px' }}>
-        <table style={{ 
-          width: '100%', 
-          borderCollapse: 'collapse',
-          marginBottom: '15px'
+      {/* 1. 日時 */}
+      <div style={{ marginBottom: '20px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '10px'
         }}>
-          <tbody>
-            <tr>
-              <td className="dark:bg-gray-700 dark:border-gray-600" style={{ 
-                border: '1px solid #000', 
-                padding: '8px',
-                width: '30%',
-                backgroundColor: '#f0f0f0',
-                fontWeight: 'bold'
-              }}>
-                視察日
-              </td>
-              <td className="dark:border-gray-600" style={{ 
-                border: '1px solid #000', 
-                padding: '8px'
-              }}>
-                {inspectionDate}
-              </td>
-            </tr>
-            <tr>
-              <td className="dark:bg-gray-700 dark:border-gray-600" style={{ 
-                border: '1px solid #000', 
-                padding: '8px',
-                backgroundColor: '#f0f0f0',
-                fontWeight: 'bold'
-              }}>
-                視察先
-              </td>
-              <td className="dark:border-gray-600" style={{ 
-                border: '1px solid #000', 
-                padding: '8px'
-              }}>
-                {inspection.destination}
-              </td>
-            </tr>
-            {inspection.project && (
-              <tr>
-                <td className="dark:bg-gray-700 dark:border-gray-600" style={{ 
-                  border: '1px solid #000', 
-                  padding: '8px',
-                  backgroundColor: '#f0f0f0',
-                  fontWeight: 'bold'
-                }}>
-                  関連プロジェクト
-                </td>
-                <td className="dark:border-gray-600" style={{ 
-                  border: '1px solid #000', 
-                  padding: '8px'
-                }}>
-                  {inspection.project.projectName}
-                </td>
-              </tr>
-            )}
-            <tr>
-              <td className="dark:bg-gray-700 dark:border-gray-600" style={{ 
-                border: '1px solid #000', 
-                padding: '8px',
-                backgroundColor: '#f0f0f0',
-                fontWeight: 'bold'
-              }}>
-                参加者
-              </td>
-              <td className="dark:border-gray-600" style={{ 
-                border: '1px solid #000', 
-                padding: '8px'
-              }}>
-                {inspection.user.name}
-                {inspection.participants.length > 0 && `、${inspection.participants.join('、')}`}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          1. 日時
+        </div>
+        <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+          {inspectionDate}{inspectionTime ? ` ${inspectionTime}` : ''}
+          {!inspection.inspectionPurpose && '（参考: 視察日時を記入してください）'}
+        </div>
       </div>
 
-      {/* 1. 視察目的 */}
-      {inspection.inspectionPurpose && (
-        <div style={{ marginBottom: '30px' }}>
-          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
-            fontWeight: 'bold', 
-            backgroundColor: '#f0f0f0', 
-            padding: '8px',
-            marginBottom: '15px'
-          }}>
-            1. 視察目的
-          </div>
-          <div style={{ 
-            marginLeft: '15px', 
-            marginTop: '10px',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.8'
-          }}>
-            {stripHtml(inspection.inspectionPurpose)}
-          </div>
+      {/* 2. 場所 */}
+      <div style={{ marginBottom: '20px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '10px'
+        }}>
+          2. 場所
         </div>
-      )}
+        <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+          {inspection.destination || '（参考: 視察先の場所を記入してください）'}
+        </div>
+      </div>
 
-      {/* 2. 視察内容 */}
-      {inspection.inspectionContent && (
-        <div style={{ marginBottom: '30px' }}>
-          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
-            fontWeight: 'bold', 
-            backgroundColor: '#f0f0f0', 
-            padding: '8px',
-            marginBottom: '15px'
-          }}>
-            2. 視察内容
-          </div>
-          <div style={{ 
-            marginLeft: '15px', 
-            marginTop: '10px',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.8'
-          }}>
-            {stripHtml(inspection.inspectionContent)}
-          </div>
+      {/* 3. 用務 */}
+      <div style={{ marginBottom: '20px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '10px'
+        }}>
+          3. 用務
         </div>
-      )}
+        <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+          {inspection.purpose || '（参考: 視察の用務内容を記入してください）'}
+        </div>
+      </div>
 
-      {/* 3. 所感 */}
-      {inspection.reflection && (
-        <div style={{ marginBottom: '30px' }}>
-          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
-            fontWeight: 'bold', 
-            backgroundColor: '#f0f0f0', 
-            padding: '8px',
-            marginBottom: '15px'
-          }}>
-            3. 所感
-          </div>
-          <div style={{ 
-            marginLeft: '15px', 
-            marginTop: '10px',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.8'
-          }}>
-            {stripHtml(inspection.reflection)}
-          </div>
+      {/* 4. 目的 */}
+      <div style={{ marginBottom: '20px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '10px'
+        }}>
+          4. 目的
         </div>
-      )}
+        <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+          {stripHtml(inspection.inspectionPurpose) || '（参考: 視察の目的を記入してください）'}
+        </div>
+      </div>
 
-      {/* 4. 今後のアクション */}
-      {inspection.futureAction && (
-        <div style={{ marginBottom: '30px' }}>
-          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
-            fontWeight: 'bold', 
-            backgroundColor: '#f0f0f0', 
-            padding: '8px',
-            marginBottom: '15px'
-          }}>
-            4. 今後のアクション
-          </div>
-          <div style={{ 
-            marginLeft: '15px', 
-            marginTop: '10px',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.8'
-          }}>
-            {stripHtml(inspection.futureAction)}
-          </div>
+      {/* 5. 内容 */}
+      <div style={{ marginBottom: '20px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '10px'
+        }}>
+          5. 内容
         </div>
-      )}
+        <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+          {stripHtml(inspection.inspectionContent) || '（参考: 視察の内容を記入してください）'}
+        </div>
+      </div>
+
+      {/* 6. 処理てん末 */}
+      <div style={{ marginBottom: '20px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '10px'
+        }}>
+          6. 処理てん末
+        </div>
+        <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+          {stripHtml(inspection.reflection) || '（参考: 処理の経過や結果を記入してください）'}
+        </div>
+      </div>
+
+      {/* 7. 所感・今後 */}
+      <div style={{ marginBottom: '20px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '10px'
+        }}>
+          7. 所感・今後
+        </div>
+        <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+          {stripHtml(inspection.futureAction) || '（参考: 所感や今後の予定を記入してください）'}
+        </div>
+      </div>
+
+      {/* 8. その他報告 */}
+      <div style={{ marginBottom: '20px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '10px'
+        }}>
+          8. その他報告
+        </div>
+        <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+          {inspection.participants.length > 0 
+            ? `参加者: ${inspection.user.name}、${inspection.participants.join('、')}`
+            : '（参考: その他の報告事項があれば記入してください）'}
+        </div>
+      </div>
 
       {/* フッター */}
       <div style={{ 
@@ -261,4 +227,5 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
     </div>
   );
 };
+
 

@@ -74,15 +74,15 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         <strong>対象週:</strong> {report.week}（{weekStartStr}週）
       </div>
 
-      {/* 1. 今週の活動内容 */}
+      {/* 1. 活動内容（先週の振り返り） */}
       <div style={{ marginBottom: '30px' }}>
-        <div style={{ 
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
           fontWeight: 'bold', 
           backgroundColor: '#f0f0f0', 
           padding: '8px',
           marginBottom: '15px'
         }}>
-          1. 今週の活動内容
+          1. 活動内容（{weekStartStr}週の振り返り）
         </div>
         {Array.isArray(report.thisWeekActivities) && report.thisWeekActivities.length > 0 ? (
           <table style={{ 
