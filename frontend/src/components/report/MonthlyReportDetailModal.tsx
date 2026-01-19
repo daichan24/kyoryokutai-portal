@@ -326,15 +326,46 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
 
   // 姓名を分割して表示用にフォーマット
   const formatNameForTab = (name: string) => {
-    if (name.length <= 2) return name;
-    // 姓名を分割（簡易版：2文字目で分割）
-    const firstName = name.substring(0, 1);
-    const lastName = name.substring(1);
+    if (!name || name.length === 0) return name;
+    
+    // 1文字の場合はそのまま返す
+    if (name.length === 1) {
+      return name;
+    }
+    
+    // 2文字の場合：姓1文字+名1文字 または 姓2文字
+    // 一般的には姓1文字+名1文字が多いので、1文字目で分割
+    if (name.length === 2) {
+      return (
+        <>
+          {name.substring(0, 1)}
+          <br />
+          {name.substring(1)}
+        </>
+      );
+    }
+    
+    // 3文字の場合：姓1文字+名2文字 または 姓2文字+名1文字
+    // 一般的には姓1文字+名2文字が多いので、1文字目で分割
+    if (name.length === 3) {
+      return (
+        <>
+          {name.substring(0, 1)}
+          <br />
+          {name.substring(1)}
+        </>
+      );
+    }
+    
+    // 4文字以上の場合：姓2文字+名（残り）が一般的
+    // 姓は通常1-2文字なので、2文字目で分割
+    const surname = name.substring(0, 2);
+    const givenName = name.substring(2);
     return (
       <>
-        {firstName}
+        {surname}
         <br />
-        {lastName}
+        {givenName}
       </>
     );
   };
@@ -705,6 +736,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                         setSupportRecords(newRecords);
                       }}
                       placeholder="支援内容を入力..."
+                      minHeight="60px"
                     />
                   </div>
                   <div className="flex justify-end">

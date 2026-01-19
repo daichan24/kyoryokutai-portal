@@ -18,6 +18,7 @@ interface SimpleRichTextEditorProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  minHeight?: string;
 }
 
 export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
@@ -25,6 +26,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   onChange,
   placeholder = 'テキストを入力...',
   className = '',
+  minHeight = '300px',
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -210,10 +212,13 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         ref={editorRef}
         contentEditable
         onInput={handleInput}
-        className="min-h-[300px] p-4 focus:outline-none prose max-w-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-b-lg dark:prose-invert"
+        className="p-4 focus:outline-none prose max-w-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-b-lg dark:prose-invert"
         style={{
           wordBreak: 'break-word',
           color: 'inherit',
+          minHeight: minHeight,
+          maxHeight: 'none',
+          overflowY: 'auto',
         }}
         data-placeholder={placeholder}
         suppressContentEditableWarning
