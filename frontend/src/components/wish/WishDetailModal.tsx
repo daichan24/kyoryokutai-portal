@@ -185,10 +185,10 @@ export const WishDetailModal: React.FC<WishDetailModalProps> = ({
             )}
           </div>
 
-          {/* 振り返りログ */}
+          {/* 途中経過 */}
           <div className="border-t dark:border-gray-700 pt-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold dark:text-gray-100">振り返りログ</h3>
+              <h3 className="text-lg font-semibold dark:text-gray-100">途中経過</h3>
               <Button
                 onClick={() => setIsAddingCheckin(true)}
                 variant="outline"
@@ -275,7 +275,7 @@ export const WishDetailModal: React.FC<WishDetailModalProps> = ({
               </div>
             ) : (
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                振り返りログがありません
+                途中経過がありません
               </p>
             )}
           </div>

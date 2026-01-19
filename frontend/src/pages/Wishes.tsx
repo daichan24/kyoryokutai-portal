@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Wish, WishStatus } from '../types';
-import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { WishModal } from '../components/wish/WishModal';
@@ -42,6 +42,7 @@ export const Wishes: React.FC = () => {
   const [showReflectionModal, setShowReflectionModal] = useState(false);
   const [completedWish, setCompletedWish] = useState<Wish | null>(null);
   const [members, setMembers] = useState<Array<{ id: string; name: string }>>([]);
+  const [showIconHelp, setShowIconHelp] = useState(false);
 
   // メンバー一覧を取得（メンバー以外のみ）
   useEffect(() => {
@@ -254,7 +255,16 @@ export const Wishes: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">やりたいこと100</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">やりたいこと100</h1>
+          <button
+            onClick={() => setShowIconHelp(true)}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            title="アイコンについて"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </button>
+        </div>
         <div className="flex gap-2">
           {user?.role !== 'MEMBER' && (
             <div className="flex gap-2 border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
@@ -622,6 +632,129 @@ export const Wishes: React.FC = () => {
                   スキップ
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* アイコンについてモーダル */}
+      {showIconHelp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+              <h2 className="text-2xl font-bold dark:text-gray-100">アイコンについて</h2>
+              <button
+                onClick={() => setShowIconHelp(false)}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* ステータスアイコン */}
+              <div>
+                <h3 className="text-lg font-semibold dark:text-gray-100 mb-3">ステータスアイコン</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">完了</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことが完了した状態です</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Pause className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">中断</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">一時的に中断している状態です</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Circle className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">進行中</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">現在進行中のやりたいことです</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* アクションアイコン */}
+              <div>
+                <h3 className="text-lg font-semibold dark:text-gray-100 mb-3">アクションアイコン</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">詳細</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことの詳細情報を表示します</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">完了</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことを完了状態にします</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Edit2 className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">編集</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことを編集します</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">削除</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことを削除します</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* その他のアイコン */}
+              <div>
+                <h3 className="text-lg font-semibold dark:text-gray-100 mb-3">その他のアイコン</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Calendar className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">期限</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことの期限月を表示します</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Tag className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">タグ</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことに付けたタグを表示します</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Search className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">検索</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことを検索します</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <Filter className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">フィルタ</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことをフィルタリングします</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end p-6 border-t dark:border-gray-700">
+              <Button onClick={() => setShowIconHelp(false)} variant="outline">
+                閉じる
+              </Button>
             </div>
           </div>
         </div>
