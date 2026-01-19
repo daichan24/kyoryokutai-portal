@@ -32,7 +32,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
   };
 
   return (
-    <div className="bg-white text-gray-900" style={{ 
+    <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
       width: '210mm', 
       minHeight: '297mm',
       padding: '20mm',
@@ -87,7 +87,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
         }}>
           <tbody>
             <tr>
-              <td style={{ 
+              <td className="dark:bg-gray-700 dark:border-gray-600" style={{ 
                 border: '1px solid #000', 
                 padding: '8px',
                 width: '30%',
@@ -96,7 +96,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
               }}>
                 視察日
               </td>
-              <td style={{ 
+              <td className="dark:border-gray-600" style={{ 
                 border: '1px solid #000', 
                 padding: '8px'
               }}>
@@ -104,7 +104,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
               </td>
             </tr>
             <tr>
-              <td style={{ 
+              <td className="dark:bg-gray-700 dark:border-gray-600" style={{ 
                 border: '1px solid #000', 
                 padding: '8px',
                 backgroundColor: '#f0f0f0',
@@ -112,7 +112,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
               }}>
                 視察先
               </td>
-              <td style={{ 
+              <td className="dark:border-gray-600" style={{ 
                 border: '1px solid #000', 
                 padding: '8px'
               }}>
@@ -121,7 +121,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
             </tr>
             {inspection.project && (
               <tr>
-                <td style={{ 
+                <td className="dark:bg-gray-700 dark:border-gray-600" style={{ 
                   border: '1px solid #000', 
                   padding: '8px',
                   backgroundColor: '#f0f0f0',
@@ -129,7 +129,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
                 }}>
                   関連プロジェクト
                 </td>
-                <td style={{ 
+                <td className="dark:border-gray-600" style={{ 
                   border: '1px solid #000', 
                   padding: '8px'
                 }}>
@@ -138,7 +138,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
               </tr>
             )}
             <tr>
-              <td style={{ 
+              <td className="dark:bg-gray-700 dark:border-gray-600" style={{ 
                 border: '1px solid #000', 
                 padding: '8px',
                 backgroundColor: '#f0f0f0',
@@ -146,7 +146,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
               }}>
                 参加者
               </td>
-              <td style={{ 
+              <td className="dark:border-gray-600" style={{ 
                 border: '1px solid #000', 
                 padding: '8px'
               }}>
@@ -161,7 +161,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       {/* 1. 視察目的 */}
       {inspection.inspectionPurpose && (
         <div style={{ marginBottom: '30px' }}>
-          <div style={{ 
+          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
             fontWeight: 'bold', 
             backgroundColor: '#f0f0f0', 
             padding: '8px',
@@ -183,7 +183,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       {/* 2. 視察内容 */}
       {inspection.inspectionContent && (
         <div style={{ marginBottom: '30px' }}>
-          <div style={{ 
+          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
             fontWeight: 'bold', 
             backgroundColor: '#f0f0f0', 
             padding: '8px',
@@ -205,7 +205,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       {/* 3. 所感 */}
       {inspection.reflection && (
         <div style={{ marginBottom: '30px' }}>
-          <div style={{ 
+          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
             fontWeight: 'bold', 
             backgroundColor: '#f0f0f0', 
             padding: '8px',
@@ -227,7 +227,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       {/* 4. 今後のアクション */}
       {inspection.futureAction && (
         <div style={{ marginBottom: '30px' }}>
-          <div style={{ 
+          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
             fontWeight: 'bold', 
             backgroundColor: '#f0f0f0', 
             padding: '8px',

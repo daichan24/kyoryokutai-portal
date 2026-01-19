@@ -23,7 +23,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
 
   return (
-    <div className="bg-white text-gray-900" style={{ 
+    <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
       width: '210mm', 
       minHeight: '297mm',
       padding: '20mm',
@@ -45,7 +45,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         fontWeight: 'bold',
         marginBottom: '40px'
       }}>
-        週次報告書
+        地域おこし協力隊活動報告
       </h1>
 
       {/* 宛先 */}
@@ -92,19 +92,21 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
             border: '1px solid #000'
           }}>
             <thead>
-              <tr style={{ backgroundColor: '#f0f0f0' }}>
-                <th style={{ 
+              <tr className="dark:bg-gray-700">
+                <th className="dark:border-gray-600 dark:text-gray-100" style={{ 
                   border: '1px solid #000', 
                   padding: '8px',
                   width: '30%',
-                  textAlign: 'left'
+                  textAlign: 'left',
+                  backgroundColor: '#f0f0f0'
                 }}>
                   日時
                 </th>
-                <th style={{ 
+                <th className="dark:border-gray-600 dark:text-gray-100" style={{ 
                   border: '1px solid #000', 
                   padding: '8px',
-                  textAlign: 'left'
+                  textAlign: 'left',
+                  backgroundColor: '#f0f0f0'
                 }}>
                   活動内容
                 </th>
@@ -113,13 +115,13 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
             <tbody>
               {report.thisWeekActivities.map((activity, index) => (
                 <tr key={index}>
-                  <td style={{ 
+                  <td className="dark:border-gray-600" style={{ 
                     border: '1px solid #000', 
                     padding: '8px'
                   }}>
                     {activity.date || ''}
                   </td>
-                  <td style={{ 
+                  <td className="dark:border-gray-600" style={{ 
                     border: '1px solid #000', 
                     padding: '8px'
                   }}>
@@ -139,7 +141,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
       {/* 2. 来週の予定 */}
       {report.nextWeekPlan && (
         <div style={{ marginBottom: '30px' }}>
-          <div style={{ 
+          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
             fontWeight: 'bold', 
             backgroundColor: '#f0f0f0', 
             padding: '8px',
@@ -160,7 +162,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
       {/* 3. 備考 */}
       {report.note && (
         <div style={{ marginBottom: '30px' }}>
-          <div style={{ 
+          <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
             fontWeight: 'bold', 
             backgroundColor: '#f0f0f0', 
             padding: '8px',

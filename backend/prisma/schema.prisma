@@ -66,6 +66,9 @@ model User {
   // 協力隊催促関連
   nudgeDocumentsUpdated NudgeDocument[] @relation("NudgeUpdater")
   nudgeRevisions        NudgeRevision[] @relation("NudgeRevisionUpdater")
+  
+  // テンプレート設定関連
+  documentTemplatesUpdated DocumentTemplate[] @relation("TemplateUpdater")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -722,6 +725,45 @@ model SystemConfig {
   id        String   @id @default(uuid())
   key       String   @unique
   value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// ========================================
+// テンプレート設定
+// ========================================
+
+model DocumentTemplate {
+  id        String   @id @default(uuid())
+  templateType String @unique // 'weekly_report' | 'monthly_report' | 'inspection'
+  
+  // 週次報告テンプレート設定
+  weeklyReportRecipient String? // 宛先
+  weeklyReportTitle     String? // タイトル
+  
+  // 月次報告テンプレート設定
+  monthlyReportRecipient String? // 宛先
+  monthlyReportSender    String? // 差出人
+  monthlyReportTitle     String? // タイトル
+  monthlyReportText1     String? // テキスト1
+  monthlyReportText2     String? // テキスト2
+  monthlyReportContact   String? // 担当者情報
+  
+  // 復命書テンプレート設定
+  inspectionRecipient    String? // 宛先
+  inspectionText1        String? // テキスト1
+  inspectionItem1        String? // 項目1（日時）の参考テキスト
+  inspectionItem2        String? // 項目2（場所）の参考テキスト
+  inspectionItem3        String? // 項目3（用務）の参考テキスト
+  inspectionItem4        String? // 項目4（目的）の参考テキスト
+  inspectionItem5        String? // 項目5（内容）の参考テキスト
+  inspectionItem6        String? // 項目6（処理てん末）の参考テキスト
+  inspectionItem7        String? // 項目7（所感・今後）の参考テキスト
+  inspectionItem8        String? // 項目8（その他報告）の参考テキスト
+  
+  updatedBy String?
+  updater   User?   @relation("TemplateUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 

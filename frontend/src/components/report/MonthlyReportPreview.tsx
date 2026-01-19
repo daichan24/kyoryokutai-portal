@@ -42,7 +42,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
   };
 
   return (
-    <div className="bg-white text-gray-900" style={{ 
+    <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
       width: '210mm', 
       minHeight: '297mm',
       padding: '20mm',
@@ -100,18 +100,18 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
       )}
 
       {/* 支援内容 */}
-      {report.supportRecords && report.supportRecords.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <div style={{ 
-            fontWeight: 'bold', 
-            backgroundColor: '#f0f0f0', 
-            padding: '8px',
-            marginBottom: '15px'
-          }}>
-            1. 支援内容
-          </div>
-          <div style={{ marginLeft: '15px' }}>
-            {report.supportRecords.map((record, index) => (
+      <div style={{ marginBottom: '30px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '15px'
+        }}>
+          1. 支援内容
+        </div>
+        <div style={{ marginLeft: '15px' }}>
+          {report.supportRecords && report.supportRecords.length > 0 ? (
+            report.supportRecords.map((record, index) => (
               <div key={record.id} style={{ marginBottom: '15px', paddingBottom: '15px', borderBottom: index < report.supportRecords.length - 1 ? '1px solid #ddd' : 'none' }}>
                 <div style={{ marginBottom: '8px' }}>
                   <strong>{record.user.name}</strong>　
@@ -128,24 +128,26 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                   {stripHtml(record.supportContent)}
                 </div>
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <p style={{ color: '#666', fontStyle: 'italic' }}>支援記録がありません</p>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 隊員別シート */}
-      {Array.isArray(report.memberSheets) && report.memberSheets.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <div style={{ 
-            fontWeight: 'bold', 
-            backgroundColor: '#f0f0f0', 
-            padding: '8px',
-            marginBottom: '15px'
-          }}>
-            2. 隊員別活動報告
-          </div>
-          <div style={{ marginLeft: '15px' }}>
-            {report.memberSheets.map((sheet: any, index: number) => (
+      <div style={{ marginBottom: '30px' }}>
+        <div className="dark:bg-gray-800 dark:text-gray-100" style={{ 
+          fontWeight: 'bold', 
+          backgroundColor: '#f0f0f0', 
+          padding: '8px',
+          marginBottom: '15px'
+        }}>
+          2. 隊員別活動報告
+        </div>
+        <div style={{ marginLeft: '15px' }}>
+          {Array.isArray(report.memberSheets) && report.memberSheets.length > 0 ? (
+            report.memberSheets.map((sheet: any, index: number) => (
               <div key={index} style={{ 
                 marginBottom: '20px',
                 paddingBottom: '20px',
@@ -199,10 +201,12 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <p style={{ color: '#666', fontStyle: 'italic' }}>隊員別シートがありません</p>
+          )}
         </div>
-      )}
+      </div>
 
       {/* フッター（提出日など） */}
       <div style={{ 
