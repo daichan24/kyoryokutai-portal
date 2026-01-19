@@ -104,7 +104,8 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    const userResponse = {
+    // displayOrderとwishesEnabledが存在しない場合でもエラーにならないようにする
+    const userResponse: any = {
       id: user.id,
       name: user.name,
       email: user.email,
@@ -116,10 +117,21 @@ router.post('/login', async (req, res) => {
       avatarColor: user.avatarColor,
       avatarLetter: user.avatarLetter,
       darkMode: user.darkMode,
-      displayOrder: user.displayOrder ?? 0,
-      wishesEnabled: user.wishesEnabled ?? true,
       createdAt: user.createdAt,
     };
+
+    // フィールドが存在する場合のみ追加（存在しない場合はデフォルト値を設定）
+    if ('displayOrder' in user) {
+      userResponse.displayOrder = (user as any).displayOrder ?? 0;
+    } else {
+      userResponse.displayOrder = 0;
+    }
+
+    if ('wishesEnabled' in user) {
+      userResponse.wishesEnabled = (user as any).wishesEnabled ?? true;
+    } else {
+      userResponse.wishesEnabled = true;
+    }
 
     res.json({ user: userResponse, token });
   } catch (error) {
@@ -129,7 +141,7 @@ router.post('/login', async (req, res) => {
     console.error('Login error:', error);
     const errorMessage = error instanceof Error ? error.message : '不明なエラー';
     const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error('Login error details:', { errorMessage, errorStack });
+    console.error('Login error details:', { errorMessage, errorStack, errorName: error instanceof Error ? error.name : 'Unknown' });
     res.status(500).json({ 
       error: 'Login failed',
       details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
@@ -139,37 +151,55 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', authenticate, async (req: AuthRequest, res) => {
   try {
+    // まず全フィールドを取得してから、存在するフィールドのみを返す
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        missionType: true,
-        department: true,
-        termStart: true,
-        termEnd: true,
-        avatarColor: true,
-        avatarLetter: true,
-        darkMode: true,
-        displayOrder: true,
-        wishesEnabled: true,
-        snsLinks: true, // SNSリンクを含める
-        createdAt: true,
-        updatedAt: true,
-      },
     });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json(user);
+    // レスポンスオブジェクトを構築（存在しないフィールドはデフォルト値を設定）
+    const userResponse: any = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      missionType: user.missionType,
+      department: user.department,
+      termStart: user.termStart,
+      termEnd: user.termEnd,
+      avatarColor: user.avatarColor,
+      avatarLetter: user.avatarLetter,
+      darkMode: user.darkMode,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    // フィールドが存在する場合のみ追加（存在しない場合はデフォルト値を設定）
+    if ('displayOrder' in user) {
+      userResponse.displayOrder = (user as any).displayOrder ?? 0;
+    } else {
+      userResponse.displayOrder = 0;
+    }
+
+    if ('wishesEnabled' in user) {
+      userResponse.wishesEnabled = (user as any).wishesEnabled ?? true;
+    } else {
+      userResponse.wishesEnabled = true;
+    }
+
+    if ('snsLinks' in user) {
+      userResponse.snsLinks = (user as any).snsLinks;
+    }
+
+    res.json(userResponse);
   } catch (error) {
     console.error('Get me error:', error);
     const errorMessage = error instanceof Error ? error.message : '不明なエラー';
-    console.error('Get me error details:', { errorMessage });
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Get me error details:', { errorMessage, errorStack, errorName: error instanceof Error ? error.name : 'Unknown' });
     res.status(500).json({ 
       error: 'Failed to get user',
       details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
