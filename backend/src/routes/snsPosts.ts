@@ -73,7 +73,7 @@ router.get('/', async (req: AuthRequest, res) => {
     const posts = await prisma.sNSPost.findMany({
       where: {
         ...where,
-        postedAt: { not: null }, // nullのレコードを除外
+        postedAt: { isNot: null }, // nullのレコードを除外
       },
       include: { user: { select: { id: true, name: true } } },
       orderBy: { postedAt: 'desc' },
