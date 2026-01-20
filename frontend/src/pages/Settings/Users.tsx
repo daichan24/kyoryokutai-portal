@@ -79,6 +79,31 @@ export const UsersSettings: React.FC = () => {
     }
   };
 
+  const handleUpdateMemberSatoName = async () => {
+    if (!confirm('メンバーの「佐藤大地」を「さとうだいち」に更新しますか？')) {
+      return;
+    }
+
+    setIsUpdatingMemberName(true);
+    try {
+      const response = await api.post('/api/admin/update-member-sato-name');
+      const data = response.data;
+      
+      if (data.success) {
+        alert('✅ ' + data.message);
+        await fetchUsers(); // 一覧を再取得
+      } else {
+        alert('ℹ️ ' + data.message);
+      }
+    } catch (error: any) {
+      console.error('Failed to update member name:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.details || error.message || '更新に失敗しました';
+      alert('❌ エラー: ' + errorMessage);
+    } finally {
+      setIsUpdatingMemberName(false);
+    }
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -120,12 +145,23 @@ export const UsersSettings: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
-        {canCreateUser && (
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            新規ユーザー追加
-          </Button>
-        )}
+        <div className="flex gap-3">
+          {currentUser?.role === 'MASTER' && (
+            <Button
+              variant="outline"
+              onClick={handleUpdateMemberSatoName}
+              disabled={isUpdatingMemberName}
+            >
+              {isUpdatingMemberName ? '更新中...' : 'メンバー名更新（佐藤→さとう）'}
+            </Button>
+          )}
+          {canCreateUser && (
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              新規ユーザー追加
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ロール別フィルター */}
