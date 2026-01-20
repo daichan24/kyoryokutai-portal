@@ -97,5 +97,74 @@ router.post('/users', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, r
   }
 });
 
+/**
+ * POST /api/admin/update-member-sato-name
+ * メンバーの「佐藤大地」を「さとうだいち」に更新（MASTERのみ）
+ */
+router.post('/update-member-sato-name', authorize('MASTER'), async (req: AuthRequest, res) => {
+  try {
+    console.log('🔄 [API] Updating member 佐藤大地 to さとうだいち...');
+
+    // メンバーで「佐藤大地」という名前のユーザーを検索
+    const memberSato = await prisma.user.findFirst({
+      where: {
+        role: 'MEMBER',
+        name: '佐藤大地',
+      },
+    });
+
+    if (memberSato) {
+      await prisma.user.update({
+        where: { id: memberSato.id },
+        data: { name: 'さとうだいち' },
+      });
+      console.log(`✅ [API] Updated user ${memberSato.email} from 佐藤大地 to さとうだいち`);
+      return res.json({ 
+        success: true, 
+        message: `ユーザー ${memberSato.email} の名前を「佐藤大地」から「さとうだいち」に更新しました`,
+        updatedUser: {
+          id: memberSato.id,
+          email: memberSato.email,
+          oldName: '佐藤大地',
+          newName: 'さとうだいち',
+        }
+      });
+    } else {
+      console.log('ℹ️ [API] No member with name 佐藤大地 found');
+      
+      // 念のため、メンバーで「さとうだいち」が存在するか確認
+      const memberSatoHiragana = await prisma.user.findFirst({
+        where: {
+          role: 'MEMBER',
+          name: 'さとうだいち',
+        },
+      });
+
+      if (memberSatoHiragana) {
+        return res.json({ 
+          success: true, 
+          message: 'メンバー「さとうだいち」は既に存在しています',
+          existingUser: {
+            id: memberSatoHiragana.id,
+            email: memberSatoHiragana.email,
+            name: memberSatoHiragana.name,
+          }
+        });
+      } else {
+        return res.json({ 
+          success: false, 
+          message: 'メンバー「佐藤大地」は見つかりませんでした。seed.tsを実行してメンバー「さとうだいち」を作成してください。'
+        });
+      }
+    }
+  } catch (error) {
+    console.error('❌ [API] Error updating member name:', error);
+    res.status(500).json({ 
+      error: 'メンバー名の更新に失敗しました',
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 export default router;
 
