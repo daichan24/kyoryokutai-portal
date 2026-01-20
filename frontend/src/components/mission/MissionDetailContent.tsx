@@ -151,7 +151,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">プロジェクト</h3>
-          {((user?.role === 'MEMBER') || (viewMode === 'create')) && (
+          {(user?.role === 'MEMBER' || (user?.role !== 'MEMBER' && viewMode === 'create')) && (
             <Button
               size="sm"
               variant="outline"
@@ -232,7 +232,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
                     <div className="bg-gray-50 dark:bg-gray-800/50 px-4 pb-4">
                       <div className="flex justify-between items-center mb-3 mt-2">
                         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">タスク</h4>
-                        {((user?.role === 'MEMBER') || (viewMode === 'create')) && (
+                        {(user?.role === 'MEMBER' || (user?.role !== 'MEMBER' && viewMode === 'create')) && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -308,7 +308,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
         <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（プロジェクトなし）</h3>
-            {((user?.role === 'MEMBER') || (viewMode === 'create')) && (
+            {(user?.role === 'MEMBER' || (user?.role !== 'MEMBER' && viewMode === 'create')) && (
               <Button
                 size="sm"
                 variant="outline"

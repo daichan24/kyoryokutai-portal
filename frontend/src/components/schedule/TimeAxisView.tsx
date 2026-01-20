@@ -75,45 +75,22 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   };
 
   return (
-    <div className="flex border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-      {/* 時間軸 */}
-      <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 flex flex-col">
-        <div className="h-12 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"></div>
-        <div className="flex-1 relative" style={{ height: '48rem' }}>
-          {hours.map((hour) => (
-            <div 
-              key={hour} 
-              className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2"
-              style={{ 
-                top: `${hour * 4}rem`, 
-                height: '4rem',
-                width: '100%'
-              }}
-            >
-              <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{hour}:00</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 日付列 */}
-      <div className="flex-1 flex overflow-x-auto">
-        {dates.map((date, dateIndex) => {
-          const daySchedules = getSchedulesForDate(date);
-          const dayEvents = getEventsForDate(date);
-          const isToday = formatDate(date) === formatDate(new Date());
-
-          return (
-            <div
-              key={dateIndex}
-              className={`flex-1 border-r border-gray-200 dark:border-gray-700 min-w-[200px] ${
-                isToday ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
-              }`}
-            >
-              {/* 日付ヘッダー */}
-              <div className={`h-12 border-b border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center ${
-                isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : 'bg-gray-50 dark:bg-gray-900'
-              }`}>
+    <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+      {/* 上部の日付ヘッダー（固定） */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        {/* 時間軸のヘッダー部分（空白） */}
+        <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0"></div>
+        {/* 日付ヘッダー（横スクロール可能） */}
+        <div className="flex-1 flex overflow-x-auto">
+          {dates.map((date, dateIndex) => {
+            const isToday = formatDate(date) === formatDate(new Date());
+            return (
+              <div
+                key={dateIndex}
+                className={`flex-1 border-r border-gray-200 dark:border-gray-700 min-w-[200px] h-12 flex flex-col items-center justify-center ${
+                  isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : 'bg-gray-50 dark:bg-gray-900'
+                }`}
+              >
                 <div className="text-xs text-gray-600 dark:text-gray-400">
                   {formatDate(date, 'E')}
                 </div>
@@ -121,6 +98,46 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                   {formatDate(date, 'd')}
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 下部のスクロール可能エリア（時間軸とスケジュール部分） */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* 時間軸 */}
+        <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 overflow-y-auto">
+          <div className="relative" style={{ height: '48rem' }}>
+            {hours.map((hour) => (
+              <div 
+                key={hour} 
+                className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2"
+                style={{ 
+                  top: `${hour * 4}rem`, 
+                  height: '4rem',
+                  width: '100%'
+                }}
+              >
+                <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{hour}:00</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 日付列（横スクロール可能、縦スクロール可能） */}
+        <div className="flex-1 flex overflow-x-auto overflow-y-auto">
+          {dates.map((date, dateIndex) => {
+            const daySchedules = getSchedulesForDate(date);
+            const dayEvents = getEventsForDate(date);
+            const isToday = formatDate(date) === formatDate(new Date());
+
+            return (
+              <div
+                key={dateIndex}
+                className={`flex-1 border-r border-gray-200 dark:border-gray-700 min-w-[200px] ${
+                  isToday ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
+                }`}
+              >
 
               {/* 時間軸エリア */}
               <div className="relative" style={{ height: '48rem' }}>
@@ -226,23 +243,46 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                           height: `${blockHeight}rem`,
                         }}
                         onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          
                           // ドラッグ開始
-                          const startY = e.clientY;
+                          const timeAxisArea = e.currentTarget.parentElement as HTMLElement;
+                          if (!timeAxisArea) return;
+                          
+                          const rect = timeAxisArea.getBoundingClientRect();
+                          const startY = e.clientY - rect.top + timeAxisArea.scrollTop;
                           const startMinutes = blockMinutes;
                           let currentMinutes = startMinutes;
                           
+                          // ハイライト要素を作成
+                          const highlightEl = document.createElement('div');
+                          highlightEl.id = `time-block-highlight-${dateIndex}-${hour}-${blockIndex}`;
+                          highlightEl.className = 'absolute left-0 right-0 bg-blue-200 dark:bg-blue-800/50 border-2 border-blue-400 dark:border-blue-500 rounded z-20';
+                          highlightEl.style.top = `${blockTop}rem`;
+                          highlightEl.style.height = `${blockHeight}rem`;
+                          timeAxisArea.appendChild(highlightEl);
+                          
                           const handleMouseMove = (moveEvent: MouseEvent) => {
-                            const deltaY = moveEvent.clientY - startY;
-                            const deltaMinutes = Math.round((deltaY / (4 * 16)) * 60); // 1rem = 16px, 4rem = 1時間
+                            const currentRect = timeAxisArea.getBoundingClientRect();
+                            const currentY = moveEvent.clientY - currentRect.top + timeAxisArea.scrollTop;
+                            const deltaY = currentY - startY;
+                            
+                            // 1rem = 16px（デフォルト）、4rem = 1時間 = 64px
+                            // 1時間 = 60分、1rem = 15分
+                            const deltaMinutes = Math.round((deltaY / 16) * 15); // 16px = 1rem = 15分
                             currentMinutes = Math.max(0, Math.min(1439, startMinutes + deltaMinutes)); // 0-23:59の範囲
                             
+                            // 15分単位に丸める
+                            currentMinutes = Math.round(currentMinutes / 15) * 15;
+                            
                             // 視覚的フィードバック（ハイライト）
-                            const highlightEl = document.getElementById(`time-block-highlight-${dateIndex}-${hour}-${blockIndex}`);
-                            if (highlightEl) {
-                              const duration = currentMinutes - startMinutes;
-                              highlightEl.style.top = `${(startMinutes / 60) * 4}rem`;
-                              highlightEl.style.height = `${Math.max(0.25, (duration / 60) * 4)}rem`;
-                            }
+                            const actualStartMinutes = Math.min(startMinutes, currentMinutes);
+                            const actualEndMinutes = Math.max(startMinutes, currentMinutes);
+                            const duration = actualEndMinutes - actualStartMinutes;
+                            
+                            highlightEl.style.top = `${(actualStartMinutes / 60) * 4}rem`;
+                            highlightEl.style.height = `${Math.max(0.25, (duration / 60) * 4)}rem`;
                           };
                           
                           const handleMouseUp = () => {
@@ -257,29 +297,21 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                             // 最低15分の時間を確保
                             const finalEndMinutes = Math.max(actualEndMinutes, actualStartMinutes + 15);
                             
-                            const startTime = minutesToTime(actualStartMinutes);
-                            const endTime = minutesToTime(finalEndMinutes);
+                            // 15分単位に丸める
+                            const roundedStartMinutes = Math.round(actualStartMinutes / 15) * 15;
+                            const roundedEndMinutes = Math.round(finalEndMinutes / 15) * 15;
+                            
+                            const startTime = minutesToTime(roundedStartMinutes);
+                            const endTime = minutesToTime(roundedEndMinutes);
                             
                             // ハイライトを削除
-                            const highlightEl = document.getElementById(`time-block-highlight-${dateIndex}-${hour}-${blockIndex}`);
-                            if (highlightEl) {
+                            if (highlightEl.parentElement) {
                               highlightEl.remove();
                             }
                             
                             // スケジュール作成（日時と時間を渡す）
                             onCreateSchedule(date, startTime, endTime);
                           };
-                          
-                          // ハイライト要素を作成
-                          const highlightEl = document.createElement('div');
-                          highlightEl.id = `time-block-highlight-${dateIndex}-${hour}-${blockIndex}`;
-                          highlightEl.className = 'absolute left-0 right-0 bg-blue-200 dark:bg-blue-800/50 border-2 border-blue-400 dark:border-blue-500 rounded z-20';
-                          highlightEl.style.top = `${blockTop}rem`;
-                          highlightEl.style.height = `${blockHeight}rem`;
-                          const timeAxisArea = e.currentTarget.parentElement;
-                          if (timeAxisArea) {
-                            timeAxisArea.appendChild(highlightEl);
-                          }
                           
                           document.addEventListener('mousemove', handleMouseMove);
                           document.addEventListener('mouseup', handleMouseUp);
@@ -295,6 +327,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
