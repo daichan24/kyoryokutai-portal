@@ -221,6 +221,7 @@ export interface Task {
   description?: string;
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   order: number;
+  dueDate?: string | null; // タスクの期日（YYYY-MM-DD形式）
   createdAt: string;
   updatedAt: string;
 }

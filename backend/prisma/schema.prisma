@@ -388,6 +388,7 @@ model Task {
   description String?    @db.Text
   status      TaskStatus @default(NOT_STARTED)
   order       Int        @default(0)
+  dueDate     DateTime?  @db.Date // タスクの期日（スケジュール自動生成用）
 
   schedules Schedule[]
 

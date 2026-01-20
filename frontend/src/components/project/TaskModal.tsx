@@ -24,6 +24,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'>('NOT_STARTED');
   const [projectId, setProjectId] = useState<string | null>(initialProjectId || null);
+  const [dueDate, setDueDate] = useState<string>('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -52,11 +53,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDescription(task.description || '');
       setStatus(task.status);
       setProjectId(task.projectId || initialProjectId || null);
+      setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
     } else {
       setTitle('');
       setDescription('');
       setStatus('NOT_STARTED');
       setProjectId(initialProjectId || null);
+      setDueDate('');
     }
   }, [task, initialProjectId]);
 
@@ -74,6 +77,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         description: description.trim() || undefined,
         status,
         projectId: projectId || null,
+        dueDate: dueDate || null,
       };
 
       if (task) {
@@ -143,6 +147,23 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              期日（任意・スケジュール自動生成用）
+            </label>
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              placeholder="期日を選択"
+            />
+            {dueDate && (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                期日を設定すると、その日にスケジュールが自動で作成されます
+              </p>
+            )}
           </div>
 
           <div>
