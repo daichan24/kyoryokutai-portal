@@ -64,17 +64,20 @@ router.get('/', async (req: AuthRequest, res) => {
         toDate.setHours(23, 59, 59, 999);
         where.postedAt.lte = toDate;
       }
+      // postedAtがnullのレコードを除外（期間指定時も）
+      where.postedAt.isNot = null;
     } else if (week) {
       // 後方互換性: week指定
       where.week = week;
+      // postedAtがnullのレコードを除外
+      where.postedAt = { isNot: null };
+    } else {
+      // postedAtがnullのレコードを除外
+      where.postedAt = { isNot: null };
     }
 
-    // postedAtがnullのレコードを除外
     const posts = await prisma.sNSPost.findMany({
-      where: {
-        ...where,
-        postedAt: { isNot: null }, // nullのレコードを除外
-      },
+      where,
       include: { user: { select: { id: true, name: true } } },
       orderBy: { postedAt: 'desc' },
     });
