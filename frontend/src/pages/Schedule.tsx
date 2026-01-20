@@ -390,6 +390,45 @@ export const Schedule: React.FC = () => {
             })}
           </div>
         )}
+
+        {/* プロジェクトの複数日にわたるスケジュール表示 */}
+        {projects.length > 0 && (
+          <div className="mt-6 space-y-2">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              進行中のプロジェクト
+            </h3>
+            {projects.map((project) => {
+              const projectStartDate = project.startDate ? new Date(project.startDate) : null;
+              const projectEndDate = project.endDate ? new Date(project.endDate) : null;
+              const viewStartDate = weekDates[0];
+              const viewEndDate = weekDates[weekDates.length - 1];
+              
+              // 表示期間内の開始日と終了日を計算
+              const displayStartDate = projectStartDate && projectStartDate > viewStartDate ? projectStartDate : viewStartDate;
+              const displayEndDate = projectEndDate && projectEndDate < viewEndDate ? projectEndDate : viewEndDate;
+              
+              return (
+                <div
+                  key={project.id}
+                  className="flex items-center gap-2 p-2 rounded-lg border border-border dark:border-gray-700 bg-white dark:bg-gray-800"
+                  style={{
+                    borderLeftWidth: '4px',
+                    borderLeftColor: project.themeColor || '#6B7280',
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {project.projectName}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {formatDate(displayStartDate, 'M月d日')} 〜 {formatDate(displayEndDate, 'M月d日')} まで進行中
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {isModalOpen && (
