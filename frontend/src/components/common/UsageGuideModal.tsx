@@ -19,16 +19,18 @@ export const UsageGuideModal: React.FC<UsageGuideModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full m-4 max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-20">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+        {/* ヘッダー（固定） */}
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">ミッション・プロジェクト・タスクの使い方</h2>
           <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="px-6 pt-4 pb-2 border-b dark:border-gray-700 sticky top-16 bg-white dark:bg-gray-800 z-10">
+        {/* タブナビゲーション（固定） */}
+        <div className="px-6 pt-4 pb-2 border-b dark:border-gray-700 flex-shrink-0">
           <div className="flex flex-wrap gap-2">
             {tabs.map((t) => (
               <button
@@ -46,7 +48,8 @@ export const UsageGuideModal: React.FC<UsageGuideModalProps> = ({ isOpen, onClos
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        {/* コンテンツエリア（スクロール可能） */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
           {activeTab === 'overview' && (
             <div className="space-y-6 prose max-w-none dark:prose-invert">
               <div>
