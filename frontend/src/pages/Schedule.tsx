@@ -3,14 +3,14 @@ import { Plus, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType } from '../types';
-import { formatDate, getWeekDates, getMonthDates, getDayDate, isSameDay, isHolidayDate, isSunday, isSaturday } from '../utils/date';
+import { formatDate, getWeekDates, getMonthDates, isSameDay, isHolidayDate, isSunday, isSaturday } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { useAuthStore } from '../stores/authStore';
 
-type ViewMode = 'week' | 'month' | 'day';
+type ViewMode = 'week' | 'month';
 
 interface Event {
   id: string;
@@ -43,8 +43,6 @@ export const Schedule: React.FC = () => {
       setWeekDates(getWeekDates(currentDate));
     } else if (viewMode === 'month') {
       setWeekDates(getMonthDates(currentDate));
-    } else {
-      setWeekDates(getDayDate(currentDate));
     }
   }, [currentDate, viewMode]);
 
@@ -108,8 +106,6 @@ export const Schedule: React.FC = () => {
       newDate.setDate(newDate.getDate() - 7);
     } else if (viewMode === 'month') {
       newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setDate(newDate.getDate() - 1);
     }
     setCurrentDate(newDate);
   };
@@ -120,8 +116,6 @@ export const Schedule: React.FC = () => {
       newDate.setDate(newDate.getDate() + 7);
     } else if (viewMode === 'month') {
       newDate.setMonth(newDate.getMonth() + 1);
-    } else {
-      newDate.setDate(newDate.getDate() + 1);
     }
     setCurrentDate(newDate);
   };
@@ -189,13 +183,6 @@ export const Schedule: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="flex gap-2">
               <Button
-                variant={viewMode === 'day' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('day')}
-              >
-                日
-              </Button>
-              <Button
                 variant={viewMode === 'week' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('week')}
@@ -211,7 +198,6 @@ export const Schedule: React.FC = () => {
               </Button>
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              {viewMode === 'day' && weekDates[0] && formatDate(weekDates[0], 'yyyy年M月d日')}
               {viewMode === 'week' && weekDates[0] && weekDates[6] && (
                 <>
                   {formatDate(weekDates[0], 'yyyy年M月d日')} -{' '}
@@ -226,25 +212,10 @@ export const Schedule: React.FC = () => {
           </Button>
         </div>
 
-        {/* 週/月表示のヘッダー（日曜始まり） */}
-        {(viewMode === 'week' || viewMode === 'month') && (
-          <div className="grid grid-cols-7 gap-2 mb-2">
-            {['日', '月', '火', '水', '木', '金', '土'].map((day, idx) => (
-              <div
-                key={idx}
-                className={`text-center text-sm font-semibold py-2 ${
-                  idx === 0 ? 'text-red-600 dark:text-red-400' : idx === 6 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                {day}
-              </div>
-            ))}
-          </div>
-        )}
 
         {loading ? (
           <LoadingSpinner />
-        ) : viewMode === 'week' || viewMode === 'day' ? (
+        ) : viewMode === 'week' ? (
           <TimeAxisView
             dates={weekDates}
             schedules={schedules}

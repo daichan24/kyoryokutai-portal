@@ -135,6 +135,7 @@ export interface Project {
   projectName: string;
   missionId?: string;
   mission?: Mission;
+  themeColor?: string; // プロジェクトのテーマカラー（HEX形式）
   relatedTasks?: Task[]; // このプロジェクトに関連するタスク（小目標、任意）
   taskProgress?: number; // プロジェクト配下のタスクの進捗率
 }

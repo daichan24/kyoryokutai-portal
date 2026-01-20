@@ -169,6 +169,8 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                     {daySchedules.map((schedule) => {
                       const position = calculateSchedulePosition(schedule.startTime, schedule.endTime);
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
+                      // プロジェクトのテーマカラーがあればそれを使用、なければユーザーのアバターカラーを使用
+                      const scheduleColor = schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
                       
                       return (
                         <button
@@ -178,7 +180,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                           style={{
                             top: position.top,
                             height: position.height,
-                            backgroundColor: schedule.user?.avatarColor || '#6B7280',
+                            backgroundColor: scheduleColor,
                             minHeight: '1.5rem',
                           }}
                           title={`${schedule.activityDescription} (${schedule.startTime}-${schedule.endTime})`}

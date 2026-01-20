@@ -43,10 +43,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [endDate, setEndDate] = useState('');
   const [phase, setPhase] = useState<'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW'>('PREPARATION');
   const [missionId, setMissionId] = useState('');
+  const [themeColor, setThemeColor] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(false);
+  const [colorConflictError, setColorConflictError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isSubGoalModalOpen, setIsSubGoalModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -110,6 +112,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setColorConflictError(null);
 
     try {
       const data = {
@@ -119,6 +122,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         endDate: endDate || undefined,
         phase,
         missionId: missionId || undefined,
+        themeColor: themeColor || undefined,
         tags,
       };
 
@@ -132,7 +136,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     } catch (error: any) {
       console.error('Failed to save project:', error);
       const errorMessage = error.response?.data?.error || error.response?.data?.details || error.message || '保存に失敗しました';
-      alert(`保存に失敗しました: ${errorMessage}`);
+      
+      // 色の重複エラーの場合
+      if (error.response?.data?.conflictingProject) {
+        setColorConflictError(`この色は既に「${error.response.data.conflictingProject}」プロジェクトで使用されています。`);
+      } else {
+        alert(`保存に失敗しました: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -285,6 +295,31 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <option value="COMPLETED">完了</option>
               <option value="REVIEW">振り返り</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              テーマカラー（任意）
+            </label>
+            <div className="flex gap-2 items-center">
+              <input
+                type="color"
+                value={themeColor || '#6B7280'}
+                onChange={(e) => setThemeColor(e.target.value)}
+                className="h-10 w-20 border border-border dark:border-gray-600 rounded-md cursor-pointer"
+              />
+              <input
+                type="text"
+                value={themeColor}
+                onChange={(e) => setThemeColor(e.target.value)}
+                placeholder="#6B7280"
+                className="flex-1 px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                pattern="^#[0-9A-Fa-f]{6}$"
+              />
+            </div>
+            {colorConflictError && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{colorConflictError}</p>
+            )}
           </div>
 
           <div>

@@ -307,6 +307,7 @@ model Project {
   startDate   DateTime? @db.Date
   endDate     DateTime? @db.Date
   phase       Phase     @default(PREPARATION)
+  themeColor  String?   // プロジェクトのテーマカラー（HEX形式）
 
   missionId String?
   mission   Mission? @relation(fields: [missionId], references: [id], onDelete: SetNull)

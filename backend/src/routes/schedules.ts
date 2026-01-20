@@ -101,6 +101,13 @@ router.get('/', async (req: AuthRequest, res) => {
             avatarColor: true,
           },
         },
+        project: {
+          select: {
+            id: true,
+            projectName: true,
+            themeColor: true,
+          },
+        },
         scheduleParticipants: {
           // 作成者の場合は全参加者を返す、参加者の場合は自分のみ
           where: isCreator ? undefined : {

@@ -13,6 +13,7 @@ const projectSchema = z.object({
   endDate: z.string().optional(),
   phase: z.enum(['PREPARATION', 'EXECUTION', 'COMPLETED', 'REVIEW']).optional(),
   missionId: z.string().optional(),
+  themeColor: z.string().optional(), // HEX形式のカラーコード（例: #FF5733）
   tags: z.array(z.string()).default([]),
 });
 
@@ -111,6 +112,23 @@ router.post('/', async (req: AuthRequest, res) => {
       }
     }
 
+    // テーマカラーの重複チェック（既に他のプロジェクトで使用されている場合）
+    if (data.themeColor) {
+      const existingProject = await prisma.project.findFirst({
+        where: {
+          themeColor: data.themeColor,
+        },
+        select: { id: true, projectName: true },
+      });
+      
+      if (existingProject) {
+        return res.status(400).json({ 
+          error: 'この色は既に他のプロジェクトで使用されています',
+          conflictingProject: existingProject.projectName,
+        });
+      }
+    }
+
     const project = await prisma.project.create({
       data: {
         userId: req.user!.id,
@@ -120,6 +138,7 @@ router.post('/', async (req: AuthRequest, res) => {
         endDate: data.endDate ? new Date(data.endDate) : null,
         phase: data.phase || 'PREPARATION',
         missionId: missionId,
+        themeColor: data.themeColor || null,
         tags: data.tags || [],
       },
       include: { user: true, mission: true },
@@ -185,6 +204,24 @@ router.put('/:id', async (req: AuthRequest, res) => {
       }
     }
 
+    // テーマカラーの重複チェック（既に他のプロジェクトで使用されている場合）
+    if (data.themeColor) {
+      const existingProject = await prisma.project.findFirst({
+        where: {
+          themeColor: data.themeColor,
+          id: { not: req.params.id },
+        },
+        select: { id: true, projectName: true },
+      });
+      
+      if (existingProject) {
+        return res.status(400).json({ 
+          error: 'この色は既に他のプロジェクトで使用されています',
+          conflictingProject: existingProject.projectName,
+        });
+      }
+    }
+
     const project = await prisma.project.update({
       where: { id: req.params.id },
       data: {
@@ -194,6 +231,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         endDate: data.endDate ? new Date(data.endDate) : null,
         phase: data.phase,
         missionId: missionId,
+        themeColor: data.themeColor !== undefined ? data.themeColor : undefined,
         tags: data.tags || [],
       },
       include: { user: true, mission: true },
