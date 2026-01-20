@@ -7,7 +7,7 @@ import { ProjectModal } from '../components/project/ProjectModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, HelpCircle } from 'lucide-react';
+import { Plus, HelpCircle, LayoutGrid, List } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -40,6 +40,7 @@ export const Projects: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
+  const [displayMode, setDisplayMode] = useState<'card' | 'list'>('card');
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
@@ -168,29 +169,55 @@ export const Projects: React.FC = () => {
 
       {viewMode === 'view' && (
         <>
-          <div className="flex gap-4 flex-wrap items-center">
-            {isNonMember && (
-              <UserFilter
-                selectedUserId={selectedUserId}
-                onUserChange={setSelectedUserId}
-                label="担当者"
-              />
-            )}
-            <select
-              value={filterPhase}
-              onChange={(e) => setFilterPhase(e.target.value)}
-              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">全てのフェーズ</option>
-              <option value="PREPARATION">準備</option>
-              <option value="EXECUTION">実施</option>
-              <option value="COMPLETED">完了</option>
-              <option value="REVIEW">振り返り</option>
-            </select>
-
+          <div className="flex gap-4 flex-wrap items-center justify-between">
+            <div className="flex gap-4 flex-wrap items-center">
+              {isNonMember && (
+                <UserFilter
+                  selectedUserId={selectedUserId}
+                  onUserChange={setSelectedUserId}
+                  label="担当者"
+                />
+              )}
+              <select
+                value={filterPhase}
+                onChange={(e) => setFilterPhase(e.target.value)}
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">全てのフェーズ</option>
+                <option value="PREPARATION">準備</option>
+                <option value="EXECUTION">実施</option>
+                <option value="COMPLETED">完了</option>
+                <option value="REVIEW">振り返り</option>
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDisplayMode('card')}
+                className={`p-2 rounded-lg transition-colors ${
+                  displayMode === 'card'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title="カード表示"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setDisplayMode('list')}
+                className={`p-2 rounded-lg transition-colors ${
+                  displayMode === 'list'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title="リスト表示"
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {displayMode === 'card' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProjects?.map((project) => (
               <div
                 key={project.id}
@@ -258,6 +285,68 @@ export const Projects: React.FC = () => {
               </div>
             ))}
           </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト名</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">フェーズ</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">担当者</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向性</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredProjects?.map((project) => (
+                    <tr
+                      key={project.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                      onClick={() => handleEditProject(project)}
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{project.projectName}</div>
+                        {project.description && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{project.description}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
+                          {getPhaseLabel(project.phase)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {project.user.name}
+                        {project.members.length > 0 && <span className="ml-1">+{project.members.length}</span>}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {project.mission?.missionName || project.mission?.goalName || '未設定'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {project.projectTasks?.length || 0}件
+                        {project.projectTasks && project.projectTasks.filter(t => t.status === 'COMPLETED').length > 0 && (
+                          <span className="text-green-600 ml-1">（完了: {project.projectTasks.filter(t => t.status === 'COMPLETED').length}）</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditProject(project);
+                          }}
+                        >
+                          詳細
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {filteredProjects?.length === 0 && (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">

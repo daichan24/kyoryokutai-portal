@@ -89,6 +89,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [showPDFConfirm, setShowPDFConfirm] = useState(false);
   const initialDataRef = useRef<{ coverRecipient: string; coverSender: string; memberSheets: any[]; supportRecords: SupportRecord[] } | null>(null);
 
   const { data: report, isLoading, refetch, error } = useQuery<MonthlyReport>({
@@ -195,10 +196,16 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
       link.click();
       window.URL.revokeObjectURL(url);
       link.remove();
+      setShowPDFConfirm(false);
     } catch (error) {
       console.error('PDF download failed:', error);
       alert('PDF出力に失敗しました');
+      setShowPDFConfirm(false);
     }
+  };
+
+  const handlePDFButtonClick = () => {
+    setShowPDFConfirm(true);
   };
 
   const canEdit = user?.role === 'MASTER' || (!report?.submittedAt && (user?.role === 'SUPPORT' || user?.role === 'MASTER'));
@@ -837,7 +844,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 <Eye className="h-4 w-4 mr-1" />
                 全体プレビュー
               </Button>
-              <Button onClick={downloadPDF} variant="outline" size="sm">
+              <Button onClick={handlePDFButtonClick} variant="outline" size="sm">
                 <FileDown className="h-4 w-4 mr-1" />
                 PDF出力
               </Button>
@@ -992,6 +999,28 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 キャンセル
               </Button>
               <Button onClick={handleConfirmClose} variant="primary">
+                OK
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF出力確認モーダル */}
+      {showPDFConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+              ローカルに保存しますか？
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              PDFファイルをローカルPCに保存します。保存先はブラウザの設定に従います。
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button variant="outline" onClick={() => setShowPDFConfirm(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={downloadPDF}>
                 OK
               </Button>
             </div>

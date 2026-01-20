@@ -4,6 +4,7 @@ import { api } from '../../utils/api';
 import { WeeklyReport, Schedule } from '../../types';
 import { getWeekString, parseWeekString, formatDate } from '../../utils/date';
 import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
+import { ja } from 'date-fns/locale/ja';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -204,7 +205,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">
             {currentReport ? '週次報告' : '週次報告作成'}
           </h2>
@@ -215,7 +216,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
         {/* タブ切り替え（既存報告がある場合のみ表示） */}
         {currentReport && (
-          <div className="flex border-b dark:border-gray-700">
+          <div className="flex border-b dark:border-gray-700 flex-shrink-0">
             <button
               onClick={() => setViewMode('edit')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
@@ -239,7 +240,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {viewMode === 'preview' && previewReport ? (
             <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
               <div className="shadow-lg">
@@ -247,7 +248,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
               </div>
             </div>
           ) : (
-            <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-6">
+            <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-6 pb-0">
               {!canEdit && (
                 <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm">
                   この報告は作成者のみが編集できます。
@@ -259,14 +260,46 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                 </div>
               )}
               
-              <Input
-                label="週 (YYYY-WW形式)"
-                value={week}
-                onChange={(e) => setWeek(e.target.value)}
-                placeholder="2024-01"
-                required
-                disabled={!canEdit}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  対象週
+                </label>
+                {week && (() => {
+                  try {
+                    const weekStart = parseWeekString(week);
+                    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+                    const weekRange = `${format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 ${format(weekEnd, 'M月d日', { locale: ja })}`;
+                    return (
+                      <div className="text-sm text-gray-900 dark:text-gray-100 mb-2">
+                        {weekRange}
+                      </div>
+                    );
+                  } catch (error) {
+                    return (
+                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                        {week}
+                      </div>
+                    );
+                  }
+                })()}
+                <Input
+                  type="week"
+                  value={week}
+                  onChange={(e) => setWeek(e.target.value)}
+                  required
+                  disabled={!canEdit}
+                  className="hidden"
+                />
+                {canEdit && (
+                  <Input
+                    type="week"
+                    value={week}
+                    onChange={(e) => setWeek(e.target.value)}
+                    required
+                    className="mt-1"
+                  />
+                )}
+              </div>
               
               {!report && canEdit && (
                 <div className="flex justify-end">
@@ -352,25 +385,40 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t dark:border-gray-700">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  キャンセル
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? '保存中...' : '下書き保存'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={(e) => handleSubmit(e, true)}
-                  disabled={loading}
-                >
-                  提出
-                </Button>
-              </div>
             </form>
           )}
         </div>
+
+        {/* フッター固定 */}
+        {viewMode === 'edit' && (
+          <div className="flex justify-end space-x-3 p-6 border-t dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
+            <Button type="button" variant="outline" onClick={onClose}>
+              キャンセル
+            </Button>
+            <Button 
+              type="button" 
+              onClick={(e) => {
+                e.preventDefault();
+                const form = document.querySelector('form');
+                if (form) {
+                  const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                  form.dispatchEvent(submitEvent);
+                }
+              }}
+              disabled={loading}
+            >
+              {loading ? '保存中...' : '下書き保存'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={(e) => handleSubmit(e, true)}
+              disabled={loading}
+            >
+              提出
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

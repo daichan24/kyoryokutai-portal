@@ -41,6 +41,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPDFConfirm, setShowPDFConfirm] = useState(false);
 
   // 編集用の状態
   const [inspectionPurpose, setInspectionPurpose] = useState('');
@@ -108,10 +109,16 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       link.click();
       window.URL.revokeObjectURL(url);
       link.remove();
+      setShowPDFConfirm(false);
     } catch (error) {
       console.error('PDF download failed:', error);
       alert('PDF出力に失敗しました');
+      setShowPDFConfirm(false);
     }
+  };
+
+  const handlePDFButtonClick = () => {
+    setShowPDFConfirm(true);
   };
 
   if (loading) {
@@ -172,7 +179,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
             </button>
             {!isEditing && viewMode === 'edit' && (
               <>
-                <Button variant="outline" onClick={handleDownloadPDF} size="sm">
+                <Button variant="outline" onClick={handlePDFButtonClick} size="sm">
                   <FileDown className="w-4 h-4 mr-2" />
                   PDF出力
                 </Button>
