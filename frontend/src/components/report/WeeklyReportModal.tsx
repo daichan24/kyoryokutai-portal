@@ -40,6 +40,38 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   // 作成者のみ編集可能
   const canEdit = !report || (user && report.user?.id === user.id);
 
+  const handleDownloadPDF = async () => {
+    if (!report || !user) return;
+    
+    try {
+      const response = await api.get(`/api/weekly-reports/${report.userId}/${report.week}/pdf`, {
+        responseType: 'blob'
+      });
+      
+      // エラーレスポンスのチェック
+      if (response.data instanceof Blob && response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.error || 'PDF出力に失敗しました');
+      }
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `週次報告_${report.week}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      link.remove();
+      setShowPDFConfirm(false);
+    } catch (error: any) {
+      console.error('PDF download failed:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
+      alert(errorMessage);
+      setShowPDFConfirm(false);
+    }
+  };
+
   useEffect(() => {
     if (report) {
       setCurrentReport(report);

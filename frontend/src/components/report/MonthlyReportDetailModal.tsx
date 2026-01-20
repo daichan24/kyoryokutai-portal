@@ -283,12 +283,14 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         if (onUpdated) onUpdated();
         queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
         queryClient.invalidateQueries({ queryKey: ['support-records'] });
+        alert('保存しました');
       } else {
         console.warn('新規作成は月次報告ページから行ってください');
       }
     } catch (error: any) {
-      console.error('Failed to save monthly report:', error);
-      alert(`保存に失敗しました: ${error?.response?.data?.error || error?.message || '不明なエラー'}`);
+      console.error('Save monthly report error:', error);
+      const errorMessage = error.response?.data?.error || error.message || '保存に失敗しました';
+      alert(`保存に失敗しました: ${errorMessage}`);
     } finally {
       setSaving(false);
     }

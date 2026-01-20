@@ -199,12 +199,54 @@ export const EventModal: React.FC<EventModalProps> = ({
   };
 
   const [isCollaborative, setIsCollaborative] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (event && event.participations && event.participations.length > 0) {
       setIsCollaborative(true);
     }
   }, [event]);
+
+  const hasChanges = () => {
+    if (!event) {
+      // 新規作成時は、何か入力されていれば変更あり
+      return !!(eventName || date || startTime || endTime || locationText || description || projectId || selectedParticipants.length > 0);
+    }
+    // 編集時は、元の値と比較
+    const originalDate = formatDate(new Date(event.date));
+    return (
+      eventName !== event.eventName ||
+      date !== originalDate ||
+      startTime !== (event.startTime || '') ||
+      endTime !== (event.endTime || '') ||
+      locationText !== (event.locationText || '') ||
+      description !== (event.description || '') ||
+      projectId !== (event.projectId || '') ||
+      JSON.stringify(selectedParticipants) !== JSON.stringify(event.participations?.map(p => ({ userId: p.userId, participationType: p.participationType })) || [])
+    );
+  };
+
+  const handleCloseClick = () => {
+    if (hasChanges()) {
+      setShowCloseConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        handleCloseClick();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [eventName, date, startTime, endTime, locationText, description, projectId, selectedParticipants]);
 
   return (
     <>

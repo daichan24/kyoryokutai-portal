@@ -37,8 +37,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   project,
   onClose,
   onSaved,
+  readOnly = false,
 }) => {
   const { user } = useAuthStore();
+  // readOnlyのデフォルト値を確実に設定
+  const isReadOnly = readOnly ?? false;
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -260,7 +263,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   // 権限チェック: MEMBERは自分のプロジェクトのみ編集可、GOVERNMENTは閲覧のみ
-  const canEditTasks = !readOnly && project && (
+  const canEditTasks = !isReadOnly && project && (
     user?.role === 'MASTER' ||
     user?.role === 'SUPPORT' ||
     (user?.role === 'MEMBER' && (project as any).userId === user.id)
@@ -270,7 +273,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
 
   const hasChanges = () => {
-    if (readOnly) return false;
+    if (isReadOnly) return false;
     if (!project) {
       // 新規作成時は、何か入力されていれば変更あり
       return !!(projectName || description || startDate || endDate || missionId || themeColor || tags.length > 0);
@@ -299,7 +302,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   useEffect(() => {
-    if (readOnly) return;
+    if (isReadOnly) return;
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         handleCloseClick();
@@ -310,11 +313,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [projectName, description, startDate, endDate, phase, missionId, themeColor, tags, readOnly]);
+  }, [projectName, description, startDate, endDate, phase, missionId, themeColor, tags, isReadOnly]);
 
   return (
     <>
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={readOnly ? onClose : handleCloseClick}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={isReadOnly ? onClose : handleCloseClick}>
       <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">
@@ -333,6 +336,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             onChange={(e) => setProjectName(e.target.value)}
             required
             placeholder="プロジェクト名を入力"
+            disabled={isReadOnly}
           />
 
           <div>
@@ -345,7 +349,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               rows={4}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="プロジェクトの説明を入力"
-              disabled={readOnly}
+              disabled={isReadOnly}
             />
           </div>
 
@@ -355,14 +359,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              disabled={readOnly}
+              disabled={isReadOnly}
+              readOnly={isReadOnly}
             />
             <Input
               label="終了日"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              disabled={readOnly}
+              disabled={isReadOnly}
+              readOnly={isReadOnly}
             />
           </div>
 
@@ -374,7 +380,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               value={phase}
               onChange={(e) => setPhase(e.target.value as typeof phase)}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={readOnly}
+              disabled={isReadOnly}
             >
               <option value="PREPARATION">準備</option>
               <option value="EXECUTION">実施</option>
@@ -540,7 +546,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
         <div className="flex justify-between p-6 border-t dark:border-gray-700 flex-shrink-0">
           <div>
-            {project && (
+            {project && !isReadOnly && (
               <Button type="button" variant="danger" onClick={handleDelete}>
                 削除
               </Button>
@@ -548,11 +554,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
           <div className="flex space-x-3">
             <Button type="button" variant="outline" onClick={onClose}>
-              キャンセル
+              {isReadOnly ? '閉じる' : 'キャンセル'}
             </Button>
-            <Button type="button" onClick={handleSubmit} disabled={loading}>
-              {loading ? '保存中...' : '保存'}
-            </Button>
+            {!isReadOnly && (
+              <Button type="button" onClick={handleSubmit} disabled={loading}>
+                {loading ? '保存中...' : '保存'}
+              </Button>
+            )}
           </div>
         </div>
       </div>

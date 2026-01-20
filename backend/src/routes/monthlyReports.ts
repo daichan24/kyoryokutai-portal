@@ -285,7 +285,8 @@ router.get('/:id/pdf', async (req: AuthRequest, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Generate monthly report PDF error:', error);
-    res.status(500).json({ error: 'PDF出力に失敗しました' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate PDF';
+    res.status(500).json({ error: `PDF出力に失敗しました: ${errorMessage}` });
   }
 });
 

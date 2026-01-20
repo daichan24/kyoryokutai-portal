@@ -160,6 +160,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             onChange={(e) => setTitle(e.target.value)}
             required
             placeholder="タスクのタイトルを入力"
+            disabled={readOnly}
+            readOnly={readOnly}
           />
 
           <div>

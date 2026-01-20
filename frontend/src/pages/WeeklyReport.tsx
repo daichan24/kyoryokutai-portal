@@ -405,7 +405,7 @@ export const WeeklyReport: React.FC = () => {
                         onClick={() => canCreate ? handleEditReport(report) : undefined}
                       >
                         <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                          {report.week} {isNaN(weekStart.getTime()) ? '' : `- ${formatDate(weekStart, 'yyyy年M月d日週')}`}
+                          {isNaN(weekStart.getTime()) ? report.week : formatDate(weekStart, 'yyyy年M月d日週')}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           {report.user?.name}
@@ -506,7 +506,7 @@ export const WeeklyReport: React.FC = () => {
                   const weekStart = parseWeekString(week);
                   return (
                     <option key={week} value={week}>
-                      {week} - {formatDate(weekStart, 'yyyy年M月d日週')}
+                      {formatDate(weekStart, 'yyyy年M月d日週')}
                     </option>
                   );
                 } catch (error) {
@@ -566,9 +566,6 @@ export const WeeklyReport: React.FC = () => {
                       <>
                         <div className="mb-3">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              {selectedWeek}
-                            </span>
                             {report.submittedAt && (
                               <span className="px-2 py-1 bg-secondary/10 text-secondary text-xs rounded-full">
                                 提出済み
