@@ -28,6 +28,7 @@ export const UsersSettings: React.FC = () => {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isUpdatingMemberName, setIsUpdatingMemberName] = useState(false);
 
   useEffect(() => {
     fetchUsers();
