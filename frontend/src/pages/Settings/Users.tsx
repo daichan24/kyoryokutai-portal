@@ -86,15 +86,33 @@ export const UsersSettings: React.FC = () => {
 
     setIsUpdatingMemberName(true);
     try {
-      const response = await api.post('/api/admin/update-member-sato-name');
-      const data = response.data;
-      
-      if (data.success) {
-        alert('✅ ' + data.message);
-        await fetchUsers(); // 一覧を再取得
-      } else {
-        alert('ℹ️ ' + data.message);
+      // まず、メンバーの「佐藤大地」を検索
+      const memberSato = allUsers.find(
+        (user) => user.role === 'MEMBER' && user.name === '佐藤大地'
+      );
+
+      if (!memberSato) {
+        // 「さとうだいち」が既に存在するか確認
+        const memberSatoHiragana = allUsers.find(
+          (user) => user.role === 'MEMBER' && user.name === 'さとうだいち'
+        );
+
+        if (memberSatoHiragana) {
+          alert('ℹ️ メンバー「さとうだいち」は既に存在しています。');
+          return;
+        } else {
+          alert('ℹ️ メンバー「佐藤大地」は見つかりませんでした。');
+          return;
+        }
       }
+
+      // 既存のユーザー更新APIを使用して名前を更新
+      await api.put(`/api/users/${memberSato.id}`, {
+        name: 'さとうだいち',
+      });
+
+      alert(`✅ ユーザー ${memberSato.email} の名前を「佐藤大地」から「さとうだいち」に更新しました`);
+      await fetchUsers(); // 一覧を再取得
     } catch (error: any) {
       console.error('Failed to update member name:', error);
       console.error('Error details:', {
@@ -107,7 +125,7 @@ export const UsersSettings: React.FC = () => {
       
       let errorMessage = '更新に失敗しました';
       if (error.response?.status === 404) {
-        errorMessage = 'APIエンドポイントが見つかりません。バックエンドが最新のコードで再起動されているか確認してください。';
+        errorMessage = 'ユーザーが見つかりませんでした。';
       } else if (error.response?.status === 403) {
         errorMessage = '権限がありません。MASTERロールでログインしている必要があります。';
       } else if (error.response?.data?.error) {
