@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Wish, WishStatus } from '../types';
-import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X, PlayCircle } from 'lucide-react';
+import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X, PlayCircle, BookOpen, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { WishModal } from '../components/wish/WishModal';
@@ -263,14 +263,14 @@ export const Wishes: React.FC = () => {
             className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             title="使い方"
           >
-            <HelpCircle className="h-5 w-5" />
+            <BookOpen className="h-5 w-5" />
           </button>
           <button
             onClick={() => setShowIconHelp(true)}
             className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-            title="アイコンについて"
+            title="アイコンの見方"
           >
-            <HelpCircle className="h-5 w-5" />
+            <Info className="h-5 w-5" />
           </button>
         </div>
         <div className="flex gap-2">
@@ -648,8 +648,8 @@ export const Wishes: React.FC = () => {
       {/* 使い方モーダル */}
       {showUsageHelp && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full m-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">やりたいこと100の使い方</h2>
               <button
                 onClick={() => setShowUsageHelp(false)}
@@ -659,7 +659,7 @@ export const Wishes: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-8">
+            <div className="p-6 space-y-8 overflow-y-auto">
               <section className="space-y-2">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">目的（この機能で何を解決するか）</h3>
                 <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
@@ -729,8 +729,8 @@ export const Wishes: React.FC = () => {
       {/* アイコンについてモーダル */}
       {showIconHelp && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h2 className="text-2xl font-bold dark:text-gray-100">アイコンについて</h2>
               <button
                 onClick={() => setShowIconHelp(false)}
@@ -740,7 +740,7 @@ export const Wishes: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto">
               {/* ステータスアイコン */}
               <div>
                 <h3 className="text-lg font-semibold dark:text-gray-100 mb-3">ステータスアイコン</h3>
