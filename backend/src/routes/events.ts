@@ -9,7 +9,8 @@ router.use(authenticate);
 const eventSchema = z.object({
   eventName: z.string().min(1),
   eventType: z.enum(['TOWN_OFFICIAL', 'TEAM', 'OTHER']),
-  date: z.string(),
+  date: z.string(), // 開始日（後方互換性のため残す）
+  endDate: z.string().optional(), // 終了日（オプショナル、指定されない場合は開始日と同じ）
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   location: z.string().optional(),
@@ -118,12 +119,17 @@ router.post('/', async (req: AuthRequest, res) => {
     const data = eventSchema.parse(req.body);
 
     // イベント作成
+    const startDate = new Date(data.date);
+    const endDate = data.endDate ? new Date(data.endDate) : startDate; // 終了日が指定されていない場合は開始日と同じ
+    
     const event = await prisma.event.create({
       data: {
         createdBy: req.user!.id,
         eventName: data.eventName,
         eventType: data.eventType,
-        date: new Date(data.date),
+        date: startDate, // 後方互換性のため
+        startDate: startDate,
+        endDate: endDate,
         startTime: data.startTime || null,
         endTime: data.endTime || null,
         locationId: data.locationId || null,
@@ -195,20 +201,35 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
 
     // 誰でも編集可能（最終更新者を記録）
+    const dataWithEndDate = data as any;
+    const updateData: any = {
+      eventName: data.eventName,
+      eventType: data.eventType,
+      startTime: data.startTime || null,
+      endTime: data.endTime || null,
+      locationId: data.locationId || null,
+      locationText: data.locationText || data.location || null,
+      description: data.description || null,
+      projectId: data.projectId || null,
+      updatedBy: req.user!.id, // 最終更新者を記録
+    };
+    
+    if (data.date) {
+      const startDate = new Date(data.date);
+      const endDate = dataWithEndDate.endDate ? new Date(dataWithEndDate.endDate) : startDate;
+      updateData.date = startDate; // 後方互換性のため
+      updateData.startDate = startDate;
+      updateData.endDate = endDate;
+    } else if (dataWithEndDate.endDate) {
+      // dateが指定されていないがendDateが指定されている場合
+      const existingStartDate = event.startDate || event.date;
+      updateData.endDate = new Date(dataWithEndDate.endDate);
+      updateData.startDate = existingStartDate;
+    }
+    
     const updated = await prisma.event.update({
       where: { id },
-      data: {
-        eventName: data.eventName,
-        eventType: data.eventType,
-        date: new Date(data.date),
-        startTime: data.startTime || null,
-        endTime: data.endTime || null,
-        locationId: data.locationId || null,
-        locationText: data.locationText || data.location || null,
-        description: data.description || null,
-        projectId: data.projectId || null,
-        updatedBy: req.user!.id, // 最終更新者を記録
-      },
+      data: updateData,
       include: { creator: true, project: true, updater: true },
     });
 
@@ -423,10 +444,15 @@ router.post('/:id/participants', async (req: AuthRequest, res) => {
         });
 
         if (!existingSchedule) {
+          const scheduleStartDate = event.startDate || event.date;
+          const scheduleEndDate = event.endDate || scheduleStartDate;
+          
           await prisma.schedule.create({
             data: {
               userId,
-              date: event.date,
+              date: scheduleStartDate, // 後方互換性のため
+              startDate: scheduleStartDate,
+              endDate: scheduleEndDate,
               startTime: scheduleStartTime,
               endTime: scheduleEndTime,
               locationId: event.locationId || null,

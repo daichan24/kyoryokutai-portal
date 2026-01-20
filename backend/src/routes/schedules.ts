@@ -139,10 +139,15 @@ router.post('/', async (req: AuthRequest, res) => {
     );
 
     // スケジュール作成
+    const startDate = new Date(data.date);
+    const endDate = (data as any).endDate ? new Date((data as any).endDate) : startDate; // 終了日が指定されていない場合は開始日と同じ
+    
     const schedule = await prisma.schedule.create({
       data: {
         userId: creatorId,
-        date: new Date(data.date),
+        date: startDate, // 後方互換性のため
+        startDate: startDate,
+        endDate: endDate,
         startTime: data.startTime,
         endTime: data.endTime,
         locationText: data.locationText,
@@ -233,8 +238,18 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
 
     const updateData: any = { ...data };
+    const dataWithEndDate = data as any;
     if (data.date) {
-      updateData.date = new Date(data.date);
+      const startDate = new Date(data.date);
+      const endDate = dataWithEndDate.endDate ? new Date(dataWithEndDate.endDate) : startDate;
+      updateData.date = startDate; // 後方互換性のため
+      updateData.startDate = startDate;
+      updateData.endDate = endDate;
+    } else if (dataWithEndDate.endDate) {
+      // dateが指定されていないがendDateが指定されている場合
+      const existingStartDate = existingSchedule.startDate || existingSchedule.date;
+      updateData.endDate = new Date(dataWithEndDate.endDate);
+      updateData.startDate = existingStartDate;
     }
     // projectIdとtaskIdを明示的に設定（nullも許可）
     if (data.projectId !== undefined) {
