@@ -101,6 +101,14 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       const response = await api.get(`/api/inspections/${inspectionId}/pdf`, {
         responseType: 'blob'
       });
+      
+      // エラーレスポンスのチェック
+      if (response.data instanceof Blob && response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.error || 'PDF出力に失敗しました');
+      }
+      
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -110,9 +118,10 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       window.URL.revokeObjectURL(url);
       link.remove();
       setShowPDFConfirm(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('PDF download failed:', error);
-      alert('PDF出力に失敗しました');
+      const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
+      alert(errorMessage);
       setShowPDFConfirm(false);
     }
   };

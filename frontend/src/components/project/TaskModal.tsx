@@ -77,7 +77,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         description: description.trim() || undefined,
         status,
         projectId: projectId || null,
-        dueDate: dueDate || null,
+        dueDate: dueDate && dueDate.trim() ? dueDate.trim() : null,
       };
 
       if (task) {
@@ -170,19 +170,21 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               ステータス
             </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as typeof status)}
-              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            >
-              <option value="NOT_STARTED">未着手</option>
-              <option value="IN_PROGRESS">進行中</option>
-              <option value="COMPLETED">完了</option>
-            </select>
-            <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              {status === 'NOT_STARTED' && <><Circle className="h-4 w-4 text-gray-400" /> <span>未着手</span></>}
-              {status === 'IN_PROGRESS' && <><PlayCircle className="h-4 w-4 text-blue-500" /> <span>進行中</span></>}
-              {status === 'COMPLETED' && <><CheckCircle2 className="h-4 w-4 text-green-500" /> <span>完了</span></>}
+            <div className="relative">
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as typeof status)}
+                className="w-full px-3 py-2 pl-10 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none"
+              >
+                <option value="NOT_STARTED">未着手</option>
+                <option value="IN_PROGRESS">進行中</option>
+                <option value="COMPLETED">完了</option>
+              </select>
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                {status === 'NOT_STARTED' && <Circle className="h-4 w-4 text-gray-400" />}
+                {status === 'IN_PROGRESS' && <PlayCircle className="h-4 w-4 text-blue-500" />}
+                {status === 'COMPLETED' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+              </div>
             </div>
           </div>
 

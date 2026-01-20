@@ -140,21 +140,27 @@ router.post('/', async (req: AuthRequest, res) => {
       include: { creator: true, project: true },
     });
 
-    // 参加メンバーを追加
+    // 参加メンバーを追加（承認待ち状態で作成）
     if (data.participants && data.participants.length > 0) {
       await Promise.all(
-        data.participants.map((participant) => {
+        data.participants.map(async (participant) => {
           const pointEarned = participant.participationType === 'PARTICIPATION' 
             ? 1.0 
             : 0.5;
-          return prisma.eventParticipation.create({
+          const participation = await prisma.eventParticipation.create({
             data: {
               eventId: event.id,
               userId: participant.userId,
               participationType: participant.participationType,
               pointEarned,
+              status: 'PENDING', // 承認待ち状態で作成
             },
           });
+
+          // 承認された場合のみスケジュールを追加する（承認APIで処理）
+          // ここではスケジュールは追加しない
+
+          return participation;
         })
       );
     }
@@ -240,7 +246,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         where: { eventId: id },
       });
 
-      // 新しい参加メンバーを追加
+      // 新しい参加メンバーを追加（承認待ち状態で作成）
       if (data.participants.length > 0) {
         await Promise.all(
           data.participants.map((participant) => {
@@ -253,6 +259,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
                 userId: participant.userId,
                 participationType: participant.participationType,
                 pointEarned,
+                status: 'PENDING', // 承認待ち状態で作成
               },
             });
           })
@@ -345,9 +352,45 @@ router.post('/:id/participate', async (req: AuthRequest, res) => {
         userId: req.user!.id,
         participationType,
         pointEarned,
+        status: 'APPROVED', // 自分で参加登録する場合は承認済み
       },
       include: { event: true, user: true },
     });
+
+    // 自分で参加登録した場合は、スケジュールも自動追加
+    const event = participation.event;
+    const scheduleStartTime = event.startTime || '09:00';
+    const scheduleEndTime = event.endTime || '17:00';
+
+    // 既存のスケジュールと重複チェック
+    const existingSchedule = await prisma.schedule.findFirst({
+      where: {
+        userId: req.user!.id,
+        date: event.startDate || event.date,
+        startTime: scheduleStartTime,
+        endTime: scheduleEndTime,
+        activityDescription: event.eventName,
+      },
+    });
+
+    if (!existingSchedule) {
+      await prisma.schedule.create({
+        data: {
+          userId: req.user!.id,
+          date: event.startDate || event.date, // 後方互換性のため
+          startDate: event.startDate || event.date,
+          endDate: event.endDate || event.startDate || event.date,
+          startTime: scheduleStartTime,
+          endTime: scheduleEndTime,
+          locationId: event.locationId || null,
+          locationText: event.locationText || null,
+          activityDescription: event.eventName,
+          freeNote: event.description || null,
+          projectId: event.projectId || null,
+          createdBy: 'MANUAL',
+        },
+      });
+    }
 
     res.status(201).json(participation);
   } catch (error) {
@@ -417,53 +460,19 @@ router.post('/:id/participants', async (req: AuthRequest, res) => {
           return { userId, status: 'already_participated', participation: existing };
         }
 
-        // 参加登録
+        // 参加登録（承認待ち状態で作成）
         const participation = await prisma.eventParticipation.create({
           data: {
             eventId: id,
             userId,
             participationType,
             pointEarned,
+            status: 'PENDING', // 承認待ち状態で作成
           },
         });
 
-        // スケジュールに追加（イベントと同じ日時で）
-        // startTimeとendTimeがない場合はデフォルト値を設定
-        const scheduleStartTime = event.startTime || '09:00';
-        const scheduleEndTime = event.endTime || '17:00';
-
-        // 既存のスケジュールと重複チェック（同じ日時で同じイベント名のスケジュールがあるか）
-        const existingSchedule = await prisma.schedule.findFirst({
-          where: {
-            userId,
-            date: event.date,
-            startTime: scheduleStartTime,
-            endTime: scheduleEndTime,
-            activityDescription: event.eventName,
-          },
-        });
-
-        if (!existingSchedule) {
-          const scheduleStartDate = event.startDate || event.date;
-          const scheduleEndDate = event.endDate || scheduleStartDate;
-          
-          await prisma.schedule.create({
-            data: {
-              userId,
-              date: scheduleStartDate, // 後方互換性のため
-              startDate: scheduleStartDate,
-              endDate: scheduleEndDate,
-              startTime: scheduleStartTime,
-              endTime: scheduleEndTime,
-              locationId: event.locationId || null,
-              locationText: event.locationText || event.location?.name || null,
-              activityDescription: event.eventName,
-              freeNote: event.description || null,
-              projectId: event.projectId || null,
-              createdBy: 'MANUAL',
-            },
-          });
-        }
+        // 承認された場合のみスケジュールを追加する（承認APIで処理）
+        // ここではスケジュールは追加しない
 
         return { userId, status: 'added', participation };
       })
@@ -492,6 +501,106 @@ router.post('/:id/participants', async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Add participants error:', error);
     res.status(500).json({ error: 'Failed to add participants' });
+  }
+});
+
+// イベント参加招待への承認/却下
+router.post('/:id/respond', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { decision } = req.body;
+    const currentUserId = req.user!.id;
+
+    if (!decision || !['APPROVED', 'REJECTED'].includes(decision)) {
+      return res.status(400).json({ error: 'Invalid decision. Must be APPROVED or REJECTED' });
+    }
+
+    // 参加者レコードを取得
+    const participation = await prisma.eventParticipation.findUnique({
+      where: {
+        eventId_userId: {
+          eventId: id,
+          userId: currentUserId,
+        },
+      },
+      include: {
+        event: {
+          include: {
+            creator: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!participation) {
+      return res.status(404).json({ error: 'Event invitation not found' });
+    }
+
+    // ステータス更新
+    const updatedParticipation = await prisma.eventParticipation.update({
+      where: {
+        eventId_userId: {
+          eventId: id,
+          userId: currentUserId,
+        },
+      },
+      data: {
+        status: decision,
+        respondedAt: new Date(),
+      },
+    });
+
+    // 承認された場合、スケジュールを追加
+    if (decision === 'APPROVED') {
+      const scheduleStartTime = participation.event.startTime || '09:00';
+      const scheduleEndTime = participation.event.endTime || '17:00';
+
+      // 既存のスケジュールと重複チェック
+      const existingSchedule = await prisma.schedule.findFirst({
+        where: {
+          userId: currentUserId,
+          date: participation.event.startDate || participation.event.date,
+          startTime: scheduleStartTime,
+          endTime: scheduleEndTime,
+          activityDescription: participation.event.eventName,
+        },
+      });
+
+      if (!existingSchedule) {
+        await prisma.schedule.create({
+          data: {
+            userId: currentUserId,
+            date: participation.event.startDate || participation.event.date, // 後方互換性のため
+            startDate: participation.event.startDate || participation.event.date,
+            endDate: participation.event.endDate || participation.event.startDate || participation.event.date,
+            startTime: scheduleStartTime,
+            endTime: scheduleEndTime,
+            locationId: participation.event.locationId || null,
+            locationText: participation.event.locationText || null,
+            activityDescription: participation.event.eventName,
+            freeNote: participation.event.description || null,
+            projectId: participation.event.projectId || null,
+            createdBy: 'MANUAL',
+          },
+        });
+      }
+    }
+
+    res.json(updatedParticipation);
+  } catch (error) {
+    console.error('Respond to event invite error:', error);
+    res.status(500).json({ error: 'Failed to respond to event invite' });
   }
 });
 

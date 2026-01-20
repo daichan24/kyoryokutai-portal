@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, FileDown } from 'lucide-react';
 import { api } from '../../utils/api';
 import { WeeklyReport, Schedule } from '../../types';
 import { getWeekString, parseWeekString, formatDate } from '../../utils/date';
@@ -34,6 +34,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   const [currentReport, setCurrentReport] = useState<WeeklyReport | null>(report || null);
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [showPDFConfirm, setShowPDFConfirm] = useState(false);
   const { user } = useAuthStore();
   
   // 作成者のみ編集可能
@@ -419,7 +420,49 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
             </Button>
           </div>
         )}
+        {viewMode === 'preview' && previewReport && (
+          <div className="flex justify-between items-center p-6 border-t dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
+            <div>
+              {canEdit && (
+                <Button type="button" variant="outline" onClick={() => setViewMode('edit')}>
+                  編集
+                </Button>
+              )}
+            </div>
+            <div className="flex space-x-3">
+              <Button type="button" variant="outline" onClick={() => setShowPDFConfirm(true)}>
+                <FileDown className="w-4 h-4 mr-2" />
+                PDF出力
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                閉じる
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* PDF出力確認ダイアログ */}
+      {showPDFConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+            <h3 className="text-xl font-bold dark:text-gray-100 mb-4">
+              ローカルに保存しますか？
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              PDFファイルをローカルPCに保存します。
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowPDFConfirm(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleDownloadPDF}>
+                OK
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

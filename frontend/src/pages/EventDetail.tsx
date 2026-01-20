@@ -37,6 +37,7 @@ interface EventDetail {
   participations: Array<{
     id: string;
     participationType: string;
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
     user: {
       id: string;
       name: string;
@@ -294,25 +295,59 @@ export const EventDetail: React.FC = () => {
             </div>
             {event.participations && event.participations.length > 0 ? (
               <div className="space-y-2">
-                {event.participations.map((participation) => (
-                  <div
-                    key={participation.id}
-                    className="flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/50"
-                  >
-                    {participation.user.avatarColor && (
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                        style={{ backgroundColor: participation.user.avatarColor }}
-                      >
-                        {(participation.user.avatarLetter || participation.user.name || '').charAt(0)}
-                      </div>
-                    )}
-                    <span className="text-gray-900 dark:text-gray-100 flex-1">{participation.user.name}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {participation.participationType === 'PARTICIPATION' ? '参加' : '準備'}
-                    </span>
-                  </div>
-                ))}
+                {event.participations.map((participation) => {
+                  const isCurrentUser = participation.user.id === currentUser?.id;
+                  const isPending = participation.status === 'PENDING';
+                  const isApproved = participation.status === 'APPROVED';
+                  
+                  return (
+                    <div
+                      key={participation.id}
+                      className="flex items-center gap-2 p-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/50"
+                    >
+                      {participation.user.avatarColor && (
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                          style={{ backgroundColor: participation.user.avatarColor }}
+                        >
+                          {(participation.user.avatarLetter || participation.user.name || '').charAt(0)}
+                        </div>
+                      )}
+                      <span className="text-gray-900 dark:text-gray-100 flex-1">{participation.user.name}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {participation.participationType === 'PARTICIPATION' ? '参加' : '準備'}
+                      </span>
+                      {isPending && (
+                        <span className="text-xs px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded">
+                          承認待ち
+                        </span>
+                      )}
+                      {isApproved && (
+                        <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded">
+                          承認済み
+                        </span>
+                      )}
+                      {isCurrentUser && isPending && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleRespondToInvite('APPROVED')}
+                          >
+                            承認
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRespondToInvite('REJECTED')}
+                          >
+                            却下
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-gray-500 dark:text-gray-400">参加メンバーはいません</p>

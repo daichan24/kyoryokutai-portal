@@ -8,7 +8,7 @@ import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, Check, HelpCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, Check, HelpCircle, LayoutGrid, List } from 'lucide-react';
 import { Task, Project, Mission } from '../types';
 
 export const Tasks: React.FC = () => {
@@ -26,6 +26,7 @@ export const Tasks: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>('deadline'); // deadline, status, project, created
   const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
+  const [displayMode, setDisplayMode] = useState<'card' | 'list'>('card');
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
   // プロジェクト一覧を取得（Taskの紐づき情報用）
@@ -130,7 +131,18 @@ export const Tasks: React.FC = () => {
 
   const handleEditTask = (task: Task) => {
     setSelectedTask(task);
-    setSelectedProjectId(task.projectId || null);
+    // missionIdを設定（TaskModalはmissionIdを必要とする）
+    if (task.missionId) {
+      setSelectedProjectId(task.missionId);
+    } else {
+      // missionIdがない場合は、プロジェクトから取得を試みる
+      const project = projects.find(p => p.id === task.projectId);
+      if (project?.missionId) {
+        setSelectedProjectId(project.missionId);
+      } else {
+        setSelectedProjectId(null);
+      }
+    }
     setIsModalOpen(true);
   };
 
@@ -285,58 +297,85 @@ export const Tasks: React.FC = () => {
       {viewMode === 'view' && (
         <>
           {/* フィルタ・ソート */}
-          <div className="flex gap-4 flex-wrap items-center">
-            {isNonMember && (
-              <UserFilter
-                selectedUserId={selectedUserId}
-                onUserChange={setSelectedUserId}
-                label="担当者"
-              />
-            )}
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <div className="flex gap-4 flex-wrap items-center justify-between">
+            <div className="flex gap-4 flex-wrap items-center">
+              {isNonMember && (
+                <UserFilter
+                  selectedUserId={selectedUserId}
+                  onUserChange={setSelectedUserId}
+                  label="担当者"
+                />
+              )}
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">全ての状態</option>
+                  <option value="NOT_STARTED">未着手</option>
+                  <option value="IN_PROGRESS">進行中</option>
+                  <option value="COMPLETED">完了</option>
+                </select>
+              </div>
+
               <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                value={filterProject}
+                onChange={(e) => setFilterProject(e.target.value)}
                 className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">全ての状態</option>
-                <option value="NOT_STARTED">未着手</option>
-                <option value="IN_PROGRESS">進行中</option>
-                <option value="COMPLETED">完了</option>
+                <option value="all">全てのプロジェクト</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.projectName}
+                  </option>
+                ))}
               </select>
+
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="deadline">期限順</option>
+                  <option value="status">状態順</option>
+                  <option value="project">プロジェクト順</option>
+                  <option value="created">作成日順</option>
+                </select>
+              </div>
             </div>
-
-            <select
-              value={filterProject}
-              onChange={(e) => setFilterProject(e.target.value)}
-              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">全てのプロジェクト</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.projectName}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex items-center gap-2">
-              <ArrowUpDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDisplayMode('card')}
+                className={`p-2 rounded-lg transition-colors ${
+                  displayMode === 'card'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title="カード表示"
               >
-                <option value="deadline">期限順</option>
-                <option value="status">状態順</option>
-                <option value="project">プロジェクト順</option>
-                <option value="created">作成日順</option>
-              </select>
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setDisplayMode('list')}
+                className={`p-2 rounded-lg transition-colors ${
+                  displayMode === 'list'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+                title="リスト表示"
+              >
+                <List className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
           {/* タスク一覧 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {displayMode === 'card' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredAndSortedTasks.map((task) => {
           const missionName = getMissionName(task);
           return (
@@ -446,6 +485,82 @@ export const Tasks: React.FC = () => {
           );
         })}
           </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ステータス</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク名</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向性</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">期日</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredAndSortedTasks.map((task) => {
+                    const missionName = getMissionName(task);
+                    return (
+                      <tr
+                        key={task.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                        onClick={() => handleEditTask(task)}
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {getStatusIcon(task.status)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{task.title}</div>
+                          {task.description && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{task.description}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {task.project?.projectName || 'プロジェクトなし'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {missionName || '-'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ja-JP') : '-'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {task.status !== 'COMPLETED' && canCreate && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCompleteTask(task);
+                                }}
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                完了
+                              </Button>
+                            )}
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setScheduleTask(task);
+                                setIsScheduleModalOpen(true);
+                              }}
+                            >
+                              <Calendar className="h-3 w-3 mr-1" />
+                              スケジュール
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {filteredAndSortedTasks.length === 0 && (
         <div className="text-center py-12 text-gray-500">

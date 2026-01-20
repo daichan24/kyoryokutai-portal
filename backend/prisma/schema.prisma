@@ -516,12 +516,15 @@ model EventParticipation {
   participationType ParticipationType @default(PARTICIPATION)
   pointEarned       Float             @default(0)
   surveyResponse    Json?
+  status            ParticipantStatus @default(PENDING)
+  respondedAt        DateTime?
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([eventId, userId])
   @@index([eventId])
-  @@index([userId])
+  @@index([userId, status])
 }
 
 enum EventType {

@@ -192,6 +192,14 @@ export const EventModal: React.FC<EventModalProps> = ({
     }
   };
 
+  const [isCollaborative, setIsCollaborative] = useState(false);
+
+  useEffect(() => {
+    if (event && event.participations && event.participations.length > 0) {
+      setIsCollaborative(true);
+    }
+  }, [event]);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col">
@@ -204,7 +212,8 @@ export const EventModal: React.FC<EventModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
           <Input
             label="イベント名"
             type="text"
@@ -290,14 +299,6 @@ export const EventModal: React.FC<EventModalProps> = ({
             />
           </div>
 
-          <Input
-            label="最大参加者数（任意）"
-            type="number"
-            min="1"
-            value={maxParticipants?.toString() || ''}
-            onChange={(e) => setMaxParticipants(e.target.value ? Number(e.target.value) : undefined)}
-          />
-
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               関連プロジェクト（任意）
@@ -316,7 +317,70 @@ export const EventModal: React.FC<EventModalProps> = ({
             </select>
           </div>
 
-          <div className="flex justify-between pt-4 border-t dark:border-gray-700 flex-shrink-0">
+          <div>
+            <label className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                checked={isCollaborative}
+                onChange={(e) => {
+                  setIsCollaborative(e.target.checked);
+                  if (!e.target.checked) {
+                    setSelectedParticipants([]);
+                  }
+                }}
+                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary dark:bg-gray-700 dark:border-gray-600"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                共同作業（他メンバーを巻き込む）
+              </span>
+            </label>
+            {isCollaborative && (
+              <div className="mt-2 space-y-2">
+                {users
+                  .filter((u) => u.id !== user?.id)
+                  .map((u) => {
+                    const participant = selectedParticipants.find((p) => p.userId === u.id);
+                    return (
+                      <div key={u.id} className="flex items-center gap-3 p-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800">
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {u.name}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleParticipantToggle(u.id, 'PARTICIPATION')}
+                            className={`px-3 py-1 text-xs rounded transition-colors ${
+                              participant?.participationType === 'PARTICIPATION'
+                                ? 'bg-blue-500 text-white dark:bg-blue-600'
+                                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            参加
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleParticipantToggle(u.id, 'PREPARATION')}
+                            className={`px-3 py-1 text-xs rounded transition-colors ${
+                              participant?.participationType === 'PREPARATION'
+                                ? 'bg-orange-500 text-white dark:bg-orange-600'
+                                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            準備
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+          </div>
+
+          {/* フッター固定 */}
+          <div className="flex justify-between p-6 border-t dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
             <div>
               {event && (
                 <Button type="button" variant="danger" onClick={handleDelete}>

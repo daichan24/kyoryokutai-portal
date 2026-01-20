@@ -440,62 +440,70 @@ export const Schedule: React.FC = () => {
               return (
                 <div
                   key={project.id}
-                  className="p-2 rounded-lg border border-border dark:border-gray-700 bg-white dark:bg-gray-800 space-y-2"
+                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
                   style={{
                     borderLeftWidth: '4px',
                     borderLeftColor: project.themeColor || '#6B7280',
                   }}
                 >
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleProjectExpanded(project.id)}
-                      className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                      aria-label={isExpanded ? '閉じる' : '開く'}
-                    >
+                  <div
+                    className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    onClick={() => toggleProjectExpanded(project.id)}
+                  >
+                    <div className="flex-shrink-0">
                       {isExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                       ) : (
-                        <ChevronRightIcon className="h-4 w-4" />
+                        <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                       )}
-                    </button>
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
                         {project.projectName}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                         {formatDate(displayStartDate, 'M月d日')} 〜 {formatDate(displayEndDate, 'M月d日')} まで進行中
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      onClick={() => navigate('/projects', { state: { projectId: project.id } })}
-                      className="whitespace-nowrap text-xs"
-                    >
-                      <ListChecks className="h-3 w-3 mr-1" />
-                      詳細へ
-                    </Button>
+                    <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/projects', { state: { projectId: project.id } })}
+                        className="whitespace-nowrap"
+                      >
+                        <ListChecks className="h-4 w-4 mr-1" />
+                        詳細へ
+                      </Button>
+                    </div>
                   </div>
 
                   {isExpanded && projectTasks.length > 0 && (
-                    <div className="ml-7 mt-1 space-y-1">
+                    <div className="px-4 pb-4 space-y-2 border-t border-gray-200 dark:border-gray-700 pt-3">
                       {projectTasks.map((task) => {
-                        let statusClass = 'text-gray-500 dark:text-gray-400';
+                        let statusClass = 'text-gray-600 dark:text-gray-300';
+                        let statusBgClass = 'bg-gray-50 dark:bg-gray-700/50';
                         if (task.status === 'IN_PROGRESS') {
-                          statusClass = 'text-blue-500 dark:text-blue-300';
+                          statusClass = 'text-blue-700 dark:text-blue-300';
+                          statusBgClass = 'bg-blue-50 dark:bg-blue-900/20';
                         } else if (task.status === 'COMPLETED') {
-                          statusClass = 'text-green-500 dark:text-green-300';
+                          statusClass = 'text-green-700 dark:text-green-300';
+                          statusBgClass = 'bg-green-50 dark:bg-green-900/20';
                         }
                         return (
                           <div
                             key={task.id}
-                            className="flex items-center justify-between text-xs px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                            className={`flex items-center justify-between text-sm px-3 py-2 rounded-md ${statusBgClass} hover:opacity-80 transition-opacity cursor-pointer`}
                             onMouseEnter={() => setHoveredTaskId(task.id)}
                             onMouseLeave={() => setHoveredTaskId(null)}
                           >
-                            <span className={`font-medium truncate ${statusClass}`}>{task.title}</span>
-                            <span className="ml-2 text-[11px] text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {task.status === 'NOT_STARTED' && <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />}
+                              {task.status === 'IN_PROGRESS' && <PlayCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />}
+                              {task.status === 'COMPLETED' && <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                              <span className={`font-medium truncate ${statusClass}`}>{task.title}</span>
+                            </div>
+                            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                               {task.status === 'NOT_STARTED'
                                 ? '未着手'
                                 : task.status === 'IN_PROGRESS'
@@ -505,6 +513,11 @@ export const Schedule: React.FC = () => {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  {isExpanded && projectTasks.length === 0 && (
+                    <div className="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400 text-center py-3">
+                      このプロジェクトに紐づくタスクはありません
                     </div>
                   )}
                 </div>

@@ -4,7 +4,7 @@ import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
-import { ProjectTaskModal } from './ProjectTaskModal';
+import { TaskModal } from './TaskModal';
 import { Task } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -73,10 +73,28 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   }, [project]);
 
   useEffect(() => {
-    if (project?.id) {
+    if (project?.id && missionId) {
       fetchTasks();
+    } else if (!project && missionId) {
+      // 新規作成時でmissionIdが設定されている場合、そのミッションのタスクを取得
+      fetchTasksForMission();
     }
-  }, [project?.id]);
+  }, [project?.id, missionId]);
+
+  const fetchTasksForMission = async () => {
+    if (!missionId) return;
+    try {
+      const response = await api.get<Task[]>(`/api/missions/${missionId}/tasks`);
+      // このプロジェクトに紐づくタスクのみをフィルタ（projectIdがnullまたはこのプロジェクトのID）
+      const projectTasks = response.data?.filter(task => 
+        !task.projectId || (project && task.projectId === project.id)
+      ) || [];
+      setTasks(projectTasks);
+    } catch (error) {
+      console.error('Failed to fetch tasks for mission:', error);
+      setTasks([]);
+    }
+  };
 
   const fetchMissions = async () => {
     try {
@@ -164,21 +182,33 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   // タスク関連のハンドラー（旧：サブ目標）
   const handleAddTask = () => {
+    if (!missionId) {
+      alert('タスクを追加するには、まず関連ミッションを選択してください。');
+      return;
+    }
     setSelectedTask(null);
     setIsSubGoalModalOpen(true);
   };
 
   const handleEditTask = (task: Task) => {
+    if (!missionId) {
+      alert('タスクを編集するには、まず関連ミッションを選択してください。');
+      return;
+    }
     setSelectedTask(task);
     setIsSubGoalModalOpen(true);
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!project?.id || !confirm('このタスクを削除しますか？')) return;
+    if (!missionId || !confirm('このタスクを削除しますか？')) return;
 
     try {
-      await api.delete(`/api/projects/${project.id}/tasks/${taskId}`);
-      await fetchTasks();
+      await api.delete(`/api/missions/${missionId}/tasks/${taskId}`);
+      if (project?.id && missionId) {
+        await fetchTasks();
+      } else if (!project && missionId) {
+        await fetchTasksForMission();
+      }
     } catch (error) {
       console.error('Failed to delete task:', error);
       alert('削除に失敗しました');
@@ -186,10 +216,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   const handleTaskSaved = async () => {
-    if (!project?.id) return;
-
     try {
-      await fetchTasks();
+      if (project?.id && missionId) {
+        await fetchTasks();
+      } else if (!project && missionId) {
+        await fetchTasksForMission();
+      }
       setIsSubGoalModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
@@ -386,11 +418,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
 
           {/* タスクセクション（旧：サブ目標） */}
-          {project && (
+          {missionId && (
             <div className="pt-6 border-t dark:border-gray-700">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（小目標）</h3>
-                {canEditTasks && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（小目標）</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    プロジェクト作成時にまとめてタスクを設定できます。タスクカテゴリからもこのプロジェクトに紐づくタスクを設定できます。
+                  </p>
+                </div>
+                {(canEditTasks || !project) && (
                   <Button type="button" variant="outline" size="sm" onClick={handleAddTask}>
                     <Plus className="h-4 w-4 mr-1" />
                     追加
@@ -469,9 +506,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       </div>
 
       {/* タスクモーダル（旧：サブ目標モーダル） */}
-      {isSubGoalModalOpen && project && (
-        <ProjectTaskModal
-          projectId={project.id}
+      {isSubGoalModalOpen && missionId && (
+        <TaskModal
+          missionId={missionId}
+          projectId={project?.id}
           task={selectedTask}
           onClose={() => {
             setIsSubGoalModalOpen(false);
