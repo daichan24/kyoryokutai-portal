@@ -257,11 +257,34 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <>
+      {/* 複製確認ダイアログ */}
+      {showDuplicateConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+            <h3 className="text-xl font-bold dark:text-gray-100 mb-4">
+              スケジュールを複製しますか？
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              同じスケジュールを追加します。日付と時間は変更できます。元のスケジュールはそのまま残ります。
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={handleDuplicateCancel}>
+                キャンセル
+              </Button>
+              <Button onClick={handleDuplicateConfirm}>
+                OK
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">
-            {schedule ? 'スケジュール編集' : 'スケジュール作成'}
+            {isDuplicateMode ? 'スケジュール複製（新規作成）' : schedule ? 'スケジュール編集' : 'スケジュール作成'}
           </h2>
           <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
