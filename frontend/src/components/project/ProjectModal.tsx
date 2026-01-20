@@ -16,6 +16,7 @@ interface Project {
   startDate?: string;
   endDate?: string;
   missionId?: string;
+  themeColor?: string;
   tags: string[];
   projectTasks?: Task[];
 }
@@ -63,6 +64,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setEndDate(project.endDate ? formatDate(new Date(project.endDate)) : '');
       setPhase(project.phase);
       setMissionId(project.missionId || '');
+      setThemeColor(project.themeColor || '');
       setTags(project.tags || []);
       setTasks(project.projectTasks || []);
     } else {

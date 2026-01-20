@@ -28,6 +28,7 @@ export const Schedule: React.FC = () => {
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<ScheduleType[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [projects, setProjects] = useState<Array<{ id: string; projectName: string; startDate?: string; endDate?: string; themeColor?: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
@@ -50,6 +51,7 @@ export const Schedule: React.FC = () => {
     if (weekDates.length > 0) {
       fetchSchedules();
       fetchEvents();
+      fetchProjects();
     }
   }, [weekDates]);
 
@@ -286,7 +288,7 @@ export const Schedule: React.FC = () => {
                           className="w-full text-left p-2 rounded text-xs border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800"
                           style={{
                             borderLeftWidth: '3px',
-                            borderLeftColor: schedule.user?.avatarColor,
+                            borderLeftColor: schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280',
                           }}
                         >
                           <div className="flex items-center justify-between">
