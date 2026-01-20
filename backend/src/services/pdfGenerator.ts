@@ -9,6 +9,8 @@ import { ja } from 'date-fns/locale';
 async function generatePDFFromHTML(html: string): Promise<Buffer> {
   let browser;
   try {
+    console.log('Starting PDF generation...');
+    
     browser = await puppeteer.launch({
       headless: true,
       args: [
@@ -17,17 +19,33 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
         '--disable-dev-shm-usage',
         '--disable-gpu',
         '--disable-software-rasterizer',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
       ],
-      timeout: 30000,
+      timeout: 60000,
     });
+
+    console.log('Browser launched successfully');
 
     const page = await browser.newPage();
     
+    // ページのエラーをキャッチ
+    page.on('error', (error) => {
+      console.error('Page error:', error);
+    });
+
+    page.on('pageerror', (error) => {
+      console.error('Page error:', error);
+    });
+
     // 日本語フォント対応のための設定
+    console.log('Setting page content...');
     await page.setContent(html, { 
       waitUntil: 'networkidle0', 
-      timeout: 30000 
+      timeout: 60000 
     });
+
+    console.log('Page content set, waiting for fonts...');
 
     // フォント読み込みを待つ（ブラウザコンテキスト内で実行）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +53,8 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
       // @ts-ignore - document is available in browser context
       return document.fonts.ready;
     });
+
+    console.log('Fonts loaded, generating PDF...');
 
     const pdf = await page.pdf({
       format: 'A4',
@@ -46,15 +66,28 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
       },
       printBackground: true,
       preferCSSPageSize: true,
+      timeout: 60000,
     });
+
+    console.log('PDF generated successfully, size:', pdf.length);
 
     return Buffer.from(pdf);
   } catch (error) {
     console.error('PDF generation error:', error);
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     throw new Error(`PDF生成に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
   } finally {
     if (browser) {
-      await browser.close().catch(err => console.error('Browser close error:', err));
+      try {
+        await browser.close();
+        console.log('Browser closed successfully');
+      } catch (err) {
+        console.error('Browser close error:', err);
+      }
     }
   }
 }
@@ -161,24 +194,42 @@ export async function generateNudgePDF(): Promise<Buffer> {
     </html>
   `;
 
-  return await generatePDFFromHTML(html);
+    console.log('Monthly report HTML generated, calling generatePDFFromHTML...');
+    return await generatePDFFromHTML(html);
+  } catch (error) {
+    console.error('Error in generateMonthlyReportPDF:', error);
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    throw error;
+  }
 }
 
 /**
  * 視察復命書PDF生成
  */
 export async function generateInspectionPDF(inspectionId: string): Promise<Buffer> {
-  const inspection = await prisma.inspection.findUnique({
-    where: { id: inspectionId },
-    include: {
-      user: true,
-      project: true,
-    },
-  });
+  try {
+    console.log('Generating inspection PDF for ID:', inspectionId);
+    
+    const inspection = await prisma.inspection.findUnique({
+      where: { id: inspectionId },
+      include: {
+        user: true,
+        project: true,
+      },
+    });
 
-  if (!inspection) {
-    throw new Error('Inspection not found');
-  }
+    if (!inspection) {
+      throw new Error('Inspection not found');
+    }
+
+    // Ensure user.name is available
+    if (!inspection.user || !inspection.user.name) {
+      throw new Error('Inspection user information is missing for PDF generation.');
+    }
 
   const html = `
     <!DOCTYPE html>
@@ -243,26 +294,43 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
     </html>
   `;
 
-  return await generatePDFFromHTML(html);
+    console.log('Inspection HTML generated, calling generatePDFFromHTML...');
+    return await generatePDFFromHTML(html);
+  } catch (error) {
+    console.error('Error in generateInspectionPDF:', error);
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    throw error;
+  }
 }
 
 /**
  * 週次報告PDF生成
  */
 export async function generateWeeklyReportPDF(userId: string, week: string): Promise<Buffer> {
-  const report = await prisma.weeklyReport.findUnique({
-    where: {
-      userId_week: {
-        userId,
-        week,
-      }
-    },
-    include: { user: true },
-  });
+  try {
+    console.log('Generating weekly report PDF for userId:', userId, 'week:', week);
+    
+    const report = await prisma.weeklyReport.findUnique({
+      where: {
+        userId_week: {
+          userId,
+          week,
+        }
+      },
+      include: { user: true },
+    });
 
-  if (!report) {
-    throw new Error('Weekly report not found');
-  }
+    if (!report) {
+      throw new Error('Weekly report not found');
+    }
+
+    if (!report.user || !report.user.name) {
+      throw new Error('Weekly report user information is missing for PDF generation.');
+    }
 
   const activities = report.thisWeekActivities as Array<{
     date: string;
@@ -329,27 +397,44 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
     </html>
   `;
 
-  return await generatePDFFromHTML(html);
+    console.log('Weekly report HTML generated, calling generatePDFFromHTML...');
+    return await generatePDFFromHTML(html);
+  } catch (error) {
+    console.error('Error in generateWeeklyReportPDF:', error);
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    throw error;
+  }
 }
 
 /**
  * 月次報告PDF生成（簡易版）
  */
 export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer> {
-  const report = await prisma.monthlyReport.findUnique({
-    where: { id: reportId },
-    include: {
-      creator: true,
-      supportRecords: {
-        include: { user: true },
-        orderBy: { supportDate: 'asc' },
+  try {
+    console.log('Generating monthly report PDF for ID:', reportId);
+    
+    const report = await prisma.monthlyReport.findUnique({
+      where: { id: reportId },
+      include: {
+        creator: true,
+        supportRecords: {
+          include: { user: true },
+          orderBy: { supportDate: 'asc' },
+        },
       },
-    },
-  });
+    });
 
-  if (!report) {
-    throw new Error('Monthly report not found');
-  }
+    if (!report) {
+      throw new Error('Monthly report not found');
+    }
+
+    if (!report.creator || !report.creator.name) {
+      throw new Error('Monthly report creator information is missing for PDF generation.');
+    }
 
   // サポート記録をユーザーごとにグループ化
   const groupedRecords: { [userId: string]: any[] } = {};
@@ -403,5 +488,15 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
     </html>
   `;
 
-  return await generatePDFFromHTML(html);
+    console.log('Monthly report HTML generated, calling generatePDFFromHTML...');
+    return await generatePDFFromHTML(html);
+  } catch (error) {
+    console.error('Error in generateMonthlyReportPDF:', error);
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    throw error;
+  }
 }

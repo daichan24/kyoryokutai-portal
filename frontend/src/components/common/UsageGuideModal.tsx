@@ -19,8 +19,14 @@ export const UsageGuideModal: React.FC<UsageGuideModalProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* ヘッダー（固定） */}
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">ミッション・プロジェクト・タスクの使い方</h2>

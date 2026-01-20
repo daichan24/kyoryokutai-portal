@@ -113,8 +113,14 @@ export const WishModal: React.FC<WishModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col">
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">
             {wish ? 'やりたいことを編集' : 'やりたいことを追加'}
@@ -164,19 +170,21 @@ export const WishModal: React.FC<WishModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 ステータス
               </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as WishStatus)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              >
-                <option value="ACTIVE">進行中</option>
-                <option value="DONE">完了</option>
-                <option value="PAUSED">中断</option>
-              </select>
-              <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                {status === 'ACTIVE' && <><PlayCircle className="h-4 w-4 text-blue-500" /> <span>進行中</span></>}
-                {status === 'DONE' && <><CheckCircle2 className="h-4 w-4 text-green-500" /> <span>完了</span></>}
-                {status === 'PAUSED' && <><Pause className="h-4 w-4 text-yellow-500" /> <span>中断</span></>}
+              <div className="relative">
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as WishStatus)}
+                  className="w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none"
+                >
+                  <option value="ACTIVE">進行中</option>
+                  <option value="DONE">完了</option>
+                  <option value="PAUSED">中断</option>
+                </select>
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  {status === 'ACTIVE' && <PlayCircle className="h-4 w-4 text-blue-500" />}
+                  {status === 'DONE' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  {status === 'PAUSED' && <Pause className="h-4 w-4 text-yellow-500" />}
+                </div>
               </div>
             </div>
 

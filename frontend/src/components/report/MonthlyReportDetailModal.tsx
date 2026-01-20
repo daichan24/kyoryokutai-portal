@@ -825,8 +825,14 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col">
+      <div 
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4"
+        onClick={handleClose}
+      >
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
             <h2 className="text-xl font-bold dark:text-gray-100">{report?.month || ''} 月次報告</h2>
             <div className="flex items-center gap-2">
