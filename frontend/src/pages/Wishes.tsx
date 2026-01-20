@@ -43,6 +43,7 @@ export const Wishes: React.FC = () => {
   const [completedWish, setCompletedWish] = useState<Wish | null>(null);
   const [members, setMembers] = useState<Array<{ id: string; name: string }>>([]);
   const [showIconHelp, setShowIconHelp] = useState(false);
+  const [showUsageHelp, setShowUsageHelp] = useState(false);
 
   // メンバー一覧を取得（メンバー以外のみ）
   useEffect(() => {
@@ -257,6 +258,13 @@ export const Wishes: React.FC = () => {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">やりたいこと100</h1>
+          <button
+            onClick={() => setShowUsageHelp(true)}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            title="使い方"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </button>
           <button
             onClick={() => setShowIconHelp(true)}
             className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
@@ -637,6 +645,87 @@ export const Wishes: React.FC = () => {
         </div>
       )}
 
+      {/* 使い方モーダル */}
+      {showUsageHelp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">やりたいこと100の使い方</h2>
+              <button
+                onClick={() => setShowUsageHelp(false)}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-8">
+              <section className="space-y-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">目的（この機能で何を解決するか）</h3>
+                <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                  <li>「やりたい」を100個、軽く並べて可視化し、<strong>完璧主義で止まる</strong>のを防ぎます。</li>
+                  <li>期限を強制せず、<strong>続けられる設計</strong>（失敗の感覚を減らす）にしています。</li>
+                  <li>完了時に一言メモ（任意）を残して、<strong>自己効力感</strong>を積み上げます。</li>
+                </ul>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">基本の使い方（おすすめ手順）</h3>
+                <div className="space-y-2 text-gray-700 dark:text-gray-300">
+                  <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+                    <div className="font-medium text-gray-900 dark:text-gray-100 mb-1">1. まずは30個でOK</div>
+                    <div className="text-sm">最初から100個を埋めなくて大丈夫。思いついたら追加する運用を前提にしています。</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+                    <div className="font-medium text-gray-900 dark:text-gray-100 mb-1">2. 小さく書く（S/EASYを混ぜる）</div>
+                    <div className="text-sm">「1時間で終わる」「小さく試せる」ものを混ぜると、達成が回り始めます。</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+                    <div className="font-medium text-gray-900 dark:text-gray-100 mb-1">3. 迷ったら“次にやる1つ”に寄せる</div>
+                    <div className="text-sm">完璧な順番を作らず、今の気分で進めてOK。止まるより前進を優先します。</div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">ステータスの考え方</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <PlayCircle className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">進行中</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">今取り組んでいる（または今後やりたい）状態。基本はここ。</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <Pause className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">中断</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">“失敗”にしないための退避。状況が変わったら戻せます。</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">完了</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">達成。必要なら「途中経過」に一言だけ残して積み上げます（任意）。</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">閲覧/個人（役職別の見え方）</h3>
+                <div className="text-gray-700 dark:text-gray-300 space-y-1">
+                  <div className="text-sm">- メンバー以外（MASTER/SUPPORT/GOVERNMENT等）は「閲覧」で隊員のリストを見る、「個人」で自分のリストを管理できます。</div>
+                  <div className="text-sm">- メンバーは基本「個人」運用（自分の100を育てる）です。</div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* アイコンについてモーダル */}
       {showIconHelp && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
@@ -675,13 +764,6 @@ export const Wishes: React.FC = () => {
                     <div>
                       <div className="font-medium text-gray-900 dark:text-gray-100">中断</div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">一時的に中断している状態です</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <Circle className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-gray-100">進行中</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">現在進行中のやりたいことです</div>
                     </div>
                   </div>
                 </div>
