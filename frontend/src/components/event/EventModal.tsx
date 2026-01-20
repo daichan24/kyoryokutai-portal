@@ -53,6 +53,7 @@ export const EventModal: React.FC<EventModalProps> = ({
   const [eventName, setEventName] = useState('');
   const [eventType, setEventType] = useState<'TOWN_OFFICIAL' | 'TEAM' | 'OTHER'>('TEAM');
   const [date, setDate] = useState('');
+  const [endDate, setEndDate] = useState(''); // 終了日（デフォルトは開始日と同じ）
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [locationText, setLocationText] = useState('');
@@ -75,7 +76,9 @@ export const EventModal: React.FC<EventModalProps> = ({
     if (event) {
       setEventName(event.eventName);
       setEventType(event.eventType);
-      setDate(formatDate(new Date(event.date)));
+      const eventDateStr = formatDate(new Date(event.date));
+      setDate(eventDateStr);
+      setEndDate(eventDateStr); // 終了日は開始日と同じ（後でスキーマ変更時に対応）
       setStartTime(event.startTime || '');
       setEndTime(event.endTime || '');
       setLocationText(event.locationText || '');
@@ -92,7 +95,9 @@ export const EventModal: React.FC<EventModalProps> = ({
         );
       }
     } else {
-      setDate(formatDate(new Date()));
+      const todayStr = formatDate(new Date());
+      setDate(todayStr);
+      setEndDate(todayStr); // デフォルトは開始日と同じ
       setSelectedParticipants([]);
     }
   }, [event]);
@@ -225,13 +230,29 @@ export const EventModal: React.FC<EventModalProps> = ({
             </select>
           </div>
 
-          <Input
-            label="日付"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="開始日"
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                // 開始日が変更されたら、終了日も同じ日付に設定（終了日が空の場合）
+                if (!endDate || endDate === date) {
+                  setEndDate(e.target.value);
+                }
+              }}
+              required
+            />
+            <Input
+              label="終了日"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={date} // 終了日は開始日以降
+              required
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Input

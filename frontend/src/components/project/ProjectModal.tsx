@@ -76,7 +76,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   const fetchMissions = async () => {
     try {
-      const response = await api.get<Mission[]>('/api/missions');
+      // 自分のミッションのみを取得
+      const response = await api.get<Mission[]>(`/api/missions?userId=${user?.id}`);
       setMissions(response.data || []);
     } catch (error) {
       console.error('Failed to fetch missions:', error);

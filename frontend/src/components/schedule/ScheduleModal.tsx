@@ -31,6 +31,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   onSaved,
 }) => {
   const [date, setDate] = useState('');
+  const [endDate, setEndDate] = useState(''); // 終了日（デフォルトは開始日と同じ）
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
   const [locationText, setLocationText] = useState('');
@@ -54,7 +55,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     fetchProjects();
 
     if (schedule) {
-      setDate(formatDate(schedule.date));
+      const scheduleDateStr = formatDate(schedule.date);
+      setDate(scheduleDateStr);
+      setEndDate(scheduleDateStr); // 終了日は開始日と同じ（後でスキーマ変更時に対応）
       setStartTime(schedule.startTime);
       setEndTime(schedule.endTime);
       setLocationText(schedule.locationText || '');
@@ -73,7 +76,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       }
     } else {
       if (defaultDate) {
-        setDate(formatDate(defaultDate));
+        const dateStr = formatDate(defaultDate);
+        setDate(dateStr);
+        setEndDate(dateStr); // デフォルトは開始日と同じ
       }
       if (defaultStartTime) {
         setStartTime(defaultStartTime);
@@ -209,6 +214,45 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     }
   };
 
+  const handleDuplicate = () => {
+    if (!schedule) return;
+    
+    if (!confirm('同じスケジュールを追加しますか？\n日付と時間は変更してください。')) {
+      return;
+    }
+
+    // 既存のスケジュール情報をコピーして新しいスケジュールを作成
+    // 日付と時間はデフォルト値のまま（ユーザーが変更する）
+    const duplicatedSchedule = {
+      date: formatDate(new Date()), // 今日の日付
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      locationText: schedule.locationText || '',
+      activityDescription: schedule.activityDescription,
+      freeNote: schedule.freeNote || '',
+      projectId: schedule.projectId || null,
+      taskId: schedule.taskId || null,
+      participantsUserIds: schedule.scheduleParticipants
+        ?.filter(p => p.status === 'APPROVED')
+        .map(p => p.userId) || [],
+    };
+
+    // モーダルを閉じて、新しいスケジュールを作成
+    onClose();
+    
+    // 少し遅延させてから新しいスケジュールを作成（モーダルが閉じるのを待つ）
+    setTimeout(async () => {
+      try {
+        await api.post('/api/schedules', duplicatedSchedule);
+        // 親コンポーネントに通知してスケジュール一覧を更新
+        onSaved();
+      } catch (error) {
+        console.error('Failed to duplicate schedule:', error);
+        alert('スケジュールの複製に失敗しました');
+      }
+    }, 100);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col">
@@ -223,16 +267,32 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <Input
-            label="日付"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="開始日"
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                // 開始日が変更されたら、終了日も同じ日付に設定（終了日が空の場合）
+                if (!endDate || endDate === date) {
+                  setEndDate(e.target.value);
+                }
+              }}
+              required
+            />
+            <Input
+              label="終了日"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={date} // 終了日は開始日以降
+              required
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="max-w-[200px]">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 開始時刻 *
               </label>
@@ -254,7 +314,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 })}
               </select>
             </div>
-            <div>
+            <div className="max-w-[200px]">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 終了時刻 *
               </label>
@@ -541,11 +601,16 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </div>
           
           <div className="flex justify-between items-center p-6 border-t dark:border-gray-700 flex-shrink-0">
-            <div>
+            <div className="flex gap-2">
               {schedule && (
-                <Button type="button" variant="danger" onClick={handleDelete}>
-                  削除
-                </Button>
+                <>
+                  <Button type="button" variant="danger" onClick={handleDelete}>
+                    削除
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleDuplicate}>
+                    複製
+                  </Button>
+                </>
               )}
             </div>
             <div className="flex space-x-3">

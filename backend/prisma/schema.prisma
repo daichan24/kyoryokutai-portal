@@ -99,7 +99,9 @@ model Schedule {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  date      DateTime @db.Date
+  date      DateTime @db.Date // 後方互換性のため残す（startDateと同じ値）
+  startDate DateTime @db.Date // 開始日
+  endDate   DateTime @db.Date // 終了日（デフォルトはstartDateと同じ）
   startTime String
   endTime   String
 
@@ -464,7 +466,9 @@ model Event {
   id        String    @id @default(uuid())
   eventName String
   eventType EventType @default(OTHER)
-  date      DateTime  @db.Date
+  date      DateTime  @db.Date // 後方互換性のため残す（startDateと同じ値）
+  startDate DateTime  @db.Date // 開始日
+  endDate   DateTime  @db.Date // 終了日（デフォルトはstartDateと同じ）
   startTime String?
   endTime   String?
 

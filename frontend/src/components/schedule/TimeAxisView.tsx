@@ -85,9 +85,9 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
     if (!timeAxis || !scheduleArea) return;
 
     const handleTimeAxisScroll = () => {
-      if (!isScrollingRef.current) {
+      if (!isScrollingRef.current && scheduleAreaRef.current) {
         isScrollingRef.current = true;
-        scheduleArea.scrollTop = timeAxis.scrollTop;
+        scheduleAreaRef.current.scrollTop = timeAxis.scrollTop;
         requestAnimationFrame(() => {
           isScrollingRef.current = false;
         });
@@ -95,23 +95,23 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
     };
 
     const handleScheduleAreaScroll = () => {
-      if (!isScrollingRef.current) {
+      if (!isScrollingRef.current && timeAxisRef.current) {
         isScrollingRef.current = true;
-        timeAxis.scrollTop = scheduleArea.scrollTop;
+        timeAxisRef.current.scrollTop = scheduleArea.scrollTop;
         requestAnimationFrame(() => {
           isScrollingRef.current = false;
         });
       }
     };
 
-    timeAxis.addEventListener('scroll', handleTimeAxisScroll);
-    scheduleArea.addEventListener('scroll', handleScheduleAreaScroll);
+    timeAxis.addEventListener('scroll', handleTimeAxisScroll, { passive: true });
+    scheduleArea.addEventListener('scroll', handleScheduleAreaScroll, { passive: true });
 
     return () => {
       timeAxis.removeEventListener('scroll', handleTimeAxisScroll);
       scheduleArea.removeEventListener('scroll', handleScheduleAreaScroll);
     };
-  }, []);
+  }, [dates]); // datesが変更されたときに再設定
 
   // 初期表示を7時からにする（7時 = 7 * 4rem = 28rem = 448px）
   useEffect(() => {

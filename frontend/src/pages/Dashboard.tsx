@@ -21,6 +21,7 @@ import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
 import { ContactsWidget } from '../components/dashboard/ContactsWidget';
 import { EventParticipationWidget } from '../components/dashboard/EventParticipationWidget';
 import { NextWishWidget } from '../components/dashboard/NextWishWidget';
+import { WeeklyScheduleWidget } from '../components/dashboard/WeeklyScheduleWidget';
 import { ContactModal } from '../components/contact/ContactModal';
 
 interface InboxData {
@@ -69,6 +70,7 @@ interface WidgetConfig {
 
 interface DashboardConfig {
   widgets: WidgetConfig[];
+  weeklyScheduleCount?: 3 | 5 | 10; // 今週のスケジュールの表示数
 }
 
 export const Dashboard: React.FC = () => {
@@ -76,6 +78,7 @@ export const Dashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weeklyScheduleCount, setWeeklyScheduleCount] = useState<3 | 5 | 10>(5);
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [isTaskRequestModalOpen, setIsTaskRequestModalOpen] = useState(false);
   const [isSNSPostModalOpen, setIsSNSPostModalOpen] = useState(false);
@@ -163,6 +166,13 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchThisWeekSchedules();
   }, [user]);
+
+  // 週次スケジュール表示数の設定を反映
+  useEffect(() => {
+    if (dashboardConfig?.weeklyScheduleCount) {
+      setWeeklyScheduleCount(dashboardConfig.weeklyScheduleCount);
+    }
+  }, [dashboardConfig]);
 
   const fetchThisWeekSchedules = async () => {
     try {
@@ -561,62 +571,11 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">今週のスケジュール</h2>
-          <Link to="/schedule">
-            <Button variant="outline" size="sm">
-              すべて見る
-            </Button>
-          </Link>
-        </div>
-
-        {loading ? (
-          <LoadingSpinner />
-        ) : schedules.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            今週のスケジュールはありません
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {Array.isArray(schedules) && schedules.slice(0, 5).map((schedule) => {
-              const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
-              return (
-                <div
-                  key={schedule.id}
-                  className="flex items-start space-x-4 p-4 border border-border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                    style={{ backgroundColor: schedule.user?.avatarColor || '#6B7280' }}
-                  >
-                    {(schedule.user?.avatarLetter || schedule.user?.name || '').charAt(0) || '?'}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {schedule.activityDescription}
-                      </p>
-                      {participantCount > 0 && (
-                        <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                          +{participantCount}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {formatDate(schedule.date, 'M月d日(E)')} {schedule.startTime} -{' '}
-                      {schedule.endTime}
-                    </p>
-                    {schedule.locationText && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{schedule.locationText}</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <WeeklyScheduleWidget
+        schedules={schedules}
+        loading={loading}
+        displayCount={weeklyScheduleCount}
+      />
 
       {/* SNSリンク（固定表示） */}
       <SNSLinksWidget />

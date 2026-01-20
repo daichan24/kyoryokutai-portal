@@ -19,6 +19,7 @@ const dashboardConfigSchema = z.object({
       order: z.number(),
     })
   ),
+  weeklyScheduleCount: z.union([z.literal(3), z.literal(5), z.literal(10)]).optional(), // 今週のスケジュールの表示数
 });
 
 // 全ウィジェットのテンプレート（カスタマイズ画面に必ず表示するため）
@@ -98,9 +99,14 @@ const getDefaultConfig = (role: string) => {
 };
 
 // 保存済み設定とテンプレートをマージし、常に全ウィジェットを返す
-function mergeWithTemplate(saved: { widgets: any[] } | null, role: string): { widgets: any[] } {
+function mergeWithTemplate(saved: { widgets: any[]; weeklyScheduleCount?: 3 | 5 | 10 } | null, role: string): { widgets: any[]; weeklyScheduleCount?: 3 | 5 | 10 } {
   const defaults = getDefaultConfig(role);
-  if (!saved?.widgets?.length) return defaults;
+  if (!saved?.widgets?.length) {
+    return {
+      ...defaults,
+      weeklyScheduleCount: saved?.weeklyScheduleCount || 5,
+    };
+  }
 
   const byKey = new Map<string, any>();
   for (const w of saved.widgets) byKey.set(w.key, w);
@@ -127,7 +133,10 @@ function mergeWithTemplate(saved: { widgets: any[] } | null, role: string): { wi
     return { ...t, order: i + 1 };
   });
 
-  return { widgets: merged.sort((a, b) => a.order - b.order) };
+  return {
+    widgets: merged.sort((a, b) => a.order - b.order),
+    weeklyScheduleCount: saved.weeklyScheduleCount || 5,
+  };
 }
 
 /**
