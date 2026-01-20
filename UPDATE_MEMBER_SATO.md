@@ -1,34 +1,47 @@
 # メンバー「佐藤大地」を「さとうだいち」に更新する方法
 
-## 方法1: APIエンドポイントを使用（推奨）
+## 方法1: ブラウザのコンソールから実行（推奨・最も簡単）
 
-ブラウザのコンソール（開発者ツール）から以下のコードを実行してください：
+1. ポータルにログインしている状態で、ブラウザの開発者ツール（F12）を開く
+2. 「Console」タブを選択
+3. 以下のコードをコピー&ペーストしてEnterキーを押す：
 
 ```javascript
-// ログインしている状態で実行
-fetch('/api/admin/update-member-sato-name', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('token')}`
+// メンバー「佐藤大地」を「さとうだいち」に更新
+(async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('ログインが必要です');
+      return;
+    }
+    
+    const response = await fetch('https://kyoryokutai-backend.onrender.com/api/admin/update-member-sato-name', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const data = await response.json();
+    console.log('更新結果:', data);
+    
+    if (data.success) {
+      alert('✅ 更新成功: ' + data.message);
+      // ページをリロードして変更を反映
+      window.location.reload();
+    } else {
+      alert('ℹ️ ' + data.message);
+    }
+  } catch (error) {
+    console.error('エラー:', error);
+    alert('❌ エラーが発生しました: ' + error.message);
   }
-})
-.then(res => res.json())
-.then(data => {
-  console.log('更新結果:', data);
-  if (data.success) {
-    alert('更新成功: ' + data.message);
-    // ページをリロードして変更を反映
-    window.location.reload();
-  } else {
-    alert('更新失敗: ' + data.message);
-  }
-})
-.catch(error => {
-  console.error('エラー:', error);
-  alert('エラーが発生しました: ' + error.message);
-});
+})();
 ```
+
+**注意:** MASTERロールでログインしている必要があります。
 
 ## 方法2: curlコマンドを使用
 
