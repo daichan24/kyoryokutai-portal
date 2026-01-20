@@ -154,8 +154,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     setLoading(true);
 
     try {
@@ -219,7 +221,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <Input
             label="日付"
             type="date"
@@ -535,7 +538,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             )}
           </div>
 
-          <div className="flex justify-between pt-4 flex-shrink-0">
+          </div>
+          
+          <div className="flex justify-between items-center p-6 border-t dark:border-gray-700 flex-shrink-0">
             <div>
               {schedule && (
                 <Button type="button" variant="danger" onClick={handleDelete}>

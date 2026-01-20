@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Schedule as ScheduleType } from '../../types';
 import { formatDate, isSameDay } from '../../utils/date';
 import { CalendarDays } from 'lucide-react';
@@ -65,6 +65,9 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
 }) => {
   const timeSlots = generateTimeSlots();
   const hours = Array.from({ length: 24 }, (_, i) => i);
+  const timeAxisRef = useRef<HTMLDivElement>(null);
+  const scheduleAreaRef = useRef<HTMLDivElement>(null);
+  const isScrollingRef = useRef(false);
 
   const getSchedulesForDate = (date: Date) => {
     return schedules.filter((schedule) => isSameDay(new Date(schedule.date), date));
@@ -73,6 +76,55 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const getEventsForDate = (date: Date) => {
     return events.filter((event) => isSameDay(new Date(event.date), date));
   };
+
+  // スクロール同期
+  useEffect(() => {
+    const timeAxis = timeAxisRef.current;
+    const scheduleArea = scheduleAreaRef.current;
+    
+    if (!timeAxis || !scheduleArea) return;
+
+    const handleTimeAxisScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        scheduleArea.scrollTop = timeAxis.scrollTop;
+        requestAnimationFrame(() => {
+          isScrollingRef.current = false;
+        });
+      }
+    };
+
+    const handleScheduleAreaScroll = () => {
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        timeAxis.scrollTop = scheduleArea.scrollTop;
+        requestAnimationFrame(() => {
+          isScrollingRef.current = false;
+        });
+      }
+    };
+
+    timeAxis.addEventListener('scroll', handleTimeAxisScroll);
+    scheduleArea.addEventListener('scroll', handleScheduleAreaScroll);
+
+    return () => {
+      timeAxis.removeEventListener('scroll', handleTimeAxisScroll);
+      scheduleArea.removeEventListener('scroll', handleScheduleAreaScroll);
+    };
+  }, []);
+
+  // 初期表示を7時からにする（7時 = 7 * 4rem = 28rem = 448px）
+  useEffect(() => {
+    const timeAxis = timeAxisRef.current;
+    const scheduleArea = scheduleAreaRef.current;
+    
+    if (!timeAxis || !scheduleArea) return;
+
+    // 7時の位置にスクロール（7 * 4rem = 28rem、1rem = 16pxなので448px）
+    const scrollTo7am = 7 * 4 * 16; // 448px
+    timeAxis.scrollTop = scrollTo7am;
+    scheduleArea.scrollTop = scrollTo7am;
+  }, [dates]);
 
   return (
     <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
@@ -106,7 +158,10 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
       {/* 下部のスクロール可能エリア（時間軸とスケジュール部分） */}
       <div className="flex flex-1 overflow-hidden">
         {/* 時間軸 */}
-        <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 overflow-y-auto">
+        <div 
+          ref={timeAxisRef}
+          className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 overflow-y-auto"
+        >
           <div className="relative" style={{ height: '48rem' }}>
             {hours.map((hour) => (
               <div 
