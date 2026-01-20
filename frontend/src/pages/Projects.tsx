@@ -8,14 +8,7 @@ import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
 import { Plus, HelpCircle, LayoutGrid, List } from 'lucide-react';
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
-  order: number;
-}
+import { Task } from '../types';
 
 interface Project {
   id: string;
@@ -29,6 +22,7 @@ interface Project {
   members: any[];
   mission?: { id: string; missionName?: string; goalName?: string };
   projectTasks?: Task[];
+  tags?: string[];
 }
 
 export const Projects: React.FC = () => {
@@ -158,7 +152,7 @@ export const Projects: React.FC = () => {
               </button>
             </div>
           )}
-          {canCreate && (
+          {canCreate && viewMode === 'create' && (
             <Button onClick={handleCreateProject}>
               <Plus className="h-4 w-4 mr-2" />
               新規プロジェクト
@@ -367,6 +361,7 @@ export const Projects: React.FC = () => {
           project={selectedProject}
           onClose={handleCloseModal}
           onSaved={handleSaved}
+          readOnly={selectedProject ? (viewMode === 'view' && isNonMember) : false}
         />
       )}
 

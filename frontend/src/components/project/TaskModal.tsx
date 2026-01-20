@@ -29,6 +29,47 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [dueDate, setDueDate] = useState<string>('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const hasChanges = () => {
+    if (readOnly) return false;
+    if (!task) {
+      // 新規作成時は、何か入力されていれば変更あり
+      return !!(title || description || projectId || dueDate);
+    }
+    // 編集時は、元の値と比較
+    const originalDueDate = task.dueDate ? task.dueDate.split('T')[0] : '';
+    return (
+      title !== task.title ||
+      description !== (task.description || '') ||
+      status !== task.status ||
+      projectId !== (task.projectId || null) ||
+      dueDate !== originalDueDate
+    );
+  };
+
+  const handleCloseClick = () => {
+    if (hasChanges()) {
+      setShowCloseConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    if (readOnly) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        handleCloseClick();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [title, description, status, projectId, dueDate, readOnly]);
 
   useEffect(() => {
     // プロジェクトを取得（missionIdが空の場合は全プロジェクトを取得）

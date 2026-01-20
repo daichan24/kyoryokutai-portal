@@ -17,7 +17,7 @@ interface Project {
   endDate?: string;
   missionId?: string;
   themeColor?: string;
-  tags: string[];
+  tags?: string[];
   projectTasks?: Task[];
 }
 

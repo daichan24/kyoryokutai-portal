@@ -275,7 +275,7 @@ export const Wishes: React.FC = () => {
         </div>
         <div className="flex gap-2">
           {user?.role !== 'MEMBER' && (
-            <div className="flex gap-2 border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
+            <div className="flex gap-2">
               <button
                 onClick={() => setViewMode('view')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -298,7 +298,7 @@ export const Wishes: React.FC = () => {
               </button>
             </div>
           )}
-          {viewMode === 'personal' && (
+          {viewMode === 'create' && (
             <Button onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-2" />
               新規追加

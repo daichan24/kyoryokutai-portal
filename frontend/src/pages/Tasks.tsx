@@ -277,7 +277,7 @@ export const Tasks: React.FC = () => {
               </button>
             </div>
           )}
-          {canCreate && (
+          {canCreate && viewMode === 'create' && (
             <Button 
               onClick={() => {
                 if (projects.length === 0) {
@@ -613,7 +613,7 @@ export const Tasks: React.FC = () => {
             setSelectedProjectId(null);
           }}
           onSaved={handleTaskSaved}
-          readOnly={viewMode === 'view' && isNonMember}
+          readOnly={selectedTask ? (viewMode === 'view' && isNonMember) : false}
         />
       )}
 
