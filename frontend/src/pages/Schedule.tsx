@@ -102,6 +102,39 @@ export const Schedule: React.FC = () => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const startDate = formatDate(weekDates[0]);
+      const endDate = formatDate(weekDates[weekDates.length - 1]);
+      const response = await api.get<Array<{ id: string; projectName: string; startDate?: string; endDate?: string; themeColor?: string }>>('/api/projects');
+      const allProjects = response.data || [];
+      
+      // 表示期間内のプロジェクトのみフィルタリング（開始日または終了日が期間内にあるもの）
+      const filteredProjects = allProjects.filter((project) => {
+        if (!project.startDate && !project.endDate) return false;
+        const projectStartDate = project.startDate ? new Date(project.startDate) : null;
+        const projectEndDate = project.endDate ? new Date(project.endDate) : null;
+        const viewStartDate = new Date(startDate);
+        const viewEndDate = new Date(endDate);
+        
+        // プロジェクトの期間が表示期間と重なっているかチェック
+        if (projectStartDate && projectEndDate) {
+          return projectStartDate <= viewEndDate && projectEndDate >= viewStartDate;
+        } else if (projectStartDate) {
+          return projectStartDate <= viewEndDate;
+        } else if (projectEndDate) {
+          return projectEndDate >= viewStartDate;
+        }
+        return false;
+      });
+      
+      setProjects(filteredProjects);
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      setProjects([]);
+    }
+  };
+
   const handlePrev = () => {
     const newDate = new Date(currentDate);
     if (viewMode === 'week') {
