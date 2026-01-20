@@ -29,8 +29,12 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
       timeout: 30000 
     });
 
-    // フォント読み込みを待つ
-    await page.evaluateHandle(() => document.fonts.ready);
+    // フォント読み込みを待つ（ブラウザコンテキスト内で実行）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await page.evaluate(() => {
+      // @ts-ignore - document is available in browser context
+      return document.fonts.ready;
+    });
 
     const pdf = await page.pdf({
       format: 'A4',

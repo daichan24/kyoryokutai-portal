@@ -207,8 +207,9 @@ export const EventModal: React.FC<EventModalProps> = ({
   }, [event]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col">
+    <>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleCloseClick}>
+      <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">
             {event ? 'イベント編集' : 'イベント作成'}
