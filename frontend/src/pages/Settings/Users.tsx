@@ -97,7 +97,25 @@ export const UsersSettings: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to update member name:', error);
-      const errorMessage = error.response?.data?.error || error.response?.data?.details || error.message || '更新に失敗しました';
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+      });
+      
+      let errorMessage = '更新に失敗しました';
+      if (error.response?.status === 404) {
+        errorMessage = 'APIエンドポイントが見つかりません。バックエンドが最新のコードで再起動されているか確認してください。';
+      } else if (error.response?.status === 403) {
+        errorMessage = '権限がありません。MASTERロールでログインしている必要があります。';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       alert('❌ エラー: ' + errorMessage);
     } finally {
       setIsUpdatingMemberName(false);
