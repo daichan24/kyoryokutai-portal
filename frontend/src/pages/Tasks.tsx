@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskModal } from '../components/project/TaskModal';
+import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
@@ -341,7 +342,8 @@ export const Tasks: React.FC = () => {
           return (
             <div
               key={task.id}
-              className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow"
+              className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => handleEditTask(task)}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2 flex-1">
@@ -355,7 +357,10 @@ export const Tasks: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleEditTask(task)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditTask(task);
+                      }}
                       title="編集"
                     >
                       <Edit2 className="h-4 w-4 mr-1" />
@@ -364,7 +369,10 @@ export const Tasks: React.FC = () => {
                     <Button
                       variant="danger"
                       size="sm"
-                      onClick={() => handleDeleteTask(task)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTask(task);
+                      }}
                       title="削除"
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
@@ -410,7 +418,10 @@ export const Tasks: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleCompleteTask(task)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCompleteTask(task);
+                      }}
                     >
                       <Check className="h-3 w-3 mr-1" />
                       完了
@@ -419,7 +430,8 @@ export const Tasks: React.FC = () => {
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setScheduleTask(task);
                       setIsScheduleModalOpen(true);
                     }}

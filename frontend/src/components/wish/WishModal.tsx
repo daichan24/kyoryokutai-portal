@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, CheckCircle2, Pause, PlayCircle } from 'lucide-react';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -173,6 +173,11 @@ export const WishModal: React.FC<WishModalProps> = ({
                 <option value="DONE">完了</option>
                 <option value="PAUSED">中断</option>
               </select>
+              <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                {status === 'ACTIVE' && <><PlayCircle className="h-4 w-4 text-blue-500" /> <span>進行中</span></>}
+                {status === 'DONE' && <><CheckCircle2 className="h-4 w-4 text-green-500" /> <span>完了</span></>}
+                {status === 'PAUSED' && <><Pause className="h-4 w-4 text-yellow-500" /> <span>中断</span></>}
+              </div>
             </div>
 
             <div>

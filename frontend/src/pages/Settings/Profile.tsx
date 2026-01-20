@@ -203,6 +203,36 @@ export const ProfileSettings: React.FC = () => {
             <span className="text-sm text-gray-500 dark:text-gray-400">プレビュー</span>
           </div>
 
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">やりたいこと100</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">サイドバーに「やりたいこと100」を表示する</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={wishesEnabled}
+                onChange={(e) => setWishesEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{wishesEnabled ? 'ON' : 'OFF'}</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <Button onClick={handleSaveProfile} disabled={profileMutation.isPending}>
+            {profileMutation.isPending ? '保存中...' : '表示設定を保存'}
+          </Button>
+        </div>
+      </div>
+
+      {/* 所属情報 */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">所属情報</h2>
+
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">所属課</label>
             <Input
@@ -227,28 +257,11 @@ export const ProfileSettings: React.FC = () => {
             </select>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">協力隊のタイプを選択します</p>
           </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">やりたいこと100</label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">サイドバーに「やりたいこと100」を表示する</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={wishesEnabled}
-                onChange={(e) => setWishesEnabled(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
-              <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{wishesEnabled ? 'ON' : 'OFF'}</span>
-            </label>
-          </div>
         </div>
 
         <div className="mt-6 flex justify-end">
           <Button onClick={handleSaveProfile} disabled={profileMutation.isPending}>
-            {profileMutation.isPending ? '保存中...' : '表示設定を保存'}
+            {profileMutation.isPending ? '保存中...' : '所属情報を保存'}
           </Button>
         </div>
       </div>

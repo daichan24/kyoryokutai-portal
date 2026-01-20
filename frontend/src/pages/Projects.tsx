@@ -194,7 +194,8 @@ export const Projects: React.FC = () => {
             {filteredProjects?.map((project) => (
               <div
                 key={project.id}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow"
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handleEditProject(project)}
               >
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 flex-1">
@@ -243,15 +244,16 @@ export const Projects: React.FC = () => {
                 )}
 
                 <div className="flex items-center justify-end pt-3 border-t border-gray-100">
-                  {viewMode === 'create' && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleEditProject(project)}
-                    >
-                      詳細
-                    </Button>
-                  )}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditProject(project);
+                    }}
+                  >
+                    詳細・編集
+                  </Button>
                 </div>
               </div>
             ))}

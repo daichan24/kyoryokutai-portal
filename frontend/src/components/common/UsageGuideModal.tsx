@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, CheckCircle2, PlayCircle, Circle } from 'lucide-react';
 
 interface UsageGuideModalProps {
   isOpen: boolean;
@@ -217,6 +217,34 @@ export const UsageGuideModal: React.FC<UsageGuideModalProps> = ({ isOpen, onClos
             <p className="text-gray-700 dark:text-gray-300 mt-4 font-medium">
               という効果があります。
             </p>
+          </section>
+
+          {/* タスクのアイコン説明 */}
+          <section className="border-l-4 border-orange-500 dark:border-orange-400 pl-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">タスクのステータスアイコン</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <Circle className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100">未着手</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">まだ開始していないタスクです</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <PlayCircle className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100">進行中</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">現在取り組んでいるタスクです</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100">完了</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">タスクが完了した状態です</div>
+                </div>
+              </div>
+            </div>
           </section>
         </div>
 

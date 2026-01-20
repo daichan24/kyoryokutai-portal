@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Wish, WishStatus } from '../types';
-import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X } from 'lucide-react';
+import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X, PlayCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { WishModal } from '../components/wish/WishModal';
@@ -185,7 +185,7 @@ export const Wishes: React.FC = () => {
       case 'PAUSED':
         return <Pause className="h-5 w-5 text-yellow-500" />;
       default:
-        return <Circle className="h-5 w-5 text-gray-400" />;
+        return <PlayCircle className="h-5 w-5 text-blue-500" />; // 進行中はPlayCircleに統一
     }
   };
 
@@ -661,6 +661,13 @@ export const Wishes: React.FC = () => {
                     <div>
                       <div className="font-medium text-gray-900 dark:text-gray-100">完了</div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">やりたいことが完了した状態です</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <PlayCircle className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">進行中</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">現在取り組んでいるやりたいことです</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">

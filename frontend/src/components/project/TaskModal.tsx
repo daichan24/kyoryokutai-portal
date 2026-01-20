@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, CheckCircle2, PlayCircle, Circle } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Task, Project } from '../../types';
@@ -158,6 +158,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <option value="IN_PROGRESS">進行中</option>
               <option value="COMPLETED">完了</option>
             </select>
+            <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              {status === 'NOT_STARTED' && <><Circle className="h-4 w-4 text-gray-400" /> <span>未着手</span></>}
+              {status === 'IN_PROGRESS' && <><PlayCircle className="h-4 w-4 text-blue-500" /> <span>進行中</span></>}
+              {status === 'COMPLETED' && <><CheckCircle2 className="h-4 w-4 text-green-500" /> <span>完了</span></>}
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">

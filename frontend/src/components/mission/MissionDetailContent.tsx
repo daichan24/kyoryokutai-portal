@@ -180,20 +180,25 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
                   className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                 >
                   {/* プロジェクトヘッダー */}
-                  <div
-                    className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                    onClick={() => toggleProject(project.id)}
-                  >
+                  <div className="p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                      <div className="flex items-center gap-3 flex-1">
+                        <button 
+                          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                          onClick={() => toggleProject(project.id)}
+                        >
                           {isExpanded ? (
                             <ChevronDown className="h-5 w-5" />
                           ) : (
                             <ChevronRight className="h-5 w-5" />
                           )}
                         </button>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{project.projectName}</span>
+                        <span 
+                          className="font-medium text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 flex-1"
+                          onClick={() => handleEditProject(project)}
+                        >
+                          {project.projectName}
+                        </span>
                         <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                           重み: {weight}%
                         </span>
@@ -256,7 +261,8 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
                           {projectTasks.map((task) => (
                             <div
                               key={task.id}
-                              className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                              className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                              onClick={() => handleEditTask(task)}
                             >
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
@@ -304,66 +310,6 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
           </div>
         )}
 
-        {/* プロジェクトなしのタスクセクション */}
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（プロジェクトなし）</h3>
-            {(user?.role === 'MEMBER' || (user?.role !== 'MEMBER' && viewMode === 'create')) && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleCreateTask()}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                追加
-              </Button>
-            )}
-          </div>
-
-          {tasksWithoutProjectLoading ? (
-            <div className="text-center py-4 text-gray-500 dark:text-gray-400">読み込み中...</div>
-          ) : tasksWithoutProject.length === 0 ? (
-            <div className="text-center py-4 text-gray-500 dark:text-gray-400">タスクがありません</div>
-          ) : (
-            <div className="space-y-2">
-              {tasksWithoutProject.map((task) => (
-                <div
-                  key={task.id}
-                  className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(task.status)}
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{task.title}</span>
-                    </div>
-                    {((user?.role === 'MEMBER') || (viewMode === 'create' && task.userId === user?.id)) && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleEditTask(task)}
-                          className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  {task.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{task.description}</p>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{getStatusLabel(task.status)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* プロジェクトモーダル */}
