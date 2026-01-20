@@ -130,6 +130,10 @@ export const Tasks: React.FC = () => {
   };
 
   const handleEditTask = (task: Task) => {
+    // 閲覧モードの場合は編集できない
+    if (viewMode === 'view' && isNonMember) {
+      return;
+    }
     setSelectedTask(task);
     // missionIdを設定（TaskModalはmissionIdを必要とする）
     if (task.missionId) {
@@ -494,6 +498,9 @@ export const Tasks: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク名</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向性</th>
+                    {viewMode === 'view' && isNonMember && (
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">担当者</th>
+                    )}
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">期日</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
                   </tr>
@@ -522,6 +529,11 @@ export const Tasks: React.FC = () => {
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {missionName || '-'}
                         </td>
+                        {viewMode === 'view' && isNonMember && (
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {task.project?.user?.name || '-'}
+                          </td>
+                        )}
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ja-JP') : '-'}
                         </td>
@@ -589,6 +601,7 @@ export const Tasks: React.FC = () => {
             setSelectedProjectId(null);
           }}
           onSaved={handleTaskSaved}
+          readOnly={viewMode === 'view' && isNonMember}
         />
       )}
 

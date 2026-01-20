@@ -125,7 +125,7 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       </div>
 
       <div class="info">
-        <strong>参加者:</strong> ${inspection.user.name}${inspection.participants.length > 0 ? '、' + inspection.participants.join('、') : ''}
+        <strong>参加者:</strong> ${inspection.user.name}${Array.isArray(inspection.participants) && inspection.participants.length > 0 ? '、' + inspection.participants.join('、') : ''}
       </div>
 
       ${inspection.project ? `

@@ -65,6 +65,10 @@ export const Projects: React.FC = () => {
   };
 
   const handleEditProject = (project: Project) => {
+    // 閲覧モードの場合は編集できない
+    if (viewMode === 'view') {
+      return;
+    }
     setSelectedProject(project);
     setIsModalOpen(true);
   };
@@ -279,7 +283,7 @@ export const Projects: React.FC = () => {
                       handleEditProject(project);
                     }}
                   >
-                    詳細・編集
+                    {viewMode === 'view' ? '詳細' : '詳細・編集'}
                   </Button>
                 </div>
               </div>
@@ -338,7 +342,7 @@ export const Projects: React.FC = () => {
                             handleEditProject(project);
                           }}
                         >
-                          詳細
+                          {viewMode === 'view' ? '詳細' : '詳細・編集'}
                         </Button>
                       </td>
                     </tr>

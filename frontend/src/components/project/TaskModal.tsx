@@ -6,11 +6,12 @@ import { Task, Project } from '../../types';
 import { api } from '../../utils/api';
 
 interface TaskModalProps {
-  missionId: string;
+  missionId?: string;
   projectId?: string;
   task?: Task | null;
   onClose: () => void;
   onSaved: () => void;
+  readOnly?: boolean; // 閲覧専用モード
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
@@ -19,6 +20,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   task,
   onClose,
   onSaved,
+  readOnly = false,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -126,8 +128,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="タスクの説明を入力"
+              disabled={readOnly}
             />
           </div>
 
@@ -138,7 +141,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <select
               value={projectId || ''}
               onChange={(e) => setProjectId(e.target.value || null)}
-              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={readOnly}
             >
               <option value="">プロジェクトを選択しない</option>
               {projects.map((project) => (
@@ -158,6 +162,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
               placeholder="期日を選択"
+              disabled={readOnly}
             />
             {dueDate && (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -174,7 +179,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as typeof status)}
-                className="w-full px-3 py-2 pl-10 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none"
+                className="w-full px-3 py-2 pl-10 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={readOnly}
               >
                 <option value="NOT_STARTED">未着手</option>
                 <option value="IN_PROGRESS">進行中</option>
@@ -190,11 +196,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
-              キャンセル
+              {readOnly ? '閉じる' : 'キャンセル'}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? '保存中...' : '保存'}
-            </Button>
+            {!readOnly && (
+              <Button type="submit" disabled={loading}>
+                {loading ? '保存中...' : '保存'}
+              </Button>
+            )}
           </div>
         </form>
       </div>

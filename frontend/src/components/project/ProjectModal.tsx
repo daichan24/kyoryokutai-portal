@@ -30,6 +30,7 @@ interface ProjectModalProps {
   project?: Project | null;
   onClose: () => void;
   onSaved: () => void;
+  readOnly?: boolean; // 閲覧専用モード
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
@@ -295,8 +296,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="プロジェクトの説明を入力"
+              disabled={readOnly}
             />
           </div>
 
@@ -306,12 +308,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              disabled={readOnly}
             />
             <Input
               label="終了日"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
+              disabled={readOnly}
             />
           </div>
 
@@ -322,7 +326,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             <select
               value={phase}
               onChange={(e) => setPhase(e.target.value as typeof phase)}
-              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={readOnly}
             >
               <option value="PREPARATION">準備</option>
               <option value="EXECUTION">実施</option>
