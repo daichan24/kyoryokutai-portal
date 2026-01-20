@@ -168,6 +168,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     try {
       const data: any = {
         date,
+        endDate: endDate !== date ? endDate : undefined, // 終了日が開始日と異なる場合のみ送信
         startTime,
         endTime,
         locationText,
@@ -187,10 +188,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         data.participantsUserIds = selectedParticipantIds;
       }
 
-      if (schedule) {
-        await api.put(`/api/schedules/${schedule.id}`, data);
-      } else {
+      // 複製モードの場合は常に新規作成（元のスケジュールはそのまま）
+      if (isDuplicateMode || !schedule) {
         await api.post('/api/schedules', data);
+        // 複製モードをリセット
+        setIsDuplicateMode(false);
+        setOriginalScheduleId(null);
+      } else {
+        await api.put(`/api/schedules/${schedule.id}`, data);
       }
 
       onSaved();
@@ -214,43 +219,41 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     }
   };
 
+  const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false);
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
+  const [originalScheduleId, setOriginalScheduleId] = useState<string | null>(null);
+
   const handleDuplicate = () => {
     if (!schedule) return;
+    setShowDuplicateConfirm(true);
+  };
+
+  const handleDuplicateConfirm = () => {
+    if (!schedule) return;
+    setShowDuplicateConfirm(false);
     
-    if (!confirm('同じスケジュールを追加しますか？\n日付と時間は変更してください。')) {
-      return;
+    // 複製モードを有効にして、元のスケジュールIDを保存
+    setIsDuplicateMode(true);
+    setOriginalScheduleId(schedule.id);
+    
+    // スケジュール情報をコピーして、新しいスケジュールとして編集可能にする
+    // 日付は今日の日付に変更
+    const todayStr = formatDate(new Date());
+    setDate(todayStr);
+    setEndDate(todayStr);
+    
+    // 参加者情報もコピー
+    if (schedule.scheduleParticipants && schedule.scheduleParticipants.length > 0) {
+      setIsCollaborative(true);
+      const existingParticipantIds = schedule.scheduleParticipants
+        .filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId)
+        .map(p => p.userId);
+      setSelectedParticipantIds(existingParticipantIds);
     }
+  };
 
-    // 既存のスケジュール情報をコピーして新しいスケジュールを作成
-    // 日付と時間はデフォルト値のまま（ユーザーが変更する）
-    const duplicatedSchedule = {
-      date: formatDate(new Date()), // 今日の日付
-      startTime: schedule.startTime,
-      endTime: schedule.endTime,
-      locationText: schedule.locationText || '',
-      activityDescription: schedule.activityDescription,
-      freeNote: schedule.freeNote || '',
-      projectId: schedule.projectId || null,
-      taskId: schedule.taskId || null,
-      participantsUserIds: schedule.scheduleParticipants
-        ?.filter(p => p.status === 'APPROVED')
-        .map(p => p.userId) || [],
-    };
-
-    // モーダルを閉じて、新しいスケジュールを作成
-    onClose();
-    
-    // 少し遅延させてから新しいスケジュールを作成（モーダルが閉じるのを待つ）
-    setTimeout(async () => {
-      try {
-        await api.post('/api/schedules', duplicatedSchedule);
-        // 親コンポーネントに通知してスケジュール一覧を更新
-        onSaved();
-      } catch (error) {
-        console.error('Failed to duplicate schedule:', error);
-        alert('スケジュールの複製に失敗しました');
-      }
-    }, 100);
+  const handleDuplicateCancel = () => {
+    setShowDuplicateConfirm(false);
   };
 
   return (
@@ -602,7 +605,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           
           <div className="flex justify-between items-center p-6 border-t dark:border-gray-700 flex-shrink-0">
             <div className="flex gap-2">
-              {schedule && (
+              {schedule && !isDuplicateMode && (
                 <>
                   <Button type="button" variant="danger" onClick={handleDelete}>
                     削除
@@ -625,5 +628,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         </form>
       </div>
     </div>
+    </>
   );
 };

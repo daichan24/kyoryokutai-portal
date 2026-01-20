@@ -65,9 +65,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
 }) => {
   const timeSlots = generateTimeSlots();
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const timeAxisRef = useRef<HTMLDivElement>(null);
-  const scheduleAreaRef = useRef<HTMLDivElement>(null);
-  const isScrollingRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const getSchedulesForDate = (date: Date) => {
     return schedules.filter((schedule) => isSameDay(new Date(schedule.date), date));
@@ -77,53 +75,15 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
     return events.filter((event) => isSameDay(new Date(event.date), date));
   };
 
-  // スクロール同期
-  useEffect(() => {
-    const timeAxis = timeAxisRef.current;
-    const scheduleArea = scheduleAreaRef.current;
-    
-    if (!timeAxis || !scheduleArea) return;
-
-    const handleTimeAxisScroll = () => {
-      if (!isScrollingRef.current && scheduleAreaRef.current) {
-        isScrollingRef.current = true;
-        scheduleAreaRef.current.scrollTop = timeAxis.scrollTop;
-        requestAnimationFrame(() => {
-          isScrollingRef.current = false;
-        });
-      }
-    };
-
-    const handleScheduleAreaScroll = () => {
-      if (!isScrollingRef.current && timeAxisRef.current) {
-        isScrollingRef.current = true;
-        timeAxisRef.current.scrollTop = scheduleArea.scrollTop;
-        requestAnimationFrame(() => {
-          isScrollingRef.current = false;
-        });
-      }
-    };
-
-    timeAxis.addEventListener('scroll', handleTimeAxisScroll, { passive: true });
-    scheduleArea.addEventListener('scroll', handleScheduleAreaScroll, { passive: true });
-
-    return () => {
-      timeAxis.removeEventListener('scroll', handleTimeAxisScroll);
-      scheduleArea.removeEventListener('scroll', handleScheduleAreaScroll);
-    };
-  }, [dates]); // datesが変更されたときに再設定
-
   // 初期表示を7時からにする（7時 = 7 * 4rem = 28rem = 448px）
   useEffect(() => {
-    const timeAxis = timeAxisRef.current;
-    const scheduleArea = scheduleAreaRef.current;
+    const scrollContainer = scrollContainerRef.current;
     
-    if (!timeAxis || !scheduleArea) return;
+    if (!scrollContainer) return;
 
     // 7時の位置にスクロール（7 * 4rem = 28rem、1rem = 16pxなので448px）
     const scrollTo7am = 7 * 4 * 16; // 448px
-    timeAxis.scrollTop = scrollTo7am;
-    scheduleArea.scrollTop = scrollTo7am;
+    scrollContainer.scrollTop = scrollTo7am;
   }, [dates]);
 
   return (
@@ -155,32 +115,33 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         </div>
       </div>
 
-      {/* 下部のスクロール可能エリア（時間軸とスケジュール部分） */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* 時間軸 */}
-        <div 
-          ref={timeAxisRef}
-          className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 overflow-y-auto"
-        >
-          <div className="relative" style={{ height: '48rem' }}>
-            {hours.map((hour) => (
-              <div 
-                key={hour} 
-                className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2"
-                style={{ 
-                  top: `${hour * 4}rem`, 
-                  height: '4rem',
-                  width: '100%'
-                }}
-              >
-                <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{hour}:00</span>
-              </div>
-            ))}
+      {/* 下部のスクロール可能エリア（時間軸とスケジュール部分が一緒にスクロール） */}
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-auto"
+      >
+        <div className="flex">
+          {/* 時間軸 */}
+          <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+            <div className="relative" style={{ height: '48rem' }}>
+              {hours.map((hour) => (
+                <div 
+                  key={hour} 
+                  className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2"
+                  style={{ 
+                    top: `${hour * 4}rem`, 
+                    height: '4rem',
+                    width: '100%'
+                  }}
+                >
+                  <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{hour}:00</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* 日付列（横スクロール可能、縦スクロール可能） */}
-        <div className="flex-1 flex overflow-x-auto overflow-y-auto">
+          {/* 日付列（横スクロール可能、縦スクロールは親コンテナで制御） */}
+          <div className="flex flex-shrink-0">
           {dates.map((date, dateIndex) => {
             const daySchedules = getSchedulesForDate(date);
             const dayEvents = getEventsForDate(date);

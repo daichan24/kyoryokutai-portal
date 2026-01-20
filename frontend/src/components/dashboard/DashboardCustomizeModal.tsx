@@ -295,6 +295,39 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
         </div>
 
         <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+          {/* 今週のスケジュール表示数設定 */}
+          <div className="border-b dark:border-gray-700 pb-4 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              今週のスケジュール表示数
+            </h3>
+            <div className="flex gap-3">
+              {[3, 5, 10].map((count) => (
+                <button
+                  key={count}
+                  onClick={() => {
+                    if (!config) return;
+                    setConfig({
+                      ...config,
+                      weeklyScheduleCount: count as 3 | 5 | 10,
+                    });
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    config?.weeklyScheduleCount === count
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {count}件
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              {config?.weeklyScheduleCount === 10
+                ? '10件の場合は5件分のサイズで表示し、6件目以降は横スクロールで表示されます。'
+                : `${config?.weeklyScheduleCount || 5}件の場合は画面幅一杯に表示されます。`}
+            </p>
+          </div>
+
           <p className="text-sm text-gray-600 dark:text-gray-400">
             ウィジェットの表示/非表示、追加ボタンの表示、並び順を設定できます。ドラッグ&ドロップで順序を変更できます。
           </p>
@@ -406,39 +439,6 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
               )}
             </Droppable>
           </DragDropContext>
-
-          {/* 今週のスケジュール表示数設定 */}
-          <div className="border-t dark:border-gray-700 pt-4 mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-              今週のスケジュール表示数
-            </h3>
-            <div className="flex gap-3">
-              {[3, 5, 10].map((count) => (
-                <button
-                  key={count}
-                  onClick={() => {
-                    if (!config) return;
-                    setConfig({
-                      ...config,
-                      weeklyScheduleCount: count as 3 | 5 | 10,
-                    });
-                  }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    config?.weeklyScheduleCount === count
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {count}件
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              {config?.weeklyScheduleCount === 10
-                ? '10件の場合は5件分のサイズで表示し、6件目以降は横スクロールで表示されます。'
-                : `${config?.weeklyScheduleCount || 5}件の場合は画面幅一杯に表示されます。`}
-            </p>
-          </div>
         </div>
 
         <div className="flex justify-end gap-3 p-6 border-t dark:border-gray-700 flex-shrink-0">
