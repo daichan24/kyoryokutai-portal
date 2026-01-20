@@ -80,7 +80,7 @@ export const EventDetail: React.FC = () => {
       // 既に参加しているメンバーを除外
       const participationUserIds = event?.participations.map(p => p.user.id) || [];
       return (response.data || []).filter((u: User) => 
-        !participationUserIds.includes(u.id) && u.name !== '佐藤大地'
+        !participationUserIds.includes(u.id) && u.name !== 'さとうだいち'
       );
     },
     enabled: !!event,

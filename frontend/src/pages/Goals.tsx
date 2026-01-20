@@ -264,7 +264,7 @@ export const Goals: React.FC = () => {
               </button>
             </div>
           )}
-          {(user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
+          {((user?.role === 'MEMBER') || (isNonMember && viewMode === 'create')) && (
             <Button onClick={handleCreateGoal}>
               <Plus className="h-4 w-4 mr-2" />
               新規ミッション
@@ -343,7 +343,7 @@ export const Goals: React.FC = () => {
             {expandedGoals.has(goal.id) && (
               <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5">
                 {/* プロジェクト（タスクはプロジェクト配下に表示） */}
-                <MissionDetailContent missionId={goal.id} />
+                <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
               </div>
             )}
           </div>

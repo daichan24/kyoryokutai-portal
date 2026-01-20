@@ -77,13 +77,23 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   return (
     <div className="flex border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
       {/* 時間軸 */}
-      <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
-        <div className="h-12 border-b border-gray-200 dark:border-gray-700"></div>
-        {hours.map((hour) => (
-          <div key={hour} className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2">
-            <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{hour}:00</span>
-          </div>
-        ))}
+      <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 flex flex-col">
+        <div className="h-12 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"></div>
+        <div className="flex-1 relative" style={{ height: '48rem' }}>
+          {hours.map((hour) => (
+            <div 
+              key={hour} 
+              className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2"
+              style={{ 
+                top: `${hour * 4}rem`, 
+                height: '4rem',
+                width: '100%'
+              }}
+            >
+              <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{hour}:00</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 日付列 */}
@@ -240,8 +250,15 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                             document.removeEventListener('mouseup', handleMouseUp);
                             
                             // ドラッグ終了時にスケジュール作成
-                            const startTime = minutesToTime(startMinutes);
-                            const endTime = minutesToTime(currentMinutes);
+                            // 開始時間と終了時間を正しく計算（終了時間は開始時間より後である必要がある）
+                            const actualStartMinutes = Math.min(startMinutes, currentMinutes);
+                            const actualEndMinutes = Math.max(startMinutes, currentMinutes);
+                            
+                            // 最低15分の時間を確保
+                            const finalEndMinutes = Math.max(actualEndMinutes, actualStartMinutes + 15);
+                            
+                            const startTime = minutesToTime(actualStartMinutes);
+                            const endTime = minutesToTime(finalEndMinutes);
                             
                             // ハイライトを削除
                             const highlightEl = document.getElementById(`time-block-highlight-${dateIndex}-${hour}-${blockIndex}`);

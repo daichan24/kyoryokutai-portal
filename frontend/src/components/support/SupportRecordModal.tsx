@@ -43,7 +43,7 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
       const response = await api.get('/api/users');
       // メンバーのみに限定し、佐藤大地を除外
       return response.data.filter((user: User) => 
-        user.role === 'MEMBER' && user.name !== '佐藤大地'
+        user.role === 'MEMBER' && user.name !== 'さとうだいち'
       );
     },
   });

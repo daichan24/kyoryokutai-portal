@@ -10,13 +10,14 @@ import { useAuthStore } from '../../stores/authStore';
 
 interface MissionDetailContentProps {
   missionId: string;
+  viewMode?: 'view' | 'create';
 }
 
 interface ProjectWithTasks extends Project {
   relatedTasks?: Task[];
 }
 
-export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ missionId }) => {
+export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ missionId, viewMode = 'view' }) => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
@@ -150,7 +151,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">プロジェクト</h3>
-          {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+          {((user?.role === 'MEMBER') || (viewMode === 'create')) && (
             <Button
               size="sm"
               variant="outline"
@@ -203,7 +204,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
                           {project.phase === 'REVIEW' && 'レビュー中'}
                         </span>
                       </div>
-                      {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+                      {((user?.role === 'MEMBER') || (viewMode === 'create' && project.userId === user?.id)) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -231,7 +232,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
                     <div className="bg-gray-50 dark:bg-gray-800/50 px-4 pb-4">
                       <div className="flex justify-between items-center mb-3 mt-2">
                         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">タスク</h4>
-                        {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+                        {((user?.role === 'MEMBER') || (viewMode === 'create')) && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -262,7 +263,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
                                   {getStatusIcon(task.status)}
                                   <span className="font-medium text-gray-900 dark:text-gray-100">{task.title}</span>
                                 </div>
-                                {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+                                {((user?.role === 'MEMBER') || (viewMode === 'create' && task.userId === user?.id)) && (
                                   <div className="flex items-center gap-1">
                                     <button
                                       onClick={(e) => {
@@ -307,7 +308,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
         <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">タスク（プロジェクトなし）</h3>
-            {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+            {((user?.role === 'MEMBER') || (viewMode === 'create')) && (
               <Button
                 size="sm"
                 variant="outline"
@@ -335,7 +336,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
                       {getStatusIcon(task.status)}
                       <span className="font-medium text-gray-900 dark:text-gray-100">{task.title}</span>
                     </div>
-                    {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'MEMBER') && (
+                    {((user?.role === 'MEMBER') || (viewMode === 'create' && task.userId === user?.id)) && (
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleEditTask(task)}

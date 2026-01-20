@@ -76,7 +76,7 @@ export const SNSPosts: React.FC = () => {
     queryFn: async () => {
       const response = await api.get('/api/users');
       return response.data.filter((u: any) => 
-        u.role === 'MEMBER' && u.name !== '佐藤大地'
+        u.role === 'MEMBER' && u.name !== 'さとうだいち'
       ).sort((a: any, b: any) => {
         // displayOrderでソート（小さい順）、同じ場合は名前でソート
         const orderA = a.displayOrder || 0;
