@@ -289,6 +289,41 @@ async function main() {
     },
   });
 
+  // メンバーの「さとうだいち」を作成/更新（テスト用）
+  // 既存のメンバー「佐藤大地」が存在する場合は「さとうだいち」に更新
+  const existingSatoMember = await prisma.user.findFirst({
+    where: {
+      role: 'MEMBER',
+      name: '佐藤大地',
+    },
+  });
+
+  if (existingSatoMember) {
+    await prisma.user.update({
+      where: { id: existingSatoMember.id },
+      data: { name: 'さとうだいち' },
+    });
+    console.log('✅ Updated existing member 佐藤大地 to さとうだいち');
+  } else {
+    // メンバーの「さとうだいち」を作成（テスト用）
+    const member12 = await prisma.user.upsert({
+      where: { email: 'sato.daichi.member@test.com' },
+      update: { name: 'さとうだいち' },
+      create: {
+        name: 'さとうだいち',
+        email: 'sato.daichi.member@test.com',
+        password: hashedPassword,
+        role: 'MEMBER',
+        missionType: 'FREE',
+        department: '企画課',
+        termStart: new Date('2024-04-01'),
+        termEnd: new Date('2027-03-31'),
+        avatarColor: '#6366F1',
+      },
+    });
+    console.log('✅ Created/Updated test member:', member12.name);
+  }
+
   console.log('✅ Created/Updated users:', {
     master: '***',
     support1: support1.name,
@@ -307,6 +342,7 @@ async function main() {
       member9.name,
       member10.name,
       member11.name,
+      'さとうだいち',
     ],
   });
 
