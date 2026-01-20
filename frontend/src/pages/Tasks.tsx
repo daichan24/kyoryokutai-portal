@@ -130,10 +130,6 @@ export const Tasks: React.FC = () => {
   };
 
   const handleEditTask = (task: Task) => {
-    // 閲覧モードの場合は編集できない
-    if (viewMode === 'view' && isNonMember) {
-      return;
-    }
     setSelectedTask(task);
     // missionIdを設定（TaskModalはmissionIdを必要とする）
     if (task.missionId) {
@@ -452,6 +448,18 @@ export const Tasks: React.FC = () => {
                 </div>
               )}
 
+              {/* 担当者情報（メンバー以外の時のみ表示） */}
+              {isNonMember && task.project?.user && (
+                <div className="mb-2">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    担当者: 
+                  </span>
+                  <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
+                    {task.project.user.name}
+                  </span>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                 <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
                   {getStatusLabel(task.status)}
@@ -470,19 +478,21 @@ export const Tasks: React.FC = () => {
                       完了
                     </Button>
                   )}
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setScheduleTask(task);
-                      setIsScheduleModalOpen(true);
-                    }}
-                    title="スケジュールに追加"
-                  >
-                    <Calendar className="h-3 w-3 mr-1" />
-                    スケジュール
-                  </Button>
+                  {viewMode === 'create' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setScheduleTask(task);
+                        setIsScheduleModalOpen(true);
+                      }}
+                      title="スケジュールに追加"
+                    >
+                      <Calendar className="h-3 w-3 mr-1" />
+                      スケジュール
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -552,18 +562,20 @@ export const Tasks: React.FC = () => {
                                 完了
                               </Button>
                             )}
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setScheduleTask(task);
-                                setIsScheduleModalOpen(true);
-                              }}
-                            >
-                              <Calendar className="h-3 w-3 mr-1" />
-                              スケジュール
-                            </Button>
+                            {viewMode === 'create' && (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setScheduleTask(task);
+                                  setIsScheduleModalOpen(true);
+                                }}
+                              >
+                                <Calendar className="h-3 w-3 mr-1" />
+                                スケジュール
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -11,12 +11,26 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+      ],
       timeout: 30000,
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    
+    // 日本語フォント対応のための設定
+    await page.setContent(html, { 
+      waitUntil: 'networkidle0', 
+      timeout: 30000 
+    });
+
+    // フォント読み込みを待つ
+    await page.evaluateHandle(() => document.fonts.ready);
 
     const pdf = await page.pdf({
       format: 'A4',
@@ -27,6 +41,7 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
         left: '20mm',
       },
       printBackground: true,
+      preferCSSPageSize: true,
     });
 
     return Buffer.from(pdf);
@@ -55,16 +70,78 @@ export async function generateNudgePDF(): Promise<Buffer> {
     throw new Error('Nudge document not found');
   }
 
+  // HTMLコンテンツからHTMLタグを除去し、改行を保持
+  const cleanContent = document.content
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\n/g, '<br>');
+
   const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="ja">
     <head>
       <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body { font-family: 'MS Gothic', monospace; font-size: 12pt; margin: 40px; line-height: 1.8; }
-        h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; }
-        .header { margin-bottom: 30px; text-align: right; }
-        .content { white-space: pre-wrap; }
+        @page {
+          size: A4;
+          margin: 20mm;
+        }
+        
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'MS Gothic', sans-serif;
+          font-size: 12pt;
+          line-height: 1.8;
+          color: #000;
+          background: #fff;
+        }
+        
+        h1 {
+          text-align: center;
+          font-size: 18pt;
+          font-weight: bold;
+          margin-bottom: 30px;
+          page-break-after: avoid;
+        }
+        
+        .header {
+          margin-bottom: 30px;
+          text-align: right;
+          font-size: 11pt;
+        }
+        
+        .content {
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          line-height: 1.8;
+        }
+        
+        .content br {
+          line-height: 1.8;
+        }
+        
+        .footer {
+          margin-top: 60px;
+          text-align: right;
+          font-size: 11pt;
+        }
+        
+        @media print {
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+        }
       </style>
     </head>
     <body>
@@ -72,8 +149,8 @@ export async function generateNudgePDF(): Promise<Buffer> {
         <div>${format(new Date(), 'yyyy年MM月dd日')}</div>
       </div>
       <h1>${document.title}</h1>
-      <div class="content">${document.content.replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
-      <div style="margin-top: 60px; text-align: right;">
+      <div class="content">${cleanContent}</div>
+      <div class="footer">
         <div>${document.updater.name}</div>
       </div>
     </body>

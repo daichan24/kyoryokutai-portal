@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
@@ -104,7 +104,8 @@ export const EventModal: React.FC<EventModalProps> = ({
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get<Project[]>('/api/projects');
+      // 自分のプロジェクトのみ取得
+      const response = await api.get<Project[]>(`/api/projects?userId=${user?.id}`);
       setProjects(response.data || []);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
@@ -405,6 +406,32 @@ export const EventModal: React.FC<EventModalProps> = ({
         </form>
       </div>
     </div>
+
+    {/* 閉じる確認ダイアログ */}
+    {showCloseConfirm && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+          <h3 className="text-xl font-bold dark:text-gray-100 mb-4">
+            編集内容が保存されていません
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            編集内容は保存されませんが、よろしいですか？
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowCloseConfirm(false)}>
+              編集に戻る
+            </Button>
+            <Button variant="danger" onClick={() => {
+              setShowCloseConfirm(false);
+              onClose();
+            }}>
+              OK
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

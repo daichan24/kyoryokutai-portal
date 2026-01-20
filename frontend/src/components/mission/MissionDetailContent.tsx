@@ -71,6 +71,10 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
   };
 
   const handleEditProject = (project: Project) => {
+    // 閲覧モードの場合は編集できない
+    if (viewMode === 'view') {
+      return;
+    }
     setSelectedProject(project);
     setIsProjectModalOpen(true);
   };
@@ -88,6 +92,10 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
   };
 
   const handleEditTask = (task: Task) => {
+    // 閲覧モードの場合は編集できない
+    if (viewMode === 'view') {
+      return;
+    }
     setSelectedTask(task);
     setSelectedProjectId(task.projectId || null);
     setIsNewTaskModalOpen(true);
@@ -321,6 +329,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
             setSelectedProject(null);
           }}
           onSaved={handleProjectSaved}
+          readOnly={viewMode === 'view'}
         />
       )}
 
@@ -336,6 +345,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
             setSelectedProjectId(null);
           }}
           onSaved={handleTaskSaved}
+          readOnly={viewMode === 'view'}
         />
       )}
     </>

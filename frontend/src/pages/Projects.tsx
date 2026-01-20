@@ -65,10 +65,6 @@ export const Projects: React.FC = () => {
   };
 
   const handleEditProject = (project: Project) => {
-    // 閲覧モードの場合は編集できない
-    if (viewMode === 'view') {
-      return;
-    }
     setSelectedProject(project);
     setIsModalOpen(true);
   };

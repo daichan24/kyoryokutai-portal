@@ -27,8 +27,8 @@ const CATEGORY_SUGGESTIONS = [
 export const Wishes: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const [viewMode, setViewMode] = useState<'personal' | 'view'>(
-    user?.role === 'MEMBER' ? 'personal' : 'view'
+  const [viewMode, setViewMode] = useState<'view' | 'create'>(
+    user?.role === 'MEMBER' ? 'create' : 'view'
   );
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,7 +90,7 @@ export const Wishes: React.FC = () => {
       const response = await api.get(url);
       return response.data;
     },
-    enabled: viewMode === 'personal' || (viewMode === 'view' && selectedUserId !== ''),
+    enabled: viewMode === 'create' || (viewMode === 'view' && selectedUserId !== ''),
   });
 
   // やりたいこと一覧を取得
@@ -110,7 +110,7 @@ export const Wishes: React.FC = () => {
       const response = await api.get(url);
       return response.data;
     },
-    enabled: viewMode === 'personal' || (viewMode === 'view' && selectedUserId !== ''),
+    enabled: viewMode === 'create' || (viewMode === 'view' && selectedUserId !== ''),
   });
 
   const completeMutation = useMutation({
@@ -278,20 +278,20 @@ export const Wishes: React.FC = () => {
             <div className="flex gap-2 border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
               <button
                 onClick={() => setViewMode('view')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   viewMode === 'view'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 閲覧
               </button>
               <button
-                onClick={() => setViewMode('personal')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  viewMode === 'personal'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                onClick={() => setViewMode('create')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  viewMode === 'create'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 個人
@@ -518,7 +518,7 @@ export const Wishes: React.FC = () => {
                   >
                     <Eye className="w-4 h-4" />
                   </button>
-                  {viewMode === 'personal' && wish.status === 'ACTIVE' && (
+                  {viewMode === 'create' && wish.status === 'ACTIVE' && (
                     <button
                       onClick={() => handleComplete(wish)}
                       className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
@@ -527,7 +527,7 @@ export const Wishes: React.FC = () => {
                       <CheckCircle2 className="w-4 h-4" />
                     </button>
                   )}
-                  {viewMode === 'personal' && (
+                  {viewMode === 'create' && (
                     <>
                       <button
                         onClick={() => handleEdit(wish)}

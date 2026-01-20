@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
@@ -260,15 +260,62 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   // 権限チェック: MEMBERは自分のプロジェクトのみ編集可、GOVERNMENTは閲覧のみ
-  const canEditTasks = project && (
+  const canEditTasks = !readOnly && project && (
     user?.role === 'MASTER' ||
     user?.role === 'SUPPORT' ||
     (user?.role === 'MEMBER' && (project as any).userId === user.id)
   );
 
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const hasChanges = () => {
+    if (readOnly) return false;
+    if (!project) {
+      // 新規作成時は、何か入力されていれば変更あり
+      return !!(projectName || description || startDate || endDate || missionId || themeColor || tags.length > 0);
+    }
+    // 編集時は、元の値と比較
+    const originalStartDate = project.startDate ? formatDate(new Date(project.startDate)) : '';
+    const originalEndDate = project.endDate ? formatDate(new Date(project.endDate)) : '';
+    return (
+      projectName !== project.projectName ||
+      description !== (project.description || '') ||
+      startDate !== originalStartDate ||
+      endDate !== originalEndDate ||
+      phase !== project.phase ||
+      missionId !== (project.missionId || '') ||
+      themeColor !== (project.themeColor || '') ||
+      JSON.stringify(tags) !== JSON.stringify(project.tags || [])
+    );
+  };
+
+  const handleCloseClick = () => {
+    if (hasChanges()) {
+      setShowCloseConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    if (readOnly) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        handleCloseClick();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [projectName, description, startDate, endDate, phase, missionId, themeColor, tags, readOnly]);
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col">
+    <>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={readOnly ? onClose : handleCloseClick}>
+      <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-2xl font-bold dark:text-gray-100">
             {project ? 'プロジェクト編集' : 'プロジェクト作成'}
@@ -524,6 +571,32 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         />
       )}
     </div>
+
+    {/* 閉じる確認ダイアログ */}
+    {showCloseConfirm && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+          <h3 className="text-xl font-bold dark:text-gray-100 mb-4">
+            編集内容が保存されていません
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            編集内容は保存されませんが、よろしいですか？
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowCloseConfirm(false)}>
+              編集に戻る
+            </Button>
+            <Button variant="danger" onClick={() => {
+              setShowCloseConfirm(false);
+              onClose();
+            }}>
+              OK
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

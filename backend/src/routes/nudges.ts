@@ -200,11 +200,12 @@ router.get('/pdf', async (req: AuthRequest, res) => {
     const pdf = await generateNudgePDF();
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="nudge_${format(new Date(), 'yyyyMMdd')}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="協力隊細則_${format(new Date(), 'yyyyMMdd')}.pdf"`);
     res.send(pdf);
   } catch (error) {
     console.error('Generate nudge PDF error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate PDF';
+    res.status(500).json({ error: `PDF出力に失敗しました: ${errorMessage}` });
   }
 });
 
