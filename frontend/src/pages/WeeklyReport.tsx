@@ -262,7 +262,6 @@ export const WeeklyReport: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           週次報告
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分の報告）</span>}
         </h1>
         {canCreate && (
           <div className="flex gap-2">

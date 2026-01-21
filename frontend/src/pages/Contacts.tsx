@@ -9,7 +9,7 @@ import { ContactHistoryModal } from '../components/contact/ContactHistoryModal';
 import { ContactDetailModal } from '../components/contact/ContactDetailModal';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, HelpCircle } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -170,8 +170,27 @@ export const Contacts: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">町民データベース</h1>
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                [
+                  '町民データベースの使い方',
+                  '',
+                  '• 追加: 右上の「町民を追加する」から誰でも登録できます（後で編集・削除も可能）。',
+                  '• 表示切替: 右上のボタンでカード/リスト表示を切り替えられます。',
+                  '• フィルタ: 検索・タグ・ジャンル・関わり方で絞り込みできます。',
+                  '• 履歴: カードから「履歴を追加」で接点の記録を残せます。'
+                ].join('\n')
+              )
+            }
+            className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="使い方を表示"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 border border-gray-300 rounded-lg">

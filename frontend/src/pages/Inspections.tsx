@@ -98,7 +98,6 @@ export const Inspections: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           視察記録
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分の視察）</span>}
         </h1>
         {canCreate && (
           <Button onClick={handleCreateInspection}>

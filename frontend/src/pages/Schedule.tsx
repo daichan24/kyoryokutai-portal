@@ -278,7 +278,6 @@ export const Schedule: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           スケジュール管理
-          {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分のスケジュール）</span>}
         </h1>
         <div className="flex gap-2 items-center">
           {/* カレンダー表示モード切り替え */}

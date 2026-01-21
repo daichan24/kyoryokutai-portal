@@ -7,7 +7,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
-import { Plus } from 'lucide-react';
+import { Plus, HelpCircle } from 'lucide-react';
 
 interface TaskRequest {
   id: string;
@@ -67,6 +67,19 @@ export const TaskRequests: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleShowGuide = () => {
+    alert(
+      [
+        '依頼ボックスの使い方',
+        '',
+        '• 受信した依頼: 自分宛ての依頼が表示され、承認/却下を行えます。',
+        '• 送信した依頼: 自分が送信した依頼の進捗と結果を確認できます。',
+        '• 新規依頼: 右上の「新規依頼」から、誰から誰へでも依頼を作成できます。',
+        '• 備考: 却下時は理由を入力して送信してください。'
+      ].join('\n')
+    );
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
   };
@@ -109,11 +122,16 @@ export const TaskRequests: React.FC = () => {
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          依頼ボックス
-          {viewMode === 'create' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（作成）</span>}
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">依頼ボックス</h1>
         <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleShowGuide}
+            className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="依頼ボックスの使い方"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('view')}

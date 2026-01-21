@@ -226,8 +226,6 @@ export const Goals: React.FC = () => {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             ミッション管理
-            {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分のミッション）</span>}
-            {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（作成）</span>}
           </h1>
           <Button
             variant="outline"
