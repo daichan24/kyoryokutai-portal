@@ -152,10 +152,6 @@ export const TaskRequests: React.FC = () => {
             <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">受信した依頼</h2>
             <div className="space-y-3">
               {receivedRequests?.map((request) => (
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">受信したタスク</h2>
-          <div className="space-y-3">
-            {receivedRequests?.map((request) => (
               <div key={request.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{request.requestTitle}</h3>
@@ -213,8 +209,8 @@ export const TaskRequests: React.FC = () => {
           {/* 送信した依頼 */}
           <section>
             <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">送信した依頼</h2>
-          <div className="space-y-3">
-            {sentRequests?.map((request) => (
+            <div className="space-y-3">
+              {sentRequests?.map((request) => (
               <div key={request.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{request.requestTitle}</h3>
@@ -244,13 +240,13 @@ export const TaskRequests: React.FC = () => {
               </div>
             ))}
 
-            {sentRequests?.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                送信した依頼はありません
-              </div>
-            )}
-          </div>
-        </section>
+              {sentRequests?.length === 0 && (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  送信した依頼はありません
+                </div>
+              )}
+            </div>
+          </section>
         </>
       )}
 
