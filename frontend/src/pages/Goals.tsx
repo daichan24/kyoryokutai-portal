@@ -127,6 +127,8 @@ export const Goals: React.FC = () => {
       return response.data;
     },
     enabled: !!user?.id, // user?.idが存在する場合のみ有効化（作成モードと閲覧モードの両方で）
+    refetchOnMount: true, // マウント時に再取得
+    refetchOnWindowFocus: false, // ウィンドウフォーカス時は再取得しない
   });
 
   // 各ミッションのプロジェクトとタスクを取得
@@ -232,8 +234,10 @@ export const Goals: React.FC = () => {
   };
 
   const handleSaved = () => {
-    queryClient.invalidateQueries({ queryKey: ['missions'] });
     // viewModeに関係なく、すべてのmissionsクエリを無効化
+    queryClient.invalidateQueries({ queryKey: ['missions'] });
+    // ウィジェット用のクエリも無効化
+    queryClient.invalidateQueries({ queryKey: ['goals-widget'] });
     handleCloseModals();
   };
 

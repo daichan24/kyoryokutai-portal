@@ -84,6 +84,8 @@ export const Projects: React.FC = () => {
       return response.data;
     },
     enabled: !!user?.id, // user?.idが存在する場合のみ有効化（作成モードと閲覧モードの両方で）
+    refetchOnMount: true, // マウント時に再取得
+    refetchOnWindowFocus: false, // ウィンドウフォーカス時は再取得しない
   });
 
   const filteredProjects = projects?.filter(p => {
