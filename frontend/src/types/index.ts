@@ -63,6 +63,16 @@ export interface Location {
   updatedAt: string;
 }
 
+export interface DriveLink {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WeeklyReport {
   id: string;
   userId: string;

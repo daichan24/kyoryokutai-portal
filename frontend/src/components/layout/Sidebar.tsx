@@ -19,6 +19,7 @@ import {
   Inbox,
   Check,
   ListChecks,
+  HardDrive,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';

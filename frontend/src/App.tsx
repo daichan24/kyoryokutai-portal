@@ -10,6 +10,7 @@ import { Schedule } from './pages/Schedule';
 import { WeeklyReport } from './pages/WeeklyReport';
 import { UsersSettings } from './pages/Settings/Users';
 import { LocationsSettings } from './pages/Settings/Locations';
+import { DriveLinksSettings } from './pages/Settings/DriveLinks';
 import { ProfileSettings } from './pages/Settings/Profile';
 import { DocumentTemplatesSettings } from './pages/Settings/DocumentTemplates';
 import { Nudges } from './pages/Nudges';
@@ -118,6 +119,17 @@ const App: React.FC = () => {
           <PrivateRoute>
             <Layout>
               <LocationsSettings />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/settings/drive-links"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <DriveLinksSettings />
             </Layout>
           </PrivateRoute>
         }

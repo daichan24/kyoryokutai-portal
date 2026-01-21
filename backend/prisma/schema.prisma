@@ -1050,3 +1050,16 @@ model WishCheckin {
   @@index([userId])
   @@index([createdAt])
 }
+
+// Googleドライブリンク管理
+model DriveLink {
+  id          String   @id @default(uuid())
+  title       String   @db.VarChar(200) // 項目名（例：「プロジェクト資料」「画像フォルダ」）
+  url         String   @db.Text // GoogleドライブのURL
+  description String?   @db.Text // 説明（任意）
+  order       Int      @default(0) // 表示順
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([order])
+}
