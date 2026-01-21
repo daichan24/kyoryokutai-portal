@@ -244,8 +244,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         } else {
           alert('保存に失敗しました。入力内容を確認してください。');
         }
+      } else if (error.response?.status === 500) {
+        // 500エラーの場合は詳細を表示
+        const errorData = error.response.data;
+        const errorMessage = errorData?.details || errorData?.error || error.message || 'サーバーエラーが発生しました';
+        console.error('Server error details:', errorData);
+        alert(`サーバーエラーが発生しました:\n${errorMessage}\n\n詳細はコンソールを確認してください。`);
       } else {
-        alert(`保存に失敗しました: ${error.response?.data?.error || error.message || '不明なエラー'}`);
+        alert(`保存に失敗しました: ${error.response?.data?.error || error.response?.data?.details || error.message || '不明なエラー'}`);
       }
     } finally {
       setLoading(false);
