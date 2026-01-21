@@ -194,17 +194,7 @@ export async function generateNudgePDF(): Promise<Buffer> {
     </html>
   `;
 
-    console.log('Monthly report HTML generated, calling generatePDFFromHTML...');
-    return await generatePDFFromHTML(html);
-  } catch (error) {
-    console.error('Error in generateMonthlyReportPDF:', error);
-    if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
-    throw error;
-  }
+  return await generatePDFFromHTML(html);
 }
 
 /**
@@ -436,16 +426,16 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
       throw new Error('Monthly report creator information is missing for PDF generation.');
     }
 
-  // サポート記録をユーザーごとにグループ化
-  const groupedRecords: { [userId: string]: any[] } = {};
-  report.supportRecords.forEach((record) => {
-    if (!groupedRecords[record.userId]) {
-      groupedRecords[record.userId] = [];
-    }
-    groupedRecords[record.userId].push(record);
-  });
+    // サポート記録をユーザーごとにグループ化
+    const groupedRecords: { [userId: string]: any[] } = {};
+    report.supportRecords.forEach((record) => {
+      if (!groupedRecords[record.userId]) {
+        groupedRecords[record.userId] = [];
+      }
+      groupedRecords[record.userId].push(record);
+    });
 
-  const html = `
+    const html = `
     <!DOCTYPE html>
     <html>
     <head>
