@@ -187,9 +187,9 @@ router.post('/', async (req: AuthRequest, res) => {
         endDate: endDate,
         startTime: data.startTime,
         endTime: data.endTime,
-        locationText: data.locationText,
+        locationText: data.locationText || null, // 空文字列の場合はnullに変換
         activityDescription: data.activityDescription,
-        freeNote: data.freeNote,
+        freeNote: data.freeNote || null, // 空文字列の場合はnullに変換
         isPending: data.isPending || false,
         projectId: data.projectId || null,
         taskId: data.taskId || null,
@@ -252,7 +252,17 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: error.errors });
     }
     console.error('Create schedule error:', error);
-    res.status(500).json({ error: 'Failed to create schedule' });
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      return res.status(500).json({ 
+        error: 'Failed to create schedule',
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+    res.status(500).json({ error: 'Failed to create schedule', details: String(error) });
   }
 });
 
