@@ -62,12 +62,12 @@ export const Schedule: React.FC = () => {
     }
   }, [weekDates, calendarViewMode, selectedMemberId, user?.id]);
 
-  // メンバーリストを取得（週表示の個人モード用）
+  // メンバーリストを取得（週表示用）
   useEffect(() => {
-    if (viewMode === 'week' && calendarViewMode === 'individual' && user?.role !== 'MEMBER') {
+    if (viewMode === 'week') {
       fetchMembers();
     }
-  }, [viewMode, calendarViewMode, user?.role]);
+  }, [viewMode]);
 
   const fetchMembers = async () => {
     try {
@@ -108,11 +108,14 @@ export const Schedule: React.FC = () => {
         view: viewMode,
       });
       
-      // 全体表示の場合はallMembers=trueを追加
-      if (calendarViewMode === 'all') {
-        params.append('allMembers', 'true');
-      } else if (calendarViewMode === 'individual') {
-        // 個人モードの場合
+      // 月表示の場合
+      if (viewMode === 'month') {
+        if (calendarViewMode === 'all') {
+          params.append('allMembers', 'true');
+        }
+        // calendarViewMode === 'individual'の場合は自分のスケジュール（デフォルト）
+      } else {
+        // 週表示の場合
         if (selectedMemberId) {
           // メンバーが選択されている場合はそのメンバーのスケジュールを取得
           params.append('userId', selectedMemberId);
