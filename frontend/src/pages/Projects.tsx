@@ -9,6 +9,7 @@ import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
 import { Plus, HelpCircle, LayoutGrid, List } from 'lucide-react';
 import { Task } from '../types';
+import { formatDate } from '../utils/date';
 
 interface Project {
   id: string;
