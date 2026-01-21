@@ -242,25 +242,35 @@ router.post('/', async (req: AuthRequest, res) => {
       },
     });
 
-    // 参加者へ通知を送信
+    // 参加者へ通知を送信（エラーが発生してもスケジュール作成は成功とする）
     if (participantIds.length > 0) {
-      const creator = await prisma.user.findUnique({
-        where: { id: creatorId },
-        select: { name: true },
-      });
+      try {
+        const creator = await prisma.user.findUnique({
+          where: { id: creatorId },
+          select: { name: true },
+        });
 
-      const startAt = new Date(`${data.date}T${data.startTime}`);
-      const endAt = new Date(`${data.date}T${data.endTime}`);
+        const startAt = new Date(`${data.date}T${data.startTime}`);
+        const endAt = new Date(`${data.date}T${data.endTime}`);
 
-      for (const participantId of participantIds) {
-        await notifyScheduleInvite(
-          participantId,
-          creator?.name || 'ユーザー',
-          data.activityDescription,
-          schedule.id,
-          startAt,
-          endAt
-        );
+        for (const participantId of participantIds) {
+          try {
+            await notifyScheduleInvite(
+              participantId,
+              creator?.name || 'ユーザー',
+              data.activityDescription,
+              schedule.id,
+              startAt,
+              endAt
+            );
+          } catch (notifyError) {
+            console.error(`Failed to notify participant ${participantId}:`, notifyError);
+            // 通知エラーは無視して続行
+          }
+        }
+      } catch (notifyError) {
+        console.error('Failed to send notifications:', notifyError);
+        // 通知エラーは無視して続行
       }
     }
 
