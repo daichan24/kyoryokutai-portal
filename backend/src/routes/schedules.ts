@@ -194,6 +194,7 @@ router.post('/', async (req: AuthRequest, res) => {
       endDate: endDate.toISOString(),
       startTime: data.startTime,
       endTime: data.endTime,
+      title: data.title,
       activityDescription: data.activityDescription,
       participantIds: participantIds.length,
     });
