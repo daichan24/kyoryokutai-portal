@@ -517,7 +517,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              タイトル（任意）
+              タイトル <span className="text-error dark:text-red-400">*</span>
             </label>
             <Input
               type="text"
@@ -525,18 +525,18 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="スケジュールのタイトルを入力"
               maxLength={200}
+              required
               readOnly={readOnly}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              活動内容 <span className="text-error dark:text-red-400">*</span>
+              活動内容（任意）
             </label>
             <textarea
               value={activityDescription}
               onChange={(e) => setActivityDescription(e.target.value)}
-              required
               rows={4}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="活動内容の詳細を入力"
