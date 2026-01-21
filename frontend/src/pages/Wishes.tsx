@@ -377,7 +377,8 @@ export const Wishes: React.FC = () => {
         </div>
       )}
 
-      {/* フィルタ・検索 */}
+      {/* フィルタ・検索（全員表示の場合は非表示） */}
+      {selectedUserId !== '' && (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
