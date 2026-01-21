@@ -14,6 +14,7 @@ router.use(authenticate);
 
 const createScheduleSchema = z.object({
   date: z.string(),
+  endDate: z.string().optional(), // 終了日（開始日と異なる場合）
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   locationText: z.string().optional(),
@@ -176,7 +177,7 @@ router.post('/', async (req: AuthRequest, res) => {
 
     // スケジュール作成
     const startDate = new Date(data.date);
-    const endDate = (data as any).endDate ? new Date((data as any).endDate) : startDate; // 終了日が指定されていない場合は開始日と同じ
+    const endDate = data.endDate ? new Date(data.endDate) : startDate; // 終了日が指定されていない場合は開始日と同じ
     
     const schedule = await prisma.schedule.create({
       data: {
