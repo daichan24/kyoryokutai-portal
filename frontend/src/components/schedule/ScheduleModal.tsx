@@ -195,12 +195,18 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         endDate: endDate !== date ? endDate : undefined, // 終了日が開始日と異なる場合のみ送信
         startTime,
         endTime,
-        locationText: locationText || undefined,
         activityDescription: activityDescription.trim(),
-        freeNote: freeNote || undefined,
       };
 
-      console.log('Sending schedule data:', data);
+      // オプショナルフィールドは値がある場合のみ追加
+      if (locationText && locationText.trim()) {
+        data.locationText = locationText.trim();
+      }
+      if (freeNote && freeNote.trim()) {
+        data.freeNote = freeNote.trim();
+      }
+
+      console.log('Sending schedule data:', JSON.stringify(data, null, 2));
 
       if (selectedTaskId) {
         data.taskId = selectedTaskId;

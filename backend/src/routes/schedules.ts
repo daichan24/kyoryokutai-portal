@@ -267,6 +267,7 @@ router.post('/', async (req: AuthRequest, res) => {
     res.status(201).json(schedule);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Zod validation error:', error.errors);
       return res.status(400).json({ error: error.errors });
     }
     console.error('Create schedule error:', error);
@@ -274,6 +275,16 @@ router.post('/', async (req: AuthRequest, res) => {
       console.error('Error name:', error.name);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
+      
+      // Prismaエラーの場合は詳細を返す
+      if (error.message.includes('prisma') || error.message.includes('Prisma')) {
+        return res.status(500).json({ 
+          error: 'Failed to create schedule',
+          details: error.message,
+          type: 'PrismaError'
+        });
+      }
+      
       return res.status(500).json({ 
         error: 'Failed to create schedule',
         details: error.message,
