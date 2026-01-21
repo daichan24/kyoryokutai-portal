@@ -176,8 +176,26 @@ router.post('/', async (req: AuthRequest, res) => {
     );
 
     // スケジュール作成
+    // 日付のバリデーション
     const startDate = new Date(data.date);
+    if (isNaN(startDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid start date format' });
+    }
+    
     const endDate = data.endDate ? new Date(data.endDate) : startDate; // 終了日が指定されていない場合は開始日と同じ
+    if (isNaN(endDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid end date format' });
+    }
+    
+    console.log('Creating schedule with:', {
+      date: data.date,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      startTime: data.startTime,
+      endTime: data.endTime,
+      activityDescription: data.activityDescription,
+      participantIds: participantIds.length,
+    });
     
     const schedule = await prisma.schedule.create({
       data: {
