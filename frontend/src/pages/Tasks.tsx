@@ -35,7 +35,7 @@ export const Tasks: React.FC = () => {
     queryFn: async () => {
       let url = '/api/projects';
       
-      // 閲覧モード: メンバーのプロジェクトのみ表示
+      // 閲覧モード: メンバー全員のプロジェクトを表示
       if (viewMode === 'view') {
         if (user?.role === 'MEMBER') {
           // メンバーは自分のプロジェクトのみ
@@ -44,15 +44,24 @@ export const Tasks: React.FC = () => {
           // 非メンバーは選択したユーザーのプロジェクト
           url = `/api/projects?userId=${selectedUserId}`;
         } else {
-          // 非メンバーでユーザー未選択の場合は、メンバーのプロジェクトのみ取得
+          // 非メンバーでユーザー未選択の場合は、メンバー全員のプロジェクトを取得
           const membersResponse = await api.get('/api/users');
           const members = (membersResponse.data || []).filter((u: any) => 
             u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
           );
           if (members.length > 0) {
-            url = `/api/projects?userId=${members[0].id}`;
+            // 各メンバーのプロジェクトを取得して結合
+            const allProjects: Project[] = [];
+            for (const member of members) {
+              try {
+                const memberResponse = await api.get<Project[]>(`/api/projects?userId=${member.id}`);
+                allProjects.push(...(memberResponse.data || []));
+              } catch (error) {
+                console.error(`Failed to fetch projects for member ${member.id}:`, error);
+              }
+            }
+            return allProjects;
           } else {
-            // メンバーがいない場合は空配列を返す
             return [];
           }
         }

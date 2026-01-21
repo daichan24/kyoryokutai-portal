@@ -167,9 +167,54 @@ export const Schedule: React.FC = () => {
       
       // プロジェクト表示モードに応じて取得
       let url = '/api/projects';
-      if (projectViewMode === 'personal' && user?.role !== 'MEMBER') {
-        // 個人モード: 自分のプロジェクトのみ
-        url = `/api/projects?userId=${user?.id}`;
+      if (user?.role !== 'MEMBER') {
+        if (projectViewMode === 'personal') {
+          // 個人モード: 自分のプロジェクトのみ
+          url = `/api/projects?userId=${user?.id}`;
+        } else {
+          // 閲覧モード: 自分以外のメンバーのプロジェクトのみ
+          // まずメンバー一覧を取得して、自分のIDを除外
+          const membersResponse = await api.get('/api/users');
+          const members = (membersResponse.data || []).filter((u: any) => 
+            u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0 && u.id !== user?.id
+          );
+          // メンバーがいる場合は、各メンバーのプロジェクトを取得して結合
+          if (members.length > 0) {
+            const allMemberProjects: Project[] = [];
+            for (const member of members) {
+              try {
+                const memberResponse = await api.get<Project[]>(`/api/projects?userId=${member.id}`);
+                allMemberProjects.push(...(memberResponse.data || []));
+              } catch (error) {
+                console.error(`Failed to fetch projects for member ${member.id}:`, error);
+              }
+            }
+            // 表示期間内のプロジェクトのみフィルタリング
+            const filteredProjects = allMemberProjects.filter((project) => {
+              if (!project.startDate && !project.endDate) return false;
+              const projectStartDate = project.startDate ? new Date(project.startDate) : null;
+              const projectEndDate = project.endDate ? new Date(project.endDate) : null;
+              const viewStartDate = new Date(startDate);
+              const viewEndDate = new Date(endDate);
+              
+              if (projectStartDate && projectEndDate) {
+                return projectStartDate <= viewEndDate && projectEndDate >= viewStartDate;
+              } else if (projectStartDate) {
+                return projectStartDate <= viewEndDate;
+              } else if (projectEndDate) {
+                return projectEndDate >= viewStartDate;
+              }
+              return false;
+            });
+            
+            console.log('fetchProjects: filtered to', filteredProjects.length, 'projects (view mode)');
+            setProjects(filteredProjects);
+            return;
+          } else {
+            setProjects([]);
+            return;
+          }
+        }
       }
       
       console.log('fetchProjects: fetching from', url, 'mode:', projectViewMode);
@@ -433,7 +478,8 @@ export const Schedule: React.FC = () => {
             currentUserId={user?.id}
           />
         ) : (
-          <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(7, minmax(180px, 1fr))' }}>
+          <div className="overflow-x-auto">
+            <div className="grid gap-2 min-w-[1260px]" style={{ gridTemplateColumns: 'repeat(7, 180px)' }}>
             {weekDates.map((date, index) => {
               const daySchedules = getSchedulesForDate(date);
               const isToday = formatDate(date) === formatDate(new Date());

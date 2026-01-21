@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Wish, WishStatus } from '../types';
-import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X, PlayCircle, BookOpen, Info, ChevronRight } from 'lucide-react';
+import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X, PlayCircle, BookOpen, Info, ChevronRight, ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { WishModal } from '../components/wish/WishModal';
@@ -44,6 +44,8 @@ export const Wishes: React.FC = () => {
   const [members, setMembers] = useState<Array<{ id: string; name: string }>>([]);
   const [showIconHelp, setShowIconHelp] = useState(false);
   const [showUsageHelp, setShowUsageHelp] = useState(false);
+  const [currentWishIndex, setCurrentWishIndex] = useState<Record<string, number>>({}); // 各メンバーの現在表示中のやりたいことのインデックス
+  const [currentWishIndex, setCurrentWishIndex] = useState<Record<string, number>>({}); // 各メンバーの現在表示中のやりたいことのインデックス
 
   // メンバー一覧を取得（メンバー以外のみ）
   useEffect(() => {
@@ -455,41 +457,135 @@ export const Wishes: React.FC = () => {
           ) : (
             members.map((member) => {
               const memberWishes = allMembersWishes?.[member.id] || [];
-              // 直近のやりたいこと（ACTIVE優先、次に作成日順）
-              const recentWishes = memberWishes
+              // すべてのやりたいこと（ACTIVE優先、次に作成日順）
+              const sortedWishes = memberWishes
                 .filter(w => w.status === 'ACTIVE')
                 .sort((a, b) => {
                   const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
                   const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
                   return dateB - dateA;
-                })
-                .slice(0, 3); // 最大3件表示
+                });
+
+              const currentIndex = currentWishIndex[member.id] || 0;
+              const currentWish = sortedWishes[currentIndex] || null;
+
+              const handlePrevWish = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (sortedWishes.length > 0) {
+                  setCurrentWishIndex(prev => ({
+                    ...prev,
+                    [member.id]: currentIndex > 0 ? currentIndex - 1 : sortedWishes.length - 1
+                  }));
+                }
+              };
+
+              const handleNextWish = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (sortedWishes.length > 0) {
+                  setCurrentWishIndex(prev => ({
+                    ...prev,
+                    [member.id]: currentIndex < sortedWishes.length - 1 ? currentIndex + 1 : 0
+                  }));
+                }
+              };
+
+              const handleCardClick = () => {
+                setSelectedUserId(member.id);
+              };
 
               return (
                 <div
                   key={member.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => setSelectedUserId(member.id)}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {member.name}
                     </h3>
-                    <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                    <button
+                      onClick={handleCardClick}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
                   </div>
-                  {recentWishes.length > 0 ? (
-                    <div className="space-y-2">
-                      {recentWishes.map((wish) => (
-                        <div
-                          key={wish.id}
-                          className="text-sm text-gray-700 dark:text-gray-300 p-2 bg-gray-50 dark:bg-gray-700/50 rounded"
+                  {currentWish ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <button
+                          onClick={handlePrevWish}
+                          disabled={sortedWishes.length <= 1}
+                          className={`p-1 rounded ${sortedWishes.length <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                         >
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(wish.status)}
-                            <span className="truncate">{wish.title}</span>
-                          </div>
+                          <ChevronLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                        </button>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {currentIndex + 1} / {sortedWishes.length}
+                        </span>
+                        <button
+                          onClick={handleNextWish}
+                          disabled={sortedWishes.length <= 1}
+                          className={`p-1 rounded ${sortedWishes.length <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                        >
+                          <ChevronRight className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                        </button>
+                      </div>
+                      <div
+                        onClick={handleCardClick}
+                        className="cursor-pointer p-3 bg-gray-50 dark:bg-gray-700/50 rounded space-y-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(currentWish.status)}
+                          <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                            {currentWish.title}
+                          </h4>
                         </div>
-                      ))}
+                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          {currentWish.category && (
+                            <div>
+                              <span className="font-medium">カテゴリ:</span> {currentWish.category}
+                            </div>
+                          )}
+                          {currentWish.difficulty && (
+                            <div>
+                              <span className="font-medium">難易度:</span> {getDifficultyLabel(currentWish.difficulty)}
+                            </div>
+                          )}
+                          {currentWish.estimate && (
+                            <div>
+                              <span className="font-medium">所要感:</span> {getEstimateLabel(currentWish.estimate)}
+                            </div>
+                          )}
+                          {currentWish.priority && (
+                            <div>
+                              <span className="font-medium">優先度:</span> {getPriorityLabel(currentWish.priority)}
+                            </div>
+                          )}
+                          {currentWish.dueMonth && (
+                            <div className="col-span-2">
+                              <Calendar className="h-4 w-4 inline mr-1" />
+                              <span className="font-medium">期限:</span> {getMonthLabel(currentWish.dueMonth)}
+                            </div>
+                          )}
+                        </div>
+                        {currentWish.memo && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                            {currentWish.memo}
+                          </p>
+                        )}
+                        {currentWish.tags && currentWish.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {currentWish.tags.map((tag, index) => (
+                              <span
+                                key={index}
+                                className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">

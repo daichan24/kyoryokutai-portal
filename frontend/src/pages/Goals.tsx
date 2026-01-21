@@ -85,7 +85,7 @@ export const Goals: React.FC = () => {
     queryFn: async () => {
       let url = '/api/missions';
       
-      // 閲覧モード: メンバーのミッションのみ表示
+      // 閲覧モード: メンバー全員のミッションを表示
       if (viewMode === 'view') {
         if (user?.role === 'MEMBER') {
           // メンバーは自分のミッションのみ
@@ -94,16 +94,24 @@ export const Goals: React.FC = () => {
           // 非メンバーは選択したユーザーのミッション
           url = `/api/missions?userId=${selectedUserId}`;
         } else {
-          // 非メンバーでユーザー未選択の場合は、メンバーのミッションのみ取得
-          // まずメンバー一覧を取得して、最初のメンバーのミッションを表示
+          // 非メンバーでユーザー未選択の場合は、メンバー全員のミッションを取得
           const membersResponse = await api.get('/api/users');
           const members = (membersResponse.data || []).filter((u: any) => 
             u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
           );
           if (members.length > 0) {
-            url = `/api/missions?userId=${members[0].id}`;
+            // 各メンバーのミッションを取得して結合
+            const allMissions: Goal[] = [];
+            for (const member of members) {
+              try {
+                const memberResponse = await api.get<Goal[]>(`/api/missions?userId=${member.id}`);
+                allMissions.push(...(memberResponse.data || []));
+              } catch (error) {
+                console.error(`Failed to fetch missions for member ${member.id}:`, error);
+              }
+            }
+            return allMissions;
           } else {
-            // メンバーがいない場合は空配列を返す
             return [];
           }
         }
