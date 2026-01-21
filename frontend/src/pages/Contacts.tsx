@@ -9,7 +9,7 @@ import { ContactHistoryModal } from '../components/contact/ContactHistoryModal';
 import { ContactDetailModal } from '../components/contact/ContactDetailModal';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
-import { LayoutGrid, List, HelpCircle } from 'lucide-react';
+import { LayoutGrid, List, HelpCircle, X } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -47,6 +47,7 @@ export const Contacts: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   // 【データ取得】UIイベント → API → DB の流れ
@@ -174,18 +175,7 @@ export const Contacts: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">町民データベース</h1>
           <button
             type="button"
-            onClick={() =>
-              alert(
-                [
-                  '町民データベースの使い方',
-                  '',
-                  '• 追加: 右上の「町民を追加する」から誰でも登録できます（後で編集・削除も可能）。',
-                  '• 表示切替: 右上のボタンでカード/リスト表示を切り替えられます。',
-                  '• フィルタ: 検索・タグ・ジャンル・関わり方で絞り込みできます。',
-                  '• 履歴: カードから「履歴を追加」で接点の記録を残せます。'
-                ].join('\n')
-              )
-            }
+            onClick={() => setIsGuideOpen(true)}
             className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
             title="使い方を表示"
           >
@@ -446,6 +436,40 @@ export const Contacts: React.FC = () => {
       {filteredContacts?.length === 0 && (
         <div className="text-center py-12 text-gray-500">
           町民情報がありません
+        </div>
+      )}
+
+      {/* 使い方モーダル */}
+      {isGuideOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4"
+          onClick={() => setIsGuideOpen(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-xl w-full mt-16 border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">町民データベースの使い方</h2>
+              <button
+                onClick={() => setIsGuideOpen(false)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <X className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-2 text-sm text-gray-700 dark:text-gray-200">
+              <p>• 追加: 右上の「町民を追加する」から誰でも登録できます（後で編集・削除も可能）。</p>
+              <p>• 表示切替: 右上のボタンでカード/リスト表示を切り替えられます。</p>
+              <p>• フィルタ: 検索・タグ・ジャンル・関わり方で絞り込みできます。</p>
+              <p>• 履歴: カードから「履歴を追加」で接点の記録を残せます。</p>
+            </div>
+            <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+              <Button variant="outline" onClick={() => setIsGuideOpen(false)}>
+                閉じる
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

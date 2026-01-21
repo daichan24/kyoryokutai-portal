@@ -7,7 +7,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
-import { Plus, HelpCircle } from 'lucide-react';
+import { Plus, HelpCircle, X } from 'lucide-react';
 
 interface TaskRequest {
   id: string;
@@ -28,6 +28,7 @@ export const TaskRequests: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   const { data: requests, isLoading } = useQuery({
     queryKey: ['requests', user?.id, user?.role, selectedUserId],
@@ -67,18 +68,8 @@ export const TaskRequests: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleShowGuide = () => {
-    alert(
-      [
-        '依頼ボックスの使い方',
-        '',
-        '• 受信した依頼: 自分宛ての依頼が表示され、承認/却下を行えます。',
-        '• 送信した依頼: 自分が送信した依頼の進捗と結果を確認できます。',
-        '• 新規依頼: 右上の「新規依頼」から、誰から誰へでも依頼を作成できます。',
-        '• 備考: 却下時は理由を入力して送信してください。'
-      ].join('\n')
-    );
-  };
+  const handleShowGuide = () => setIsGuideOpen(true);
+  const handleCloseGuide = () => setIsGuideOpen(false);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -122,8 +113,8 @@ export const TaskRequests: React.FC = () => {
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">依頼ボックス</h1>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">依頼ボックス</h1>
           <button
             type="button"
             onClick={handleShowGuide}
@@ -132,6 +123,8 @@ export const TaskRequests: React.FC = () => {
           >
             <HelpCircle className="h-4 w-4" />
           </button>
+        </div>
+        <div className="flex gap-3">
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('view')}
@@ -271,6 +264,37 @@ export const TaskRequests: React.FC = () => {
       {viewMode === 'create' && (
         <div className="text-center py-12 text-gray-500">
           新規依頼を作成するには、右上の「新規依頼」ボタンをクリックしてください。
+        </div>
+      )}
+
+      {/* 使い方モーダル */}
+      {isGuideOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4"
+          onClick={handleCloseGuide}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-xl w-full mt-16 border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">依頼ボックスの使い方</h2>
+              <button onClick={handleCloseGuide} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                <X className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-2 text-sm text-gray-700 dark:text-gray-200">
+              <p>• 受信した依頼: 自分宛ての依頼が表示され、承認/却下を行えます。</p>
+              <p>• 送信した依頼: 自分が送信した依頼の進捗と結果を確認できます。</p>
+              <p>• 新規依頼: 右上の「新規依頼」から、誰から誰へでも依頼を作成できます。</p>
+              <p>• 備考: 却下時は理由を入力して送信してください。</p>
+            </div>
+            <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+              <Button variant="outline" onClick={handleCloseGuide}>
+                閉じる
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

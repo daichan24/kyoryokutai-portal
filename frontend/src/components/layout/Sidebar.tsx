@@ -162,13 +162,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   }
 
   // MASTERのみ場所管理
-  if (user?.role === 'MASTER') {
-    userMenuItems.push({
-      to: '/settings/locations',
-      icon: MapPin,
-      label: '場所管理',
-    });
-  }
+  userMenuItems.push({
+    to: '/settings/locations',
+    icon: MapPin,
+    label: '場所管理',
+  });
 
   // 協力隊催促（MASTER/SUPPORT/GOVERNMENTのみ編集可、MEMBERは閲覧のみ）
   if (user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MEMBER') {
