@@ -178,6 +178,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     });
   }
 
+  // ドライブ（全ユーザー）
+  userMenuItems.push({
+    to: '/settings/drive-links',
+    icon: HardDrive,
+    label: 'ドライブ',
+  });
+
   return (
     <aside className="w-64 bg-white dark:bg-gray-800 border-r border-border dark:border-gray-700 h-full flex flex-col shadow-lg md:shadow-none">
       {/* モバイル: 閉じるボタン、デスクトップ: 非表示 */}
