@@ -83,7 +83,7 @@ export const Projects: React.FC = () => {
       const response = await api.get(url);
       return response.data;
     },
-    enabled: !!user?.id || viewMode === 'view', // user?.idが存在するか、閲覧モードの場合のみ有効化
+    enabled: !!user?.id, // user?.idが存在する場合のみ有効化（作成モードと閲覧モードの両方で）
   });
 
   const filteredProjects = projects?.filter(p => {
@@ -108,6 +108,7 @@ export const Projects: React.FC = () => {
 
   const handleSaved = () => {
     queryClient.invalidateQueries({ queryKey: ['projects'] });
+    // viewModeに関係なく、すべてのprojectsクエリを無効化
     handleCloseModal();
   };
 

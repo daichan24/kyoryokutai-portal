@@ -233,6 +233,7 @@ export const Goals: React.FC = () => {
 
   const handleSaved = () => {
     queryClient.invalidateQueries({ queryKey: ['missions'] });
+    // viewModeに関係なく、すべてのmissionsクエリを無効化
     handleCloseModals();
   };
 

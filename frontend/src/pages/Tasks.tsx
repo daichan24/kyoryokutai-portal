@@ -122,7 +122,7 @@ export const Tasks: React.FC = () => {
       }
       return tasks;
     },
-    enabled: projects.length > 0 && (!!user?.id || viewMode === 'view'),
+    enabled: projects.length > 0 && !!user?.id, // user?.idが存在する場合のみ有効化（作成モードと閲覧モードの両方で）
   });
 
   // フィルタリング・ソート
