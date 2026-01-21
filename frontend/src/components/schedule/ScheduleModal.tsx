@@ -104,8 +104,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const fetchTasks = async () => {
     try {
+      // メンバー以外の役職の場合は自分のミッションのみ取得
+      let missionsUrl = '/api/missions';
+      if (currentUser?.role !== 'MEMBER') {
+        missionsUrl = `/api/missions?userId=${currentUser?.id}`;
+      }
+      
       // ユーザーのミッションを取得
-      const missionsResponse = await api.get('/api/missions');
+      const missionsResponse = await api.get(missionsUrl);
       const missions = missionsResponse.data || [];
       
       // 各ミッションからタスクを取得
@@ -128,7 +134,12 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/api/projects');
+      // メンバー以外の役職の場合は自分のプロジェクトのみ取得
+      let url = '/api/projects';
+      if (currentUser?.role !== 'MEMBER') {
+        url = `/api/projects?userId=${currentUser?.id}`;
+      }
+      const response = await api.get(url);
       setProjects(response.data || []);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
@@ -186,8 +197,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         setLoading(false);
         return;
       }
-      if (!activityDescription || activityDescription.trim() === '') {
-        alert('活動内容を入力してください');
+      if (!title || title.trim() === '') {
+        alert('タイトルを入力してください');
         setLoading(false);
         return;
       }
@@ -197,13 +208,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         endDate: endDate !== date ? endDate : undefined, // 終了日が開始日と異なる場合のみ送信
         startTime,
         endTime,
-        activityDescription: activityDescription.trim(),
+        title: title.trim(),
+        activityDescription: activityDescription.trim() || undefined, // 空の場合はundefined
       };
-
-      // オプショナルフィールドは値がある場合のみ追加
-      if (title && title.trim()) {
-        data.title = title.trim();
-      }
       if (locationText && locationText.trim()) {
         data.locationText = locationText.trim();
       }

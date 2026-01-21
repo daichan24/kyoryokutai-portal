@@ -18,8 +18,8 @@ const createScheduleSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   locationText: z.string().optional(),
-  title: z.string().max(200).optional(), // タイトル（短い説明）
-  activityDescription: z.string().min(1), // 活動内容（詳細）
+  title: z.string().max(200).min(1), // タイトル（必須）
+  activityDescription: z.string().optional(), // 活動内容（任意）
   freeNote: z.string().optional(),
   isPending: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),

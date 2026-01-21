@@ -42,10 +42,12 @@ export const TaskRequestModal: React.FC<TaskRequestModalProps> = ({
 
   const fetchMembers = async () => {
     try {
-      const response = await api.get<User[]>('/api/users?role=MEMBER');
-      // サポート・行政・マスターユーザーの場合は表示順0番目のユーザーを除外（テストユーザー）
+      // 全ユーザーを取得（自分自身を除く）
+      const response = await api.get<User[]>('/api/users');
+      // 自分自身とテストユーザー（表示順0番目）を除外
       const filteredMembers = (response.data || []).filter(u => {
-        if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (u.displayOrder ?? 0) === 0 && u.role === 'MEMBER') return false;
+        if (u.id === user?.id) return false; // 自分自身を除外
+        if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (u.displayOrder ?? 0) === 0 && u.role === 'MEMBER') return false; // テストユーザーを除外
         return true;
       });
       setMembers(filteredMembers);
