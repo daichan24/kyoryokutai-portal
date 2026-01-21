@@ -673,9 +673,13 @@ export const Schedule: React.FC = () => {
                   )}
                 </div>
               );
-            })}
-          </div>
-        )}
+            })
+          ) : (
+            <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+              {projectViewMode === 'personal' ? '表示期間内に自分のプロジェクトはありません' : '表示期間内に進行中のプロジェクトはありません'}
+            </div>
+          )}
+        </div>
       </div>
 
       {isModalOpen && (
