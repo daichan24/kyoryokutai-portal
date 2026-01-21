@@ -281,56 +281,81 @@ export const Schedule: React.FC = () => {
           {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分のスケジュール）</span>}
         </h1>
         <div className="flex gap-2 items-center">
-          {/* カレンダー表示モード切り替え（全役職） */}
-          <div className="flex items-center gap-2 mr-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setCalendarViewMode('individual');
-                  setSelectedMemberId(null); // 個人モードに切り替え時は選択をリセット
-                }}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                  calendarViewMode === 'individual'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                個人
-              </button>
-              <button
-                onClick={() => {
-                  setCalendarViewMode('all');
-                  setSelectedMemberId(null); // 全体モードに切り替え時は選択をリセット
-                }}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                  calendarViewMode === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                全体
-              </button>
+          {/* カレンダー表示モード切り替え */}
+          {viewMode === 'month' ? (
+            // 月表示: 個人/全体切り替え
+            <div className="flex items-center gap-2 mr-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setCalendarViewMode('individual');
+                    setSelectedMemberId(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                    calendarViewMode === 'individual'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  個人
+                </button>
+                <button
+                  onClick={() => {
+                    setCalendarViewMode('all');
+                    setSelectedMemberId(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                    calendarViewMode === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  全体
+                </button>
+              </div>
             </div>
-            {/* 週表示の個人モードでメンバー選択（メンバー以外の役職のみ） */}
-            {viewMode === 'week' && calendarViewMode === 'individual' && user?.role !== 'MEMBER' && availableMembers.length > 0 && (
-              <select
-                value={selectedMemberId || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSelectedMemberId(value || null);
-                }}
-                className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
-              >
-                <option value="">自分のスケジュール</option>
-                {availableMembers.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+          ) : (
+            // 週表示: 自分/他のメンバー切り替え
+            <div className="flex items-center gap-2 mr-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedMemberId(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                    !selectedMemberId
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  自分
+                </button>
+                {availableMembers.length > 0 && (
+                  <select
+                    value={selectedMemberId || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedMemberId(value || null);
+                    }}
+                    className={`px-3 py-2 rounded-lg border font-medium transition-colors text-sm ${
+                      selectedMemberId
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <option value="">他のメンバーを選択</option>
+                    {availableMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          )}
           <Button
             variant="outline"
             onClick={async () => {
