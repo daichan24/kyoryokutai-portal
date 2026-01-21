@@ -59,16 +59,23 @@ export const Projects: React.FC = () => {
           );
           if (members.length > 0) {
             url = `/api/projects?userId=${members[0].id}`;
+          } else {
+            // メンバーがいない場合は空配列を返す
+            return [];
           }
         }
       } else {
         // 作成モード: 自分のプロジェクトのみ表示
-        url = `/api/projects?userId=${user?.id}`;
+        if (!user?.id) {
+          return [];
+        }
+        url = `/api/projects?userId=${user.id}`;
       }
       
       const response = await api.get(url);
       return response.data;
-    }
+    },
+    enabled: !!user?.id || viewMode === 'view', // user?.idが存在するか、閲覧モードの場合のみ有効化
   });
 
   const filteredProjects = projects?.filter(p => {

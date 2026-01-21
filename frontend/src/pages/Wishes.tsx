@@ -632,7 +632,8 @@ export const Wishes: React.FC = () => {
             <p className="text-sm mt-2">「新規追加」ボタンから追加してください。</p>
           </div>
         )}
-      </div>
+        </div>
+      )}
 
       {/* 編集モーダル */}
       {isModalOpen && (
