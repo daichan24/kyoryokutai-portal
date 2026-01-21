@@ -19,6 +19,8 @@ interface TimeAxisViewProps {
   onEventClick: (eventId: string) => void;
   onCreateSchedule: (date: Date, startTime?: string, endTime?: string) => void;
   viewMode: 'week' | 'day';
+  calendarViewMode?: 'individual' | 'all';
+  currentUserId?: string;
 }
 
 // 時間帯を生成（0時から24時まで30分刻み）
@@ -62,6 +64,8 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   onEventClick,
   onCreateSchedule,
   viewMode,
+  calendarViewMode = 'individual',
+  currentUserId,
 }) => {
   const timeSlots = generateTimeSlots();
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -169,8 +173,10 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                     {daySchedules.map((schedule) => {
                       const position = calculateSchedulePosition(schedule.startTime, schedule.endTime);
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
-                      // プロジェクトのテーマカラーがあればそれを使用、なければユーザーのアバターカラーを使用
-                      const scheduleColor = schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+                      // 全体表示の場合はユーザー色を使用、それ以外はプロジェクトのテーマカラーがあればそれを使用、なければユーザーのアバターカラーを使用
+                      const scheduleColor = calendarViewMode === 'all'
+                        ? schedule.user?.avatarColor || '#6B7280'
+                        : schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
                       
                       return (
                         <button
@@ -183,7 +189,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                             backgroundColor: scheduleColor,
                             minHeight: '1.5rem',
                           }}
-                          title={`${schedule.activityDescription} (${schedule.startTime}-${schedule.endTime})`}
+                          title={`${schedule.activityDescription} (${schedule.startTime}-${schedule.endTime})${calendarViewMode === 'all' && schedule.user ? ` - ${schedule.user.name}` : ''}`}
                         >
                           <div className="flex items-start justify-between h-full">
                             <div className="flex-1 min-w-0">
@@ -193,6 +199,11 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                               <p className="text-xs text-white/80 truncate">
                                 {schedule.startTime}-{schedule.endTime}
                               </p>
+                              {calendarViewMode === 'all' && schedule.user && (
+                                <p className="text-xs text-white/70 truncate mt-0.5">
+                                  {schedule.user.name}
+                                </p>
+                              )}
                             </div>
                             {participantCount > 0 && (
                               <span className="ml-1 text-xs bg-white/20 text-white px-1 rounded whitespace-nowrap">

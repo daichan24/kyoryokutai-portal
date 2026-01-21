@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, ChevronLeft, ChevronRight, CalendarDays, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, RefreshCw, Circle, PlayCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, CalendarDays, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, RefreshCw, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType, Project, Task } from '../types';
@@ -42,6 +42,7 @@ export const Schedule: React.FC = () => {
   const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>([]);
   const [calendarViewMode, setCalendarViewMode] = useState<'individual' | 'all'>('individual'); // カレンダー表示モード: 個人 or 全体
   const [projectViewMode, setProjectViewMode] = useState<'view' | 'personal'>('view'); // プロジェクト表示モード: 閲覧 or 個人（メンバー以外のみ）
+  const [selectedDateForDetail, setSelectedDateForDetail] = useState<Date | null>(null); // 詳細表示用の選択日
 
   useEffect(() => {
     if (viewMode === 'week') {
@@ -57,7 +58,14 @@ export const Schedule: React.FC = () => {
       fetchEvents();
       fetchProjects();
     }
-  }, [weekDates, calendarViewMode, projectViewMode]);
+  }, [weekDates, calendarViewMode]);
+
+  // プロジェクト表示モード変更時の処理（weekDatesが空でないことを確認）
+  useEffect(() => {
+    if (weekDates.length > 0) {
+      fetchProjects();
+    }
+  }, [projectViewMode]);
 
   // スケジュール更新イベントをリッスン
   useEffect(() => {
@@ -77,7 +85,7 @@ export const Schedule: React.FC = () => {
       });
       
       // 全体表示の場合はallMembers=trueを追加
-      if (calendarViewMode === 'all' && user?.role !== 'MEMBER') {
+      if (calendarViewMode === 'all') {
         params.append('allMembers', 'true');
       }
       
@@ -229,7 +237,33 @@ export const Schedule: React.FC = () => {
           スケジュール管理
           {user?.role === 'MEMBER' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（自分のスケジュール）</span>}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* カレンダー表示モード切り替え（全役職） */}
+          <div className="flex items-center gap-2 mr-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCalendarViewMode('individual')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                  calendarViewMode === 'individual'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                個人
+              </button>
+              <button
+                onClick={() => setCalendarViewMode('all')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                  calendarViewMode === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                全体
+              </button>
+            </div>
+          </div>
           <Button
             variant="outline"
             onClick={async () => {
@@ -244,35 +278,6 @@ export const Schedule: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             新規作成
           </Button>
-        </div>
-      </div>
-
-      {/* カレンダー表示モード切り替え（全役職） */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCalendarViewMode('individual')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                calendarViewMode === 'individual'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              個人
-            </button>
-            <button
-              onClick={() => setCalendarViewMode('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                calendarViewMode === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              全体
-            </button>
-          </div>
         </div>
       </div>
 
@@ -321,10 +326,20 @@ export const Schedule: React.FC = () => {
             dates={weekDates}
             schedules={schedules}
             events={events}
-            onScheduleClick={handleEditSchedule}
+            onScheduleClick={(schedule) => {
+              const isOtherUser = calendarViewMode === 'all' && schedule.userId !== user?.id;
+              if (isOtherUser) {
+                setSelectedSchedule(schedule);
+                setIsModalOpen(true);
+              } else {
+                handleEditSchedule(schedule);
+              }
+            }}
             onEventClick={handleEventClick}
             onCreateSchedule={handleCreateSchedule}
             viewMode={viewMode}
+            calendarViewMode={calendarViewMode}
+            currentUserId={user?.id}
           />
         ) : (
           <div className="grid gap-2 grid-cols-7">
@@ -364,12 +379,35 @@ export const Schedule: React.FC = () => {
                 hoveredTaskId != null &&
                 daySchedules.some((s) => s.taskId && s.taskId === hoveredTaskId);
 
+              // 全体表示の場合、5件以降は「+N件」表示
+              const MAX_VISIBLE_SCHEDULES = 5;
+              const visibleSchedules = calendarViewMode === 'all' 
+                ? daySchedules.slice(0, MAX_VISIBLE_SCHEDULES)
+                : daySchedules;
+              const remainingCount = calendarViewMode === 'all' && daySchedules.length > MAX_VISIBLE_SCHEDULES
+                ? daySchedules.length - MAX_VISIBLE_SCHEDULES
+                : 0;
+
+              // 全体表示の場合の色：ユーザー色を使用
+              const getScheduleColor = (schedule: ScheduleType) => {
+                if (calendarViewMode === 'all') {
+                  return schedule.user?.avatarColor || '#6B7280';
+                }
+                return schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+              };
+
+              // 他の人のスケジュールかどうかを判定
+              const isOtherUserSchedule = (schedule: ScheduleType) => {
+                return schedule.userId !== user?.id;
+              };
+
               return (
                 <div
                   key={index}
                   className={`border rounded-lg p-3 min-h-[120px] ${dayBgColor} ${
                     isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300' : 'border-border'
-                  }`}
+                  } ${calendarViewMode === 'all' && daySchedules.length > 0 ? 'cursor-pointer' : ''}`}
+                  onClick={calendarViewMode === 'all' && daySchedules.length > 0 ? () => setSelectedDateForDetail(date) : undefined}
                 >
                   <div className="text-center mb-2">
                     <p className={`text-xs ${dayLabelColor}`}>
@@ -384,16 +422,29 @@ export const Schedule: React.FC = () => {
 
                   <div className="space-y-2">
                     {/* スケジュール表示 */}
-                    {daySchedules.map((schedule) => {
+                    {visibleSchedules.map((schedule) => {
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
+                      const scheduleColor = getScheduleColor(schedule);
+                      const isOtherUser = isOtherUserSchedule(schedule);
+                      const isReadOnly = calendarViewMode === 'all' && isOtherUser;
+                      
                       return (
                         <button
                           key={schedule.id}
-                          onClick={() => handleEditSchedule(schedule)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isReadOnly) {
+                              // 他の人のスケジュールは詳細のみ表示
+                              setSelectedSchedule(schedule);
+                              setIsModalOpen(true);
+                            } else {
+                              handleEditSchedule(schedule);
+                            }
+                          }}
                           className="w-full text-left p-2 rounded text-xs border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800"
                           style={{
                             borderLeftWidth: '3px',
-                            borderLeftColor: schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280',
+                            borderLeftColor: scheduleColor,
                           }}
                         >
                           <div className="flex items-center justify-between">
@@ -404,6 +455,11 @@ export const Schedule: React.FC = () => {
                               <p className="text-gray-600 dark:text-gray-400">
                                 {schedule.startTime}-{schedule.endTime}
                               </p>
+                              {calendarViewMode === 'all' && schedule.user && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {schedule.user.name}
+                                </p>
+                              )}
                             </div>
                             {participantCount > 0 && (
                               <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded whitespace-nowrap">
@@ -414,6 +470,19 @@ export const Schedule: React.FC = () => {
                         </button>
                       );
                     })}
+                    
+                    {/* 残りのスケジュール数表示（全体表示の場合） */}
+                    {remainingCount > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDateForDetail(date);
+                        }}
+                        className="w-full text-center p-2 rounded text-xs border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium"
+                      >
+                        +{remainingCount}件
+                      </button>
+                    )}
                     
                     {/* イベント表示（read-only） */}
                     {getEventsForDate(date).map((event) => {
@@ -605,9 +674,89 @@ export const Schedule: React.FC = () => {
           defaultDate={selectedDate}
           defaultStartTime={defaultStartTime}
           defaultEndTime={defaultEndTime}
+          readOnly={
+            selectedSchedule
+              ? calendarViewMode === 'all' && selectedSchedule.userId !== user?.id
+              : false
+          }
           onClose={handleCloseModal}
           onSaved={handleSaved}
         />
+      )}
+
+      {/* 日詳細表示モーダル（全体表示時、5件以降をクリックした場合） */}
+      {selectedDateForDetail && calendarViewMode === 'all' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedDateForDetail(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full m-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
+              <h2 className="text-2xl font-bold dark:text-gray-100">
+                {formatDate(selectedDateForDetail, 'yyyy年M月d日')} のスケジュール
+              </h2>
+              <button onClick={() => setSelectedDateForDetail(null)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-3">
+                {getSchedulesForDate(selectedDateForDetail).map((schedule) => {
+                  const scheduleColor = schedule.user?.avatarColor || '#6B7280';
+                  const isOtherUser = schedule.userId !== user?.id;
+                  return (
+                    <button
+                      key={schedule.id}
+                      onClick={() => {
+                        setSelectedDateForDetail(null);
+                        setSelectedSchedule(schedule);
+                        setIsModalOpen(true);
+                      }}
+                      className="w-full text-left p-4 rounded-lg border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800 transition-colors"
+                      style={{
+                        borderLeftWidth: '4px',
+                        borderLeftColor: scheduleColor,
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {schedule.user && (
+                              <div
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs flex-shrink-0"
+                                style={{ backgroundColor: scheduleColor }}
+                              >
+                                {(schedule.user.avatarLetter || schedule.user.name || '').charAt(0)}
+                              </div>
+                            )}
+                            {schedule.user && (
+                              <span className="font-medium text-gray-900 dark:text-gray-100">
+                                {schedule.user.name}
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
+                            {schedule.activityDescription}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {schedule.startTime}-{schedule.endTime}
+                          </p>
+                          {schedule.locationText && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              📍 {schedule.locationText}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+                {getSchedulesForDate(selectedDateForDetail).length === 0 && (
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                    この日にスケジュールはありません
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -15,6 +15,7 @@ interface ScheduleModalProps {
   defaultTaskId?: string | null;
   defaultProjectId?: string | null;
   defaultActivityDescription?: string | null;
+  readOnly?: boolean; // 閲覧のみモード
   onClose: () => void;
   onSaved: () => void;
 }
@@ -27,6 +28,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   defaultTaskId,
   defaultProjectId,
   defaultActivityDescription,
+  readOnly = false,
   onClose,
   onSaved,
 }) => {
@@ -312,6 +314,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 }
               }}
               required
+              readOnly={readOnly}
             />
             <Input
               label="終了日"
@@ -320,6 +323,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               onChange={(e) => setEndDate(e.target.value)}
               min={date} // 終了日は開始日以降
               required
+              readOnly={readOnly}
             />
           </div>
 
@@ -333,6 +337,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 onChange={(e) => setStartTime(e.target.value)}
                 className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
+                disabled={readOnly}
               >
                 {Array.from({ length: 24 * 4 }, (_, i) => {
                   const hour = Math.floor(i / 4);
@@ -355,6 +360,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 onChange={(e) => setEndTime(e.target.value)}
                 className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
+                disabled={readOnly}
               >
                 {Array.from({ length: 24 * 4 }, (_, i) => {
                   const hour = Math.floor(i / 4);
@@ -378,6 +384,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               value={locationText}
               onChange={(e) => setLocationText(e.target.value)}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              disabled={readOnly}
             >
               <option value="">選択してください</option>
               {locations.map((loc) => (
@@ -402,6 +409,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 }
               }}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              disabled={readOnly}
             >
               <option value="">選択しない</option>
               {projects.map((project) => (
@@ -420,7 +428,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               value={selectedTaskId || ''}
               onChange={(e) => setSelectedTaskId(e.target.value || null)}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              disabled={!selectedProjectId && tasks.filter(t => !t.projectId).length === 0}
+              disabled={readOnly || (!selectedProjectId && tasks.filter(t => !t.projectId).length === 0)}
             >
               <option value="">選択しない</option>
               {tasks
@@ -450,6 +458,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               required
               rows={4}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              readOnly={readOnly}
             />
           </div>
 
@@ -462,6 +471,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               onChange={(e) => setFreeNote(e.target.value)}
               rows={3}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              readOnly={readOnly}
             />
           </div>
 
@@ -633,25 +643,29 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           </div>
           
           <div className="flex justify-between items-center p-6 border-t dark:border-gray-700 flex-shrink-0">
-            <div className="flex gap-2">
-              {schedule && !isDuplicateMode && (
-                <>
-                  <Button type="button" variant="danger" onClick={handleDelete}>
-                    削除
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleDuplicate}>
-                    複製
-                  </Button>
-                </>
-              )}
-            </div>
-            <div className="flex space-x-3">
+            {!readOnly && (
+              <div className="flex gap-2">
+                {schedule && !isDuplicateMode && (
+                  <>
+                    <Button type="button" variant="danger" onClick={handleDelete}>
+                      削除
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleDuplicate}>
+                      複製
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+            <div className={`flex space-x-3 ${readOnly ? 'ml-auto' : ''}`}>
               <Button type="button" variant="outline" onClick={onClose}>
-                キャンセル
+                {readOnly ? '閉じる' : 'キャンセル'}
               </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? '保存中...' : '保存'}
-              </Button>
+              {!readOnly && (
+                <Button type="submit" disabled={loading}>
+                  {loading ? '保存中...' : '保存'}
+                </Button>
+              )}
             </div>
           </div>
         </form>

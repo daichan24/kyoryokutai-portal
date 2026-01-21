@@ -35,8 +35,8 @@ router.get('/', async (req: AuthRequest, res) => {
     // 取得条件: 作成者であるか、承認済みの参加者である
     let where: any;
 
-    // allMembersがtrueの場合、全メンバーのスケジュールを取得（MEMBERロールのみ）
-    if (allMembers === 'true' && req.user!.role !== 'MEMBER') {
+    // allMembersがtrueの場合、全メンバーのスケジュールを取得
+    if (allMembers === 'true') {
       // 全メンバーのスケジュールを取得
       // まず全メンバー（表示順0番目を除く）を取得
       const members = await prisma.user.findMany({
