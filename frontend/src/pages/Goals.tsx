@@ -390,9 +390,74 @@ export const Goals: React.FC = () => {
       )}
 
       {viewMode === 'create' && (
-        <div className="text-center py-12 text-gray-500">
-          新規ミッションを作成するには、右上の「新規ミッション」ボタンをクリックしてください。
-        </div>
+        <>
+          {/* 目標一覧 */}
+          <div className="space-y-4">
+            {goals?.map((goal) => (
+              <div key={goal.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                {/* 目標ヘッダー */}
+                <div
+                  className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  onClick={() => toggleGoal(goal.id)}
+                >
+                  <div className="flex justify-end mb-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditGoal(goal);
+                      }}
+                    >
+                      編集
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                        {expandedGoals.has(goal.id) ? '▼' : '▶'}
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        (goal.missionType || goal.goalType) === 'PRIMARY' 
+                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                      }`}>
+                        {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
+                      </span>
+                    </div>
+                    <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
+                  </div>
+
+                  {/* プログレスバー */}
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
+                      style={{ width: `${goal.progress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* ミッション詳細 */}
+                {expandedGoals.has(goal.id) && (
+                  <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5">
+                    {/* プロジェクト（タスクはプロジェクト配下に表示） */}
+                    <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* 空状態 */}
+          {goals?.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              新規ミッションを作成するには、右上の「新規ミッション」ボタンをクリックしてください。
+            </div>
+          )}
+        </>
       )}
 
       {/* モーダル */}
