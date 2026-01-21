@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Wish, WishStatus } from '../types';
-import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X, PlayCircle, BookOpen, Info } from 'lucide-react';
+import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X, PlayCircle, BookOpen, Info, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { WishModal } from '../components/wish/WishModal';
@@ -30,7 +30,7 @@ export const Wishes: React.FC = () => {
   const [viewMode, setViewMode] = useState<'view' | 'create'>(
     user?.role === 'MEMBER' ? 'create' : 'view'
   );
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedUserId, setSelectedUserId] = useState<string>(''); // 空文字列は「すべて」を意味する
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<WishStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -66,10 +66,7 @@ export const Wishes: React.FC = () => {
             return (a.name || '').localeCompare(b.name || '');
           });
         setMembers(memberUsers);
-        // 閲覧モードでメンバーが選択されていない場合は、最初のメンバーを選択
-        if (viewMode === 'view' && !selectedUserId && memberUsers.length > 0) {
-          setSelectedUserId(memberUsers[0].id);
-        }
+        // 閲覧モードのデフォルトは「すべて」（selectedUserId = '' のまま）
       } catch (error) {
         console.error('Failed to fetch members:', error);
         setMembers([]);
@@ -78,7 +75,7 @@ export const Wishes: React.FC = () => {
     loadMembers();
   }, [user?.role, viewMode, selectedUserId]);
 
-  // 統計情報を取得
+  // 統計情報を取得（全員表示の場合は取得しない）
   const { data: stats } = useQuery({
     queryKey: ['wishes', 'stats', viewMode === 'view' ? selectedUserId : user?.id],
     queryFn: async () => {
@@ -91,6 +88,25 @@ export const Wishes: React.FC = () => {
       return response.data;
     },
     enabled: viewMode === 'create' || (viewMode === 'view' && selectedUserId !== ''),
+  });
+
+  // 全員のやりたいことを取得（全員表示用）
+  const { data: allMembersWishes, isLoading: isLoadingAllWishes } = useQuery<Record<string, Wish[]>>({
+    queryKey: ['wishes', 'all-members'],
+    queryFn: async () => {
+      const wishesByMember: Record<string, Wish[]> = {};
+      for (const member of members) {
+        try {
+          const response = await api.get<Wish[]>(`/api/wishes?userId=${member.id}`);
+          wishesByMember[member.id] = response.data || [];
+        } catch (error) {
+          console.error(`Failed to fetch wishes for member ${member.id}:`, error);
+          wishesByMember[member.id] = [];
+        }
+      }
+      return wishesByMember;
+    },
+    enabled: viewMode === 'view' && selectedUserId === '' && members.length > 0,
   });
 
   // やりたいこと一覧を取得
@@ -318,6 +334,7 @@ export const Wishes: React.FC = () => {
             onChange={(e) => setSelectedUserId(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
+            <option value="">すべて</option>
             {members.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.name}
@@ -327,8 +344,8 @@ export const Wishes: React.FC = () => {
         </div>
       )}
 
-      {/* 統計情報 */}
-      {stats && (
+      {/* 統計情報（全員表示の場合は非表示） */}
+      {stats && selectedUserId !== '' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
             <div className="text-sm text-gray-600 dark:text-gray-400">達成数 / 100</div>
@@ -424,11 +441,70 @@ export const Wishes: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* やりたいこと一覧 */}
-      <div className="space-y-3">
-        {filteredWishes && filteredWishes.length > 0 ? (
-          filteredWishes.map((wish) => (
+      {viewMode === 'view' && selectedUserId === '' ? (
+        /* 全員表示 */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {isLoadingAllWishes ? (
+            <div className="col-span-full flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            members.map((member) => {
+              const memberWishes = allMembersWishes?.[member.id] || [];
+              // 直近のやりたいこと（ACTIVE優先、次に作成日順）
+              const recentWishes = memberWishes
+                .filter(w => w.status === 'ACTIVE')
+                .sort((a, b) => {
+                  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                  return dateB - dateA;
+                })
+                .slice(0, 3); // 最大3件表示
+
+              return (
+                <div
+                  key={member.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setSelectedUserId(member.id)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {member.name}
+                    </h3>
+                    <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  {recentWishes.length > 0 ? (
+                    <div className="space-y-2">
+                      {recentWishes.map((wish) => (
+                        <div
+                          key={wish.id}
+                          className="text-sm text-gray-700 dark:text-gray-300 p-2 bg-gray-50 dark:bg-gray-700/50 rounded"
+                        >
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(wish.status)}
+                            <span className="truncate">{wish.title}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                      やりたいことがありません
+                    </p>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        /* 個人表示 */
+        <div className="space-y-3">
+          {filteredWishes && filteredWishes.length > 0 ? (
+            filteredWishes.map((wish) => (
             <div
               key={wish.id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
