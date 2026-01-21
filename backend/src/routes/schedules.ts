@@ -207,8 +207,8 @@ router.post('/', async (req: AuthRequest, res) => {
         startTime: data.startTime,
         endTime: data.endTime,
         locationText: data.locationText || null, // 空文字列の場合はnullに変換
-        title: data.title || null, // タイトル
-        activityDescription: data.activityDescription,
+        title: data.title, // タイトル（必須）
+        activityDescription: data.activityDescription || null, // 活動内容（任意）
         freeNote: data.freeNote || null, // 空文字列の場合はnullに変換
         isPending: data.isPending || false,
         projectId: data.projectId || null,
