@@ -472,7 +472,7 @@ export const Schedule: React.FC = () => {
                         >
                           <div className="flex items-center gap-1.5 truncate">
                             <span className="font-medium whitespace-nowrap">{schedule.startTime}-{schedule.endTime}</span>
-                            <span className="truncate">{schedule.activityDescription}</span>
+                            <span className="truncate">{(schedule as any).title || schedule.activityDescription}</span>
                             {calendarViewMode === 'all' && schedule.user && (
                               <span className="whitespace-nowrap">（{schedule.user.name}）</span>
                             )}
