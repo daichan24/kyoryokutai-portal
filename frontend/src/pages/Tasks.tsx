@@ -31,16 +31,33 @@ export const Tasks: React.FC = () => {
 
   // プロジェクト一覧を取得（Taskの紐づき情報用）
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['projects', selectedUserId, user?.id, user?.role],
+    queryKey: ['projects', selectedUserId, viewMode, user?.id],
     queryFn: async () => {
-      const projectUserId =
-        user?.role === 'MEMBER'
-          ? user.id
-          : selectedUserId || undefined;
-
-      const url = projectUserId
-        ? `/api/projects?userId=${projectUserId}`
-        : '/api/projects';
+      let url = '/api/projects';
+      
+      // 閲覧モード: メンバーのプロジェクトのみ表示
+      if (viewMode === 'view') {
+        if (user?.role === 'MEMBER') {
+          // メンバーは自分のプロジェクトのみ
+          url = `/api/projects?userId=${user.id}`;
+        } else if (selectedUserId) {
+          // 非メンバーは選択したユーザーのプロジェクト
+          url = `/api/projects?userId=${selectedUserId}`;
+        } else {
+          // 非メンバーでユーザー未選択の場合は、メンバーのプロジェクトのみ取得
+          const membersResponse = await api.get('/api/users');
+          const members = (membersResponse.data || []).filter((u: any) => 
+            u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
+          );
+          if (members.length > 0) {
+            url = `/api/projects?userId=${members[0].id}`;
+          }
+        }
+      } else {
+        // 作成モード: 自分のプロジェクトのみ表示
+        url = `/api/projects?userId=${user?.id}`;
+      }
+      
       const response = await api.get(url);
       return response.data;
     },
