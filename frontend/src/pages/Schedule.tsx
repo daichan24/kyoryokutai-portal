@@ -63,9 +63,10 @@ export const Schedule: React.FC = () => {
   // プロジェクト表示モード変更時の処理（weekDatesが空でないことを確認）
   useEffect(() => {
     if (weekDates.length > 0) {
+      console.log('Fetching projects with mode:', projectViewMode, 'weekDates:', weekDates.length);
       fetchProjects();
     }
-  }, [projectViewMode]);
+  }, [projectViewMode, weekDates, user?.id]);
 
   // スケジュール更新イベントをリッスン
   useEffect(() => {
@@ -122,6 +123,12 @@ export const Schedule: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
+      // weekDatesが空の場合は実行しない
+      if (weekDates.length === 0) {
+        console.log('fetchProjects: weekDates is empty, skipping');
+        return;
+      }
+      
       const startDate = formatDate(weekDates[0]);
       const endDate = formatDate(weekDates[weekDates.length - 1]);
       
@@ -132,8 +139,10 @@ export const Schedule: React.FC = () => {
         url = `/api/projects?userId=${user?.id}`;
       }
       
+      console.log('fetchProjects: fetching from', url, 'mode:', projectViewMode);
       const response = await api.get<Project[]>(url);
       const allProjects = response.data || [];
+      console.log('fetchProjects: received', allProjects.length, 'projects');
       
       // 表示期間内のプロジェクトのみフィルタリング（開始日または終了日が期間内にあるもの）
       const filteredProjects = allProjects.filter((project) => {
@@ -154,6 +163,7 @@ export const Schedule: React.FC = () => {
         return false;
       });
       
+      console.log('fetchProjects: filtered to', filteredProjects.length, 'projects');
       // relatedTasksが含まれているプロジェクトをそのまま使用
       setProjects(filteredProjects);
     } catch (error) {
@@ -533,39 +543,39 @@ export const Schedule: React.FC = () => {
         )}
 
         {/* プロジェクトの複数日にわたるスケジュール表示（＋タスク一覧） */}
-        {projects.length > 0 && (
-          <div className="mt-6 space-y-2">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                進行中のプロジェクト
-              </h3>
-              {/* メンバー以外の役職で閲覧・個人切り替え */}
-              {user?.role !== 'MEMBER' && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setProjectViewMode('view')}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                      projectViewMode === 'view'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    閲覧
-                  </button>
-                  <button
-                    onClick={() => setProjectViewMode('personal')}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                      projectViewMode === 'personal'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    個人
-                  </button>
-                </div>
-              )}
-            </div>
-            {projects.map((project) => {
+        <div className="mt-6 space-y-2">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              進行中のプロジェクト
+            </h3>
+            {/* メンバー以外の役職で閲覧・個人切り替え */}
+            {user?.role !== 'MEMBER' && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setProjectViewMode('view')}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                    projectViewMode === 'view'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  閲覧
+                </button>
+                <button
+                  onClick={() => setProjectViewMode('personal')}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                    projectViewMode === 'personal'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  個人
+                </button>
+              </div>
+            )}
+          </div>
+          {projects.length > 0 ? (
+            projects.map((project) => {
               const projectStartDate = project.startDate ? new Date(project.startDate) : null;
               const projectEndDate = project.endDate ? new Date(project.endDate) : null;
               const viewStartDate = weekDates[0];
