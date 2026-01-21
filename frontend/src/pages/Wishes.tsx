@@ -45,7 +45,6 @@ export const Wishes: React.FC = () => {
   const [showIconHelp, setShowIconHelp] = useState(false);
   const [showUsageHelp, setShowUsageHelp] = useState(false);
   const [currentWishIndex, setCurrentWishIndex] = useState<Record<string, number>>({}); // 各メンバーの現在表示中のやりたいことのインデックス
-  const [currentWishIndex, setCurrentWishIndex] = useState<Record<string, number>>({}); // 各メンバーの現在表示中のやりたいことのインデックス
 
   // メンバー一覧を取得（メンバー以外のみ）
   useEffect(() => {
