@@ -109,8 +109,8 @@ export const Projects: React.FC = () => {
   };
 
   const handleSaved = () => {
-    queryClient.invalidateQueries({ queryKey: ['projects'] });
     // viewModeに関係なく、すべてのprojectsクエリを無効化
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
     handleCloseModal();
   };
 
@@ -391,9 +391,106 @@ export const Projects: React.FC = () => {
       )}
 
       {viewMode === 'create' && (
-        <div className="text-center py-12 text-gray-500">
-          新規プロジェクトを作成するには、右上の「新規プロジェクト」ボタンをクリックしてください。
-        </div>
+        <>
+          {displayMode === 'card' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProjects?.map((project) => (
+                <div
+                  key={project.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleEditProject(project)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1">
+                      {project.projectName}
+                    </h3>
+                    <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
+                      {getPhaseLabel(project.phase)}
+                    </span>
+                  </div>
+                  {project.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
+                  {project.startDate && project.endDate && (
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {formatDate(new Date(project.startDate), 'yyyy年M月d日')} - {formatDate(new Date(project.endDate), 'yyyy年M月d日')}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      プロジェクト名
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      フェーズ
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      期間
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      アクション
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredProjects?.map((project) => (
+                    <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {project.projectName}
+                        </div>
+                        {project.description && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-md">
+                            {project.description}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
+                          {getPhaseLabel(project.phase)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {project.startDate && project.endDate ? (
+                          <>
+                            {formatDate(new Date(project.startDate), 'yyyy年M月d日')} - {formatDate(new Date(project.endDate), 'yyyy年M月d日')}
+                          </>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditProject(project);
+                          }}
+                        >
+                          詳細
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {filteredProjects?.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              新規プロジェクトを作成するには、右上の「新規プロジェクト」ボタンをクリックしてください。
+            </div>
+          )}
+        </>
       )}
 
       {isModalOpen && (
