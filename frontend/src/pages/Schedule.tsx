@@ -482,7 +482,7 @@ export const Schedule: React.FC = () => {
                   className={`border rounded-lg p-3 ${dayBgColor} ${
                     isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300' : 'border-border'
                   } ${calendarViewMode === 'all' && daySchedules.length > 0 ? 'cursor-pointer' : ''}`}
-                  style={{ height: '700px', minWidth: '180px', display: 'flex', flexDirection: 'column' }}
+                  style={{ height: '180px', minWidth: '180px', display: 'flex', flexDirection: 'column' }}
                   onClick={calendarViewMode === 'all' && daySchedules.length > 0 ? () => setSelectedDateForDetail(date) : undefined}
                 >
                   <div className="text-center mb-2 flex-shrink-0">

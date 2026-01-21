@@ -59,7 +59,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   // SUPPORT/GOVERNMENT/MASTER用のメニュー（全データ閲覧可能）
   const supportGovernmentItems = [
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
-    { to: '/task-requests', icon: UserCheck, label: '依頼' },
   ];
 
   // 報告カテゴリのメニュー

@@ -105,42 +105,38 @@ export const TaskRequests: React.FC = () => {
     );
   }
 
-  const isNonMember = user?.role !== 'MEMBER';
-
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {user?.role === 'MEMBER' ? '依頼ボックス' : '依頼'}
-          {isNonMember && viewMode === 'create' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（作成）</span>}
+          依頼ボックス
+          {viewMode === 'create' && <span className="text-lg font-normal text-gray-500 dark:text-gray-400 ml-2">（作成）</span>}
         </h1>
         <div className="flex gap-3">
-          {isNonMember && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('view')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'view'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                閲覧
-              </button>
-              <button
-                onClick={() => setViewMode('create')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'create'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                作成
-              </button>
-            </div>
-          )}
-          {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && viewMode !== 'view' && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('view')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                viewMode === 'view'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              閲覧
+            </button>
+            <button
+              onClick={() => setViewMode('create')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                viewMode === 'create'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              作成
+            </button>
+          </div>
+          {viewMode === 'create' && (
             <Button onClick={handleCreateRequest}>
               <Plus className="h-4 w-4 mr-2" />
               新規依頼
@@ -151,16 +147,11 @@ export const TaskRequests: React.FC = () => {
 
       {viewMode === 'view' && (
         <>
-          {isNonMember && (
-            <UserFilter
-              selectedUserId={selectedUserId}
-              onUserChange={setSelectedUserId}
-              label="依頼先"
-            />
-          )}
-
-      {/* 受信したタスク（協力隊員） */}
-      {user?.role === 'MEMBER' && (
+          {/* 受信した依頼 */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">受信した依頼</h2>
+            <div className="space-y-3">
+              {receivedRequests?.map((request) => (
         <section>
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">受信したタスク</h2>
           <div className="space-y-3">
@@ -211,19 +202,17 @@ export const TaskRequests: React.FC = () => {
               </div>
             ))}
 
-            {receivedRequests?.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                受信したタスクはありません
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+              {receivedRequests?.length === 0 && (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  受信した依頼はありません
+                </div>
+              )}
+            </div>
+          </section>
 
-      {/* 送信した依頼（サポート・役場） */}
-      {(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">送信した依頼</h2>
+          {/* 送信した依頼 */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">送信した依頼</h2>
           <div className="space-y-3">
             {sentRequests?.map((request) => (
               <div key={request.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
@@ -262,7 +251,6 @@ export const TaskRequests: React.FC = () => {
             )}
           </div>
         </section>
-      )}
         </>
       )}
 
