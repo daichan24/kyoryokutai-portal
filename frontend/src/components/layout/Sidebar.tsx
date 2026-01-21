@@ -92,14 +92,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       label: 'イベント参加状況',
     });
     
-    // MEMBERのみタスクボックスを表示
-    if (user?.role === 'MEMBER') {
-      items.push({
-        to: '/task-requests', // パスは後方互換性のため維持
-        icon: Inbox,
-        label: '依頼ボックス',
-      });
-    }
+    // 全ロールで依頼ボックスを表示
+    items.push({
+      to: '/task-requests', // パスは後方互換性のため維持
+      icon: Inbox,
+      label: '依頼ボックス',
+    });
     
     // 全ロールで町民データベースを表示
     items.push({

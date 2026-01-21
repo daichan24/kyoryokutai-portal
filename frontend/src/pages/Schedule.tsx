@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, ChevronLeft, ChevronRight, CalendarDays, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, RefreshCw, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
-import { Schedule as ScheduleType, Project, Task } from '../types';
+import { Schedule as ScheduleType, Project, Task, User } from '../types';
 import { formatDate, getWeekDates, getMonthDates, isSameDay, isHolidayDate, isSunday, isSaturday } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -60,7 +60,7 @@ export const Schedule: React.FC = () => {
       fetchEvents();
       fetchProjects();
     }
-  }, [weekDates, calendarViewMode, selectedMemberId]);
+  }, [weekDates, calendarViewMode, selectedMemberId, user?.id]);
 
   // メンバーリストを取得（週表示の個人モード用）
   useEffect(() => {
@@ -111,9 +111,13 @@ export const Schedule: React.FC = () => {
       // 全体表示の場合はallMembers=trueを追加
       if (calendarViewMode === 'all') {
         params.append('allMembers', 'true');
-      } else if (calendarViewMode === 'individual' && selectedMemberId) {
-        // 個人モードでメンバーが選択されている場合はそのメンバーのスケジュールを取得
-        params.append('userId', selectedMemberId);
+      } else if (calendarViewMode === 'individual') {
+        // 個人モードの場合
+        if (selectedMemberId) {
+          // メンバーが選択されている場合はそのメンバーのスケジュールを取得
+          params.append('userId', selectedMemberId);
+        }
+        // selectedMemberIdがnullの場合は自分のスケジュール（デフォルト）
       }
       
       const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
@@ -306,10 +310,13 @@ export const Schedule: React.FC = () => {
               </button>
             </div>
             {/* 週表示の個人モードでメンバー選択（メンバー以外の役職のみ） */}
-            {viewMode === 'week' && calendarViewMode === 'individual' && user?.role !== 'MEMBER' && (
+            {viewMode === 'week' && calendarViewMode === 'individual' && user?.role !== 'MEMBER' && availableMembers.length > 0 && (
               <select
                 value={selectedMemberId || ''}
-                onChange={(e) => setSelectedMemberId(e.target.value || null)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedMemberId(value || null);
+                }}
                 className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
               >
                 <option value="">自分のスケジュール</option>
@@ -475,7 +482,7 @@ export const Schedule: React.FC = () => {
                   className={`border rounded-lg p-3 ${dayBgColor} ${
                     isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300' : 'border-border'
                   } ${calendarViewMode === 'all' && daySchedules.length > 0 ? 'cursor-pointer' : ''}`}
-                  style={{ height: '140px', minWidth: '180px', display: 'flex', flexDirection: 'column' }}
+                  style={{ height: '700px', minWidth: '180px', display: 'flex', flexDirection: 'column' }}
                   onClick={calendarViewMode === 'all' && daySchedules.length > 0 ? () => setSelectedDateForDetail(date) : undefined}
                 >
                   <div className="text-center mb-2 flex-shrink-0">
