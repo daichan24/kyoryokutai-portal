@@ -31,10 +31,15 @@ export const Tasks: React.FC = () => {
 
   // プロジェクト一覧を取得（Taskの紐づき情報用）
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['projects', selectedUserId],
+    queryKey: ['projects', selectedUserId, user?.id, user?.role],
     queryFn: async () => {
-      const url = selectedUserId 
-        ? `/api/projects?userId=${selectedUserId}`
+      const projectUserId =
+        user?.role === 'MEMBER'
+          ? user.id
+          : selectedUserId || undefined;
+
+      const url = projectUserId
+        ? `/api/projects?userId=${projectUserId}`
         : '/api/projects';
       const response = await api.get(url);
       return response.data;
@@ -55,7 +60,7 @@ export const Tasks: React.FC = () => {
 
   // タスク一覧を取得（各Projectから取得）
   const { data: allTasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ['tasks', 'all'],
+    queryKey: ['tasks', 'all', selectedUserId, user?.id, user?.role],
     queryFn: async () => {
       // 各ProjectからTaskを取得
       const tasks: Task[] = [];
@@ -69,6 +74,13 @@ export const Tasks: React.FC = () => {
         } catch (error) {
           console.error(`Failed to fetch tasks for project ${project.id}:`, error);
         }
+      }
+      // ロールとフィルタに応じてタスクを絞り込む
+      if (user?.role === 'MEMBER') {
+        return tasks.filter((task) => task.userId === user.id);
+      }
+      if (selectedUserId) {
+        return tasks.filter((task) => task.userId === selectedUserId);
       }
       return tasks;
     },
