@@ -168,15 +168,39 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     setLoading(true);
 
     try {
+      // 必須項目のバリデーション
+      if (!date) {
+        alert('開始日を入力してください');
+        setLoading(false);
+        return;
+      }
+      if (!startTime) {
+        alert('開始時刻を入力してください');
+        setLoading(false);
+        return;
+      }
+      if (!endTime) {
+        alert('終了時刻を入力してください');
+        setLoading(false);
+        return;
+      }
+      if (!activityDescription || activityDescription.trim() === '') {
+        alert('活動内容を入力してください');
+        setLoading(false);
+        return;
+      }
+
       const data: any = {
         date,
         endDate: endDate !== date ? endDate : undefined, // 終了日が開始日と異なる場合のみ送信
         startTime,
         endTime,
-        locationText,
-        activityDescription,
-        freeNote,
+        locationText: locationText || undefined,
+        activityDescription: activityDescription.trim(),
+        freeNote: freeNote || undefined,
       };
+
+      console.log('Sending schedule data:', data);
 
       if (selectedTaskId) {
         data.taskId = selectedTaskId;
@@ -201,9 +225,28 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       }
 
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save schedule:', error);
-      alert('保存に失敗しました');
+      console.error('Error details:', error.response?.data);
+      
+      // バリデーションエラーの場合は詳細を表示
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        if (errorData.error && Array.isArray(errorData.error)) {
+          // Zodバリデーションエラー
+          const errorMessages = errorData.error.map((err: any) => {
+            const field = err.path?.join('.') || '不明なフィールド';
+            return `${field}: ${err.message}`;
+          }).join('\n');
+          alert(`バリデーションエラー:\n${errorMessages}`);
+        } else if (errorData.error) {
+          alert(`エラー: ${errorData.error}`);
+        } else {
+          alert('保存に失敗しました。入力内容を確認してください。');
+        }
+      } else {
+        alert(`保存に失敗しました: ${error.response?.data?.error || error.message || '不明なエラー'}`);
+      }
     } finally {
       setLoading(false);
     }
