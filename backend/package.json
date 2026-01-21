@@ -1,6 +1,6 @@
 {
   "name": "kyoryokutai-backend",
-  "version": "1.3.0",
+  "version": "2.45.0",
   "description": "Backend for Naganuma Town Regional Revitalization Cooperation Team Portal",
   "main": "dist/index.js",
   "scripts": {

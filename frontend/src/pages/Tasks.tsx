@@ -232,6 +232,7 @@ export const Tasks: React.FC = () => {
 
   const canCreate = user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER';
   const isNonMember = user?.role !== 'MEMBER';
+  const showCreateButton = canCreate && (user?.role === 'MEMBER' || viewMode === 'create');
 
   return (
     <div className="space-y-6">
@@ -275,7 +276,7 @@ export const Tasks: React.FC = () => {
               </button>
             </div>
           )}
-          {canCreate && viewMode === 'create' && (
+          {showCreateButton && (
             <Button 
               onClick={() => {
                 if (projects.length === 0) {

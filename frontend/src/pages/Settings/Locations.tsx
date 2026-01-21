@@ -39,11 +39,6 @@ export const LocationsSettings: React.FC = () => {
       return;
     }
 
-    if (user?.role !== 'MASTER') {
-      alert('場所の追加は管理者のみ可能です');
-      return;
-    }
-
     try {
       await api.post('/api/locations', {
         name: newLocationName,

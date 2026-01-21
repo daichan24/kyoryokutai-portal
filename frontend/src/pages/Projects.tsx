@@ -107,6 +107,7 @@ export const Projects: React.FC = () => {
 
   // メンバー以外は閲覧と作成を分離
   const isNonMember = user?.role !== 'MEMBER';
+  const showCreateButton = canCreate && (user?.role === 'MEMBER' || viewMode === 'create');
 
   return (
     <div className="space-y-6">
@@ -150,7 +151,7 @@ export const Projects: React.FC = () => {
               </button>
             </div>
           )}
-          {canCreate && viewMode === 'create' && (
+          {showCreateButton && (
             <Button onClick={handleCreateProject}>
               <Plus className="h-4 w-4 mr-2" />
               新規プロジェクト

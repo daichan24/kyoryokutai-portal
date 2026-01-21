@@ -115,11 +115,11 @@ const App: React.FC = () => {
       <Route
         path="/settings/locations"
         element={
-          <RoleProtectedRoute allowedRoles={['MASTER']}>
+          <PrivateRoute>
             <Layout>
               <LocationsSettings />
             </Layout>
-          </RoleProtectedRoute>
+          </PrivateRoute>
         }
       />
 
