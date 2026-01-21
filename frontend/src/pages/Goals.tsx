@@ -85,12 +85,24 @@ export const Goals: React.FC = () => {
     queryFn: async () => {
       let url = '/api/missions';
       
-      // 閲覧モード: 選択したユーザーのミッションを表示（MEMBERは自分のみ）
+      // 閲覧モード: メンバーのミッションのみ表示
       if (viewMode === 'view') {
         if (user?.role === 'MEMBER') {
+          // メンバーは自分のミッションのみ
           url = `/api/missions?userId=${user.id}`;
         } else if (selectedUserId) {
+          // 非メンバーは選択したユーザーのミッション
           url = `/api/missions?userId=${selectedUserId}`;
+        } else {
+          // 非メンバーでユーザー未選択の場合は、メンバーのミッションのみ取得
+          // まずメンバー一覧を取得して、最初のメンバーのミッションを表示
+          const membersResponse = await api.get('/api/users');
+          const members = (membersResponse.data || []).filter((u: any) => 
+            u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
+          );
+          if (members.length > 0) {
+            url = `/api/missions?userId=${members[0].id}`;
+          }
         }
       } else {
         // 作成モード: 自分のミッションのみ表示

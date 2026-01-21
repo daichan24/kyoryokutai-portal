@@ -38,11 +38,34 @@ export const Projects: React.FC = () => {
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
-    queryKey: ['projects', selectedUserId],
+    queryKey: ['projects', selectedUserId, viewMode, user?.id],
     queryFn: async () => {
-      const url = selectedUserId 
-        ? `/api/projects?userId=${selectedUserId}`
-        : '/api/projects';
+      let url = '/api/projects';
+      
+      // 閲覧モード: メンバーのプロジェクトのみ表示
+      if (viewMode === 'view') {
+        if (user?.role === 'MEMBER') {
+          // メンバーは自分のプロジェクトのみ
+          url = `/api/projects?userId=${user.id}`;
+        } else if (selectedUserId) {
+          // 非メンバーは選択したユーザーのプロジェクト
+          url = `/api/projects?userId=${selectedUserId}`;
+        } else {
+          // 非メンバーでユーザー未選択の場合は、メンバーのプロジェクトのみ取得
+          // まずメンバー一覧を取得して、最初のメンバーのプロジェクトを表示
+          const membersResponse = await api.get('/api/users');
+          const members = (membersResponse.data || []).filter((u: any) => 
+            u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
+          );
+          if (members.length > 0) {
+            url = `/api/projects?userId=${members[0].id}`;
+          }
+        }
+      } else {
+        // 作成モード: 自分のプロジェクトのみ表示
+        url = `/api/projects?userId=${user?.id}`;
+      }
+      
       const response = await api.get(url);
       return response.data;
     }

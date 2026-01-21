@@ -24,10 +24,14 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
   const { user } = useAuthStore();
 
   // プロジェクト一覧を取得（Taskの紐づき情報用）
+  // メンバーの場合は自分のプロジェクトのみ取得
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['projects-widget'],
+    queryKey: ['projects-widget', user?.id],
     queryFn: async () => {
-      const response = await api.get('/api/projects');
+      const url = user?.role === 'MEMBER' 
+        ? `/api/projects?userId=${user.id}`
+        : '/api/projects';
+      const response = await api.get(url);
       return response.data || [];
     },
   });
