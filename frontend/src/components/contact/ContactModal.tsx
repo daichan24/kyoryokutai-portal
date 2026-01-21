@@ -46,9 +46,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     const fetchUsers = async () => {
       try {
         const response = await api.get<User[]>('/api/users');
-        // サポート・行政・マスターユーザーの場合は「さとうだいち」を除外
+        // サポート・行政・マスターユーザーの場合は表示順0番目のユーザーを除外（テストユーザー）
         const filteredUsers = (response.data || []).filter(u => {
-          if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && u.name === 'さとうだいち' && u.role === 'MEMBER') return false;
+          if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (u.displayOrder ?? 0) === 0 && u.role === 'MEMBER') return false;
           return true;
         });
         setUsers(filteredUsers);

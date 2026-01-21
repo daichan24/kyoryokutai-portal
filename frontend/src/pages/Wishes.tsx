@@ -56,7 +56,7 @@ export const Wishes: React.FC = () => {
       try {
         const response = await api.get('/api/users');
         const memberUsers = response.data
-          .filter((u: any) => u.role === 'MEMBER' && u.name !== 'さとうだいち')
+          .filter((u: any) => u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0)
           .sort((a: any, b: any) => {
             const orderA = a.displayOrder || 0;
             const orderB = b.displayOrder || 0;

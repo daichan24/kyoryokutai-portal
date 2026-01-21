@@ -29,29 +29,56 @@ const updateScheduleSchema = createScheduleSchema.partial();
 
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { userId, date, startDate, endDate, view } = req.query;
+    const { userId, date, startDate, endDate, view, allMembers } = req.query;
     const currentUserId = req.user!.id;
 
     // 取得条件: 作成者であるか、承認済みの参加者である
-    const where: any = {
-      OR: [
-        { userId: currentUserId }, // 自分が作成したスケジュール
-        {
-          scheduleParticipants: {
-            some: {
-              userId: currentUserId,
-              status: 'APPROVED', // 承認済みの参加者
-            },
+    let where: any;
+
+    // allMembersがtrueの場合、全メンバーのスケジュールを取得（MEMBERロールのみ）
+    if (allMembers === 'true' && req.user!.role !== 'MEMBER') {
+      // 全メンバーのスケジュールを取得
+      // まず全メンバー（表示順0番目を除く）を取得
+      const members = await prisma.user.findMany({
+        where: {
+          role: 'MEMBER',
+          displayOrder: {
+            not: 0, // 表示順0番目のユーザー（テストユーザー）を除外
           },
         },
-      ],
-    };
+        select: { id: true },
+      });
+      
+      const memberIds = members.map(m => m.id);
+      
+      // 全メンバーのスケジュールを取得
+      where = {
+        userId: {
+          in: memberIds,
+        },
+      };
+    } else {
+      // 通常の取得条件: 作成者であるか、承認済みの参加者である
+      where = {
+        OR: [
+          { userId: currentUserId }, // 自分が作成したスケジュール
+          {
+            scheduleParticipants: {
+              some: {
+                userId: currentUserId,
+                status: 'APPROVED', // 承認済みの参加者
+              },
+            },
+          },
+        ],
+      };
 
-    // 既存のフィルター条件を適用
-    if (userId) {
-      // userId指定時は、そのユーザーが作成したもののみ
-      where.userId = userId as string;
-      delete where.OR; // OR条件を削除
+      // 既存のフィルター条件を適用
+      if (userId) {
+        // userId指定時は、そのユーザーが作成したもののみ
+        where.userId = userId as string;
+        delete where.OR; // OR条件を削除
+      }
     }
 
     if (date) {
@@ -87,7 +114,8 @@ router.get('/', async (req: AuthRequest, res) => {
     }
 
     // 作成者かどうかを判定（where条件から）
-    const isCreator = where.userId === currentUserId || (where.OR && where.OR[0]?.userId === currentUserId);
+    // allMembersがtrueの場合は全メンバーのスケジュールを取得するため、isCreatorはfalse
+    const isCreator = allMembers !== 'true' && (where.userId === currentUserId || (where.OR && where.OR[0]?.userId === currentUserId));
 
     const schedules = await prisma.schedule.findMany({
       where,
@@ -110,7 +138,8 @@ router.get('/', async (req: AuthRequest, res) => {
         },
         scheduleParticipants: {
           // 作成者の場合は全参加者を返す、参加者の場合は自分のみ
-          where: isCreator ? undefined : {
+          // allMembersがtrueの場合は全参加者を返す
+          where: (isCreator || allMembers === 'true') ? undefined : {
             userId: currentUserId,
           },
           include: {

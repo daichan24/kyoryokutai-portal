@@ -116,12 +116,12 @@ export const EventModal: React.FC<EventModalProps> = ({
   const fetchUsers = async () => {
     try {
       const response = await api.get<User[]>('/api/users');
-      // メンバーだけを追加できるようにする（さとうだいちは除外）
+      // メンバーだけを追加できるようにする（表示順0番目のユーザーは除外）
       const filteredUsers = (response.data || []).filter(u => {
         // メンバー以外は除外
         if (u.role !== 'MEMBER') return false;
-        // さとうだいちは除外
-        if (u.name === 'さとうだいち') return false;
+        // 表示順0番目のユーザーは除外（テストユーザー）
+        if ((u.displayOrder ?? 0) === 0) return false;
         // 自分自身は除外（共同作業者として追加するため）
         if (u.id === user?.id) return false;
         return true;

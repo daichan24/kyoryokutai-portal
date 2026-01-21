@@ -36,7 +36,7 @@ export const WeeklyReport: React.FC = () => {
       try {
         const response = await api.get('/api/users');
         const memberUsers = response.data.filter((u: any) => 
-          u.role === 'MEMBER' && u.name !== 'さとうだいち'
+          u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
         ).sort((a: any, b: any) => {
           // displayOrderでソート（小さい順）、同じ場合は名前でソート
           if (a.displayOrder !== b.displayOrder) {

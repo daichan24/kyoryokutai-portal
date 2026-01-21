@@ -24,9 +24,9 @@ export const UserFilter: React.FC<UserFilterProps> = ({
     queryFn: async () => {
       // MEMBERを優先的に取得
       const response = await api.get('/api/users?role=MEMBER');
-      // サポート・行政・マスターユーザーの場合は「さとうだいち」を除外
+      // サポート・行政・マスターユーザーの場合は表示順0番目のユーザーを除外（テストユーザー）
       const filteredUsers = (response.data || []).filter(
-        (u: User) => !(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') || u.name !== 'さとうだいち'
+        (u: User) => !(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') || (u.displayOrder ?? 0) !== 0
       );
       return filteredUsers;
     },

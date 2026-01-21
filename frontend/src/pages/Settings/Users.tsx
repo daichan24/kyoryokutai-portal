@@ -28,7 +28,6 @@ export const UsersSettings: React.FC = () => {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isUpdatingMemberName, setIsUpdatingMemberName] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -79,67 +78,6 @@ export const UsersSettings: React.FC = () => {
     }
   };
 
-  const handleUpdateMemberSatoName = async () => {
-    if (!confirm('メンバーの「佐藤大地」を「さとうだいち」に更新しますか？')) {
-      return;
-    }
-
-    setIsUpdatingMemberName(true);
-    try {
-      // まず、メンバーの「佐藤大地」を検索
-      const memberSato = allUsers.find(
-        (user) => user.role === 'MEMBER' && user.name === '佐藤大地'
-      );
-
-      if (!memberSato) {
-        // 「さとうだいち」が既に存在するか確認
-        const memberSatoHiragana = allUsers.find(
-          (user) => user.role === 'MEMBER' && user.name === 'さとうだいち'
-        );
-
-        if (memberSatoHiragana) {
-          alert('ℹ️ メンバー「さとうだいち」は既に存在しています。');
-          return;
-        } else {
-          alert('ℹ️ メンバー「佐藤大地」は見つかりませんでした。');
-          return;
-        }
-      }
-
-      // 既存のユーザー更新APIを使用して名前を更新
-      await api.put(`/api/users/${memberSato.id}`, {
-        name: 'さとうだいち',
-      });
-
-      alert(`✅ ユーザー ${memberSato.email} の名前を「佐藤大地」から「さとうだいち」に更新しました`);
-      await fetchUsers(); // 一覧を再取得
-    } catch (error: any) {
-      console.error('Failed to update member name:', error);
-      console.error('Error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        url: error.config?.url,
-        baseURL: error.config?.baseURL,
-      });
-      
-      let errorMessage = '更新に失敗しました';
-      if (error.response?.status === 404) {
-        errorMessage = 'ユーザーが見つかりませんでした。';
-      } else if (error.response?.status === 403) {
-        errorMessage = '権限がありません。MASTERロールでログインしている必要があります。';
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      alert('❌ エラー: ' + errorMessage);
-    } finally {
-      setIsUpdatingMemberName(false);
-    }
-  };
-
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -182,15 +120,6 @@ export const UsersSettings: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
         <div className="flex gap-3">
-          {currentUser?.role === 'MASTER' && (
-            <Button
-              variant="outline"
-              onClick={handleUpdateMemberSatoName}
-              disabled={isUpdatingMemberName}
-            >
-              {isUpdatingMemberName ? '更新中...' : 'メンバー名更新（佐藤→さとう）'}
-            </Button>
-          )}
           {canCreateUser && (
             <Button onClick={() => setIsModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />

@@ -40,6 +40,8 @@ export const Schedule: React.FC = () => {
   const [defaultEndTime, setDefaultEndTime] = useState<string | undefined>(undefined);
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>([]);
+  const [calendarViewMode, setCalendarViewMode] = useState<'individual' | 'all'>('individual'); // カレンダー表示モード: 個人 or 全体
+  const [projectViewMode, setProjectViewMode] = useState<'view' | 'personal'>('view'); // プロジェクト表示モード: 閲覧 or 個人（メンバー以外のみ）
 
   useEffect(() => {
     if (viewMode === 'week') {
@@ -55,7 +57,7 @@ export const Schedule: React.FC = () => {
       fetchEvents();
       fetchProjects();
     }
-  }, [weekDates]);
+  }, [weekDates, calendarViewMode, projectViewMode]);
 
   // スケジュール更新イベントをリッスン
   useEffect(() => {
@@ -73,6 +75,12 @@ export const Schedule: React.FC = () => {
         endDate: formatDate(weekDates[weekDates.length - 1]),
         view: viewMode,
       });
+      
+      // 全体表示の場合はallMembers=trueを追加
+      if (calendarViewMode === 'all' && user?.role !== 'MEMBER') {
+        params.append('allMembers', 'true');
+      }
+      
       const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
       const data = response.data;
       setSchedules(Array.isArray(data) ? data : []);
@@ -108,7 +116,15 @@ export const Schedule: React.FC = () => {
     try {
       const startDate = formatDate(weekDates[0]);
       const endDate = formatDate(weekDates[weekDates.length - 1]);
-      const response = await api.get<Project[]>('/api/projects');
+      
+      // プロジェクト表示モードに応じて取得
+      let url = '/api/projects';
+      if (projectViewMode === 'personal' && user?.role !== 'MEMBER') {
+        // 個人モード: 自分のプロジェクトのみ
+        url = `/api/projects?userId=${user?.id}`;
+      }
+      
+      const response = await api.get<Project[]>(url);
       const allProjects = response.data || [];
       
       // 表示期間内のプロジェクトのみフィルタリング（開始日または終了日が期間内にあるもの）
@@ -228,6 +244,35 @@ export const Schedule: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             新規作成
           </Button>
+        </div>
+      </div>
+
+      {/* カレンダー表示モード切り替え（全役職） */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCalendarViewMode('individual')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                calendarViewMode === 'individual'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              個人
+            </button>
+            <button
+              onClick={() => setCalendarViewMode('all')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                calendarViewMode === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              全体
+            </button>
+          </div>
         </div>
       </div>
 
@@ -421,9 +466,36 @@ export const Schedule: React.FC = () => {
         {/* プロジェクトの複数日にわたるスケジュール表示（＋タスク一覧） */}
         {projects.length > 0 && (
           <div className="mt-6 space-y-2">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              進行中のプロジェクト
-            </h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                進行中のプロジェクト
+              </h3>
+              {/* メンバー以外の役職で閲覧・個人切り替え */}
+              {user?.role !== 'MEMBER' && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setProjectViewMode('view')}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      projectViewMode === 'view'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    閲覧
+                  </button>
+                  <button
+                    onClick={() => setProjectViewMode('personal')}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      projectViewMode === 'personal'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    個人
+                  </button>
+                </div>
+              )}
+            </div>
             {projects.map((project) => {
               const projectStartDate = project.startDate ? new Date(project.startDate) : null;
               const projectEndDate = project.endDate ? new Date(project.endDate) : null;

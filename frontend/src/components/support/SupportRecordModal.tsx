@@ -41,9 +41,9 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
     queryKey: ['users'],
     queryFn: async () => {
       const response = await api.get('/api/users');
-      // メンバーのみに限定し、佐藤大地を除外
+      // メンバーのみに限定し、表示順0番目のユーザーを除外（テストユーザー）
       return response.data.filter((user: User) => 
-        user.role === 'MEMBER' && user.name !== 'さとうだいち'
+        user.role === 'MEMBER' && (user.displayOrder ?? 0) !== 0
       );
     },
   });

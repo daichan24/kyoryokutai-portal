@@ -112,7 +112,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     queryFn: async () => {
       const response = await api.get('/api/users');
       return response.data.filter((u: any) => 
-        u.role === 'MEMBER' && u.name !== 'さとうだいち'
+        u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
       ).sort((a: any, b: any) => {
         const orderA = a.displayOrder || 0;
         const orderB = b.displayOrder || 0;

@@ -78,10 +78,10 @@ export const EventDetail: React.FC = () => {
     queryKey: ['users'],
     queryFn: async () => {
       const response = await api.get('/api/users');
-      // 既に参加しているメンバーを除外
+      // 既に参加しているメンバーを除外し、表示順0番目のユーザーも除外（テストユーザー）
       const participationUserIds = event?.participations.map(p => p.user.id) || [];
       return (response.data || []).filter((u: User) => 
-        !participationUserIds.includes(u.id) && u.name !== 'さとうだいち'
+        !participationUserIds.includes(u.id) && (u.displayOrder ?? 0) !== 0
       );
     },
     enabled: !!event,
