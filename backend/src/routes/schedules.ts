@@ -18,7 +18,8 @@ const createScheduleSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   locationText: z.string().optional(),
-  activityDescription: z.string().min(1),
+  title: z.string().max(200).optional(), // タイトル（短い説明）
+  activityDescription: z.string().min(1), // 活動内容（詳細）
   freeNote: z.string().optional(),
   isPending: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),
@@ -197,38 +198,27 @@ router.post('/', async (req: AuthRequest, res) => {
       participantIds: participantIds.length,
     });
     
-    // startDateとendDateが存在するか確認してから使用
-    const scheduleData: any = {
-      userId: creatorId,
-      date: startDate, // 後方互換性のため
-      startTime: data.startTime,
-      endTime: data.endTime,
-      locationText: data.locationText || null, // 空文字列の場合はnullに変換
-      activityDescription: data.activityDescription,
-      freeNote: data.freeNote || null, // 空文字列の場合はnullに変換
-      isPending: data.isPending || false,
-      projectId: data.projectId || null,
-      taskId: data.taskId || null,
-      scheduleParticipants: participantIds.length > 0 ? {
-        create: participantIds.map((userId) => ({
-          userId,
-          status: 'PENDING',
-        })),
-      } : undefined,
-    };
-
-    // startDateとendDateカラムが存在する場合のみ追加（マイグレーション適用後）
-    try {
-      // マイグレーションが適用されているか確認するため、startDateとendDateを追加
-      scheduleData.startDate = startDate;
-      scheduleData.endDate = endDate;
-    } catch (e) {
-      // マイグレーションが適用されていない場合は、dateのみを使用
-      console.warn('startDate/endDate columns may not exist yet, using date only');
-    }
-
     const schedule = await prisma.schedule.create({
-      data: scheduleData,
+      data: {
+        userId: creatorId,
+        date: startDate, // 後方互換性のため
+        startDate: startDate,
+        endDate: endDate,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        locationText: data.locationText || null, // 空文字列の場合はnullに変換
+        activityDescription: data.activityDescription,
+        freeNote: data.freeNote || null, // 空文字列の場合はnullに変換
+        isPending: data.isPending || false,
+        projectId: data.projectId || null,
+        taskId: data.taskId || null,
+        scheduleParticipants: participantIds.length > 0 ? {
+          create: participantIds.map((userId) => ({
+            userId,
+            status: 'PENDING',
+          })),
+        } : undefined,
+      },
       include: {
         user: {
           select: {

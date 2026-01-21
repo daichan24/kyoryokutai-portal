@@ -37,7 +37,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
   const [locationText, setLocationText] = useState('');
-  const [activityDescription, setActivityDescription] = useState('');
+  const [title, setTitle] = useState(''); // タイトル（短い説明）
+  const [activityDescription, setActivityDescription] = useState(''); // 活動内容（詳細）
   const [freeNote, setFreeNote] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -63,6 +64,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setStartTime(schedule.startTime);
       setEndTime(schedule.endTime);
       setLocationText(schedule.locationText || '');
+      setTitle(schedule.title || '');
       setActivityDescription(schedule.activityDescription);
       setFreeNote(schedule.freeNote || '');
       setSelectedTaskId(schedule.taskId || null);
@@ -199,6 +201,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       };
 
       // オプショナルフィールドは値がある場合のみ追加
+      if (title && title.trim()) {
+        data.title = title.trim();
+      }
       if (locationText && locationText.trim()) {
         data.locationText = locationText.trim();
       }
@@ -505,6 +510,20 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              タイトル（任意）
+            </label>
+            <Input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="スケジュールのタイトルを入力"
+              maxLength={200}
+              readOnly={readOnly}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               活動内容 <span className="text-error dark:text-red-400">*</span>
             </label>
             <textarea
@@ -513,6 +532,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               required
               rows={4}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              placeholder="活動内容の詳細を入力"
               readOnly={readOnly}
             />
           </div>

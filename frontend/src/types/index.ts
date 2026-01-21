@@ -41,7 +41,8 @@ export interface Schedule {
   startTime: string;
   endTime: string;
   locationText?: string;
-  activityDescription: string;
+  title?: string; // タイトル（短い説明）
+  activityDescription: string; // 活動内容（詳細）
   freeNote?: string;
   isPending: boolean;
   projectId?: string;

@@ -115,7 +115,8 @@ model Schedule {
   taskId String?
   task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
 
-  activityDescription String   @db.Text
+  title                String?  @db.VarChar(200) // タイトル（短い説明）
+  activityDescription String   @db.Text // 活動内容（詳細）
   participants        String[] // User IDの配列（後方互換性のため残す）
   freeNote            String?  @db.Text
 

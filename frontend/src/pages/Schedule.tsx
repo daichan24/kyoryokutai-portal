@@ -389,21 +389,32 @@ export const Schedule: React.FC = () => {
                 hoveredTaskId != null &&
                 daySchedules.some((s) => s.taskId && s.taskId === hoveredTaskId);
 
-              // 全体表示の場合、5件以降は「+N件」表示
+              // 5件まで表示、それ以降は「他◯件」表示
               const MAX_VISIBLE_SCHEDULES = 5;
-              const visibleSchedules = calendarViewMode === 'all' 
-                ? daySchedules.slice(0, MAX_VISIBLE_SCHEDULES)
-                : daySchedules;
-              const remainingCount = calendarViewMode === 'all' && daySchedules.length > MAX_VISIBLE_SCHEDULES
+              const visibleSchedules = daySchedules.slice(0, MAX_VISIBLE_SCHEDULES);
+              const remainingCount = daySchedules.length > MAX_VISIBLE_SCHEDULES
                 ? daySchedules.length - MAX_VISIBLE_SCHEDULES
                 : 0;
 
-              // 全体表示の場合の色：ユーザー色を使用
+              // 色の取得：個人モードはスケジュール色、全体モードはユーザー色
               const getScheduleColor = (schedule: ScheduleType) => {
                 if (calendarViewMode === 'all') {
                   return schedule.user?.avatarColor || '#6B7280';
                 }
                 return schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+              };
+
+              // 背景色に応じたテキスト色を取得（白または黒）
+              const getTextColor = (backgroundColor: string) => {
+                // HEXカラーをRGBに変換
+                const hex = backgroundColor.replace('#', '');
+                const r = parseInt(hex.substr(0, 2), 16);
+                const g = parseInt(hex.substr(2, 2), 16);
+                const b = parseInt(hex.substr(4, 2), 16);
+                // 輝度を計算（0.299*R + 0.587*G + 0.114*B）
+                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                // 輝度が128より大きい場合は黒、小さい場合は白
+                return brightness > 128 ? 'text-gray-900' : 'text-white';
               };
 
               // 他の人のスケジュールかどうかを判定
@@ -414,12 +425,13 @@ export const Schedule: React.FC = () => {
               return (
                 <div
                   key={index}
-                  className={`border rounded-lg p-3 min-h-[120px] ${dayBgColor} ${
+                  className={`border rounded-lg p-3 ${dayBgColor} ${
                     isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300' : 'border-border'
                   } ${calendarViewMode === 'all' && daySchedules.length > 0 ? 'cursor-pointer' : ''}`}
+                  style={{ height: '140px', display: 'flex', flexDirection: 'column' }}
                   onClick={calendarViewMode === 'all' && daySchedules.length > 0 ? () => setSelectedDateForDetail(date) : undefined}
                 >
-                  <div className="text-center mb-2">
+                  <div className="text-center mb-2 flex-shrink-0">
                     <p className={`text-xs ${dayLabelColor}`}>
                       {formatDate(date, 'E')}
                     </p>
@@ -430,13 +442,14 @@ export const Schedule: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-1 flex-1 overflow-hidden">
                     {/* スケジュール表示 */}
                     {visibleSchedules.map((schedule) => {
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
                       const scheduleColor = getScheduleColor(schedule);
                       const isOtherUser = isOtherUserSchedule(schedule);
                       const isReadOnly = calendarViewMode === 'all' && isOtherUser;
+                      const textColor = getTextColor(scheduleColor);
                       
                       return (
                         <button
@@ -451,28 +464,22 @@ export const Schedule: React.FC = () => {
                               handleEditSchedule(schedule);
                             }
                           }}
-                          className="w-full text-left p-2 rounded text-xs border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800"
+                          className="w-full text-left px-2 py-1 rounded text-xs hover:opacity-90 transition-opacity"
                           style={{
-                            borderLeftWidth: '3px',
-                            borderLeftColor: scheduleColor,
+                            backgroundColor: scheduleColor,
+                            color: textColor === 'text-white' ? '#ffffff' : '#111827',
                           }}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">
-                                {schedule.activityDescription}
-                              </p>
-                              <p className="text-gray-600 dark:text-gray-400">
-                                {schedule.startTime}-{schedule.endTime}
-                              </p>
-                              {calendarViewMode === 'all' && schedule.user && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {schedule.user.name}
-                                </p>
-                              )}
-                            </div>
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="font-medium whitespace-nowrap">{schedule.startTime}-{schedule.endTime}</span>
+                            <span className="truncate">{schedule.activityDescription}</span>
+                            {calendarViewMode === 'all' && schedule.user && (
+                              <span className="whitespace-nowrap">（{schedule.user.name}）</span>
+                            )}
                             {participantCount > 0 && (
-                              <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded whitespace-nowrap">
+                              <span className="ml-auto text-xs px-1 rounded whitespace-nowrap" style={{
+                                backgroundColor: textColor === 'text-white' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)',
+                              }}>
                                 +{participantCount}
                               </span>
                             )}
@@ -481,16 +488,16 @@ export const Schedule: React.FC = () => {
                       );
                     })}
                     
-                    {/* 残りのスケジュール数表示（全体表示の場合） */}
+                    {/* 残りのスケジュール数表示 */}
                     {remainingCount > 0 && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDateForDetail(date);
                         }}
-                        className="w-full text-center p-2 rounded text-xs border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium"
+                        className="w-full text-center px-2 py-1 rounded text-xs border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium"
                       >
-                        +{remainingCount}件
+                        他{remainingCount}件
                       </button>
                     )}
                     
@@ -609,9 +616,17 @@ export const Schedule: React.FC = () => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {project.projectName}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                          {project.projectName}
+                        </p>
+                        {/* メンバー以外の役職で閲覧モード時のみ所有者名を表示 */}
+                        {user?.role !== 'MEMBER' && projectViewMode === 'view' && project.user && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            （{project.user.name}）
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                         {formatDate(displayStartDate, 'M月d日')} 〜 {formatDate(displayEndDate, 'M月d日')} まで進行中
                       </p>
