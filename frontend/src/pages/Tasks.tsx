@@ -84,7 +84,7 @@ export const Tasks: React.FC = () => {
 
   // タスク一覧を取得（各Projectから取得）
   const { data: allTasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ['tasks', 'all', selectedUserId, user?.id, user?.role],
+    queryKey: ['tasks', 'all', selectedUserId, user?.id, user?.role, viewMode],
     queryFn: async () => {
       // 各ProjectからTaskを取得
       const tasks: Task[] = [];
@@ -103,12 +103,17 @@ export const Tasks: React.FC = () => {
       if (user?.role === 'MEMBER') {
         return tasks.filter((task) => task.userId === user.id);
       }
-      if (selectedUserId) {
+      // 閲覧モード: 選択したユーザーのタスクのみ表示
+      if (viewMode === 'view' && selectedUserId) {
         return tasks.filter((task) => task.userId === selectedUserId);
+      }
+      // 作成モード: 自分のタスクのみ表示
+      if (viewMode === 'create' && user?.id) {
+        return tasks.filter((task) => task.userId === user.id);
       }
       return tasks;
     },
-    enabled: projects.length > 0,
+    enabled: projects.length > 0 && (!!user?.id || viewMode === 'view'),
   });
 
   // フィルタリング・ソート
