@@ -209,7 +209,7 @@ router.post('/', async (req: AuthRequest, res) => {
         endTime: data.endTime,
         locationText: data.locationText || null, // 空文字列の場合はnullに変換
         title: data.title, // タイトル（必須）
-        activityDescription: data.activityDescription || null, // 活動内容（任意）
+        activityDescription: data.activityDescription || '', // 活動内容（任意、空文字列の場合は空文字列）
         freeNote: data.freeNote || null, // 空文字列の場合はnullに変換
         isPending: data.isPending || false,
         projectId: data.projectId || null,
@@ -261,7 +261,7 @@ router.post('/', async (req: AuthRequest, res) => {
             await notifyScheduleInvite(
               participantId,
               creator?.name || 'ユーザー',
-              data.activityDescription,
+              data.activityDescription || data.title, // 活動内容がない場合はタイトルを使用
               schedule.id,
               startAt,
               endAt
