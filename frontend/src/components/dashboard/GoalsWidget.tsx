@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useAuthStore } from '../../stores/authStore';
+import { useStaffWorkspace } from '../../stores/workspaceStore';
 
 interface Goal {
   id: string;
@@ -33,13 +34,20 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
   viewMode = 'personal', // デフォルトは個人
 }) => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
+  const effectiveViewMode = isStaff
+    ? workspaceMode === 'browse'
+      ? 'view'
+      : 'personal'
+    : viewMode;
+
   const { data: goals, isLoading } = useQuery<Goal[]>({
-    queryKey: ['goals-widget', viewMode, user?.id],
+    queryKey: ['goals-widget', effectiveViewMode, user?.id, isStaff ? workspaceMode : 'member'],
     queryFn: async () => {
       let url = '/api/missions';
       
       // 閲覧モード: 選択したユーザーのミッションを表示（MEMBERは自分のみ）
-      if (viewMode === 'view') {
+      if (effectiveViewMode === 'view') {
         if (user?.role === 'MEMBER') {
           url = `/api/missions?userId=${user.id}`;
         } else {
@@ -75,7 +83,7 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4 h-full flex flex-col">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          ミッション{viewMode === 'view' ? '（閲覧）' : '（個人）'}
+          ミッション{effectiveViewMode === 'view' ? '（閲覧）' : '（個人）'}
         </h3>
         {(displayMode === 'view-with-add' || showAddButton) && (user?.role === 'MEMBER' || user?.role === 'MASTER') && (
           <Link to="/missions">

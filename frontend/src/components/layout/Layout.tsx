@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { useAuthStore } from '../../stores/authStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,6 +10,17 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const hydrateForUser = useWorkspaceStore((s) => s.hydrateForUser);
+  const clearHydration = useWorkspaceStore((s) => s.clearHydration);
+
+  useEffect(() => {
+    if (!user) {
+      clearHydration();
+      return;
+    }
+    hydrateForUser(user.id, user.role);
+  }, [user, hydrateForUser, clearHydration]);
 
   return (
     <div className="h-screen flex flex-col bg-background dark:bg-gray-900">

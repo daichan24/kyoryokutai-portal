@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import {
   notifyScheduleInvite,
   notifyScheduleInviteApproved,
@@ -11,6 +11,125 @@ import {
 const router = Router();
 
 router.use(authenticate);
+
+// マスター・役場・サポート向け：面談で月次スケジュールを振り返る用
+router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, res) => {
+  try {
+    const userId = typeof req.query.userId === 'string' ? req.query.userId : '';
+    const month = typeof req.query.month === 'string' ? req.query.month : '';
+    if (!userId || !/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ error: 'userId と month（YYYY-MM形式）が必要です' });
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, role: true, avatarColor: true },
+    });
+    if (!target || target.role !== 'MEMBER') {
+      return res.status(404).json({ error: '隊員が見つかりません' });
+    }
+
+    const [ys, ms] = month.split('-');
+    const y = parseInt(ys, 10);
+    const m = parseInt(ms, 10);
+    if (m < 1 || m > 12) {
+      return res.status(400).json({ error: '無効な月です' });
+    }
+
+    const monthStart = new Date(y, m - 1, 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(y, m, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+
+    const monthStartDay = new Date(y, m - 1, 1);
+    const monthEndDay = new Date(y, m, 0);
+
+    const schedules = await prisma.schedule.findMany({
+      where: {
+        userId,
+        isTemplate: false,
+        startDate: { lte: monthEndDay },
+        endDate: { gte: monthStartDay },
+      },
+      include: {
+        project: { select: { id: true, projectName: true, themeColor: true } },
+        location: { select: { id: true, name: true } },
+        scheduleParticipants: {
+          include: {
+            user: { select: { id: true, name: true, avatarColor: true, role: true } },
+          },
+        },
+      },
+      orderBy: [{ startDate: 'asc' }, { startTime: 'asc' }],
+    });
+
+    const weeklyReports = await prisma.weeklyReport.findMany({
+      where: {
+        userId,
+        submittedAt: { gte: monthStart, lte: monthEnd },
+      },
+      select: {
+        id: true,
+        week: true,
+        nextWeekPlan: true,
+        note: true,
+        thisWeekActivities: true,
+        submittedAt: true,
+      },
+      orderBy: { submittedAt: 'asc' },
+    });
+
+    const legacyIds = new Set<string>();
+    for (const s of schedules) {
+      for (const pid of s.participants || []) {
+        if (pid) legacyIds.add(pid);
+      }
+    }
+    const knownFromRelation = new Set<string>();
+    for (const s of schedules) {
+      for (const p of s.scheduleParticipants) {
+        knownFromRelation.add(p.userId);
+      }
+    }
+    const missingLegacy = [...legacyIds].filter((id) => !knownFromRelation.has(id));
+    const legacyUsers =
+      missingLegacy.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: missingLegacy } },
+            select: { id: true, name: true, avatarColor: true, role: true },
+          })
+        : [];
+    const legacyMap = Object.fromEntries(legacyUsers.map((u) => [u.id, u]));
+
+    res.json({
+      member: { id: target.id, name: target.name, avatarColor: target.avatarColor },
+      month,
+      range: { from: monthStart.toISOString(), to: monthEnd.toISOString() },
+      schedules: schedules.map((s) => ({
+        id: s.id,
+        startDate: s.startDate,
+        endDate: s.endDate,
+        date: s.date,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        shortTitle: (s as { title?: string | null }).title ?? null,
+        activityDescription: s.activityDescription,
+        freeNote: s.freeNote,
+        locationText: s.locationText,
+        location: s.location,
+        project: s.project,
+        scheduleParticipants: s.scheduleParticipants,
+        legacyParticipantUsers: (s.participants || [])
+          .filter((id) => id && legacyMap[id])
+          .map((id) => legacyMap[id]),
+      })),
+      weeklyReports,
+    });
+  } catch (error) {
+    console.error('for-interview-month error:', error);
+    res.status(500).json({ error: 'スケジュールの取得に失敗しました' });
+  }
+});
 
 const createScheduleSchema = z.object({
   date: z.string(),

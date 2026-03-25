@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
+import { useStaffWorkspace } from '../stores/workspaceStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskModal } from '../components/project/TaskModal';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
@@ -13,6 +14,7 @@ import { Task, Project, Mission } from '../types';
 
 export const Tasks: React.FC = () => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -25,13 +27,21 @@ export const Tasks: React.FC = () => {
   const [filterProject, setFilterProject] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>('deadline'); // deadline, status, project, created
-  const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
   const [displayMode, setDisplayMode] = useState<'card' | 'list'>('card');
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
+  const viewMode: 'view' | 'create' =
+    user?.role === 'MEMBER'
+      ? 'view'
+      : isStaff
+        ? workspaceMode === 'browse'
+          ? 'view'
+          : 'create'
+        : 'view';
+
   // プロジェクト一覧を取得（Taskの紐づき情報用）
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['projects', selectedUserId, viewMode, user?.id],
+    queryKey: ['projects', selectedUserId, viewMode, user?.id, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
       let url = '/api/projects';
       
@@ -81,11 +91,14 @@ export const Tasks: React.FC = () => {
 
   // ミッション一覧を取得（breadcrumb用）
   const { data: missions = [] } = useQuery<Mission[]>({
-    queryKey: ['missions'],
+    queryKey: ['missions', 'tasks-page', user?.id, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
-      const url = user?.role === 'MEMBER' 
-        ? `/api/missions?userId=${user.id}`
-        : '/api/missions';
+      let url = '/api/missions';
+      if (user?.role === 'MEMBER') {
+        url = `/api/missions?userId=${user.id}`;
+      } else if (isStaff && workspaceMode === 'personal') {
+        url = `/api/missions?userId=${user!.id}`;
+      }
       const response = await api.get(url);
       return response.data;
     },
@@ -93,7 +106,7 @@ export const Tasks: React.FC = () => {
 
   // タスク一覧を取得（各Projectから取得）
   const { data: allTasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ['tasks', 'all', selectedUserId, user?.id, user?.role, viewMode],
+    queryKey: ['tasks', 'all', selectedUserId, user?.id, user?.role, viewMode, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
       // 各ProjectからTaskを取得
       const tasks: Task[] = [];
@@ -304,29 +317,10 @@ export const Tasks: React.FC = () => {
           </Button>
         </div>
         <div className="flex gap-3">
-          {isNonMember && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('view')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'view'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                閲覧
-              </button>
-              <button
-                onClick={() => setViewMode('create')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'create'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                個人
-              </button>
-            </div>
+          {isNonMember && isStaff && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md text-right">
+              閲覧／個人はダッシュボードに連動（現在: {workspaceMode === 'browse' ? '閲覧' : '個人'}）
+            </p>
           )}
           {showCreateButton && (
             <Button 

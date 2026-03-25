@@ -28,6 +28,7 @@ import { Inspections } from './pages/Inspections';
 import { Contacts } from './pages/Contacts';
 import { MonthlyReport } from './pages/MonthlyReport';
 import { SupportRecords } from './pages/SupportRecords';
+import { InterviewMonthlySchedules } from './pages/InterviewMonthlySchedules';
 import { Wishes } from './pages/Wishes';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 
@@ -286,6 +287,17 @@ const App: React.FC = () => {
           <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
             <Layout>
               <SupportRecords />
+            </Layout>
+          </RoleProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/interview/monthly-schedules"
+        element={
+          <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT', 'GOVERNMENT']}>
+            <Layout>
+              <InterviewMonthlySchedules />
             </Layout>
           </RoleProtectedRoute>
         }

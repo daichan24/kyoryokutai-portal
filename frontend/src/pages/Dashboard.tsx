@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, FileText, Clock, Inbox, Check, X, Settings } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useStaffWorkspace, type StaffWorkspaceMode } from '../stores/workspaceStore';
 import { api } from '../utils/api';
 import { Schedule } from '../types';
 import { formatDate, getWeekRange } from '../utils/date';
@@ -76,6 +77,26 @@ interface DashboardConfig {
 export const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const { isStaff, workspaceMode, setWorkspaceMode } = useStaffWorkspace();
+
+  const invalidateDataScopeQueries = useCallback(() => {
+    const keys: (string | string[])[] = [
+      'missions',
+      'projects',
+      'tasks',
+      'schedules',
+      'goals-widget',
+      'projects-widget',
+      'tasks-widget',
+      'wishes',
+      'requests',
+      'sns-posts',
+      'sns-weekly-status',
+      'inbox',
+    ];
+    keys.forEach((k) => queryClient.invalidateQueries({ queryKey: Array.isArray(k) ? k : [k] }));
+  }, [queryClient]);
+
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyScheduleCount, setWeeklyScheduleCount] = useState<3 | 5 | 10>(5);
@@ -163,9 +184,51 @@ export const Dashboard: React.FC = () => {
     staleTime: 30000, // 30秒間キャッシュ
   });
 
+  const fetchThisWeekSchedules = useCallback(async () => {
+    if (!user) {
+      setSchedules([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const { start, end } = getWeekRange();
+      const params = new URLSearchParams({
+        startDate: formatDate(start),
+        endDate: formatDate(end),
+      });
+
+      if (user.role === 'MEMBER') {
+        params.append('userId', user.id);
+      } else if (
+        isStaff &&
+        workspaceMode === 'browse'
+      ) {
+        params.append('allMembers', 'true');
+      }
+
+      const response = await api.get<Schedule[]>(`/api/schedules?${params}`);
+      const data = response.data;
+      setSchedules(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch schedules:', error);
+      setSchedules([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, isStaff, workspaceMode]);
+
+  const applyWorkspaceMode = useCallback(
+    (mode: StaffWorkspaceMode) => {
+      setWorkspaceMode(mode);
+      invalidateDataScopeQueries();
+    },
+    [setWorkspaceMode, invalidateDataScopeQueries]
+  );
+
   useEffect(() => {
     fetchThisWeekSchedules();
-  }, [user]);
+  }, [fetchThisWeekSchedules]);
 
   // 週次スケジュール表示数の設定を反映
   useEffect(() => {
@@ -174,30 +237,6 @@ export const Dashboard: React.FC = () => {
     }
   }, [dashboardConfig]);
 
-  const fetchThisWeekSchedules = async () => {
-    try {
-      const { start, end } = getWeekRange();
-      const params = new URLSearchParams({
-        startDate: formatDate(start),
-        endDate: formatDate(end),
-      });
-
-      // MEMBERの場合は自分のスケジュールのみ、他は全員のスケジュール
-      if (user?.role === 'MEMBER') {
-        params.append('userId', user.id);
-      }
-
-      const response = await api.get<Schedule[]>(`/api/schedules?${params}`);
-      const data = response.data;
-      // 配列であることを確認
-      setSchedules(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to fetch schedules:', error);
-      setSchedules([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // スケジュール招待への応答
   const handleScheduleInviteResponse = async (scheduleId: string, decision: 'APPROVED' | 'REJECTED') => {
@@ -293,6 +332,19 @@ export const Dashboard: React.FC = () => {
     .filter((w) => w.enabled)
     .sort((a, b) => a.order - b.order) || []).slice();
 
+  const isStaffUser =
+    user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT';
+  if (isStaffUser) {
+    const goalWidgetKeys = new Set(['goals', 'goals-personal', 'goals-view']);
+    let goalWidgetKept = false;
+    enabledWidgets = enabledWidgets.filter((w) => {
+      if (!goalWidgetKeys.has(w.key)) return true;
+      if (goalWidgetKept) return false;
+      goalWidgetKept = true;
+      return true;
+    });
+  }
+
   // カラムルールを守るため、ウィジェットを再配置
   // 1カラム(幅広)ウィジェットが偶数番目(右側)になる場合、はみ出しを防ぐため前のウィジェットと入れ替え
   // また、連続する幅広ウィジェットが2つ以上ある場合は、次の行に配置
@@ -346,6 +398,43 @@ export const Dashboard: React.FC = () => {
           カスタマイズ
         </Button>
       </div>
+
+      {isStaff && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-border dark:border-gray-700 p-4 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">表示モード（個人 / 閲覧）</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed max-w-2xl">
+                ミッション・プロジェクト・タスク・スケジュール・SNS・やりたいこと・依頼ボックスなど、画面全体で同じ基準が使われます。ここで選んだモードはこのブラウザに保存され、次回ログイン時も維持されます。
+              </p>
+            </div>
+            <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 p-1 bg-gray-50 dark:bg-gray-900/60 shrink-0">
+              <button
+                type="button"
+                onClick={() => applyWorkspaceMode('personal')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  workspaceMode === 'personal'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200/80 dark:hover:bg-gray-700'
+                }`}
+              >
+                個人
+              </button>
+              <button
+                type="button"
+                onClick={() => applyWorkspaceMode('browse')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  workspaceMode === 'browse'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200/80 dark:hover:bg-gray-700'
+                }`}
+              >
+                閲覧
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Link

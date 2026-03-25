@@ -20,6 +20,7 @@ import {
   Check,
   ListChecks,
   HardDrive,
+  NotebookPen,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -68,13 +69,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       { to: '/reports/weekly', icon: FileText, label: '週次報告' },
       { to: '/inspections', icon: Eye, label: '視察記録' },
     ];
-    // SUPPORT/MASTERのみ月次報告を追加
     if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
       items.splice(1, 0, { to: '/reports/monthly', icon: FileBarChart, label: '月次報告' });
-      // SUPPORT/MASTERのみ支援内容を追加
-      if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
-        items.push({ to: '/support-records', icon: UserCheck, label: '支援内容' });
-      }
+      items.push({ to: '/support-records', icon: UserCheck, label: '支援内容' });
+    }
+    if (user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') {
+      items.push({
+        to: '/interview/monthly-schedules',
+        icon: NotebookPen,
+        label: '面談用（月間スケジュール）',
+      });
     }
     return items;
   };

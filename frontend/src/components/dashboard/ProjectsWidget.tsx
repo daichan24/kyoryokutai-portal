@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { useStaffWorkspace } from '../../stores/workspaceStore';
 
 interface Project {
   id: string;
@@ -25,11 +26,20 @@ export const ProjectsWidget: React.FC<ProjectsWidgetProps> = ({
   onAddClick,
 }) => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
   const { data: projects, isLoading } = useQuery<Project[]>({
-    queryKey: ['projects-widget'],
+    queryKey: ['projects-widget', user?.id, isStaff ? workspaceMode : 'member'],
     queryFn: async () => {
+      if (user?.role === 'MEMBER') {
+        const response = await api.get(`/api/projects?userId=${user.id}`);
+        return (response.data || []).slice(0, 5);
+      }
+      if (isStaff && workspaceMode === 'personal') {
+        const response = await api.get(`/api/projects?userId=${user!.id}`);
+        return (response.data || []).slice(0, 5);
+      }
       const response = await api.get('/api/projects');
-      return (response.data || []).slice(0, 5); // 最新5件
+      return (response.data || []).slice(0, 5);
     },
   });
 

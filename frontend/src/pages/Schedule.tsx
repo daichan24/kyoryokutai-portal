@@ -9,6 +9,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { useAuthStore } from '../stores/authStore';
+import { useStaffWorkspace } from '../stores/workspaceStore';
 
 type ViewMode = 'week' | 'month';
 
@@ -25,6 +26,7 @@ interface Event {
 
 export const Schedule: React.FC = () => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<ScheduleType[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -40,11 +42,27 @@ export const Schedule: React.FC = () => {
   const [defaultEndTime, setDefaultEndTime] = useState<string | undefined>(undefined);
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>([]);
-  const [calendarViewMode, setCalendarViewMode] = useState<'individual' | 'all'>('individual'); // カレンダー表示モード: 個人 or 全体
-  const [projectViewMode, setProjectViewMode] = useState<'view' | 'personal'>('view'); // プロジェクト表示モード: 閲覧 or 個人（メンバー以外のみ）
+  /** 隊員向け: 月表示の個人/全体。マスター等はダッシュボードのモードを使用 */
+  const [calendarViewModeMember, setCalendarViewModeMember] = useState<'individual' | 'all'>('individual');
+  const calendarViewMode = isStaff
+    ? workspaceMode === 'browse'
+      ? 'all'
+      : 'individual'
+    : calendarViewModeMember;
+  const projectViewMode: 'view' | 'personal' = isStaff
+    ? workspaceMode === 'browse'
+      ? 'view'
+      : 'personal'
+    : 'personal';
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<Date | null>(null); // 詳細表示用の選択日
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null); // 週表示の個人モードで選択されたメンバーID
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
+
+  useEffect(() => {
+    if (isStaff && workspaceMode === 'browse') {
+      setSelectedMemberId(null);
+    }
+  }, [isStaff, workspaceMode]);
 
   useEffect(() => {
     if (viewMode === 'week') {
@@ -60,7 +78,7 @@ export const Schedule: React.FC = () => {
       fetchEvents();
       fetchProjects();
     }
-  }, [weekDates, calendarViewMode, selectedMemberId, user?.id]);
+  }, [weekDates, calendarViewMode, selectedMemberId, user?.id, isStaff, workspaceMode]);
 
   // メンバーリストを取得（週表示用）
   useEffect(() => {
@@ -89,7 +107,7 @@ export const Schedule: React.FC = () => {
       console.log('Fetching projects with mode:', projectViewMode, 'weekDates:', weekDates.length);
       fetchProjects();
     }
-  }, [projectViewMode, weekDates, user?.id]);
+  }, [projectViewMode, weekDates, user?.id, isStaff, workspaceMode]);
 
   // スケジュール更新イベントをリッスン
   useEffect(() => {
@@ -115,12 +133,11 @@ export const Schedule: React.FC = () => {
         }
         // calendarViewMode === 'individual'の場合は自分のスケジュール（デフォルト）
       } else {
-        // 週表示の場合
-        if (selectedMemberId) {
-          // メンバーが選択されている場合はそのメンバーのスケジュールを取得
+        if (isStaff && workspaceMode === 'browse') {
+          params.append('allMembers', 'true');
+        } else if (selectedMemberId) {
           params.append('userId', selectedMemberId);
         }
-        // selectedMemberIdがnullの場合は自分のスケジュール（デフォルト）
       }
       
       const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
@@ -325,19 +342,19 @@ export const Schedule: React.FC = () => {
           スケジュール管理
         </h1>
         <div className="flex gap-2 items-center">
-          {/* カレンダー表示モード切り替え */}
-          {viewMode === 'month' ? (
-            // 月表示: 個人/全体切り替え
+          {/* カレンダー表示: 隊員は従来どおり。スタッフはダッシュボードの個人/閲覧に連動 */}
+          {viewMode === 'month' && !isStaff ? (
             <div className="flex items-center gap-2 mr-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => {
-                    setCalendarViewMode('individual');
+                    setCalendarViewModeMember('individual');
                     setSelectedMemberId(null);
                   }}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                    calendarViewMode === 'individual'
+                    calendarViewModeMember === 'individual'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
@@ -345,12 +362,13 @@ export const Schedule: React.FC = () => {
                   個人
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
-                    setCalendarViewMode('all');
+                    setCalendarViewModeMember('all');
                     setSelectedMemberId(null);
                   }}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                    calendarViewMode === 'all'
+                    calendarViewModeMember === 'all'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
@@ -359,12 +377,12 @@ export const Schedule: React.FC = () => {
                 </button>
               </div>
             </div>
-          ) : (
-            // 週表示: 自分/他のメンバー切り替え
+          ) : viewMode === 'week' && (!isStaff || workspaceMode === 'personal') ? (
             <div className="flex items-center gap-2 mr-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedMemberId(null);
                   }}
@@ -399,7 +417,13 @@ export const Schedule: React.FC = () => {
                 )}
               </div>
             </div>
-          )}
+          ) : isStaff ? (
+            <div className="mr-2 max-w-md text-right">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                表示はダッシュボードの「{workspaceMode === 'browse' ? '閲覧' : '個人'}」モードに連動しています
+              </p>
+            </div>
+          ) : null}
           <Button
             variant="outline"
             onClick={async () => {
@@ -684,29 +708,10 @@ export const Schedule: React.FC = () => {
               進行中のプロジェクト
             </h3>
             {/* メンバー以外の役職で閲覧・個人切り替え */}
-            {user?.role !== 'MEMBER' && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setProjectViewMode('view')}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    projectViewMode === 'view'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  閲覧
-                </button>
-                <button
-                  onClick={() => setProjectViewMode('personal')}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    projectViewMode === 'personal'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  個人
-                </button>
-              </div>
+            {user?.role !== 'MEMBER' && isStaff && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                プロジェクト一覧はダッシュボードのモードに連動
+              </p>
             )}
           </div>
           {projects.length > 0 ? (
@@ -857,7 +862,6 @@ export const Schedule: React.FC = () => {
               <div className="space-y-3">
                 {getSchedulesForDate(selectedDateForDetail).map((schedule) => {
                   const scheduleColor = schedule.user?.avatarColor || '#6B7280';
-                  const isOtherUser = schedule.userId !== user?.id;
                   return (
                     <button
                       key={schedule.id}

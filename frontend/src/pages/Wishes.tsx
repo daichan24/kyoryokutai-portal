@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
+import { useStaffWorkspace } from '../stores/workspaceStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Wish, WishStatus } from '../types';
@@ -26,10 +27,16 @@ const CATEGORY_SUGGESTIONS = [
 
 export const Wishes: React.FC = () => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
-  const [viewMode, setViewMode] = useState<'view' | 'create'>(
-    user?.role === 'MEMBER' ? 'create' : 'view'
-  );
+  const viewMode: 'view' | 'create' =
+    user?.role === 'MEMBER'
+      ? 'create'
+      : isStaff
+        ? workspaceMode === 'browse'
+          ? 'view'
+          : 'create'
+        : 'view';
   const [selectedUserId, setSelectedUserId] = useState<string>(''); // 空文字列は「すべて」を意味する
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<WishStatus | 'all'>('all');
@@ -74,11 +81,11 @@ export const Wishes: React.FC = () => {
       }
     };
     loadMembers();
-  }, [user?.role, viewMode, selectedUserId]);
+  }, [user?.role, viewMode, selectedUserId, workspaceMode, isStaff]);
 
   // 統計情報を取得（全員表示の場合は取得しない）
   const { data: stats } = useQuery({
-    queryKey: ['wishes', 'stats', viewMode === 'view' ? selectedUserId : user?.id],
+    queryKey: ['wishes', 'stats', viewMode === 'view' ? selectedUserId : user?.id, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (viewMode === 'view' && selectedUserId) {
@@ -112,7 +119,15 @@ export const Wishes: React.FC = () => {
 
   // やりたいこと一覧を取得
   const { data: wishes, isLoading } = useQuery<Wish[]>({
-    queryKey: ['wishes', viewMode === 'view' ? selectedUserId : user?.id, statusFilter, categoryFilter, searchQuery, sortBy],
+    queryKey: [
+      'wishes',
+      viewMode === 'view' ? selectedUserId : user?.id,
+      statusFilter,
+      categoryFilter,
+      searchQuery,
+      sortBy,
+      isStaff ? workspaceMode : 'm',
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (viewMode === 'view' && selectedUserId) {
@@ -290,30 +305,11 @@ export const Wishes: React.FC = () => {
             <Info className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex gap-2">
-          {user?.role !== 'MEMBER' && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('view')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'view'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                閲覧
-              </button>
-              <button
-                onClick={() => setViewMode('create')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'create'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                個人
-              </button>
-            </div>
+        <div className="flex gap-2 flex-wrap items-center justify-end">
+          {user?.role !== 'MEMBER' && isStaff && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs text-right">
+              閲覧／個人はダッシュボードに連動（{workspaceMode === 'browse' ? '閲覧' : '個人'}）
+            </p>
           )}
           {viewMode === 'create' && (
             <Button onClick={handleCreate}>

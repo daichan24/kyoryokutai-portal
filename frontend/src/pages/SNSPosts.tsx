@@ -7,6 +7,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Plus, Edit, Trash2, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useStaffWorkspace } from '../stores/workspaceStore';
 import { WeeklyStatusAlert } from '../components/sns/WeeklyStatusAlert';
 import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
 
@@ -36,10 +37,18 @@ interface MemberStatus {
 
 export const SNSPosts: React.FC = () => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<SNSPost | null>(null);
-  const [viewMode, setViewMode] = useState<'personal' | 'view'>(user?.role === 'MEMBER' ? 'personal' : 'view'); // 表示モード（メンバー以外はデフォルトで「閲覧」）
+  const viewMode: 'personal' | 'view' =
+    user?.role === 'MEMBER'
+      ? 'personal'
+      : isStaff
+        ? workspaceMode === 'browse'
+          ? 'view'
+          : 'personal'
+        : 'view';
   const [selectedMonth, setSelectedMonth] = useState<string>(''); // 月のフィルタ（閲覧モード用）
   const [selectedUserId, setSelectedUserId] = useState<string>(''); // ユーザーのフィルタ（閲覧モード用）
 
@@ -92,7 +101,7 @@ export const SNSPosts: React.FC = () => {
 
   // 個人タブ用の投稿取得
   const { data: personalPosts, isLoading: isLoadingPersonal } = useQuery<SNSPost[]>({
-    queryKey: ['sns-posts', 'personal', user?.id],
+    queryKey: ['sns-posts', 'personal', user?.id, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
       const url = `/api/sns-posts?userId=${user?.id}`;
       const response = await api.get(url);
@@ -103,7 +112,7 @@ export const SNSPosts: React.FC = () => {
 
   // 閲覧タブ用の投稿取得（全員分）
   const { data: allPosts, isLoading: isLoadingView } = useQuery<SNSPost[]>({
-    queryKey: ['sns-posts', 'view', selectedMonth, selectedUserId],
+    queryKey: ['sns-posts', 'view', selectedMonth, selectedUserId, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
       let url = '/api/sns-posts';
       const params = new URLSearchParams();
@@ -246,31 +255,15 @@ export const SNSPosts: React.FC = () => {
         )}
       </div>
 
-      {/* タブ切り替え（メンバー以外のみ） */}
-      {user?.role !== 'MEMBER' && (
+      {user?.role !== 'MEMBER' && isStaff && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('personal')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'personal'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              個人
-            </button>
-            <button
-              onClick={() => setViewMode('view')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'view'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              閲覧
-            </button>
-          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            個人／閲覧はダッシュボードの表示モードに連動しています（現在:{' '}
+            <span className="font-medium text-gray-900 dark:text-gray-100">
+              {workspaceMode === 'browse' ? '閲覧' : '個人'}
+            </span>
+            ）
+          </p>
         </div>
       )}
 

@@ -12,6 +12,7 @@ import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
 import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, HelpCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useStaffWorkspace } from '../stores/workspaceStore';
 import { Task, Project } from '../types';
 
 interface Goal {
@@ -57,6 +58,7 @@ interface GoalTask {
 
 export const Goals: React.FC = () => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
   const [expandedMidGoals, setExpandedMidGoals] = useState<Set<string>>(new Set());
@@ -77,11 +79,19 @@ export const Goals: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<GoalTask | null>(null);
   const [selectedNewTask, setSelectedNewTask] = useState<Task | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
+  const viewMode: 'view' | 'create' =
+    user?.role === 'MEMBER'
+      ? 'view'
+      : isStaff
+        ? workspaceMode === 'browse'
+          ? 'view'
+          : 'create'
+        : 'view';
+
   const { data: goals, isLoading } = useQuery<Goal[]>({
-    queryKey: ['missions', user?.id, selectedUserId, viewMode],
+    queryKey: ['missions', user?.id, selectedUserId, viewMode, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
       let url = '/api/missions';
       
@@ -270,29 +280,11 @@ export const Goals: React.FC = () => {
           </Button>
         </div>
         <div className="flex gap-3">
-          {isNonMember && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('view')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'view'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                閲覧
-              </button>
-              <button
-                onClick={() => setViewMode('create')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'create'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                個人
-              </button>
-            </div>
+          {isNonMember && isStaff && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md text-right">
+              閲覧／個人はダッシュボードの表示モードに連動（現在:{' '}
+              {workspaceMode === 'browse' ? '閲覧' : '個人'}）
+            </p>
           )}
           {((user?.role === 'MEMBER') || (isNonMember && viewMode === 'create')) && (
             <Button onClick={handleCreateGoal}>

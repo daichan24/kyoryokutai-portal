@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
+import { useStaffWorkspace } from '../stores/workspaceStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ProjectModal } from '../components/project/ProjectModal';
 import { Button } from '../components/common/Button';
@@ -28,18 +29,27 @@ interface Project {
 
 export const Projects: React.FC = () => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
   const [filterPhase, setFilterPhase] = useState<string>('all');
   const [filterApproval, setFilterApproval] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
   const [displayMode, setDisplayMode] = useState<'card' | 'list'>('card');
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
 
+  const viewMode: 'view' | 'create' =
+    user?.role === 'MEMBER'
+      ? 'view'
+      : isStaff
+        ? workspaceMode === 'browse'
+          ? 'view'
+          : 'create'
+        : 'view';
+
   const { data: projects, isLoading } = useQuery<Project[]>({
-    queryKey: ['projects', selectedUserId, viewMode, user?.id],
+    queryKey: ['projects', selectedUserId, viewMode, user?.id, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
       let url = '/api/projects';
       
@@ -169,29 +179,11 @@ export const Projects: React.FC = () => {
           </Button>
         </div>
         <div className="flex gap-3">
-          {isNonMember && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('view')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'view'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                閲覧
-              </button>
-              <button
-                onClick={() => setViewMode('create')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'create'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                個人
-              </button>
-            </div>
+          {isNonMember && isStaff && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md text-right">
+              閲覧／個人はダッシュボードの表示モードに連動しています（現在:{' '}
+              {workspaceMode === 'browse' ? '閲覧' : '個人'}）
+            </p>
           )}
           {showCreateButton && (
             <Button onClick={handleCreateProject}>

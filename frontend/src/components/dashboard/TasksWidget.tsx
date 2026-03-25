@@ -6,6 +6,7 @@ import { Plus, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { useStaffWorkspace } from '../../stores/workspaceStore';
 import { Task, Project } from '../../types';
 
 type DisplayMode = 'view-only' | 'view-with-add' | 'add-only';
@@ -22,23 +23,28 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
   onAddClick,
 }) => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
 
   // プロジェクト一覧を取得（Taskの紐づき情報用）
-  // メンバーの場合は自分のプロジェクトのみ取得
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['projects-widget', user?.id],
+    queryKey: ['tasks-widget-projects', user?.id, isStaff ? workspaceMode : 'member'],
     queryFn: async () => {
-      const url = user?.role === 'MEMBER' 
-        ? `/api/projects?userId=${user.id}`
-        : '/api/projects';
-      const response = await api.get(url);
+      if (user?.role === 'MEMBER') {
+        const response = await api.get(`/api/projects?userId=${user.id}`);
+        return response.data || [];
+      }
+      if (isStaff && workspaceMode === 'personal') {
+        const response = await api.get(`/api/projects?userId=${user!.id}`);
+        return response.data || [];
+      }
+      const response = await api.get('/api/projects');
       return response.data || [];
     },
   });
 
   // タスク一覧を取得（各Projectから取得）
   const { data: allTasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ['tasks-widget'],
+    queryKey: ['tasks-widget', user?.id, isStaff ? workspaceMode : 'member'],
     queryFn: async () => {
       // 各ProjectからTaskを取得
       const tasks: Task[] = [];

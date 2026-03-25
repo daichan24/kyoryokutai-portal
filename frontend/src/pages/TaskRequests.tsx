@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
+import { useStaffWorkspace } from '../stores/workspaceStore';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 import { Button } from '../components/common/Button';
-import { UserFilter } from '../components/common/UserFilter';
 import { Plus, HelpCircle, X } from 'lucide-react';
 
 interface TaskRequest {
@@ -24,21 +24,23 @@ interface TaskRequest {
 
 export const TaskRequests: React.FC = () => {
   const { user } = useAuthStore();
+  const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'view' | 'create'>('view');
+  const [localTab, setLocalTab] = useState<'view' | 'create'>('view');
+  const viewMode: 'view' | 'create' = isStaff
+    ? workspaceMode === 'browse'
+      ? 'view'
+      : 'create'
+    : localTab;
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   const { data: requests, isLoading } = useQuery({
-    queryKey: ['requests', user?.id, user?.role, selectedUserId],
+    queryKey: ['requests', user?.id, user?.role, isStaff ? workspaceMode : localTab],
     queryFn: async () => {
       let url = '/api/requests';
       if (user?.role === 'MEMBER') {
         url = `/api/requests?requestedTo=${user.id}`;
-      } else if (selectedUserId) {
-        // メンバー以外は選択したユーザーの依頼を表示
-        url = `/api/requests?requestedTo=${selectedUserId}`;
       }
       const response = await api.get(url);
       return response.data as TaskRequest[];
@@ -124,29 +126,38 @@ export const TaskRequests: React.FC = () => {
             <HelpCircle className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex gap-3">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('view')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'view'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              閲覧
-            </button>
-            <button
-              onClick={() => setViewMode('create')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'create'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              作成
-            </button>
-          </div>
+        <div className="flex gap-3 flex-wrap items-center">
+          {!isStaff && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setLocalTab('view')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  localTab === 'view'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                閲覧
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocalTab('create')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  localTab === 'create'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                作成
+              </button>
+            </div>
+          )}
+          {isStaff && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              閲覧／個人（作成）はダッシュボードに連動（{workspaceMode === 'browse' ? '閲覧' : '個人'}）
+            </p>
+          )}
           {viewMode === 'create' && (
             <Button onClick={handleCreateRequest}>
               <Plus className="h-4 w-4 mr-2" />
