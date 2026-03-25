@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { Plus, Edit2, Trash2, FileDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, CalendarClock, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
 import { SupportRecordModal } from '../components/support/SupportRecordModal';
+import type { User } from '../types';
 
 interface SupportRecord {
   id: string;
@@ -18,6 +21,7 @@ interface SupportRecord {
     id: string;
     name: string;
     avatarColor?: string;
+    avatarLetter?: string | null;
   };
   monthlyReportId?: string;
   monthlyReport?: {
@@ -27,6 +31,35 @@ interface SupportRecord {
   createdAt: string;
   updatedAt: string;
 }
+
+interface MemberTimelineItem {
+  kind: string;
+  occurredAt: string;
+  title: string;
+  detail: string;
+  link?: string;
+}
+
+interface MemberTimelineResponse {
+  user: {
+    id: string;
+    name: string;
+    avatarColor: string;
+    avatarLetter?: string | null;
+  };
+  range: { from: string; to: string; days: number };
+  items: MemberTimelineItem[];
+}
+
+const TIMELINE_KIND_LABELS: Record<string, string> = {
+  SCHEDULE: 'スケジュール',
+  EVENT: 'イベント',
+  WEEKLY_REPORT: '週次報告',
+  SUPPORT_RECORD: '支援記録',
+  SNS_POST: 'SNS',
+  CONTACT_HISTORY: '町民',
+  INSPECTION: '視察',
+};
 
 export const SupportRecords: React.FC = () => {
   const { user } = useAuthStore();
@@ -42,6 +75,39 @@ export const SupportRecords: React.FC = () => {
       const response = await api.get('/api/support-records');
       return response.data;
     },
+  });
+
+  const { data: members = [], isLoading: membersLoading } = useQuery<User[]>({
+    queryKey: ['support-records', 'members', user?.role],
+    queryFn: async () => {
+      const response = await api.get<User[]>('/api/users?role=MEMBER');
+      const list = response.data || [];
+      return list.filter(
+        (u) =>
+          !(
+            user?.role === 'SUPPORT' ||
+            user?.role === 'GOVERNMENT' ||
+            user?.role === 'MASTER'
+          ) || (u.displayOrder ?? 0) !== 0
+      );
+    },
+  });
+
+  const sortedMembers = React.useMemo(
+    () => [...members].sort((a, b) => a.name.localeCompare(b.name, 'ja')),
+    [members]
+  );
+
+  const { data: memberTimeline, isLoading: timelineLoading } = useQuery<MemberTimelineResponse>({
+    queryKey: ['support-records', 'member-timeline', sortByUser],
+    queryFn: async () => {
+      const response = await api.get<MemberTimelineResponse>(
+        '/api/support-records/member-timeline',
+        { params: { userId: sortByUser } }
+      );
+      return response.data;
+    },
+    enabled: sortByUser !== 'all',
   });
 
   // ソート機能
@@ -79,17 +145,6 @@ export const SupportRecords: React.FC = () => {
     return Array.from(months).sort().reverse();
   }, [records]);
 
-  // 利用可能なユーザーの一覧
-  const availableUsers = React.useMemo(() => {
-    const usersMap = new Map<string, { id: string; name: string }>();
-    records.forEach(record => {
-      if (!usersMap.has(record.userId)) {
-        usersMap.set(record.userId, { id: record.userId, name: record.user.name });
-      }
-    });
-    return Array.from(usersMap.values());
-  }, [records]);
-
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/api/support-records/${id}`);
@@ -124,7 +179,7 @@ export const SupportRecords: React.FC = () => {
     handleCloseModal();
   };
 
-  if (isLoading) {
+  if (isLoading || membersLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
@@ -172,15 +227,81 @@ export const SupportRecords: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               <option value="all">全ての対象者</option>
-              {availableUsers.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
+              {sortedMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              隊員を選ぶと、面談用に直近{memberTimeline?.range.days ?? 30}日間の出来事（スケジュール・イベント・週次報告など）を下に表示します。
+            </p>
           </div>
         </div>
       </div>
+
+      {sortByUser !== 'all' && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 overflow-hidden">
+          <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-2 bg-gray-50 dark:bg-gray-800/80">
+            <CalendarClock className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+                {memberTimeline?.user.name ?? '…'}さんの直近の出来事
+              </h2>
+              {memberTimeline && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {format(new Date(memberTimeline.range.from), 'yyyy年M月d日')}
+                  〜
+                  {format(new Date(memberTimeline.range.to), 'yyyy年M月d日')}
+                  （{memberTimeline.range.days}日間）
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="p-4">
+            {timelineLoading ? (
+              <div className="flex justify-center py-8">
+                <LoadingSpinner />
+              </div>
+            ) : !memberTimeline || memberTimeline.items.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
+                この期間に表示できる出来事はまだありません。
+              </p>
+            ) : (
+              <ol className="space-y-3 max-h-[min(28rem,55vh)] overflow-y-auto pr-1">
+                {memberTimeline.items.map((item, idx) => (
+                  <li
+                    key={`${item.kind}-${item.occurredAt}-${idx}`}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50/80 dark:bg-gray-900/40"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums">
+                        {format(new Date(item.occurredAt), 'M/d（EEE）', { locale: ja })}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200">
+                        {TIMELINE_KIND_LABELS[item.kind] ?? item.kind}
+                      </span>
+                      {item.link && (
+                        <Link
+                          to={item.link}
+                          className="ml-auto inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          開く
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      )}
+                    </div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{item.title}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-wrap break-words">
+                      {item.detail}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {filteredRecords.map((record) => (
