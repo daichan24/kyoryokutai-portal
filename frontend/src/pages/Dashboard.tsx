@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, FileText, Clock, Inbox, Check, X, Settings } from 'lucide-react';
+import { Calendar, Megaphone, Clock, Inbox, Check, X, Settings } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace, type StaffWorkspaceMode } from '../stores/workspaceStore';
 import { api } from '../utils/api';
@@ -113,6 +113,27 @@ export const Dashboard: React.FC = () => {
       return response.data;
     },
     refetchInterval: 30000, // 30秒ごとに更新
+  });
+
+  const { data: announcementUnread } = useQuery({
+    queryKey: ['announcements', 'unread-count'],
+    queryFn: async () => {
+      const r = await api.get<{ count: number }>('/api/announcements/unread-count');
+      return r.data;
+    },
+    enabled: user?.role === 'MEMBER',
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  const { data: staffAnnouncements = [] } = useQuery({
+    queryKey: ['announcements', 'list', 'staff'],
+    queryFn: async () => {
+      const r = await api.get<{ id: string }[]>('/api/announcements');
+      return r.data || [];
+    },
+    enabled: !!user && user.role !== 'MEMBER',
+    staleTime: 60_000,
   });
 
   // デフォルト設定（role別）※API失敗時のフォールバック。通常はAPIが全8件を返す
@@ -400,7 +421,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {isStaff && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-border dark:border-gray-700 p-4 shadow-sm">
+        <div className="bg-card dark:bg-gray-800 rounded-xl border border-border dark:border-gray-700 p-4 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">表示モード（個人 / 閲覧）</h2>
@@ -439,7 +460,7 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Link
           to="/schedule"
-          className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border dark:border-gray-700"
+          className="bg-card dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border dark:border-gray-700"
         >
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-primary/10 dark:bg-primary/20 rounded-lg">
@@ -455,21 +476,25 @@ export const Dashboard: React.FC = () => {
         </Link>
 
         <Link
-          to="/reports/weekly"
-          className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border dark:border-gray-700"
+          to="/announcements"
+          className="bg-card dark:bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-border dark:border-gray-700"
         >
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-secondary/10 dark:bg-secondary/20 rounded-lg">
-              <FileText className="h-6 w-6 text-secondary" />
+            <div className="p-3 bg-primary/10 dark:bg-primary/20 rounded-lg">
+              <Megaphone className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">週次報告</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">今週</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">お知らせ</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {user?.role === 'MEMBER'
+                  ? `未読 ${announcementUnread?.count ?? '—'} 件`
+                  : `全 ${staffAnnouncements.length} 件`}
+              </p>
             </div>
           </div>
         </Link>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-border dark:border-gray-700">
+        <div className="bg-card dark:bg-gray-800 p-6 rounded-lg shadow border border-border dark:border-gray-700">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-accent/10 dark:bg-accent/20 rounded-lg">
               <Clock className="h-6 w-6 text-accent" />
@@ -483,7 +508,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-border dark:border-gray-700">
+        <div className="bg-card dark:bg-gray-800 p-6 rounded-lg shadow border border-border dark:border-gray-700">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
               <Inbox className="h-6 w-6 text-orange-600 dark:text-orange-400" />
@@ -500,7 +525,7 @@ export const Dashboard: React.FC = () => {
 
       {/* 受信箱セクション */}
       {totalInboxCount > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
+        <div className="bg-card dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">受信箱</h2>
           
           {inboxLoading ? (

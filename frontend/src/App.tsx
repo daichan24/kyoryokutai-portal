@@ -29,6 +29,9 @@ import { Contacts } from './pages/Contacts';
 import { MonthlyReport } from './pages/MonthlyReport';
 import { SupportRecords } from './pages/SupportRecords';
 import { InterviewMonthlySchedules } from './pages/InterviewMonthlySchedules';
+import { Consultations } from './pages/Consultations';
+import { ActivityExpenses } from './pages/ActivityExpenses';
+import { Announcements } from './pages/Announcements';
 import { Wishes } from './pages/Wishes';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 
@@ -304,11 +307,44 @@ const App: React.FC = () => {
       />
 
       <Route
+        path="/consultations"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <Consultations />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/activity-expenses"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <ActivityExpenses />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
         path="/wishes"
         element={
           <PrivateRoute>
             <Layout>
               <Wishes />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/announcements"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <Announcements />
             </Layout>
           </PrivateRoute>
         }

@@ -5,6 +5,23 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 const router = Router();
 router.use(authenticate);
 
+function consultationMatchesStaff(
+  c: { audience: string; targetUserId: string | null },
+  staffId: string,
+  staffRole: string,
+) {
+  if (c.audience === 'SPECIFIC_USER') {
+    return c.targetUserId === staffId || staffRole === 'MASTER';
+  }
+  if (c.audience === 'SUPPORT_ONLY') {
+    return staffRole === 'MASTER' || staffRole === 'SUPPORT';
+  }
+  if (c.audience === 'GOVERNMENT_ONLY') {
+    return staffRole === 'MASTER' || staffRole === 'GOVERNMENT';
+  }
+  return staffRole === 'MASTER' || staffRole === 'SUPPORT' || staffRole === 'GOVERNMENT';
+}
+
 /**
  * GET /api/inbox
  * 受信箱: 自分宛の未対応/未読系をまとめて返す
@@ -109,6 +126,38 @@ router.get('/', async (req: AuthRequest, res) => {
       },
     });
 
+    // D) 相談（メンバー: 未対応の自分宛、スタッフ: 対応待ちで自分が拾えるもの）
+    let consultationMemberOpen: { id: string; subject: string | null; createdAt: Date }[] = [];
+    let consultationStaffOpen: { id: string; subject: string | null; member: { name: string }; createdAt: Date }[] =
+      [];
+
+    if (req.user!.role === 'MEMBER') {
+      consultationMemberOpen = await prisma.consultation.findMany({
+        where: { memberId: currentUserId, status: 'OPEN' },
+        select: { id: true, subject: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+      });
+    } else if (req.user!.role === 'MASTER' || req.user!.role === 'SUPPORT' || req.user!.role === 'GOVERNMENT') {
+      const openAll = await prisma.consultation.findMany({
+        where: { status: 'OPEN' },
+        include: {
+          member: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 80,
+      });
+      consultationStaffOpen = openAll
+        .filter((c) => consultationMatchesStaff(c, currentUserId, req.user!.role))
+        .slice(0, 15)
+        .map((c) => ({
+          id: c.id,
+          subject: c.subject,
+          member: c.member,
+          createdAt: c.createdAt,
+        }));
+    }
+
     // レスポンス形式に整形
     const response = {
       scheduleInvites: scheduleInvites.map((invite) => ({
@@ -139,6 +188,8 @@ router.get('/', async (req: AuthRequest, res) => {
         approvalStatus: request.approvalStatus,
         createdAt: request.createdAt,
       })),
+      consultationMemberOpen,
+      consultationStaffOpen,
     };
 
     res.json(response);

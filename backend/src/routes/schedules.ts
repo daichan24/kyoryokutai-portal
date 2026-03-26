@@ -7,8 +7,39 @@ import {
   notifyScheduleInviteApproved,
   notifyScheduleInviteRejected,
 } from '../services/notificationService';
+import { calculateMissionProgress, calculateProjectProgress } from '../services/progressCalculator';
+import { getActivityExpenseSummaryLite } from '../services/activityExpenseService';
 
 const router = Router();
+
+/** YYYY-MM から UTC 基準の暦日境界（DB @db.Date との比較ずれ対策） */
+function calendarMonthBounds(ym: string) {
+  const [ys, ms] = ym.split('-');
+  const y = parseInt(ys, 10);
+  const m = parseInt(ms, 10);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const startStr = `${y}-${pad(m)}-01`;
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const endStr = `${y}-${pad(m)}-${pad(lastDay)}`;
+  const monthStartDay = new Date(`${startStr}T12:00:00.000Z`);
+  const monthEndDay = new Date(`${endStr}T12:00:00.000Z`);
+  const monthStartReport = new Date(`${startStr}T00:00:00.000Z`);
+  const monthEndReport = new Date(`${endStr}T23:59:59.999Z`);
+  return { startStr, endStr, monthStartDay, monthEndDay, monthStartReport, monthEndReport };
+}
+
+function overlapsCalendarMonth(
+  start: Date | null,
+  end: Date | null,
+  startStr: string,
+  endStr: string,
+): boolean {
+  if (start == null && end == null) return true;
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  const s = start != null ? ymd(new Date(start)) : '0000-01-01';
+  const e = end != null ? ymd(new Date(end)) : '9999-12-31';
+  return s <= endStr && e >= startStr;
+}
 
 router.use(authenticate);
 
@@ -36,20 +67,26 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
       return res.status(400).json({ error: '無効な月です' });
     }
 
-    const monthStart = new Date(y, m - 1, 1);
-    monthStart.setHours(0, 0, 0, 0);
-    const monthEnd = new Date(y, m, 0);
-    monthEnd.setHours(23, 59, 59, 999);
+    const { startStr, endStr, monthStartDay, monthEndDay, monthStartReport, monthEndReport } =
+      calendarMonthBounds(month);
 
-    const monthStartDay = new Date(y, m - 1, 1);
-    const monthEndDay = new Date(y, m, 0);
+    const monthOverlap = {
+      startDate: { lte: monthEndDay },
+      endDate: { gte: monthStartDay },
+    };
 
     const schedules = await prisma.schedule.findMany({
       where: {
-        userId,
         isTemplate: false,
-        startDate: { lte: monthEndDay },
-        endDate: { gte: monthStartDay },
+        OR: [
+          { userId, ...monthOverlap },
+          {
+            scheduleParticipants: {
+              some: { userId, status: 'APPROVED' },
+            },
+            ...monthOverlap,
+          },
+        ],
       },
       include: {
         project: { select: { id: true, projectName: true, themeColor: true } },
@@ -66,7 +103,7 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
     const weeklyReports = await prisma.weeklyReport.findMany({
       where: {
         userId,
-        submittedAt: { gte: monthStart, lte: monthEnd },
+        submittedAt: { gte: monthStartReport, lte: monthEndReport },
       },
       select: {
         id: true,
@@ -101,10 +138,113 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
         : [];
     const legacyMap = Object.fromEntries(legacyUsers.map((u) => [u.id, u]));
 
+    const allMissions = await prisma.mission.findMany({
+      where: { userId },
+      include: {
+        midGoals: {
+          include: {
+            subGoals: {
+              include: { tasks: true },
+            },
+          },
+        },
+        tasks: {
+          select: { id: true, title: true, status: true, dueDate: true, projectId: true },
+        },
+      },
+    });
+
+    const missionsKpi = await Promise.all(
+      allMissions
+        .filter((mi) => overlapsCalendarMonth(mi.startDate, mi.endDate, startStr, endStr))
+        .map(async (mi) => {
+          const progress = await calculateMissionProgress(mi.id);
+          let goalTaskTotal = 0;
+          let goalTaskCompleted = 0;
+          for (const mg of mi.midGoals) {
+            for (const sg of mg.subGoals) {
+              for (const t of sg.tasks) {
+                goalTaskTotal += 1;
+                if (t.progress >= 100) goalTaskCompleted += 1;
+              }
+            }
+          }
+          const st = mi.tasks;
+          return {
+            id: mi.id,
+            missionName: mi.missionName,
+            missionType: mi.missionType,
+            startDate: mi.startDate,
+            endDate: mi.endDate,
+            progress: Math.round(progress * 100) / 100,
+            goalTasks: { total: goalTaskTotal, completed: goalTaskCompleted },
+            standaloneTasks: {
+              total: st.length,
+              completed: st.filter((t) => t.status === 'COMPLETED').length,
+            },
+          };
+        }),
+    );
+
+    const allProjects = await prisma.project.findMany({
+      where: {
+        OR: [{ userId }, { members: { some: { userId } } }],
+      },
+      include: {
+        tasks: true,
+        relatedTasks: { select: { id: true, title: true, status: true } },
+        mission: { select: { id: true, missionName: true } },
+      },
+    });
+
+    const projectsKpi = await Promise.all(
+      allProjects
+        .filter((p) => overlapsCalendarMonth(p.startDate, p.endDate, startStr, endStr))
+        .map(async (p) => {
+          const progress = await calculateProjectProgress(p.id);
+          const pts = p.tasks;
+          const rt = p.relatedTasks;
+          return {
+            id: p.id,
+            projectName: p.projectName,
+            phase: p.phase,
+            themeColor: p.themeColor,
+            startDate: p.startDate,
+            endDate: p.endDate,
+            mission: p.mission,
+            progress: Math.round(progress * 100) / 100,
+            projectTasks: {
+              total: pts.length,
+              completed: pts.filter((x) => x.progress >= 100).length,
+            },
+            relatedTasks: {
+              total: rt.length,
+              completed: rt.filter((x) => x.status === 'COMPLETED').length,
+            },
+          };
+        }),
+    );
+
+    const consultations = await prisma.consultation.findMany({
+      where: { memberId: userId },
+      include: {
+        targetUser: { select: { id: true, name: true, role: true, avatarColor: true } },
+        resolvedBy: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 80,
+    });
+
+    const activityExpenseSummary = await getActivityExpenseSummaryLite(userId);
+
     res.json({
       member: { id: target.id, name: target.name, avatarColor: target.avatarColor },
       month,
-      range: { from: monthStart.toISOString(), to: monthEnd.toISOString() },
+      range: { from: monthStartReport.toISOString(), to: monthEndReport.toISOString() },
+      missionsKpi,
+      projectsKpi,
+      consultations,
+      activityExpenseSummary,
       schedules: schedules.map((s) => ({
         id: s.id,
         startDate: s.startDate,

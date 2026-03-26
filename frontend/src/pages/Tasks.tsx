@@ -173,23 +173,19 @@ export const Tasks: React.FC = () => {
 
   const handleCreateTask = (projectId?: string) => {
     setSelectedTask(null);
-    // projectIdが指定されていない場合、最初のプロジェクトを選択
     let targetProjectId = projectId;
     if (!targetProjectId && projects.length > 0) {
       targetProjectId = projects[0].id;
     }
-    
+
     if (targetProjectId) {
-      // プロジェクトIDからmissionIdを取得
-      const project = projects.find(p => p.id === targetProjectId);
-      if (project?.missionId) {
-        setSelectedProjectId(project.missionId);
-      } else {
-        // missionIdがない場合は、プロジェクトIDをそのまま使用（暫定的）
-        setSelectedProjectId(targetProjectId);
-      }
+      const project = projects.find((p) => p.id === targetProjectId);
+      setSelectedProjectId(project?.missionId || missions[0]?.id || null);
+    } else if (projects.length > 0) {
+      const first = projects[0];
+      setSelectedProjectId(first.missionId || missions[0]?.id || null);
     } else {
-      setSelectedProjectId(null);
+      setSelectedProjectId(missions[0]?.id || null);
     }
     setIsModalOpen(true);
   };
@@ -325,8 +321,8 @@ export const Tasks: React.FC = () => {
           {showCreateButton && (
             <Button 
               onClick={() => {
-                if (projects.length === 0) {
-                  alert('タスクを作成するには、まずプロジェクトを作成してください。');
+                if (missions.length === 0) {
+                  alert('タスクを作成するには、ミッション（目標）が必要です。');
                   return;
                 }
                 handleCreateTask();
@@ -472,7 +468,7 @@ export const Tasks: React.FC = () => {
                 </p>
               )}
 
-              {/* プロジェクト情報（必須表示） */}
+              {/* プロジェクト情報 */}
               {task.project && (
                 <div className="mb-2">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -480,6 +476,13 @@ export const Tasks: React.FC = () => {
                   </span>
                   <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
                     {task.project.projectName}
+                  </span>
+                </div>
+              )}
+              {!task.projectId && (
+                <div className="mb-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                    {task.linkKind === 'KYORYOKUTAI_WORK' ? '協力隊業務（プロジェクトなし）' : '未設定（プロジェクトなし）'}
                   </span>
                 </div>
               )}

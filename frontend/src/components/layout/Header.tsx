@@ -1,7 +1,10 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { LogOut, Menu, MoreVertical } from 'lucide-react';
 import { Button } from '../common/Button';
+import { api } from '../../utils/api';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -10,6 +13,17 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuthStore();
   const [version, setVersion] = React.useState<string>('dev-local');
+
+  const { data: unreadAnnounce } = useQuery({
+    queryKey: ['announcements', 'unread-count'],
+    queryFn: async () => {
+      const r = await api.get<{ count: number }>('/api/announcements/unread-count');
+      return r.data;
+    },
+    enabled: user?.role === 'MEMBER',
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
 
   React.useEffect(() => {
     // version.jsonからバージョンを読み込む
@@ -25,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   }, []);
 
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-border dark:border-gray-700 shadow-sm">
+    <header className="bg-card dark:bg-gray-800 border-b border-border dark:border-gray-700 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-3">
@@ -49,6 +63,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <div className="flex items-center space-x-2 md:space-x-4">
             {user && (
               <>
+                {user.role === 'MEMBER' && (unreadAnnounce?.count ?? 0) > 0 && (
+                  <Link
+                    to="/announcements"
+                    className="text-sm font-semibold text-primary hover:underline whitespace-nowrap"
+                  >
+                    未読 {unreadAnnounce?.count} 件
+                  </Link>
+                )}
                 <div className="flex items-center space-x-2">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"

@@ -13,7 +13,29 @@ const taskSchema = z.object({
   projectId: z.string().optional().nullable(), // プロジェクトへの紐付けは任意
   order: z.number().int().optional(),
   dueDate: z.string().optional().nullable(), // タスクの期日（YYYY-MM-DD形式）
+  linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK']).optional(),
 });
+
+function resolveTaskLinkKind(
+  projectId: string | null | undefined,
+  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK',
+): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' {
+  if (projectId) return 'PROJECT';
+  if (linkKind === 'KYORYOKUTAI_WORK') return 'KYORYOKUTAI_WORK';
+  return 'UNSET';
+}
+
+function resolveTaskLinkKindOnUpdate(
+  projectId: string | null,
+  linkKind: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | undefined,
+  previous: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK',
+): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' {
+  if (projectId) return 'PROJECT';
+  if (linkKind !== undefined) {
+    return linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI_WORK' : 'UNSET';
+  }
+  return previous;
+}
 
 /**
  * GET /api/missions/:missionId/tasks
@@ -121,6 +143,8 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
       order = lastTask ? lastTask.order + 1 : 0;
     }
 
+    const linkKind = resolveTaskLinkKind(data.projectId || null, data.linkKind);
+
     const task = await prisma.task.create({
       data: {
         missionId,
@@ -130,6 +154,7 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
         status: data.status || 'NOT_STARTED',
         order,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        linkKind,
       },
       include: {
         project: {
@@ -236,6 +261,9 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
       }
     }
 
+    const mergedProjectId =
+      data.projectId !== undefined ? data.projectId || null : task.projectId;
+
     const updateData: any = {
       title: data.title,
       description: data.description !== undefined ? (data.description || null) : undefined,
@@ -243,6 +271,14 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
       projectId: data.projectId !== undefined ? (data.projectId || null) : undefined,
       order: data.order,
     };
+
+    if (data.projectId !== undefined || data.linkKind !== undefined) {
+      updateData.linkKind = resolveTaskLinkKindOnUpdate(
+        mergedProjectId,
+        data.linkKind,
+        task.linkKind,
+      );
+    }
 
     if (data.dueDate !== undefined) {
       updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;

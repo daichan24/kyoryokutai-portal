@@ -74,6 +74,19 @@ model User {
   // テンプレート設定関連
   documentTemplatesUpdated DocumentTemplate[] @relation("TemplateUpdater")
 
+  consultationsAsMember Consultation[] @relation("ConsultationMember")
+  consultationsTargeted Consultation[] @relation("ConsultationTargetUser")
+  consultationsResolved Consultation[] @relation("ConsultationResolvedBy")
+
+  activityExpenseBudget     ActivityExpenseBudget?  @relation("ActivityExpenseBudgetMember")
+  activityExpenseEntries    ActivityExpenseEntry[]  @relation("ActivityExpenseEntryMember")
+  activityExpenseBudgetsUpdated ActivityExpenseBudget[] @relation("ActivityExpenseBudgetStaffUpdater")
+  activityExpenseEntriesCreated ActivityExpenseEntry[]  @relation("ActivityExpenseEntryCreator")
+  activityExpenseEntriesUpdated ActivityExpenseEntry[]  @relation("ActivityExpenseEntryUpdater")
+
+  announcementsCreated Announcement[]       @relation("AnnouncementAuthor")
+  announcementReads    AnnouncementRead[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -390,6 +403,8 @@ model Task {
   status      TaskStatus @default(NOT_STARTED)
   order       Int        @default(0)
   dueDate     DateTime?  @db.Date // タスクの期日（スケジュール自動生成用）
+  /// プロジェクト未紐づけ時は UNSET / KYORYOKUTAI_WORK、プロジェクトありは PROJECT
+  linkKind    MissionTaskLinkKind @default(PROJECT)
 
   schedules Schedule[]
 
@@ -411,6 +426,134 @@ enum TaskStatus {
 enum MemberRole {
   LEAD
   SUPPORT
+  NOT_SET // 未設定
+  KYORYOKUTAI_WORK // 協力隊業務
+}
+
+enum MissionTaskLinkKind {
+  PROJECT
+  UNSET // 未設定（プロジェクトに紐づけない）
+  KYORYOKUTAI_WORK // 協力隊業務（プロジェクトに紐づけない）
+}
+
+// ========================================
+// 相談（メンバー → サポート/行政）
+// ========================================
+
+model Consultation {
+  id       String @id @default(uuid())
+  memberId String
+  member   User   @relation("ConsultationMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  audience ConsultationAudience
+  /// audience が SPECIFIC_USER のときのみ
+  targetUserId String?
+  targetUser   User?   @relation("ConsultationTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  subject String? @db.VarChar(400)
+  body    String  @db.Text
+
+  status ConsultationStatus @default(OPEN)
+
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolvedBy     User?   @relation("ConsultationResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolutionNote String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId, status])
+  @@index([status, createdAt])
+  @@index([audience, status])
+}
+
+enum ConsultationAudience {
+  ANY // 誰でも（サポート・行政・マスターが受け取れる）
+  SUPPORT_ONLY
+  GOVERNMENT_ONLY
+  SPECIFIC_USER
+}
+
+enum ConsultationStatus {
+  OPEN
+  RESOLVED
+}
+
+// ========================================
+// 活動経費（隊員ごと）
+// ========================================
+
+model ActivityExpenseBudget {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation("ActivityExpenseBudgetMember", fields: [userId], references: [id], onDelete: Cascade)
+  allocatedAmount Int      @default(0) // 円（使える上限の目安）
+  memo            String?  @db.Text
+  updatedById     String?
+  updatedBy       User?    @relation("ActivityExpenseBudgetStaffUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ActivityExpenseEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("ActivityExpenseEntryMember", fields: [userId], references: [id], onDelete: Cascade)
+  spentAt     DateTime @db.Date
+  description String   @db.VarChar(500)
+  amount      Int // 円（支出）
+  createdById String?
+  createdBy   User?    @relation("ActivityExpenseEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   User?    @relation("ActivityExpenseEntryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, spentAt])
+}
+
+// ========================================
+// お知らせ（スタッフ → メンバー、既読管理）
+// ========================================
+
+model AnnouncementCategory {
+  id            String         @id @default(uuid())
+  name          String
+  sortOrder     Int            @default(0)
+  colorHex      String?
+  announcements Announcement[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Announcement {
+  id          String                 @id @default(uuid())
+  categoryId  String
+  category    AnnouncementCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  title       String                 @db.VarChar(400)
+  body        String                 @db.Text
+  authorId    String
+  author      User                   @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  publishedAt DateTime               @default(now())
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  reads       AnnouncementRead[]
+
+  @@index([categoryId, publishedAt])
+  @@index([publishedAt])
+}
+
+model AnnouncementRead {
+  id             String       @id @default(uuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@unique([announcementId, userId])
+  @@index([userId])
 }
 
 model ScheduleProgress {

@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { addMonths, format, parseISO, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../utils/api';
-import { useAuthStore } from '../stores/authStore';
 import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
@@ -44,12 +43,67 @@ interface InterviewWeeklyReport {
   submittedAt: string | null;
 }
 
+interface MissionKpiRow {
+  id: string;
+  missionName: string;
+  missionType: string;
+  startDate: string | null;
+  endDate: string | null;
+  progress: number;
+  goalTasks: { total: number; completed: number };
+  standaloneTasks: { total: number; completed: number };
+}
+
+interface ProjectKpiRow {
+  id: string;
+  projectName: string;
+  phase: string;
+  themeColor: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  mission: { id: string; missionName: string } | null;
+  progress: number;
+  projectTasks: { total: number; completed: number };
+  relatedTasks: { total: number; completed: number };
+}
+
+interface InterviewConsultation {
+  id: string;
+  audience: string;
+  subject: string | null;
+  body: string;
+  status: string;
+  createdAt: string;
+  resolvedAt: string | null;
+  resolutionNote: string | null;
+  targetUser?: { id: string; name: string; role: string } | null;
+  resolvedBy?: { id: string; name: string } | null;
+}
+
+interface ActivityExpenseSummaryLite {
+  allocatedAmount: number;
+  totalSpent: number;
+  remaining: number;
+  memo: string | null;
+  budgetUpdatedAt: string | null;
+  recentEntries: Array<{
+    id: string;
+    spentAt: string;
+    description: string;
+    amount: number;
+  }>;
+}
+
 interface InterviewMonthResponse {
   member: { id: string; name: string; avatarColor: string };
   month: string;
   range: { from: string; to: string };
   schedules: InterviewSchedule[];
   weeklyReports: InterviewWeeklyReport[];
+  missionsKpi: MissionKpiRow[];
+  projectsKpi: ProjectKpiRow[];
+  consultations?: InterviewConsultation[];
+  activityExpenseSummary?: ActivityExpenseSummaryLite;
 }
 
 function schedulePeople(s: InterviewSchedule): InterviewParticipantUser[] {
@@ -92,23 +146,50 @@ function summarizeThisWeek(json: unknown): string {
 
 const UNLINKED_KEY = '__none__';
 
+function progressBarColor(progress: number) {
+  if (progress >= 80) return 'bg-green-500';
+  if (progress >= 50) return 'bg-blue-500';
+  if (progress >= 25) return 'bg-yellow-500';
+  return 'bg-gray-400';
+}
+
+function phaseLabelJa(phase: string): string {
+  const map: Record<string, string> = {
+    PREPARATION: '準備',
+    EXECUTION: '実行',
+    COMPLETED: '完了',
+    REVIEW: '振り返り',
+  };
+  return map[phase] ?? phase;
+}
+
+function consultationAudienceJa(a: string): string {
+  const m: Record<string, string> = {
+    ANY: '誰でも',
+    SUPPORT_ONLY: 'サポート宛',
+    GOVERNMENT_ONLY: '行政宛',
+    SPECIFIC_USER: '特定の相手',
+  };
+  return m[a] ?? a;
+}
+
+function formatYenInterview(n: number) {
+  return `¥${n.toLocaleString('ja-JP')}`;
+}
+
 export const InterviewMonthlySchedules: React.FC = () => {
-  const { user } = useAuthStore();
-  const defaultMonth = format(new Date(), 'yyyy-MM');
+  /** 月初の前月振り返り想定で、既定は前月 */
+  const defaultMonth = format(subMonths(new Date(), 1), 'yyyy-MM');
 
   const [memberId, setMemberId] = useState<string>('');
   const [month, setMonth] = useState<string>(defaultMonth);
 
   const { data: members = [], isLoading: membersLoading } = useQuery<User[]>({
-    queryKey: ['interview-monthly', 'members', user?.role],
+    queryKey: ['interview-monthly', 'members'],
     queryFn: async () => {
       const response = await api.get<User[]>('/api/users?role=MEMBER');
-      const list = response.data || [];
-      return list.filter(
-        (u) =>
-          !(user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') ||
-          (u.displayOrder ?? 0) !== 0
-      );
+      // 面談ではカレンダーと同じ隊員を選べるよう、displayOrder で除外しない（テスト用0番隊員も含む）
+      return response.data || [];
     },
   });
 
@@ -128,7 +209,26 @@ export const InterviewMonthlySchedules: React.FC = () => {
     enabled: Boolean(memberId && month),
   });
 
+  /** 面談開催日の「翌月」の予定（今日基準の翌暦月） */
+  const nextMonthYm = useMemo(() => format(addMonths(new Date(), 1), 'yyyy-MM'), []);
+
+  const { data: nextMonthData, isFetching: nextMonthFetching } = useQuery<InterviewMonthResponse>({
+    queryKey: ['interview-monthly', 'next', memberId, nextMonthYm],
+    queryFn: async () => {
+      const response = await api.get<InterviewMonthResponse>('/api/schedules/for-interview-month', {
+        params: { userId: memberId, month: nextMonthYm },
+      });
+      return response.data;
+    },
+    enabled: Boolean(memberId),
+  });
+
   const schedules = useMemo(() => data?.schedules ?? [], [data]);
+  const nextMonthSchedules = useMemo(() => nextMonthData?.schedules ?? [], [nextMonthData]);
+  const consultations = useMemo(() => data?.consultations ?? [], [data]);
+  const expenseSummary = data?.activityExpenseSummary;
+  const missionsKpi = useMemo(() => data?.missionsKpi ?? [], [data]);
+  const projectsKpi = useMemo(() => data?.projectsKpi ?? [], [data]);
 
   const byProject = useMemo(() => {
     const map = new Map<string, InterviewSchedule[]>();
@@ -171,9 +271,9 @@ export const InterviewMonthlySchedules: React.FC = () => {
   return (
     <div className="space-y-8 max-w-5xl">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">面談用・月間スケジュール</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">面談</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-          隊員と対象月を選ぶと、その月に予定されていたスケジュールを整理して表示します。活動内容・一緒に動いた人・プロジェクトの見通しを踏まえ、面談で「何をしたか／誰と会ったか／プロジェクトの進み／この先の計画」を話しやすくするためのビューです。
+          隊員と対象月を選ぶと、その月の予定（自分が作成したもの＋承認済みの共同予定）と、対象月と期間が重なるミッション・プロジェクトの達成状況をまとめて表示します。月初の前月振り返りでは、既定の対象月（前月）で KPI を確認しつつ、スケジュールと週次報告で行動をたどってください。
         </p>
       </div>
 
@@ -205,7 +305,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
           </div>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          表示期間は、その月のカレンダー内で開始・終了が重なる予定すべてです（複数日にまたがる予定も含みます）。
+          予定は、その月と開始日〜終了日が重なるものすべてです（複数日・共同予定の承認済み参加も含みます）。日付はサーバーと DB の暦日でそろえています。
         </p>
       </div>
 
@@ -236,28 +336,424 @@ export const InterviewMonthlySchedules: React.FC = () => {
             </Link>
           </div>
 
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+              ミッション・プロジェクトの達成（対象月と期間が重なるもの）
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              ミッションの％は中目標・サブ目標・目標タスクの加重平均です。プロジェクトの％はプロジェクトタスクの進捗の平均です。ミッション直下のタスク（小目標タスク）は件数・完了数で別表示しています。
+            </p>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">ミッション</h3>
+              {missionsKpi.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">該当するミッションはありません。</p>
+              ) : (
+                <ul className="space-y-3">
+                  {missionsKpi.map((mi) => (
+                    <li
+                      key={mi.id}
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{mi.missionName}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {mi.missionType === 'PRIMARY' ? '主目標' : '副目標'}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                          {mi.progress}%
+                        </span>
+                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[120px]">
+                          <div
+                            className={`h-full transition-all ${progressBarColor(mi.progress)}`}
+                            style={{ width: `${Math.min(100, mi.progress)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+                        <span>
+                          目標ツリー内タスク: {mi.goalTasks.completed}/{mi.goalTasks.total} 完了
+                          {mi.goalTasks.total > 0 && (
+                            <span className="text-gray-400 ml-1">
+                              （
+                              {Math.round((mi.goalTasks.completed / mi.goalTasks.total) * 100)}
+                              %）
+                            </span>
+                          )}
+                        </span>
+                        <span>
+                          ミッション直下タスク: {mi.standaloneTasks.completed}/{mi.standaloneTasks.total} 完了
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">プロジェクト</h3>
+              {projectsKpi.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">該当するプロジェクトはありません。</p>
+              ) : (
+                <ul className="space-y-3">
+                  {projectsKpi.map((p) => (
+                    <li
+                      key={p.id}
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: p.themeColor || '#6366f1' }}
+                        />
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{p.projectName}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                          {phaseLabelJa(p.phase)}
+                        </span>
+                        {p.mission && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">ミッション: {p.mission.missionName}</span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                          {p.progress}%
+                        </span>
+                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[120px]">
+                          <div
+                            className={`h-full transition-all ${progressBarColor(p.progress)}`}
+                            style={{ width: `${Math.min(100, p.progress)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+                        <span>
+                          プロジェクトタスク: {p.projectTasks.completed}/{p.projectTasks.total}（進捗100%を完了扱い）
+                        </span>
+                        <span>
+                          関連タスク（小目標）: {p.relatedTasks.completed}/{p.relatedTasks.total} 完了
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-3 text-sm">
+              <Link to="/goals" className="text-blue-600 dark:text-blue-400 hover:underline">
+                ミッション（目標）を開く →
+              </Link>
+              <Link to="/projects" className="text-blue-600 dark:text-blue-400 hover:underline">
+                プロジェクトを開く →
+              </Link>
+            </div>
+          </section>
+
           <section className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">面談の観点（ヒント）</h2>
             <ul className="text-sm text-amber-950/90 dark:text-amber-100/90 space-y-1 list-disc list-inside">
               <li>
-                <strong>活動内容</strong>：下の「日付順」で、いつ何に時間を使ったかをなぞる
+                <strong>活動内容（詳細）</strong>：ページ末尾の「日付順」で、いつ何に時間を使ったかをなぞる
               </li>
               <li>
-                <strong>誰とあったか</strong>：「一緒に動いた人」で名前ごとに予定をたどる（町民DBの接触は別途「町民データベース」で確認）
+                <strong>誰とあったか</strong>：「一緒に働いた人」で、紐づけられた協力隊などを名前ごとにたどる（町民DBは「町民データベース」）
               </li>
               <li>
-                <strong>プロジェクトの進み</strong>：「プロジェクト別」で担当プロジェクトごとにまとまりを見る
+                <strong>相談</strong>：隊員から届いている相談を先に確認し、面談で扱う
               </li>
               <li>
-                <strong>今後の計画</strong>：「週次報告の来週の予定」に、その月に提出された分の「来週の予定」を集約
+                <strong>活動経費</strong>：残り金額と直近の支出を確認し、必要なら詳細画面で修正
+              </li>
+              <li>
+                <strong>目標・プロジェクトの達成</strong>：ミッション進捗・目標ツリー内タスク数・プロジェクトタスクと関連タスクの完了数で KPI を確認
+              </li>
+              <li>
+                <strong>プロジェクトの進み（予定）</strong>：「プロジェクト別」でその月の予定のまとまりを見る
+              </li>
+              <li>
+                <strong>翌月の動き</strong>：「来月の予定」は面談開催日から見た翌暦月のスケジュールです
+              </li>
+              <li>
+                <strong>今後の計画</strong>：「週次報告の来週の予定」で、その月に提出された分の「来週の予定」を集約
               </li>
             </ul>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-              日付順（この月の予定一覧）
+              相談（この隊員・対象月に関係なく一覧）
             </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              面談で扱うため、未対応・対応済みをまとめて表示します（依頼ボックスの「相談」と同じデータです）。
+            </p>
+            {consultations.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">相談の記録はありません。</p>
+            ) : (
+              <ul className="space-y-3">
+                {consultations.map((c) => (
+                  <li
+                    key={c.id}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
+                  >
+                    <div className="flex flex-wrap justify-between gap-2 text-sm">
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {c.subject?.trim() || '（件名なし）'}
+                      </span>
+                      <span
+                        className={
+                          c.status === 'OPEN'
+                            ? 'text-amber-600 dark:text-amber-400 text-xs'
+                            : 'text-green-600 dark:text-green-400 text-xs'
+                        }
+                      >
+                        {c.status === 'OPEN' ? '未対応' : '対応済み'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {consultationAudienceJa(c.audience)}
+                      {c.targetUser && ` → ${c.targetUser.name}`} ·{' '}
+                      {format(new Date(c.createdAt), 'yyyy/M/d', { locale: ja })}
+                    </p>
+                    <p className="text-sm text-gray-800 dark:text-gray-200 mt-2 whitespace-pre-wrap">{c.body}</p>
+                    {c.status === 'RESOLVED' && c.resolutionNote && (
+                      <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-600 text-sm">
+                        <p className="text-xs font-semibold text-gray-500">対応内容</p>
+                        <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{c.resolutionNote}</p>
+                        {c.resolvedAt && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {format(new Date(c.resolvedAt), 'yyyy/M/d', { locale: ja })}
+                            {c.resolvedBy && ` · ${c.resolvedBy.name}`}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link to="/consultations" className="inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">
+              相談画面を開く →
+            </Link>
+          </section>
+
+          {expenseSummary && (
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+                活動経費（残り・直近）
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80">
+                  <p className="text-xs text-gray-500">設定上限</p>
+                  <p className="text-lg font-bold tabular-nums">{formatYenInterview(expenseSummary.allocatedAmount)}</p>
+                </div>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80">
+                  <p className="text-xs text-gray-500">使用累計</p>
+                  <p className="text-lg font-bold tabular-nums">{formatYenInterview(expenseSummary.totalSpent)}</p>
+                </div>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80">
+                  <p className="text-xs text-gray-500">残り</p>
+                  <p
+                    className={`text-lg font-bold tabular-nums ${
+                      expenseSummary.remaining < 0 ? 'text-red-600 dark:text-red-400' : ''
+                    }`}
+                  >
+                    {formatYenInterview(expenseSummary.remaining)}
+                  </p>
+                </div>
+              </div>
+              {expenseSummary.memo && (
+                <p className="text-xs text-gray-600 dark:text-gray-300">{expenseSummary.memo}</p>
+              )}
+              {expenseSummary.recentEntries.length > 0 && (
+                <ul className="text-sm space-y-1 border border-gray-100 dark:border-gray-700 rounded-lg p-3 bg-gray-50/80 dark:bg-gray-900/40">
+                  {expenseSummary.recentEntries.map((e) => (
+                    <li key={e.id} className="flex flex-wrap gap-x-2 text-gray-800 dark:text-gray-200">
+                      <span className="text-gray-500">
+                        {format(parseISO(e.spentAt.slice(0, 10)), 'M月d日', { locale: ja })}
+                      </span>
+                      <span>{e.description}</span>
+                      <span className="font-medium tabular-nums ml-auto">{formatYenInterview(e.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link
+                to="/activity-expenses"
+                className="inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                活動経費の詳細を開く →
+              </Link>
+            </section>
+          )}
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+              プロジェクト別
+            </h2>
+            {schedules.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-sm">予定がないためプロジェクト別の集計はありません。</p>
+            ) : (
+            [...byProject.entries()]
+              .sort(([a], [b]) => {
+                if (a === UNLINKED_KEY) return 1;
+                if (b === UNLINKED_KEY) return -1;
+                return 0;
+              })
+              .map(([key, list]) => {
+                const proj = list[0]?.project;
+                const label = proj?.projectName ?? 'プロジェクト未設定';
+                return (
+                  <div key={key} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div
+                      className="px-3 py-2 text-sm font-medium text-white flex items-center gap-2"
+                      style={{ backgroundColor: proj?.themeColor || '#64748b' }}
+                    >
+                      {label}
+                      <span className="opacity-90 font-normal text-xs">（{list.length} 件）</span>
+                    </div>
+                    <ul className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800/60">
+                      {list.map((s) => (
+                        <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
+                          <span className="text-gray-500 dark:text-gray-400 mr-2">{formatScheduleDateRange(s)}</span>
+                          {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
+                          {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+              一緒に働いた人
+            </h2>
+            {byPerson.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-sm">紐づけされた参加者（協力隊など）はいません。</p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {byPerson.map(({ user: pu, schedules: ps }) => (
+                  <div
+                    key={pu.id}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                        style={{ backgroundColor: pu.avatarColor || '#6B7280' }}
+                      >
+                        {pu.name.charAt(0)}
+                      </div>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{pu.name}</span>
+                      <span className="text-xs text-gray-500">({ps.length} 件)</span>
+                    </div>
+                    <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
+                      {ps.map((s) => (
+                        <li key={s.id}>
+                          · {formatScheduleDateRange(s)} — {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 40)}
+                          {(s.activityDescription?.length ?? 0) > 40 ? '…' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+              来月の予定（面談開催月の翌月：{format(new Date(`${nextMonthYm}-01`), 'yyyy年M月', { locale: ja })}）
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              今日の日付から見た翌暦月の予定です。月初の面談では、前月振り返り（対象月）とあわせて翌月の動きを確認する用途向けです。
+            </p>
+            {nextMonthFetching ? (
+              <div className="flex justify-center py-8">
+                <LoadingSpinner />
+              </div>
+            ) : nextMonthSchedules.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-sm py-2">翌月に該当する予定はありません。</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {nextMonthSchedules.map((s) => (
+                  <li
+                    key={s.id}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800/80 text-gray-800 dark:text-gray-200"
+                  >
+                    <span className="text-gray-500 dark:text-gray-400 mr-2">{formatScheduleDateRange(s)}</span>
+                    {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 100)}
+                    {(s.activityDescription?.length ?? 0) > 100 ? '…' : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+              週次報告の「来週の予定」（この月に提出された分）
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              「今後の計画」を話すときの材料にしてください。提出日がこの月に入っている週次報告のみ表示します。
+            </p>
+            {data.weeklyReports.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-sm py-2">該当する提出済み週次報告はありません。</p>
+            ) : (
+              <ul className="space-y-4">
+                {data.weeklyReports.map((w) => (
+                  <li
+                    key={w.id}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
+                  >
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      週 {w.week}
+                      {w.submittedAt && (
+                        <span className="text-xs font-normal text-gray-500 ml-2">
+                          提出 {format(new Date(w.submittedAt), 'M/d HH:mm', { locale: ja })}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        来週の予定
+                      </p>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap mt-1">
+                        {w.nextWeekPlan?.trim() || '（未記入）'}
+                      </p>
+                    </div>
+                    {summarizeThisWeek(w.thisWeekActivities) && (
+                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">その週の活動（要約）</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-4">
+                          {summarizeThisWeek(w.thisWeekActivities)}
+                        </p>
+                      </div>
+                    )}
+                    {w.note?.trim() && (
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">備考: {w.note}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link to="/reports/weekly" className="inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">
+              週次報告一覧を開く →
+            </Link>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+              日付順（対象月の予定・詳細）
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              一覧の細かい確認用です。上部の「プロジェクト別」「一緒に働いた人」で先に全体像を掴んでも大丈夫です。
+            </p>
             {schedules.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-sm py-4">この月に該当する予定はありません。</p>
             ) : (
@@ -316,135 +812,6 @@ export const InterviewMonthlySchedules: React.FC = () => {
                 })}
               </ul>
             )}
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-              プロジェクト別
-            </h2>
-            {schedules.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-sm">予定がないためプロジェクト別の集計はありません。</p>
-            ) : (
-            [...byProject.entries()]
-              .sort(([a], [b]) => {
-                if (a === UNLINKED_KEY) return 1;
-                if (b === UNLINKED_KEY) return -1;
-                return 0;
-              })
-              .map(([key, list]) => {
-                const proj = list[0]?.project;
-                const label = proj?.projectName ?? 'プロジェクト未設定';
-                return (
-                  <div key={key} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                    <div
-                      className="px-3 py-2 text-sm font-medium text-white flex items-center gap-2"
-                      style={{ backgroundColor: proj?.themeColor || '#64748b' }}
-                    >
-                      {label}
-                      <span className="opacity-90 font-normal text-xs">（{list.length} 件）</span>
-                    </div>
-                    <ul className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800/60">
-                      {list.map((s) => (
-                        <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
-                          <span className="text-gray-500 dark:text-gray-400 mr-2">{formatScheduleDateRange(s)}</span>
-                          {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
-                          {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })
-            )}
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-              一緒に動いた人
-            </h2>
-            {byPerson.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-sm">参加者として登録されている人はいません。</p>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {byPerson.map(({ user: pu, schedules: ps }) => (
-                  <div
-                    key={pu.id}
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium"
-                        style={{ backgroundColor: pu.avatarColor || '#6B7280' }}
-                      >
-                        {pu.name.charAt(0)}
-                      </div>
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{pu.name}</span>
-                      <span className="text-xs text-gray-500">({ps.length} 件)</span>
-                    </div>
-                    <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
-                      {ps.map((s) => (
-                        <li key={s.id}>
-                          · {formatScheduleDateRange(s)} — {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 40)}
-                          {(s.activityDescription?.length ?? 0) > 40 ? '…' : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-              週次報告の「来週の予定」（この月に提出された分）
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              「今後の計画」を話すときの材料にしてください。提出日がこの月に入っている週次報告のみ表示します。
-            </p>
-            {data.weeklyReports.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-sm py-2">該当する提出済み週次報告はありません。</p>
-            ) : (
-              <ul className="space-y-4">
-                {data.weeklyReports.map((w) => (
-                  <li
-                    key={w.id}
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
-                  >
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      週 {w.week}
-                      {w.submittedAt && (
-                        <span className="text-xs font-normal text-gray-500 ml-2">
-                          提出 {format(new Date(w.submittedAt), 'M/d HH:mm', { locale: ja })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2">
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                        来週の予定
-                      </p>
-                      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap mt-1">
-                        {w.nextWeekPlan?.trim() || '（未記入）'}
-                      </p>
-                    </div>
-                    {summarizeThisWeek(w.thisWeekActivities) && (
-                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">その週の活動（要約）</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-4">
-                          {summarizeThisWeek(w.thisWeekActivities)}
-                        </p>
-                      </div>
-                    )}
-                    {w.note?.trim() && (
-                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">備考: {w.note}</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <Link to="/reports/weekly" className="inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">
-              週次報告一覧を開く →
-            </Link>
           </section>
         </>
       )}

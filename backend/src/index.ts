@@ -30,6 +30,9 @@ import supportRecordsRoutes from './routes/supportRecords';
 import documentTemplatesRoutes from './routes/documentTemplates';
 import wishesRoutes from './routes/wishes';
 import driveLinksRoutes from './routes/driveLinks';
+import consultationsRoutes from './routes/consultations';
+import activityExpensesRoutes from './routes/activityExpenses';
+import announcementsRoutes from './routes/announcements';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -114,6 +117,9 @@ app.use('/api/support-records', supportRecordsRoutes); // 支援記録API
 app.use('/api/document-templates', documentTemplatesRoutes); // テンプレート設定API
 app.use('/api/wishes', wishesRoutes); // やりたいこと100 API
 app.use('/api/drive-links', driveLinksRoutes); // Googleドライブリンク管理API
+app.use('/api/consultations', consultationsRoutes);
+app.use('/api/activity-expenses', activityExpensesRoutes);
+app.use('/api/announcements', announcementsRoutes);
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');

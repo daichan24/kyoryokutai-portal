@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { AnnouncementBanner } from './AnnouncementBanner';
 import { useAuthStore } from '../../stores/authStore';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 
@@ -25,6 +26,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="h-screen flex flex-col bg-background dark:bg-gray-900">
       <Header onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
+      <AnnouncementBanner />
       <div className="flex-1 flex overflow-hidden relative">
         {/* モバイル時のオーバーレイ */}
         {isMobileMenuOpen && (

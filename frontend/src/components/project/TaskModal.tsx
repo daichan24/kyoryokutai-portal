@@ -26,6 +26,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'>('NOT_STARTED');
   const [projectId, setProjectId] = useState<string | null>(initialProjectId || null);
+  const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI'>('PROJECT');
   const [dueDate, setDueDate] = useState<string>('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,17 +36,22 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const hasChanges = () => {
     if (readOnly) return false;
     if (!task) {
-      // 新規作成時は、何か入力されていれば変更あり
-      return !!(title || description || projectId || dueDate);
+      return !!(title || description || projectId || dueDate || attachMode !== 'PROJECT');
     }
     // 編集時は、元の値と比較
     const originalDueDate = task.dueDate ? task.dueDate.split('T')[0] : '';
+    const origAttach: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI' = task.projectId
+      ? 'PROJECT'
+      : task.linkKind === 'KYORYOKUTAI_WORK'
+        ? 'KYORYOKUTAI'
+        : 'UNSET';
     return (
       title !== task.title ||
       description !== (task.description || '') ||
       status !== task.status ||
       projectId !== (task.projectId || null) ||
-      dueDate !== originalDueDate
+      dueDate !== originalDueDate ||
+      attachMode !== origAttach
     );
   };
 
@@ -69,7 +75,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [title, description, status, projectId, dueDate, readOnly]);
+  }, [title, description, status, projectId, dueDate, readOnly, attachMode]);
 
   useEffect(() => {
     // プロジェクトを取得（missionIdが空の場合は全プロジェクトを取得）
@@ -96,12 +102,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDescription(task.description || '');
       setStatus(task.status);
       setProjectId(task.projectId || initialProjectId || null);
+      if (task.projectId) {
+        setAttachMode('PROJECT');
+      } else if (task.linkKind === 'KYORYOKUTAI_WORK') {
+        setAttachMode('KYORYOKUTAI');
+      } else {
+        setAttachMode('UNSET');
+      }
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
     } else {
       setTitle('');
       setDescription('');
       setStatus('NOT_STARTED');
       setProjectId(initialProjectId || null);
+      setAttachMode(initialProjectId ? 'PROJECT' : 'UNSET');
       setDueDate('');
     }
   }, [task, initialProjectId]);
@@ -113,13 +127,23 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       return;
     }
 
+    if (attachMode === 'PROJECT' && !projectId) {
+      alert('プロジェクトを選ぶか、「未設定」「協力隊業務」を選んでください');
+      return;
+    }
+
     setLoading(true);
     try {
+      const effectiveProjectId = attachMode === 'PROJECT' ? projectId || null : null;
+      const linkKind =
+        attachMode === 'PROJECT' ? 'PROJECT' : attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI_WORK' : 'UNSET';
+
       const data = {
         title: title.trim(),
         description: description.trim() || undefined,
         status,
-        projectId: projectId || null,
+        projectId: effectiveProjectId,
+        linkKind,
         dueDate: dueDate && dueDate.trim() ? dueDate.trim() : null,
       };
 
@@ -180,21 +204,37 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              関連プロジェクト（任意）
+              プロジェクトとの紐づけ
             </label>
             <select
-              value={projectId || ''}
-              onChange={(e) => setProjectId(e.target.value || null)}
-              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              value={attachMode}
+              onChange={(e) => {
+                const v = e.target.value as 'PROJECT' | 'UNSET' | 'KYORYOKUTAI';
+                setAttachMode(v);
+                if (v !== 'PROJECT') setProjectId(null);
+              }}
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed mb-2"
               disabled={readOnly}
             >
-              <option value="">プロジェクトを選択しない</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.projectName}
-                </option>
-              ))}
+              <option value="PROJECT">プロジェクトに紐づける</option>
+              <option value="UNSET">未設定（プロジェクトに紐づけない）</option>
+              <option value="KYORYOKUTAI">協力隊業務（プロジェクトに紐づけない）</option>
             </select>
+            {attachMode === 'PROJECT' && (
+              <select
+                value={projectId || ''}
+                onChange={(e) => setProjectId(e.target.value || null)}
+                className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={readOnly}
+              >
+                <option value="">プロジェクトを選択</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.projectName}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

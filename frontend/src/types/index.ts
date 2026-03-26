@@ -233,6 +233,7 @@ export interface Task {
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   order: number;
   dueDate?: string | null; // タスクの期日（YYYY-MM-DD形式）
+  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK';
   createdAt: string;
   updatedAt: string;
 }

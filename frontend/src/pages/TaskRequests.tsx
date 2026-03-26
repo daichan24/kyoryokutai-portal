@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
@@ -45,6 +46,25 @@ export const TaskRequests: React.FC = () => {
       const response = await api.get(url);
       return response.data as TaskRequest[];
     }
+  });
+
+  const { data: myConsultations = [] } = useQuery({
+    queryKey: ['consultations', 'mine', 'inbox-preview'],
+    queryFn: async () => {
+      const r = await api.get('/api/consultations/mine');
+      return r.data as { id: string; status: string; subject: string | null; createdAt: string }[];
+    },
+    enabled: user?.role === 'MEMBER',
+  });
+
+  const { data: consultationInbox = [] } = useQuery({
+    queryKey: ['consultations', 'inbox', 'task-requests-preview'],
+    queryFn: async () => {
+      const r = await api.get('/api/consultations/inbox?status=OPEN');
+      return r.data as { id: string; subject: string | null; member?: { name: string }; createdAt: string }[];
+    },
+    enabled:
+      user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT',
   });
 
   const respondMutation = useMutation({
@@ -166,6 +186,49 @@ export const TaskRequests: React.FC = () => {
           )}
         </div>
       </div>
+
+      {user?.role === 'MEMBER' && myConsultations.length > 0 && (
+        <section className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">相談（依頼ボックス）</h2>
+            <Link to="/consultations" className="text-sm text-violet-700 dark:text-violet-300 hover:underline">
+              相談画面へ →
+            </Link>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+            送った相談のうち、未対応が {myConsultations.filter((c) => c.status === 'OPEN').length} 件あります。
+          </p>
+          <ul className="text-sm space-y-1 text-gray-800 dark:text-gray-200">
+            {myConsultations
+              .filter((c) => c.status === 'OPEN')
+              .slice(0, 5)
+              .map((c) => (
+                <li key={c.id}>
+                  · {c.subject?.trim() || '（件名なし）'} — {format(new Date(c.createdAt), 'M/d', { locale: undefined })}
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
+
+      {(user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') &&
+        consultationInbox.length > 0 && (
+          <section className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">相談の対応待ち</h2>
+              <Link to="/consultations" className="text-sm text-violet-700 dark:text-violet-300 hover:underline">
+                一覧・対応へ →
+              </Link>
+            </div>
+            <ul className="text-sm space-y-1 text-gray-800 dark:text-gray-200">
+              {consultationInbox.slice(0, 8).map((c) => (
+                <li key={c.id}>
+                  · {c.member?.name}さん — {c.subject?.trim() || '（件名なし）'}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
       {viewMode === 'view' && (
         <>

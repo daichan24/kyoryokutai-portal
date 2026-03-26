@@ -9,9 +9,11 @@ export default {
         secondary: '#10B981',
         accent: '#F59E0B',
         error: '#EF4444',
-        background: '#F9FAFB',
+        // ライトモード: Backlog 系の薄いグレー背景＋白に近いカード
+        background: '#E8EBF0',
+        card: '#FFFFFF',
         text: '#111827',
-        border: '#E5E7EB',
+        border: '#D1D9E6',
         muted: '#6B7280',
       },
       borderRadius: {

@@ -21,6 +21,8 @@ import {
   ListChecks,
   HardDrive,
   NotebookPen,
+  MessageCircle,
+  Banknote,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -68,7 +70,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     const items = [
       { to: '/reports/weekly', icon: FileText, label: '週次報告' },
       { to: '/inspections', icon: Eye, label: '視察記録' },
+      { to: '/activity-expenses', icon: Banknote, label: '活動経費' },
     ];
+    if (user?.role === 'MEMBER') {
+      items.push({ to: '/consultations', icon: MessageCircle, label: '相談' });
+    }
+    if (user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') {
+      items.push({ to: '/consultations', icon: MessageCircle, label: '相談（対応）' });
+    }
     if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
       items.splice(1, 0, { to: '/reports/monthly', icon: FileBarChart, label: '月次報告' });
       items.push({ to: '/support-records', icon: UserCheck, label: '支援内容' });
@@ -77,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       items.push({
         to: '/interview/monthly-schedules',
         icon: NotebookPen,
-        label: '面談用（月間スケジュール）',
+        label: '面談',
       });
     }
     return items;
@@ -190,7 +199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   });
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-border dark:border-gray-700 h-full flex flex-col shadow-lg md:shadow-none">
+    <aside className="w-64 bg-card dark:bg-gray-800 border-r border-border dark:border-gray-700 h-full flex flex-col shadow-lg md:shadow-none">
       {/* モバイル: 閉じるボタン、デスクトップ: 非表示 */}
       <div className="flex justify-between items-center p-4 border-b border-border dark:border-gray-700 md:hidden">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">メニュー</h2>
