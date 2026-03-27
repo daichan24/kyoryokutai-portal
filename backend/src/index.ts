@@ -33,6 +33,7 @@ import driveLinksRoutes from './routes/driveLinks';
 import consultationsRoutes from './routes/consultations';
 import activityExpensesRoutes from './routes/activityExpenses';
 import announcementsRoutes from './routes/announcements';
+import mandatedTeamEventsRoutes from './routes/mandatedTeamEvents';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -120,6 +121,7 @@ app.use('/api/drive-links', driveLinksRoutes); // Googleドライブリンク管
 app.use('/api/consultations', consultationsRoutes);
 app.use('/api/activity-expenses', activityExpensesRoutes);
 app.use('/api/announcements', announcementsRoutes);
+app.use('/api/mandated-team-events', mandatedTeamEventsRoutes);
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');

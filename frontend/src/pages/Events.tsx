@@ -76,8 +76,13 @@ export const Events: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">イベント管理</h1>
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">個人・チームイベント</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-xl">
+            主催するイベントを登録し、他メンバーの応援参加を依頼できます。町が隊員参加を求める枠の集計は「状況」→「イベント参加状況」の隊員参加枠タブを利用してください。
+          </p>
+        </div>
         <button 
           onClick={() => {
             console.log('🔵 [UI] 新規イベントボタンがクリックされました');

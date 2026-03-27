@@ -19,6 +19,7 @@ const eventSchema = z.object({
   description: z.string().optional(),
   maxParticipants: z.number().optional(),
   projectId: z.string().optional(),
+  supportSlotsNeeded: z.number().int().min(0).max(999).optional().nullable(),
   participants: z.array(z.object({
     userId: z.string(),
     participationType: z.enum(['PARTICIPATION', 'PREPARATION']),
@@ -136,6 +137,7 @@ router.post('/', async (req: AuthRequest, res) => {
         locationText: data.locationText || data.location || null,
         description: data.description || null,
         projectId: data.projectId || null,
+        supportSlotsNeeded: data.supportSlotsNeeded ?? null,
       },
       include: { creator: true, project: true },
     });
@@ -219,6 +221,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
       projectId: data.projectId || null,
       updatedBy: req.user!.id, // 最終更新者を記録
     };
+    if (data.supportSlotsNeeded !== undefined) {
+      updateData.supportSlotsNeeded = data.supportSlotsNeeded;
+    }
     
     if (data.date) {
       const startDate = new Date(data.date);

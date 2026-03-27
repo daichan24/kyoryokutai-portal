@@ -13,26 +13,29 @@ const taskSchema = z.object({
   projectId: z.string().optional().nullable(), // プロジェクトへの紐付けは任意
   order: z.number().int().optional(),
   dueDate: z.string().optional().nullable(), // タスクの期日（YYYY-MM-DD形式）
-  linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK']).optional(),
+  linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK', 'TRIAGE_PENDING']).optional(),
 });
 
 function resolveTaskLinkKind(
   projectId: string | null | undefined,
-  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK',
-): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' {
+  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING',
+): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING' {
   if (projectId) return 'PROJECT';
   if (linkKind === 'KYORYOKUTAI_WORK') return 'KYORYOKUTAI_WORK';
+  if (linkKind === 'TRIAGE_PENDING') return 'TRIAGE_PENDING';
   return 'UNSET';
 }
 
 function resolveTaskLinkKindOnUpdate(
   projectId: string | null,
-  linkKind: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | undefined,
-  previous: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK',
-): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' {
+  linkKind: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING' | undefined,
+  previous: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING',
+): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING' {
   if (projectId) return 'PROJECT';
   if (linkKind !== undefined) {
-    return linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI_WORK' : 'UNSET';
+    if (linkKind === 'KYORYOKUTAI_WORK') return 'KYORYOKUTAI_WORK';
+    if (linkKind === 'TRIAGE_PENDING') return 'TRIAGE_PENDING';
+    return 'UNSET';
   }
   return previous;
 }

@@ -284,6 +284,7 @@ const createScheduleSchema = z.object({
   participantsUserIds: z.array(z.string()).optional(),
   projectId: z.string().optional(),
   taskId: z.string().optional(),
+  supportEventId: z.string().uuid().optional().nullable(),
 });
 
 const updateScheduleSchema = createScheduleSchema.partial();
@@ -397,6 +398,15 @@ router.get('/', async (req: AuthRequest, res) => {
             themeColor: true,
           },
         },
+        supportEvent: {
+          select: {
+            id: true,
+            eventName: true,
+            startDate: true,
+            endDate: true,
+            supportSlotsNeeded: true,
+          },
+        },
         scheduleParticipants: {
           // 作成者の場合は全参加者を返す、参加者の場合は自分のみ
           // allMembersがtrueの場合は全参加者を返す
@@ -473,6 +483,7 @@ router.post('/', async (req: AuthRequest, res) => {
         isPending: data.isPending || false,
         projectId: data.projectId || null,
         taskId: data.taskId || null,
+        supportEventId: data.supportEventId || null,
         scheduleParticipants: participantIds.length > 0 ? {
           create: participantIds.map((userId) => ({
             userId,
@@ -488,6 +499,15 @@ router.post('/', async (req: AuthRequest, res) => {
             email: true,
             role: true,
             avatarColor: true,
+          },
+        },
+        supportEvent: {
+          select: {
+            id: true,
+            eventName: true,
+            startDate: true,
+            endDate: true,
+            supportSlotsNeeded: true,
           },
         },
         scheduleParticipants: {
@@ -606,6 +626,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.taskId !== undefined) {
       updateData.taskId = data.taskId || null;
     }
+    if (data.supportEventId !== undefined) {
+      updateData.supportEventId = data.supportEventId || null;
+    }
+    delete updateData.participantsUserIds;
 
     const schedule = await prisma.schedule.update({
       where: { id },
@@ -618,6 +642,15 @@ router.put('/:id', async (req: AuthRequest, res) => {
             email: true,
             role: true,
             avatarColor: true,
+          },
+        },
+        supportEvent: {
+          select: {
+            id: true,
+            eventName: true,
+            startDate: true,
+            endDate: true,
+            supportSlotsNeeded: true,
           },
         },
         scheduleParticipants: {

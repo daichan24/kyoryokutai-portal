@@ -482,7 +482,11 @@ export const Tasks: React.FC = () => {
               {!task.projectId && (
                 <div className="mb-2">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                    {task.linkKind === 'KYORYOKUTAI_WORK' ? '協力隊業務（プロジェクトなし）' : '未設定（プロジェクトなし）'}
+                    {task.linkKind === 'KYORYOKUTAI_WORK'
+                      ? '協力隊業務（プロジェクトなし）'
+                      : task.linkKind === 'TRIAGE_PENDING'
+                        ? 'あとで振り分け（当日メモ・保留）'
+                        : '未設定（プロジェクトなし）'}
                   </span>
                 </div>
               )}

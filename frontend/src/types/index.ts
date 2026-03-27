@@ -38,6 +38,8 @@ export interface Schedule {
   userId: string;
   user?: User;
   date: string;
+  startDate?: string;
+  endDate?: string;
   startTime: string;
   endTime: string;
   locationText?: string;
@@ -49,6 +51,14 @@ export interface Schedule {
   project?: Project;
   taskId?: string;
   task?: Task;
+  supportEventId?: string | null;
+  supportEvent?: {
+    id: string;
+    eventName: string;
+    startDate: string;
+    endDate: string;
+    supportSlotsNeeded?: number | null;
+  };
   scheduleParticipants?: ScheduleParticipant[];
   createdAt: string;
   updatedAt: string;
@@ -233,7 +243,7 @@ export interface Task {
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   order: number;
   dueDate?: string | null; // タスクの期日（YYYY-MM-DD形式）
-  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK';
+  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING';
   createdAt: string;
   updatedAt: string;
 }

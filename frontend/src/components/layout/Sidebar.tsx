@@ -39,30 +39,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const commonItems = [
     { to: '/dashboard', icon: Home, label: 'ダッシュボード' },
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
-    { to: '/events', icon: CalendarDays, label: 'イベント', end: true },
     ...(user?.wishesEnabled !== false ? [{ to: '/wishes', icon: ListChecks, label: 'やりたいこと100' }] : []),
   ];
 
-  // 大目標カテゴリ（Mission）
-  const directionItems = [
+  // ミッション・プロジェクト・タスク・個人イベントを1カテゴリに集約
+  const goalsAndEventsItems = [
     { to: '/goals', icon: Target, label: 'ミッション' },
-  ];
-
-  // 中・小目標カテゴリ（Project, Task）
-  const activeWorkItems = [
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/tasks', icon: Check, label: 'タスク' },
-  ];
-
-  // MEMBER専用のメニュー（自分のデータのみ）
-  const memberOnlyItems = [
-    { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
-    // 町民データベースは「状況」カテゴリに移動したため削除
-  ];
-
-  // SUPPORT/GOVERNMENT/MASTER用のメニュー（全データ閲覧可能）
-  const supportGovernmentItems = [
-    { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
+    { to: '/events', icon: CalendarDays, label: '個人イベント', end: true as const },
   ];
 
   // 報告カテゴリのメニュー
@@ -96,8 +81,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
 
   // 状況カテゴリのメニュー（イベント参加状況、タスクボックス、町民データベース）
   const getStatusItems = () => {
-    const items: Array<{ to: string; icon: typeof CalendarDays | typeof Inbox | typeof Contact; label: string }> = [];
-    
+    const items: Array<{ to: string; icon: typeof CalendarDays | typeof Inbox | typeof Contact | typeof Share2; label: string; end?: boolean }> = [];
+
+    items.push({
+      to: '/sns-posts',
+      icon: Share2,
+      label: 'SNS投稿',
+    });
+
     // 全ロールでイベント参加状況を表示
     items.push({
       to: '/events/participation-summary',
@@ -125,18 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const statusItems = getStatusItems();
 
   // ロール別にメニューを組み立て
-  const getNavItems = () => {
-    const items = [...commonItems];
-    
-    if (user?.role === 'MEMBER') {
-      items.push(...memberOnlyItems);
-    } else if (user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') {
-      items.push(...supportGovernmentItems);
-      // 月次報告は「報告」カテゴリに移動したため、ここでは追加しない
-    }
-    
-    return items;
-  };
+  const getNavItems = () => [...commonItems];
 
   const navItems = getNavItems();
 
@@ -232,61 +212,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </NavLink>
         ))}
 
-        {/* 大目標カテゴリ */}
-        {directionItems.length > 0 && (
-          <>
-            <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                大目標
-              </p>
-            </div>
-            {directionItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
-                    isActive
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  )
-                }
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="font-medium">{item.label}</span>
-              </NavLink>
-            ))}
-          </>
-        )}
-
-        {/* 中・小目標カテゴリ */}
-        {activeWorkItems.length > 0 && (
-          <>
-            <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                中・小目標
-              </p>
-            </div>
-            {activeWorkItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
-                    isActive
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  )
-                }
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="font-medium">{item.label}</span>
-              </NavLink>
-            ))}
-          </>
-        )}
+        {/* 目標・個人イベント */}
+        <div className="pt-4 pb-2">
+          <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            目標・個人イベント
+          </p>
+        </div>
+        {goalsAndEventsItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={(item as { end?: boolean }).end}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
+                isActive
+                  ? 'bg-primary text-white'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              )
+            }
+          >
+            <item.icon className="h-5 w-5" />
+            <span className="font-medium">{item.label}</span>
+          </NavLink>
+        ))}
 
         {reportItems.length > 0 && (
           <>

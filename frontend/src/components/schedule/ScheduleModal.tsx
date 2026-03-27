@@ -42,6 +42,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [freeNote, setFreeNote] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [supportEventId, setSupportEventId] = useState<string | null>(null);
+  const [supportEvents, setSupportEvents] = useState<Array<{ id: string; eventName: string; startDate: string }>>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -56,6 +58,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     fetchUsers();
     fetchTasks();
     fetchProjects();
+    fetchSupportEvents();
 
     if (schedule) {
       const scheduleDateStr = formatDate(schedule.date);
@@ -69,6 +72,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setFreeNote(schedule.freeNote || '');
       setSelectedTaskId(schedule.taskId || null);
       setSelectedProjectId(schedule.projectId || null);
+      setSupportEventId(schedule.supportEventId || null);
       // 編集時も参加者を追加・変更できるようにする
       setIsCollaborative(true);
       // 既存の参加者を選択状態にする
@@ -99,8 +103,25 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       if (defaultActivityDescription) {
         setActivityDescription(defaultActivityDescription);
       }
+      setSupportEventId(null);
     }
   }, [schedule, defaultDate, defaultStartTime, defaultEndTime, defaultTaskId, defaultProjectId, defaultActivityDescription]);
+
+  const fetchSupportEvents = async () => {
+    try {
+      const r = await api.get<any[]>('/api/events?status=upcoming');
+      const list = r.data || [];
+      setSupportEvents(
+        list.map((e) => ({
+          id: e.id,
+          eventName: e.eventName,
+          startDate: e.startDate || e.date,
+        })),
+      );
+    } catch {
+      setSupportEvents([]);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -225,6 +246,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       }
       if (selectedProjectId) {
         data.projectId = selectedProjectId;
+      }
+      if (supportEventId) {
+        data.supportEventId = supportEventId;
+      } else if (schedule) {
+        data.supportEventId = null;
       }
 
       // 新規作成時・編集時ともに参加者を追加・変更可能
@@ -512,6 +538,28 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                     {task.title}
                   </option>
                 ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              個人イベントへの応援出勤（任意）
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              主催した個人イベントの応援枠として記録する場合に紐づけます。
+            </p>
+            <select
+              value={supportEventId || ''}
+              onChange={(e) => setSupportEventId(e.target.value || null)}
+              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              disabled={readOnly}
+            >
+              <option value="">紐づけない</option>
+              {supportEvents.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.eventName}（{ev.startDate?.slice?.(0, 10) ?? ''}）
+                </option>
+              ))}
             </select>
           </div>
 

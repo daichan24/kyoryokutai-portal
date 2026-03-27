@@ -26,7 +26,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'>('NOT_STARTED');
   const [projectId, setProjectId] = useState<string | null>(initialProjectId || null);
-  const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI'>('PROJECT');
+  const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'TRIAGE'>('PROJECT');
   const [dueDate, setDueDate] = useState<string>('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,11 +40,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     }
     // 編集時は、元の値と比較
     const originalDueDate = task.dueDate ? task.dueDate.split('T')[0] : '';
-    const origAttach: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI' = task.projectId
+    const origAttach: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'TRIAGE' = task.projectId
       ? 'PROJECT'
       : task.linkKind === 'KYORYOKUTAI_WORK'
         ? 'KYORYOKUTAI'
-        : 'UNSET';
+        : task.linkKind === 'TRIAGE_PENDING'
+          ? 'TRIAGE'
+          : 'UNSET';
     return (
       title !== task.title ||
       description !== (task.description || '') ||
@@ -106,6 +108,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         setAttachMode('PROJECT');
       } else if (task.linkKind === 'KYORYOKUTAI_WORK') {
         setAttachMode('KYORYOKUTAI');
+      } else if (task.linkKind === 'TRIAGE_PENDING') {
+        setAttachMode('TRIAGE');
       } else {
         setAttachMode('UNSET');
       }
@@ -128,7 +132,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     }
 
     if (attachMode === 'PROJECT' && !projectId) {
-      alert('プロジェクトを選ぶか、「未設定」「協力隊業務」を選んでください');
+      alert('プロジェクトを選ぶか、下のいずれかの紐づけ方を選んでください');
       return;
     }
 
@@ -136,7 +140,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     try {
       const effectiveProjectId = attachMode === 'PROJECT' ? projectId || null : null;
       const linkKind =
-        attachMode === 'PROJECT' ? 'PROJECT' : attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI_WORK' : 'UNSET';
+        attachMode === 'PROJECT'
+          ? 'PROJECT'
+          : attachMode === 'KYORYOKUTAI'
+            ? 'KYORYOKUTAI_WORK'
+            : attachMode === 'TRIAGE'
+              ? 'TRIAGE_PENDING'
+              : 'UNSET';
 
       const data = {
         title: title.trim(),
@@ -209,7 +219,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <select
               value={attachMode}
               onChange={(e) => {
-                const v = e.target.value as 'PROJECT' | 'UNSET' | 'KYORYOKUTAI';
+                const v = e.target.value as 'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'TRIAGE';
                 setAttachMode(v);
                 if (v !== 'PROJECT') setProjectId(null);
               }}
@@ -219,6 +229,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <option value="PROJECT">プロジェクトに紐づける</option>
               <option value="UNSET">未設定（プロジェクトに紐づけない）</option>
               <option value="KYORYOKUTAI">協力隊業務（プロジェクトに紐づけない）</option>
+              <option value="TRIAGE">あとで振り分け（当日メモ・保留）</option>
             </select>
             {attachMode === 'PROJECT' && (
               <select

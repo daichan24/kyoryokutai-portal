@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X } from 'lucide-react';
+import { subDays, format } from 'date-fns';
+import { ja } from 'date-fns/locale';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
@@ -16,6 +18,8 @@ interface Event {
   locationText?: string;
   description?: string;
   maxParticipants?: number;
+  supportSlotsNeeded?: number | null;
+  endDate?: string;
   projectId?: string;
   participations?: Array<{
     id: string;
@@ -58,7 +62,7 @@ export const EventModal: React.FC<EventModalProps> = ({
   const [endTime, setEndTime] = useState('');
   const [locationText, setLocationText] = useState('');
   const [description, setDescription] = useState('');
-  const [maxParticipants, setMaxParticipants] = useState<number | undefined>();
+  const [supportSlotsNeeded, setSupportSlotsNeeded] = useState<number | undefined>();
   const [projectId, setProjectId] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const { user } = useAuthStore();
@@ -78,12 +82,15 @@ export const EventModal: React.FC<EventModalProps> = ({
       setEventType(event.eventType);
       const eventDateStr = formatDate(new Date(event.date));
       setDate(eventDateStr);
-      setEndDate(eventDateStr); // 終了日は開始日と同じ（後でスキーマ変更時に対応）
+      const endRaw = (event as Event & { endDate?: string }).endDate;
+      setEndDate(endRaw ? formatDate(new Date(endRaw)) : eventDateStr);
       setStartTime(event.startTime || '');
       setEndTime(event.endTime || '');
       setLocationText(event.locationText || '');
       setDescription(event.description || '');
-      setMaxParticipants(event.maxParticipants);
+      setSupportSlotsNeeded(
+        event.supportSlotsNeeded ?? event.maxParticipants ?? undefined,
+      );
       setProjectId(event.projectId || '');
       // 参加メンバーを設定
       if (event.participations) {
@@ -158,15 +165,19 @@ export const EventModal: React.FC<EventModalProps> = ({
     setLoading(true);
 
     try {
-      const data = {
+      const data: Record<string, unknown> = {
         eventName,
         eventType,
         date,
+        endDate: endDate || date,
         startTime: startTime || undefined,
         endTime: endTime || undefined,
         locationText: locationText || undefined,
         description: description || undefined,
-        maxParticipants: maxParticipants || undefined,
+        supportSlotsNeeded:
+          supportSlotsNeeded != null && !Number.isNaN(Number(supportSlotsNeeded))
+            ? Number(supportSlotsNeeded)
+            : undefined,
         projectId: projectId || undefined,
         participants: selectedParticipants.length > 0 ? selectedParticipants : undefined,
       };
@@ -202,6 +213,18 @@ export const EventModal: React.FC<EventModalProps> = ({
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
+  const governmentApplicationDeadlineLabel = useMemo(() => {
+    if (!date) return null;
+    try {
+      const d = new Date(date);
+      if (Number.isNaN(d.getTime())) return null;
+      const deadline = subDays(d, 14);
+      return format(deadline, 'yyyy年M月d日(E)', { locale: ja });
+    } catch {
+      return null;
+    }
+  }, [date]);
+
   useEffect(() => {
     if (event && event.participations && event.participations.length > 0) {
       setIsCollaborative(true);
@@ -210,20 +233,41 @@ export const EventModal: React.FC<EventModalProps> = ({
 
   const hasChanges = () => {
     if (!event) {
-      // 新規作成時は、何か入力されていれば変更あり
-      return !!(eventName || date || startTime || endTime || locationText || description || projectId || selectedParticipants.length > 0);
+      return !!(
+        eventName ||
+        date ||
+        endDate ||
+        startTime ||
+        endTime ||
+        locationText ||
+        description ||
+        projectId ||
+        supportSlotsNeeded != null ||
+        selectedParticipants.length > 0
+      );
     }
-    // 編集時は、元の値と比較
     const originalDate = formatDate(new Date(event.date));
+    const originalEnd = (event as Event & { endDate?: string }).endDate
+      ? formatDate(new Date((event as Event & { endDate?: string }).endDate!))
+      : originalDate;
+    const origSlots = event.supportSlotsNeeded ?? event.maxParticipants;
     return (
       eventName !== event.eventName ||
       date !== originalDate ||
+      endDate !== originalEnd ||
       startTime !== (event.startTime || '') ||
       endTime !== (event.endTime || '') ||
       locationText !== (event.locationText || '') ||
       description !== (event.description || '') ||
       projectId !== (event.projectId || '') ||
-      JSON.stringify(selectedParticipants) !== JSON.stringify(event.participations?.map(p => ({ userId: p.userId, participationType: p.participationType })) || [])
+      supportSlotsNeeded !== origSlots ||
+      JSON.stringify(selectedParticipants) !==
+        JSON.stringify(
+          event.participations?.map((p) => ({
+            userId: p.userId,
+            participationType: p.participationType,
+          })) || [],
+        )
     );
   };
 
@@ -246,7 +290,7 @@ export const EventModal: React.FC<EventModalProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [eventName, date, startTime, endTime, locationText, description, projectId, selectedParticipants]);
+  }, [eventName, date, endDate, startTime, endTime, locationText, description, projectId, supportSlotsNeeded, selectedParticipants]);
 
   return (
     <>
@@ -271,6 +315,19 @@ export const EventModal: React.FC<EventModalProps> = ({
             required
             placeholder="イベント名を入力"
           />
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 p-4 text-sm text-amber-950 dark:text-amber-100 space-y-2">
+            <p className="font-semibold">個人・チーム主催イベント（応援参加）</p>
+            <p>
+              主催者は、応援で人員を確保するため、<strong>イベント開始日の14日前まで</strong>
+              に行政へ申請する運用です（強制のシステムロックはありません）。
+            </p>
+            {governmentApplicationDeadlineLabel && (
+              <p className="text-xs opacity-90">
+                開始日が上記の場合の申請目安: <strong>{governmentApplicationDeadlineLabel}</strong>まで（日付ベースの目安）
+              </p>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -347,6 +404,19 @@ export const EventModal: React.FC<EventModalProps> = ({
               placeholder="イベントの説明を入力"
             />
           </div>
+
+          <Input
+            label="応援で必要な人数（目安・任意）"
+            type="number"
+            min={0}
+            max={999}
+            value={supportSlotsNeeded === undefined ? '' : String(supportSlotsNeeded)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSupportSlotsNeeded(v === '' ? undefined : Math.max(0, parseInt(v, 10) || 0));
+            }}
+            placeholder="例: 3"
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

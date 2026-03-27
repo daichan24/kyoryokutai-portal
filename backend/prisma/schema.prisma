@@ -87,6 +87,9 @@ model User {
   announcementsCreated Announcement[]       @relation("AnnouncementAuthor")
   announcementReads    AnnouncementRead[]
 
+  mandatedTeamEventsCreated     MandatedTeamEvent[]            @relation("MandatedTeamEventCreator")
+  mandatedTeamEventAttendances  MandatedTeamEventAttendance[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -133,6 +136,10 @@ model Schedule {
   participants        String[] // User IDの配列（後方互換性のため残す）
   freeNote            String?  @db.Text
 
+  /// 個人主催イベントへの応援出勤などで紐づけ
+  supportEventId String?
+  supportEvent   Event?  @relation("ScheduleSupportEvent", fields: [supportEventId], references: [id], onDelete: SetNull)
+
   isTemplate      Boolean @default(false)
   recurrenceRule  Json? // { type: 'daily|weekly|monthly', interval: 1, endDate: Date }
   isPending       Boolean @default(false)
@@ -151,6 +158,7 @@ model Schedule {
   @@index([projectId])
   @@index([taskId])
   @@index([locationId])
+  @@index([supportEventId])
 }
 
 enum CreatedBy {
@@ -434,6 +442,7 @@ enum MissionTaskLinkKind {
   PROJECT
   UNSET // 未設定（プロジェクトに紐づけない）
   KYORYOKUTAI_WORK // 協力隊業務（プロジェクトに紐づけない）
+  TRIAGE_PENDING // あとで振り分け（当日メモ・プロジェクト/タスク未割当）
 }
 
 // ========================================
@@ -623,6 +632,9 @@ model Event {
   locationText String?
   description  String?   @db.Text
 
+  /// 応援で確保したい人数（目安・個人主催イベント用）
+  supportSlotsNeeded Int?
+
   participationPoint Float @default(1.0)
   preparationPoint   Float @default(0.5)
 
@@ -639,6 +651,7 @@ model Event {
   updater   User?   @relation("EventUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
 
   participations EventParticipation[]
+  schedules      Schedule[] @relation("ScheduleSupportEvent")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -648,6 +661,37 @@ model Event {
   @@index([updatedBy])
   @@index([locationId])
   @@index([projectId])
+}
+
+/// 役場・スタッフが設定する「隊員全員の参加が必要な業務イベント」（個人主催の Event とは別）
+model MandatedTeamEvent {
+  id            String   @id @default(uuid())
+  title         String   @db.VarChar(400)
+  description   String?  @db.Text
+  startDate     DateTime @db.Date
+  endDate       DateTime @db.Date
+  requiredSlots Int // 必要人数（目安・要件）
+  createdById   String
+  creator       User     @relation("MandatedTeamEventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  attendances   MandatedTeamEventAttendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startDate, endDate])
+}
+
+model MandatedTeamEventAttendance {
+  id        String          @id @default(uuid())
+  eventId   String
+  event     MandatedTeamEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attended  Boolean         @default(false)
+  updatedAt DateTime        @updatedAt
+
+  @@unique([eventId, userId])
+  @@index([userId])
 }
 
 model EventParticipation {
