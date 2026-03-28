@@ -47,6 +47,7 @@ router.get('/login-hints', async (req, res) => {
       };
     });
 
+    res.setHeader('Cache-Control', 'private, max-age=120');
     res.json(loginHints);
   } catch (error) {
     console.error('Get login hints error:', error);

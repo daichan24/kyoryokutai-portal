@@ -9,10 +9,12 @@ import { ja } from 'date-fns/locale';
 async function generatePDFFromHTML(html: string): Promise<Buffer> {
   let browser;
   try {
-    console.log('Starting PDF generation...');
-    
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH?.trim() || undefined;
+    console.log('Starting PDF generation...', executablePath ? `executablePath=${executablePath}` : 'bundled Chromium');
+
     browser = await puppeteer.launch({
       headless: true,
+      ...(executablePath ? { executablePath } : {}),
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -21,8 +23,9 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
         '--disable-software-rasterizer',
         '--disable-web-security',
         '--disable-features=IsolateOrigins,site-per-process',
+        '--font-render-hinting=none',
       ],
-      timeout: 60000,
+      timeout: 90000,
     });
 
     console.log('Browser launched successfully');
@@ -40,21 +43,13 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
 
     // 日本語フォント対応のための設定
     console.log('Setting page content...');
-    await page.setContent(html, { 
-      waitUntil: 'networkidle0', 
-      timeout: 60000 
+    // networkidle0 は外部フォント待ちで Render 等でタイムアウトしやすいため domcontentloaded を使用
+    await page.setContent(html, {
+      waitUntil: 'domcontentloaded',
+      timeout: 45000,
     });
 
-    console.log('Page content set, waiting for fonts...');
-
-    // フォント読み込みを待つ（ブラウザコンテキスト内で実行）
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await page.evaluate(() => {
-      // @ts-ignore - document is available in browser context
-      return document.fonts.ready;
-    });
-
-    console.log('Fonts loaded, generating PDF...');
+    console.log('Page content set, generating PDF...');
 
     const pdf = await page.pdf({
       format: 'A4',
@@ -66,7 +61,7 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
       },
       printBackground: true,
       preferCSSPageSize: true,
-      timeout: 60000,
+      timeout: 90000,
     });
 
     console.log('PDF generated successfully, size:', pdf.length);

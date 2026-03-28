@@ -1,12 +1,11 @@
 services:
-  # バックエンド（Web Service）
+  # バックエンド（Docker: Chromium 入りで PDF 生成が動作）
   - type: web
     name: kyoryokutai-backend
-    env: node
+    runtime: docker
     plan: starter
-    rootDir: backend
-    buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npm run migrate:deploy && npm start
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     envVars:
       - key: NODE_ENV
         value: production

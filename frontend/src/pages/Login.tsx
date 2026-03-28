@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
@@ -22,24 +22,29 @@ export const Login: React.FC = () => {
   const [loginHints, setLoginHints] = useState<LoginHint[]>([]);
   const [loadingHints, setLoadingHints] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [accountListOpen, setAccountListOpen] = useState(false);
+  const [hintsLoaded, setHintsLoaded] = useState(false);
 
-  // テストアカウント一覧を取得（常に表示）
-  useEffect(() => {
-    fetchLoginHints();
-  }, []);
-
-  const fetchLoginHints = async () => {
+  /** 初回表示で API / DB を叩かない（Render コールドスタート対策）。開いたときだけ取得 */
+  const fetchLoginHints = useCallback(async () => {
+    if (hintsLoaded) return;
     setLoadingHints(true);
     try {
       const response = await api.get<LoginHint[]>('/api/users/login-hints');
       setLoginHints(response.data || []);
+      setHintsLoaded(true);
     } catch (error) {
       console.error('Failed to fetch login hints:', error);
-      // エラーが発生してもログイン画面は表示し続ける
       setLoginHints([]);
+      setHintsLoaded(true);
     } finally {
       setLoadingHints(false);
     }
+  }, [hintsLoaded]);
+
+  const toggleAccountList = () => {
+    setAccountListOpen((o) => !o);
+    if (!accountListOpen) void fetchLoginHints();
   };
 
   const handleCopyEmail = async (emailToCopy: string) => {
@@ -128,80 +133,97 @@ export const Login: React.FC = () => {
 
         </form>
 
-        {/* アカウント一覧 */}
+        {/* アカウント一覧（開いたときだけ API 取得） */}
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          <button
+            type="button"
+            onClick={toggleAccountList}
+            className="flex w-full items-center justify-between gap-2 text-left rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               利用可能なアカウント一覧
             </h3>
-            {loadingHints ? (
-              <div className="flex justify-center py-4">
-                <LoadingSpinner size="sm" />
-              </div>
-            ) : loginHints.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        名前
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        メール
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        役割
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        パスワード
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        操作
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {loginHints.map((hint, index) => (
-                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100">
-                          {hint.name}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100 font-mono text-xs">
-                          {hint.email}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 text-xs rounded-full font-medium ${getRoleColor(
-                              hint.role
-                            )}`}
-                          >
-                            {hint.role}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-400 font-mono text-xs">
-                          {hint.password}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <button
-                            onClick={() => handleCopyEmail(hint.email)}
-                            className="text-primary hover:text-blue-600 transition-colors"
-                            title="メールアドレスをコピー"
-                          >
-                            {copiedEmail === hint.email ? (
-                              <Check className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {accountListOpen ? (
+              <ChevronDown className="h-5 w-5 shrink-0 text-gray-500" />
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">アカウントが見つかりませんでした</p>
+              <ChevronRight className="h-5 w-5 shrink-0 text-gray-500" />
             )}
-          </div>
+          </button>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
+            初回は閉じた状態です。展開すると一覧を読み込みます（ログインの体感を軽くします）。
+          </p>
+          {accountListOpen && (
+            <>
+              {loadingHints ? (
+                <div className="flex justify-center py-4">
+                  <LoadingSpinner size="sm" />
+                </div>
+              ) : loginHints.length > 0 ? (
+                <div className="overflow-x-auto mt-2">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          名前
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          メール
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          役割
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          パスワード
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          操作
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {loginHints.map((hint, index) => (
+                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100">
+                            {hint.name}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100 font-mono text-xs">
+                            {hint.email}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full font-medium ${getRoleColor(hint.role)}`}
+                            >
+                              {hint.role}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-400 font-mono text-xs">
+                            {hint.password}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyEmail(hint.email)}
+                              className="text-primary hover:text-blue-600 transition-colors"
+                              title="メールアドレスをコピー"
+                            >
+                              {copiedEmail === hint.email ? (
+                                <Check className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">アカウントが見つかりませんでした</p>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
