@@ -57,6 +57,15 @@ function matchesAdminPath(pathname: string) {
   return pathname.startsWith('/settings') || pathname.startsWith('/nudges');
 }
 
+function matchesStatusPath(pathname: string) {
+  return (
+    pathname.startsWith('/sns-posts') ||
+    pathname.startsWith('/events/participation-summary') ||
+    pathname.startsWith('/task-requests') ||
+    pathname.startsWith('/contacts')
+  );
+}
+
 function CollapsibleBlock({
   title,
   open,
@@ -130,10 +139,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const docActive = matchesDocPath(location.pathname);
   const supportActive = matchesSupportPath(location.pathname);
   const adminActive = matchesAdminPath(location.pathname);
+  const statusActive = matchesStatusPath(location.pathname);
 
   const [docOpen, setDocOpen] = useState(false);
   const [supportMenuOpen, setSupportMenuOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   useEffect(() => {
     if (docActive) setDocOpen(true);
@@ -146,6 +157,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   useEffect(() => {
     if (adminActive) setAdminOpen(true);
   }, [adminActive]);
+
+  useEffect(() => {
+    if (statusActive) setStatusOpen(true);
+  }, [statusActive]);
 
   const commonItems = [
     { to: '/dashboard', icon: Home, label: 'ダッシュボード' },
@@ -298,14 +313,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </CollapsibleBlock>
         )}
 
-        <div className="pt-4 pb-2">
-          <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            状況
-          </p>
-        </div>
-        {statusItems.map((item) => (
-          <NavRow key={item.to} {...item} onNavigate={closeMobile} />
-        ))}
+        <CollapsibleBlock title="状況" open={statusOpen} onOpenChange={setStatusOpen}>
+          {statusItems.map((item) => (
+            <NavRow key={item.to} {...item} onNavigate={closeMobile} />
+          ))}
+        </CollapsibleBlock>
 
         {userMenuItems.length > 0 && (
           <CollapsibleBlock
