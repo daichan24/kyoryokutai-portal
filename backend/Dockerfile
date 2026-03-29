@@ -28,4 +28,5 @@ ENV NODE_ENV=production
 ENV PORT=10000
 EXPOSE 10000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# マイグレーション・条件付き seed は package.json の start:prod に集約（Render の Start Command もこれに合わせること）
+CMD ["npm", "run", "start:prod"]
