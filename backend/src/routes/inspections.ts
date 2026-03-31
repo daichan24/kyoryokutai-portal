@@ -13,10 +13,10 @@ const createInspectionSchema = z.object({
   destination: z.string().min(1),
   purpose: z.string().min(1),
   participants: z.array(z.string()).default([]),
-  inspectionPurpose: z.string().min(1),
-  inspectionContent: z.string().min(1),
-  reflection: z.string().min(1),
-  futureAction: z.string().min(1),
+  inspectionPurpose: z.string().default(''),
+  inspectionContent: z.string().default(''),
+  reflection: z.string().default(''),
+  futureAction: z.string().default(''),
   projectId: z.string().optional(),
 });
 
@@ -208,7 +208,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// 視察復命書PDF出力
+// 復命書PDF出力
 router.get('/:id/pdf', async (req, res) => {
   try {
     const { id } = req.params;

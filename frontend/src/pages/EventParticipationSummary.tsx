@@ -241,7 +241,7 @@ export const EventParticipationSummary: React.FC = () => {
               <div className="bg-card dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">補足</h2>
                 <div className="space-y-2 text-gray-600 dark:text-gray-400 text-sm">
-                  <p>ここは「個人イベント」への参加や、既存のイベント機能で記録された参加の集計です。</p>
+                  <p>ここは「イベント主催」への参加や、既存のイベント機能で記録された参加の集計です。</p>
                   <p>町・スタッフが指定する隊員参加枠の集計は「隊員参加枠」タブを開いてください。</p>
                 </div>
               </div>

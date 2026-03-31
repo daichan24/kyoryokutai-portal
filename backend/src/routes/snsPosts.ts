@@ -8,17 +8,13 @@ import { getCurrentWeekBoundary, getWeekBoundaryForDate } from '../utils/weekBou
 const router = Router();
 router.use(authenticate);
 
-// 新スキーマ（詳細入力対応）
+// 新スキーマ（日付＋種別中心。テーマ・フォロワー等は廃止）
 const snsPostCreateSchema = z.object({
-  postedAt: z.string(), // ISO日時文字列（必須）
-  postType: z.enum(['STORY', 'FEED']), // 必須
+  postedAt: z.string(), // ISO 日時または YYYY-MM-DD（日付のみの場合は UTC 正午で解釈）
+  postType: z.enum(['STORY', 'FEED']),
   url: z.string().optional().refine((val) => !val || val === '' || z.string().url().safeParse(val).success, {
     message: 'Invalid URL format',
   }),
-  theme: z.string().max(200).optional(),
-  followerDelta: z.number().int().min(0).optional(),
-  views: z.number().int().min(0).optional(),
-  likes: z.number().int().min(0).optional(),
   note: z.string().max(2000).optional(),
 });
 
@@ -155,55 +151,73 @@ router.post('/', async (req: AuthRequest, res) => {
     // 新スキーマで試行
     try {
       const data = snsPostCreateSchema.parse(req.body);
-      const postedAt = new Date(data.postedAt);
+      const raw = data.postedAt.trim();
+      const postedAt =
+        raw.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(raw)
+          ? new Date(`${raw}T12:00:00.000Z`)
+          : new Date(raw);
       const { weekKey } = getWeekBoundaryForDate(postedAt);
 
-      const post = await prisma.sNSPost.create({
-        data: {
+      const post = await prisma.sNSPost.upsert({
+        where: {
+          userId_week_postType: {
+            userId: req.user!.id,
+            week: weekKey,
+            postType: data.postType,
+          },
+        },
+        create: {
           userId: req.user!.id,
           week: weekKey,
           postedAt,
           postType: data.postType,
           url: data.url && data.url.trim() !== '' ? data.url : null,
-          theme: data.theme && data.theme.trim() !== '' ? data.theme : null,
-          followerDelta: data.followerDelta ?? null,
-          views: data.views ?? null,
-          likes: data.likes ?? null,
           note: data.note && data.note.trim() !== '' ? data.note : null,
+        },
+        update: {
+          postedAt,
+          week: weekKey,
+          url: data.url && data.url.trim() !== '' ? data.url : null,
+          note: data.note !== undefined ? (data.note && data.note.trim() !== '' ? data.note : null) : undefined,
         },
         include: { user: true },
       });
 
-      console.log('[API] SNS post created:', post.id);
+      console.log('[API] SNS post upserted:', post.id);
       return res.json(post);
     } catch (zodError) {
       // 旧スキーマで試行（後方互換性）
       if (zodError instanceof z.ZodError) {
         console.log('[API] Validation error, trying legacy schema:', zodError.errors);
         const legacyData = snsPostLegacySchema.parse(req.body);
-        const legacyPostType: PostType = legacyData.postType || 'STORY';
-        const post = await prisma.sNSPost.upsert({
-          where: {
-            userId_week: {
-              userId: req.user!.id,
-              week: legacyData.week,
-            },
-          },
-          update: {
-            postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-            postType: legacyData.postType ? (legacyData.postType as PostType) : undefined,
-            isPosted: legacyData.isPosted,
-          },
-          create: {
-            userId: req.user!.id,
-            week: legacyData.week,
-            postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-            postType: legacyPostType,
-            isPosted: legacyData.isPosted,
-            postedAt: legacyData.postDate ? new Date(legacyData.postDate) : new Date(),
-          },
-          include: { user: true },
+        const legacyPostType: PostType =
+          legacyData.postType === 'BOTH' || !legacyData.postType ? 'STORY' : (legacyData.postType as PostType);
+        const postedAtLegacy = legacyData.postDate ? new Date(legacyData.postDate) : new Date();
+        const existing = await prisma.sNSPost.findFirst({
+          where: { userId: req.user!.id, week: legacyData.week, postType: legacyPostType },
         });
+        const post = existing
+          ? await prisma.sNSPost.update({
+              where: { id: existing.id },
+              data: {
+                postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
+                postType: legacyData.postType ? (legacyData.postType as PostType) : undefined,
+                isPosted: legacyData.isPosted,
+                postedAt: postedAtLegacy,
+              },
+              include: { user: true },
+            })
+          : await prisma.sNSPost.create({
+              data: {
+                userId: req.user!.id,
+                week: legacyData.week,
+                postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
+                postType: legacyPostType,
+                isPosted: legacyData.isPosted,
+                postedAt: postedAtLegacy,
+              },
+              include: { user: true },
+            });
 
         return res.json(post);
       }
@@ -243,21 +257,19 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     const updateData: any = {};
     if (data.postedAt) {
-      updateData.postedAt = new Date(data.postedAt);
-      // 週キーも更新
-      const { weekKey } = getWeekBoundaryForDate(new Date(data.postedAt));
+      const raw = data.postedAt.trim();
+      const pd =
+        raw.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(raw)
+          ? new Date(`${raw}T12:00:00.000Z`)
+          : new Date(data.postedAt);
+      updateData.postedAt = pd;
+      const { weekKey } = getWeekBoundaryForDate(pd);
       updateData.week = weekKey;
     }
     if (data.postType !== undefined) updateData.postType = data.postType;
     if (data.url !== undefined) {
       updateData.url = data.url && data.url.trim() !== '' ? data.url : null;
     }
-    if (data.theme !== undefined) {
-      updateData.theme = data.theme && data.theme.trim() !== '' ? data.theme : null;
-    }
-    if (data.followerDelta !== undefined) updateData.followerDelta = data.followerDelta ?? null;
-    if (data.views !== undefined) updateData.views = data.views ?? null;
-    if (data.likes !== undefined) updateData.likes = data.likes ?? null;
     if (data.note !== undefined) {
       updateData.note = data.note && data.note.trim() !== '' ? data.note : null;
     }

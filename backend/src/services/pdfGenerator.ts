@@ -6,11 +6,28 @@ import { ja } from 'date-fns/locale';
 /**
  * HTML文字列からPDFを生成
  */
+async function resolveChromeExecutable(): Promise<string | undefined> {
+  const fromEnv = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
+  if (fromEnv) return fromEnv;
+  try {
+    if (typeof puppeteer.executablePath === 'function') {
+      const p = puppeteer.executablePath();
+      if (p && typeof p === 'string') return p;
+    }
+  } catch (e) {
+    console.warn('puppeteer.executablePath() failed:', e);
+  }
+  return undefined;
+}
+
 async function generatePDFFromHTML(html: string): Promise<Buffer> {
   let browser;
   try {
-    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH?.trim() || undefined;
-    console.log('Starting PDF generation...', executablePath ? `executablePath=${executablePath}` : 'bundled Chromium');
+    const executablePath = await resolveChromeExecutable();
+    console.log(
+      'Starting PDF generation...',
+      executablePath ? `executablePath=${executablePath}` : 'no executablePath (launch may download/fail)',
+    );
 
     browser = await puppeteer.launch({
       headless: true,
@@ -193,7 +210,7 @@ export async function generateNudgePDF(): Promise<Buffer> {
 }
 
 /**
- * 視察復命書PDF生成
+ * 復命書PDF生成
  */
 export async function generateInspectionPDF(inspectionId: string): Promise<Buffer> {
   try {
@@ -231,10 +248,10 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       </style>
     </head>
     <body>
-      <h1>視察復命書</h1>
+      <h1>復命書</h1>
 
       <div class="info">
-        <strong>視察日:</strong> ${format(new Date(inspection.date), 'yyyy年MM月dd日(E)', { locale: ja })}
+        <strong>日付:</strong> ${format(new Date(inspection.date), 'yyyy年MM月dd日(E)', { locale: ja })}
       </div>
 
       <div class="info">

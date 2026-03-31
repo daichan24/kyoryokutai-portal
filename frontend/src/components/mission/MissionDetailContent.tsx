@@ -324,6 +324,7 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
       {isProjectModalOpen && (
         <ProjectModal
           project={selectedProject}
+          defaultMissionId={selectedProject ? undefined : missionId}
           onClose={() => {
             setIsProjectModalOpen(false);
             setSelectedProject(null);

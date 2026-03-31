@@ -50,3 +50,6 @@ PRODUCTION_DEPLOYMENT.md
 QUICK_DEPLOY_GUIDE.md
 RENDER_*.md
 REFACTORING_SUMMARY.md
+
+# Puppeteer browser cache (project-local)
+backend/.cache/

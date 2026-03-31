@@ -68,13 +68,13 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       }
     } catch (error) {
       console.error('Failed to fetch inspection:', error);
-      alert('視察記録の取得に失敗しました');
+      alert('復命書の取得に失敗しました');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (asDraft?: boolean) => {
     if (!inspection) return;
     setSaving(true);
     try {
@@ -87,7 +87,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       setIsEditing(false);
       await fetchInspection();
       onUpdated?.();
-      alert('保存しました');
+      alert(asDraft ? '下書きを保存しました（いつでも続きから編集できます）' : '保存しました');
     } catch (error) {
       console.error('Failed to save inspection:', error);
       alert('保存に失敗しました');
@@ -112,7 +112,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `視察復命書_${format(new Date(inspection?.date || new Date()), 'yyyyMMdd')}_${inspection?.destination || ''}.pdf`);
+      link.setAttribute('download', `復命書_${format(new Date(inspection?.date || new Date()), 'yyyyMMdd')}_${inspection?.destination || ''}.pdf`);
       document.body.appendChild(link);
       link.click();
       window.URL.revokeObjectURL(url);
@@ -163,7 +163,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-          <h2 className="text-2xl font-bold dark:text-gray-100">視察復命書</h2>
+          <h2 className="text-2xl font-bold dark:text-gray-100">復命書</h2>
           <div className="flex items-center gap-2">
             {/* タブ切り替え */}
             <button
@@ -279,11 +279,16 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
                   placeholder="今後のアクションを入力..."
                 />
               </div>
-              <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
+              <div className="flex flex-wrap justify-end gap-3 pt-4 border-t dark:border-gray-700">
                 <Button variant="outline" onClick={() => setIsEditing(false)}>
                   キャンセル
                 </Button>
-                <Button onClick={handleSave} disabled={saving}>
+                {canEdit && (
+                  <Button variant="outline" onClick={() => handleSave(true)} disabled={saving}>
+                    {saving ? '保存中...' : '下書き保存'}
+                  </Button>
+                )}
+                <Button onClick={() => handleSave(false)} disabled={saving}>
                   {saving ? '保存中...' : '保存'}
                 </Button>
               </div>

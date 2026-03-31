@@ -28,6 +28,8 @@ interface Mission {
 
 interface ProjectModalProps {
   project?: Project | null;
+  /** ミッション詳細から新規作成するとき、関連ミッションを自動選択 */
+  defaultMissionId?: string | null;
   onClose: () => void;
   onSaved: () => void;
   readOnly?: boolean; // 閲覧専用モード
@@ -35,6 +37,7 @@ interface ProjectModalProps {
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
   project,
+  defaultMissionId,
   onClose,
   onSaved,
   readOnly = false,
@@ -72,9 +75,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setTags(project.tags || []);
       setTasks(project.projectTasks || []);
     } else {
+      setProjectName('');
+      setDescription('');
+      setStartDate('');
+      setEndDate('');
+      setPhase('PREPARATION');
+      setMissionId(defaultMissionId?.trim() || '');
+      setThemeColor('');
+      setTags([]);
       setTasks([]);
     }
-  }, [project]);
+  }, [project, defaultMissionId]);
 
   useEffect(() => {
     if (project?.id && missionId) {

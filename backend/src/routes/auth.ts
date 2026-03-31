@@ -102,6 +102,8 @@ router.post('/login', async (req, res) => {
           avatarColor: true,
           avatarLetter: true,
           darkMode: true,
+          displayOrder: true,
+          wishesEnabled: true,
           createdAt: true,
         },
       });
@@ -138,7 +140,6 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // displayOrderとwishesEnabledは常にデフォルト値を設定（データベースに存在しない場合でも）
     const userResponse: any = {
       id: user.id,
       name: user.name,
@@ -151,8 +152,8 @@ router.post('/login', async (req, res) => {
       avatarColor: user.avatarColor,
       avatarLetter: user.avatarLetter,
       darkMode: user.darkMode,
-      displayOrder: 0, // デフォルト値
-      wishesEnabled: true, // デフォルト値
+      displayOrder: user.displayOrder ?? 0,
+      wishesEnabled: user.wishesEnabled ?? false,
       createdAt: user.createdAt,
     };
 
@@ -191,6 +192,8 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
           avatarColor: true,
           avatarLetter: true,
           darkMode: true,
+          displayOrder: true,
+          wishesEnabled: true,
           snsLinks: true,
           createdAt: true,
           updatedAt: true,
@@ -217,7 +220,6 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // displayOrderとwishesEnabledは常にデフォルト値を設定（データベースに存在しない場合でも）
     const userResponse: any = {
       id: user.id,
       name: user.name,
@@ -230,8 +232,8 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
       avatarColor: user.avatarColor,
       avatarLetter: user.avatarLetter,
       darkMode: user.darkMode,
-      displayOrder: 0, // デフォルト値
-      wishesEnabled: true, // デフォルト値
+      displayOrder: user.displayOrder ?? 0,
+      wishesEnabled: user.wishesEnabled ?? false,
       snsLinks: user.snsLinks,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

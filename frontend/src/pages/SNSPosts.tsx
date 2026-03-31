@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
-import { format, startOfWeek, addDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, addDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
@@ -10,6 +10,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { WeeklyStatusAlert } from '../components/sns/WeeklyStatusAlert';
 import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
+import { getWeekMetaForDate, getRecentWeekRows } from '../utils/snsWeek';
 
 interface SNSPost {
   id: string;
@@ -17,10 +18,6 @@ interface SNSPost {
   postedAt: string;
   postType: 'STORY' | 'FEED';
   url?: string | null;
-  theme?: string | null;
-  followerDelta?: number | null;
-  views?: number | null;
-  likes?: number | null;
   note?: string | null;
   userId: string;
   user?: { id: string; name: string };
@@ -40,6 +37,7 @@ export const SNSPosts: React.FC = () => {
   const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addModalDefaultType, setAddModalDefaultType] = useState<'STORY' | 'FEED'>('STORY');
   const [editingPost, setEditingPost] = useState<SNSPost | null>(null);
   const viewMode: 'personal' | 'view' =
     user?.role === 'MEMBER'
@@ -52,32 +50,8 @@ export const SNSPosts: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(''); // 月のフィルタ（閲覧モード用）
   const [selectedUserId, setSelectedUserId] = useState<string>(''); // ユーザーのフィルタ（閲覧モード用）
 
-  // 現在の週の境界を計算（月曜9:00 JST基準）
-  const getCurrentWeekBoundary = () => {
-    const now = new Date();
-    const nowJST = new Date(now.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }));
-    
-    const dayOfWeek = nowJST.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    
-    const monday9amJST = new Date(nowJST);
-    monday9amJST.setDate(nowJST.getDate() + mondayOffset);
-    monday9amJST.setHours(9, 0, 0, 0);
-    
-    if (nowJST < monday9amJST) {
-      monday9amJST.setDate(monday9amJST.getDate() - 7);
-    }
-    
-    const nextMonday9amJST = new Date(monday9amJST);
-    nextMonday9amJST.setDate(monday9amJST.getDate() + 7);
-    
-    return {
-      weekStart: monday9amJST,
-      weekEnd: nextMonday9amJST,
-    };
-  };
-
-  const { weekStart, weekEnd } = getCurrentWeekBoundary();
+  const { weekStart, weekEnd } = getWeekMetaForDate(new Date());
+  const personalWeekRows = useMemo(() => getRecentWeekRows(12), []);
 
   // メンバー一覧の取得（閲覧モード用）
   const { data: members = [] } = useQuery<Array<{ id: string; name: string }>>({
@@ -248,9 +222,14 @@ export const SNSPosts: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">SNS投稿管理</h1>
         {viewMode === 'personal' && (
-          <Button onClick={() => setIsAddModalOpen(true)}>
+          <Button
+            onClick={() => {
+              setAddModalDefaultType('STORY');
+              setIsAddModalOpen(true);
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
-            投稿を追加
+            投稿を記録
           </Button>
         )}
       </div>
@@ -372,7 +351,7 @@ export const SNSPosts: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {format(new Date(post.postedAt), 'yyyy年M月d日 HH:mm')}
+                            {format(new Date(post.postedAt), 'yyyy年M月d日')}
                           </span>
                           <span
                             className={`text-xs px-2 py-1 rounded-full ${
@@ -388,10 +367,6 @@ export const SNSPosts: React.FC = () => {
                           )}
                         </div>
 
-                        {post.theme && (
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{post.theme}</p>
-                        )}
-
                         {post.url && (
                           <a
                             href={post.url}
@@ -402,18 +377,6 @@ export const SNSPosts: React.FC = () => {
                             <ExternalLink className="w-3 h-3" />
                             投稿リンク
                           </a>
-                        )}
-
-                        {(post.followerDelta !== null ||
-                          post.views !== null ||
-                          post.likes !== null) && (
-                          <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            {post.followerDelta !== null && (
-                              <span>フォロワー: {post.followerDelta > 0 ? '+' : ''}{post.followerDelta}</span>
-                            )}
-                            {post.views !== null && <span>閲覧数: {post.views.toLocaleString()}</span>}
-                            {post.likes !== null && <span>いいね: {post.likes.toLocaleString()}</span>}
-                          </div>
                         )}
 
                         {post.note && (
@@ -455,7 +418,7 @@ export const SNSPosts: React.FC = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {format(new Date(post.postedAt), 'yyyy年M月d日 HH:mm')}
+                              {format(new Date(post.postedAt), 'yyyy年M月d日')}
                             </span>
                             <span
                               className={`text-xs px-2 py-1 rounded-full ${
@@ -471,10 +434,6 @@ export const SNSPosts: React.FC = () => {
                             )}
                           </div>
 
-                          {post.theme && (
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{post.theme}</p>
-                          )}
-
                           {post.url && (
                             <a
                               href={post.url}
@@ -485,18 +444,6 @@ export const SNSPosts: React.FC = () => {
                               <ExternalLink className="w-3 h-3" />
                               投稿リンク
                             </a>
-                          )}
-
-                          {(post.followerDelta !== null ||
-                            post.views !== null ||
-                            post.likes !== null) && (
-                            <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400 mb-2">
-                              {post.followerDelta !== null && (
-                                <span>フォロワー: {post.followerDelta > 0 ? '+' : ''}{post.followerDelta}</span>
-                              )}
-                              {post.views !== null && <span>閲覧数: {post.views.toLocaleString()}</span>}
-                              {post.likes !== null && <span>いいね: {post.likes.toLocaleString()}</span>}
-                            </div>
                           )}
 
                           {post.note && (

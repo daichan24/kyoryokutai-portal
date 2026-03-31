@@ -57,7 +57,7 @@ export const Inspections: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `視察復命書_${format(new Date(date), 'yyyyMMdd')}_${destination}.pdf`);
+      link.setAttribute('download', `復命書_${format(new Date(date), 'yyyyMMdd')}_${destination}.pdf`);
       document.body.appendChild(link);
       link.click();
       window.URL.revokeObjectURL(url);
@@ -96,13 +96,11 @@ export const Inspections: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          視察記録
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">復命書</h1>
         {canCreate && (
           <Button onClick={handleCreateInspection}>
             <Plus className="h-4 w-4 mr-2" />
-            新規視察記録
+            新規作成
           </Button>
         )}
       </div>
@@ -156,7 +154,7 @@ export const Inspections: React.FC = () => {
 
       {inspections?.length === 0 && (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          視察記録がありません
+          復命書の登録がありません
         </div>
       )}
 

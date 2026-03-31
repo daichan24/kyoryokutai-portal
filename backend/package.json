@@ -1,9 +1,10 @@
 {
   "name": "kyoryokutai-backend",
   "version": "2.45.0",
-  "description": "Backend for Naganuma Town Regional Revitalization Cooperation Team Portal",
+  "description": "Backend for 協力隊クリアベース (regional revitalization team portal)",
   "main": "dist/index.js",
   "scripts": {
+    "postinstall": "npx puppeteer browsers install chrome",
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",

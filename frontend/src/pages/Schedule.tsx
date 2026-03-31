@@ -502,8 +502,11 @@ export const Schedule: React.FC = () => {
             currentUserId={user?.id}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <div className="grid gap-2 min-w-[1260px]" style={{ gridTemplateColumns: 'repeat(7, 180px)' }}>
+          <div className="w-full max-w-full overflow-x-auto md:overflow-x-visible">
+            <div
+              className="grid gap-1 sm:gap-2 w-full min-w-0 md:min-w-0"
+              style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}
+            >
             {weekDates.map((date, index) => {
               const daySchedules = getSchedulesForDate(date);
               const isToday = formatDate(date) === formatDate(new Date());

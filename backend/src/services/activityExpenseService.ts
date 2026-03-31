@@ -13,6 +13,7 @@ export async function getActivityExpenseSummary(userId: string, recentLimit = 10
     orderBy: [{ spentAt: 'desc' }, { createdAt: 'desc' }],
     take: recentLimit,
     include: {
+      project: { select: { id: true, projectName: true, missionId: true } },
       createdBy: { select: { id: true, name: true } },
       updatedBy: { select: { id: true, name: true } },
     },
@@ -36,6 +37,8 @@ export async function getActivityExpenseSummary(userId: string, recentLimit = 10
     entries: entries.map((e) => ({
       id: e.id,
       userId: e.userId,
+      projectId: e.projectId,
+      project: e.project,
       spentAt: e.spentAt.toISOString(),
       description: e.description,
       amount: e.amount,

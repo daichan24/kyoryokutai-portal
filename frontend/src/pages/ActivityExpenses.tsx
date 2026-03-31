@@ -17,10 +17,54 @@ interface ExpenseEntry {
   spentAt: string;
   description: string;
   amount: number;
+  projectId?: string | null;
+  project?: { id: string; projectName: string; missionId?: string | null } | null;
   createdAt: string;
   createdBy?: { id: string; name: string } | null;
   updatedBy?: { id: string; name: string } | null;
 }
+
+interface ChecklistItem {
+  id: string;
+  label: string;
+  allowed: boolean;
+  sortOrder: number;
+}
+
+interface ApprovedExample {
+  id: string;
+  missionId: string;
+  summary: string;
+  rationale: string;
+  createdAt: string;
+  mission?: { id: string; missionName: string; userId?: string };
+  createdBy?: { id: string; name: string };
+}
+
+interface ExpenseGuidance {
+  id: string;
+  procedureText: string;
+  updatedAt: string;
+}
+
+interface ProjectOption {
+  id: string;
+  projectName: string;
+  missionId?: string | null;
+}
+
+interface MissionOption {
+  id: string;
+  missionName: string;
+}
+
+const DEFAULT_EXPENSE_PROCEDURE = `【購入までの大枠の流れ】
+1. 欲しいもの・支出が発生しそうになったら、まず下の「経費として使えるか」公式チェックリストを確認する。
+2. 問題なさそうなら、役場に「この活動のためにこれを買いたい」と相談し、口頭または書面で了承を得る。
+3. OKが出たら、この画面で「紐づくプロジェクト」を選び、支出を登録する。
+4. その後、実際に購入する。
+
+※ 具体例はチェックリストとは別枠で掲載しています。ミッションごとの文脈・理由があるため、自分のケースに当てはまるかは必ず上記1〜3を踏んで判断してください。`;
 
 interface ExpenseSummary {
   allocatedAmount: number;
@@ -44,6 +88,13 @@ export const ActivityExpenses: React.FC = () => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [projectIdForEntry, setProjectIdForEntry] = useState('');
+  const [newChecklistLabel, setNewChecklistLabel] = useState('');
+  const [newChecklistAllowed, setNewChecklistAllowed] = useState(true);
+  const [exampleMissionId, setExampleMissionId] = useState('');
+  const [exampleSummary, setExampleSummary] = useState('');
+  const [exampleRationale, setExampleRationale] = useState('');
+  const [guidanceDraft, setGuidanceDraft] = useState('');
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
 
@@ -51,7 +102,54 @@ export const ActivityExpenses: React.FC = () => {
     setEditingId(null);
     setDescription('');
     setAmount('');
+    setProjectIdForEntry('');
   }, [effectiveUserId]);
+
+  const { data: guidance } = useQuery<ExpenseGuidance>({
+    queryKey: ['activity-expenses', 'guidance'],
+    queryFn: async () => {
+      const r = await api.get<ExpenseGuidance>('/api/activity-expenses/guidance');
+      return r.data;
+    },
+  });
+
+  React.useEffect(() => {
+    if (guidance) setGuidanceDraft(guidance.procedureText || '');
+  }, [guidance?.id]);
+
+  const { data: checklistItems = [] } = useQuery<ChecklistItem[]>({
+    queryKey: ['activity-expenses', 'checklist'],
+    queryFn: async () => {
+      const r = await api.get<ChecklistItem[]>('/api/activity-expenses/checklist');
+      return r.data || [];
+    },
+  });
+
+  const { data: examples = [] } = useQuery<ApprovedExample[]>({
+    queryKey: ['activity-expenses', 'examples'],
+    queryFn: async () => {
+      const r = await api.get<ApprovedExample[]>('/api/activity-expenses/examples');
+      return r.data || [];
+    },
+  });
+
+  const { data: memberProjects = [] } = useQuery<ProjectOption[]>({
+    queryKey: ['activity-expenses', 'projects', effectiveUserId],
+    queryFn: async () => {
+      const r = await api.get<ProjectOption[]>(`/api/projects?userId=${effectiveUserId}`);
+      return r.data || [];
+    },
+    enabled: Boolean(effectiveUserId),
+  });
+
+  const { data: memberMissions = [] } = useQuery<MissionOption[]>({
+    queryKey: ['activity-expenses', 'missions', effectiveUserId],
+    queryFn: async () => {
+      const r = await api.get<MissionOption[]>(`/api/missions?userId=${effectiveUserId}`);
+      return r.data || [];
+    },
+    enabled: Boolean(effectiveUserId) && isStaff,
+  });
 
   const { data: members = [], isLoading: membersLoading } = useQuery<User[]>({
     queryKey: ['activity-expenses', 'members'],
@@ -102,12 +200,66 @@ export const ActivityExpenses: React.FC = () => {
     onSuccess: invalidate,
   });
 
+  const guidanceMut = useMutation({
+    mutationFn: async () => {
+      await api.put('/api/activity-expenses/guidance', { procedureText: guidanceDraft });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'guidance'] });
+    },
+  });
+
+  const checklistAddMut = useMutation({
+    mutationFn: async () => {
+      await api.post('/api/activity-expenses/checklist', {
+        label: newChecklistLabel.trim(),
+        allowed: newChecklistAllowed,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'checklist'] });
+      setNewChecklistLabel('');
+      setNewChecklistAllowed(true);
+    },
+  });
+
+  const checklistDeleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/activity-expenses/checklist/${id}`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'checklist'] }),
+  });
+
+  const exampleAddMut = useMutation({
+    mutationFn: async () => {
+      await api.post('/api/activity-expenses/examples', {
+        missionId: exampleMissionId,
+        summary: exampleSummary.trim(),
+        rationale: exampleRationale.trim(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'examples'] });
+      setExampleSummary('');
+      setExampleRationale('');
+      setExampleMissionId('');
+    },
+  });
+
+  const exampleDeleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/activity-expenses/examples/${id}`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'examples'] }),
+  });
+
   const createMut = useMutation({
     mutationFn: async () => {
       const n = parseInt(amount.replace(/[,]/g, ''), 10);
       if (Number.isNaN(n) || n < 1) throw new Error('INVALID');
       await api.post('/api/activity-expenses/entries', {
         userId: isStaff ? effectiveUserId : undefined,
+        projectId: projectIdForEntry,
         spentAt,
         description: description.trim(),
         amount: n,
@@ -117,6 +269,7 @@ export const ActivityExpenses: React.FC = () => {
       invalidate();
       setDescription('');
       setAmount('');
+      setProjectIdForEntry('');
       setSpentAt(format(new Date(), 'yyyy-MM-dd'));
     },
   });
@@ -125,17 +278,20 @@ export const ActivityExpenses: React.FC = () => {
     mutationFn: async () => {
       const n = parseInt(amount.replace(/[,]/g, ''), 10);
       if (!editingId || Number.isNaN(n) || n < 1) throw new Error('INVALID');
-      await api.put(`/api/activity-expenses/entries/${editingId}`, {
+      const body: Record<string, unknown> = {
         spentAt,
         description: description.trim(),
         amount: n,
-      });
+      };
+      if (projectIdForEntry) body.projectId = projectIdForEntry;
+      await api.put(`/api/activity-expenses/entries/${editingId}`, body);
     },
     onSuccess: () => {
       invalidate();
       setEditingId(null);
       setDescription('');
       setAmount('');
+      setProjectIdForEntry('');
     },
   });
 
@@ -151,12 +307,14 @@ export const ActivityExpenses: React.FC = () => {
     setSpentAt(e.spentAt.slice(0, 10));
     setDescription(e.description);
     setAmount(String(e.amount));
+    setProjectIdForEntry(e.projectId || '');
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setDescription('');
     setAmount('');
+    setProjectIdForEntry('');
     setSpentAt(format(new Date(), 'yyyy-MM-dd'));
   };
 
@@ -167,9 +325,194 @@ export const ActivityExpenses: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">活動経費</h1>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          使った日・内容・金額を記録し、設定された上限から差し引いた残りが分かります。メンバーは自分の分だけ表示されます。行政・サポート・マスターは隊員を選んで閲覧・予算設定・登録の修正ができます。
+          使った日・内容・金額を記録し、設定された上限から差し引いた残りが分かります。支出は必ず自分のプロジェクト（ミッション配下の活動）に紐づけてください。メンバーは自分の分だけ表示されます。行政・サポート・マスターは隊員を選んで閲覧・予算設定・チェックリスト編集ができます。
         </p>
       </div>
+
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">購入までの手順</h2>
+        <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap border border-dashed border-gray-200 dark:border-gray-600 rounded-md p-3 bg-gray-50/80 dark:bg-gray-900/40">
+          {(guidance?.procedureText?.trim() ? guidance.procedureText : DEFAULT_EXPENSE_PROCEDURE) ||
+            DEFAULT_EXPENSE_PROCEDURE}
+        </div>
+        {isStaff && (
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">手順文の編集（行政・サポート・マスター）</label>
+            <textarea
+              value={guidanceDraft}
+              onChange={(e) => setGuidanceDraft(e.target.value)}
+              rows={8}
+              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
+            />
+            <Button type="button" size="sm" onClick={() => guidanceMut.mutate()} disabled={guidanceMut.isPending}>
+              手順を保存
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">経費として使えるか（公式チェックリスト）</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          隊員はセルフチェック用にご利用ください。〇＝経費として認められる想定、✕＝原則不可などの目安です（最終判断は役場との相談）。
+        </p>
+        {checklistItems.length === 0 ? (
+          <p className="text-sm text-gray-500">項目がまだありません。スタッフが追加できます。</p>
+        ) : (
+          <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700/80">
+                <tr>
+                  <th className="text-left px-3 py-2">内容</th>
+                  <th className="text-center px-3 py-2 w-24">目安</th>
+                  {isStaff && <th className="text-right px-3 py-2 w-24">操作</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {checklistItems.map((row) => (
+                  <tr key={row.id}>
+                    <td className="px-3 py-2 text-gray-800 dark:text-gray-100">{row.label}</td>
+                    <td className="px-3 py-2 text-center text-lg">{row.allowed ? '〇' : '✕'}</td>
+                    {isStaff && (
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          className="text-red-600 dark:text-red-400 text-xs hover:underline"
+                          onClick={() => {
+                            if (confirm('この項目を削除しますか？')) checklistDeleteMut.mutate(row.id);
+                          }}
+                        >
+                          削除
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {isStaff && (
+          <div className="mt-4 flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs mb-1">項目を追加</label>
+              <input
+                type="text"
+                value={newChecklistLabel}
+                onChange={(e) => setNewChecklistLabel(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                placeholder="例：隊の活動に直接必要な消耗品"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={newChecklistAllowed}
+                onChange={(e) => setNewChecklistAllowed(e.target.checked)}
+              />
+              〇（可）
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                if (!newChecklistLabel.trim()) {
+                  alert('ラベルを入力してください');
+                  return;
+                }
+                checklistAddMut.mutate();
+              }}
+              disabled={checklistAddMut.isPending}
+            >
+              追加
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">具体例（チェックリストとは別枠）</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          過去に「この文脈ならOKだった」事例です。必ずミッション（活動）と理由が紐づいています。自分のケースにそのまま当てはまるとは限りません。
+        </p>
+        {examples.length === 0 ? (
+          <p className="text-sm text-gray-500">具体例はまだありません。</p>
+        ) : (
+          <ul className="space-y-3">
+            {examples.map((ex) => (
+              <li
+                key={ex.id}
+                className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm"
+              >
+                <div className="font-medium text-gray-900 dark:text-gray-100">{ex.summary}</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  ミッション: {ex.mission?.missionName || ex.missionId} ·{' '}
+                  {format(parseISO(ex.createdAt), 'yyyy/M/d', { locale: ja })}{' '}
+                  {ex.createdBy?.name}
+                </div>
+                <p className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ex.rationale}</p>
+                {isStaff && (
+                  <button
+                    type="button"
+                    className="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline"
+                    onClick={() => {
+                      if (confirm('この具体例を削除しますか？')) exampleDeleteMut.mutate(ex.id);
+                    }}
+                  >
+                    削除
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {isStaff && (
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">具体例の追加</p>
+            <select
+              value={exampleMissionId}
+              onChange={(e) => setExampleMissionId(e.target.value)}
+              className="w-full max-w-md px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+            >
+              <option value="">ミッションを選択（必須）</option>
+              {memberMissions.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.missionName}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={exampleSummary}
+              onChange={(e) => setExampleSummary(e.target.value)}
+              placeholder="一行要約（例：○○研修の資料印刷代）"
+              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+              maxLength={500}
+            />
+            <textarea
+              value={exampleRationale}
+              onChange={(e) => setExampleRationale(e.target.value)}
+              placeholder="なぜこの活動・文脈ではOKだったか（購入時は必ず自分のミッションと照らす）"
+              rows={4}
+              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                if (!exampleMissionId || !exampleSummary.trim() || !exampleRationale.trim()) {
+                  alert('ミッション・要約・理由を入力してください');
+                  return;
+                }
+                exampleAddMut.mutate();
+              }}
+              disabled={exampleAddMut.isPending}
+            >
+              具体例を登録
+            </Button>
+          </div>
+        )}
+      </section>
 
       {isStaff && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -287,7 +630,7 @@ export const ActivityExpenses: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {editingId ? '支出の修正' : '支出を追加'}
             </h2>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <label className="block text-xs font-medium mb-1">日付</label>
                 <input
@@ -296,6 +639,26 @@ export const ActivityExpenses: React.FC = () => {
                   onChange={(e) => setSpentAt(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium mb-1">紐づくプロジェクト（必須）</label>
+                <select
+                  value={projectIdForEntry}
+                  onChange={(e) => setProjectIdForEntry(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                >
+                  <option value="">選択してください</option>
+                  {memberProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.projectName}
+                    </option>
+                  ))}
+                </select>
+                {memberProjects.length === 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    ミッション管理でプロジェクトを作成すると、ここに表示されます。
+                  </p>
+                )}
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-medium mb-1">内容</label>
@@ -325,18 +688,22 @@ export const ActivityExpenses: React.FC = () => {
                 <>
                   <Button
                     type="button"
-                    onClick={() => {
-                      if (!description.trim()) {
-                        alert('内容を入力してください');
-                        return;
-                      }
-                      const n = parseInt(amount.replace(/[,]/g, ''), 10);
-                      if (Number.isNaN(n) || n < 1) {
-                        alert('金額は1円以上の半角数字で入力してください');
-                        return;
-                      }
-                      updateMut.mutate();
-                    }}
+                  onClick={() => {
+                    if (!description.trim()) {
+                      alert('内容を入力してください');
+                      return;
+                    }
+                    if (!projectIdForEntry) {
+                      alert('プロジェクトを選択してください');
+                      return;
+                    }
+                    const n = parseInt(amount.replace(/[,]/g, ''), 10);
+                    if (Number.isNaN(n) || n < 1) {
+                      alert('金額は1円以上の半角数字で入力してください');
+                      return;
+                    }
+                    updateMut.mutate();
+                  }}
                     disabled={updateMut.isPending}
                   >
                     更新
@@ -351,6 +718,10 @@ export const ActivityExpenses: React.FC = () => {
                   onClick={() => {
                     if (!description.trim()) {
                       alert('内容を入力してください');
+                      return;
+                    }
+                    if (!projectIdForEntry) {
+                      alert('活動に紐づくプロジェクトを選んでください');
                       return;
                     }
                     const n = parseInt(amount.replace(/[,]/g, ''), 10);
@@ -378,6 +749,7 @@ export const ActivityExpenses: React.FC = () => {
                   <thead className="bg-gray-50 dark:bg-gray-700/80">
                     <tr>
                       <th className="text-left px-3 py-2 font-medium">日付</th>
+                      <th className="text-left px-3 py-2 font-medium">プロジェクト</th>
                       <th className="text-left px-3 py-2 font-medium">内容</th>
                       <th className="text-right px-3 py-2 font-medium">金額</th>
                       <th className="text-right px-3 py-2 font-medium w-40">操作</th>
@@ -388,6 +760,11 @@ export const ActivityExpenses: React.FC = () => {
                       <tr key={row.id}>
                         <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
                           {format(parseISO(row.spentAt), 'yyyy年M月d日', { locale: ja })}
+                        </td>
+                        <td className="px-3 py-2 text-gray-700 dark:text-gray-200 text-sm">
+                          {row.project?.projectName || (
+                            <span className="text-amber-600 dark:text-amber-400">未設定</span>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-gray-800 dark:text-gray-100">{row.description}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-medium">{formatYen(row.amount)}</td>

@@ -23,7 +23,7 @@ export const ProfileSettings: React.FC = () => {
   const [avatarLetter, setAvatarLetter] = useState('');
   const [department, setDepartment] = useState('');
   const [missionType, setMissionType] = useState<'FREE' | 'MISSION' | ''>('');
-  const [wishesEnabled, setWishesEnabled] = useState(true);
+  const [wishesEnabled, setWishesEnabled] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -32,7 +32,7 @@ export const ProfileSettings: React.FC = () => {
       setAvatarLetter(user.avatarLetter ?? '');
       setDepartment(user.department || '');
       setMissionType(user.missionType || '');
-      setWishesEnabled(user.wishesEnabled !== undefined ? user.wishesEnabled : true);
+      setWishesEnabled(user.wishesEnabled === true);
     }
   }, [user]);
 

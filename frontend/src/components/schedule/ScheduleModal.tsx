@@ -543,10 +543,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              個人イベントへの応援出勤（任意）
+              イベント主催への応援出勤（任意）
             </label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              主催した個人イベントの応援枠として記録する場合に紐づけます。
+              主催イベントの応援枠として記録する場合に紐づけます。
             </p>
             <select
               value={supportEventId || ''}

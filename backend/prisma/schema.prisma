@@ -25,7 +25,7 @@ model User {
   avatarLetter  String? // アイコンに表示する1文字（未設定時は名前の頭文字）
   darkMode      Boolean @default(false)
   displayOrder  Int     @default(0) // 表示順（メンバー以外が設定可能）
-  wishesEnabled Boolean @default(true) // やりたいこと100の表示/非表示
+  wishesEnabled Boolean @default(false) // やりたいこと100（プロフィールでON、Wishが1件以上あるユーザーは移行でON）
 
   // Phase 1 Relations
   schedules     Schedule[]
@@ -83,6 +83,7 @@ model User {
   activityExpenseBudgetsUpdated ActivityExpenseBudget[] @relation("ActivityExpenseBudgetStaffUpdater")
   activityExpenseEntriesCreated ActivityExpenseEntry[]  @relation("ActivityExpenseEntryCreator")
   activityExpenseEntriesUpdated ActivityExpenseEntry[]  @relation("ActivityExpenseEntryUpdater")
+  activityExpenseExamplesCreated ActivityExpenseApprovedExample[] @relation("ActivityExpenseExampleCreator")
 
   announcementsCreated Announcement[]       @relation("AnnouncementAuthor")
   announcementReads    AnnouncementRead[]
@@ -222,6 +223,7 @@ model Mission {
   midGoals MidGoal[]
   projects Project[]
   tasks    Task[] // タスク（小目標）
+  activityExpenseApprovedExamples ActivityExpenseApprovedExample[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -349,6 +351,7 @@ model Project {
   contactHistories ContactHistory[]
   requests         Request[] // Phase 4: 依頼（旧：タスク依頼）
   inspections      Inspection[] // Phase 4
+  activityExpenseEntries ActivityExpenseEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -505,10 +508,45 @@ model ActivityExpenseBudget {
   updatedAt       DateTime @updatedAt
 }
 
+// 活動経費の購入手順（行政・サポート・マスターが編集）
+model ActivityExpenseGuidance {
+  id            String   @id @default("default")
+  procedureText String   @default("") @db.Text
+  updatedAt     DateTime @updatedAt
+}
+
+// 経費として使えるかの公式チェックリスト（〇=可 / ✕=不可）
+model ActivityExpenseChecklistItem {
+  id        String   @id @default(uuid())
+  label     String   @db.VarChar(500)
+  allowed   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+}
+
+// 過去の承認済み具体例（ミッション必須・理由付き）
+model ActivityExpenseApprovedExample {
+  id          String   @id @default(uuid())
+  missionId   String
+  mission     Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  summary     String   @db.VarChar(500)
+  rationale   String   @db.Text
+  createdById String
+  createdBy   User     @relation("ActivityExpenseExampleCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([missionId])
+}
+
 model ActivityExpenseEntry {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation("ActivityExpenseEntryMember", fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   spentAt     DateTime @db.Date
   description String   @db.VarChar(500)
   amount      Int // 円（支出）
@@ -520,6 +558,7 @@ model ActivityExpenseEntry {
   updatedAt   DateTime @updatedAt
 
   @@index([userId, spentAt])
+  @@index([projectId])
 }
 
 // ========================================
@@ -760,7 +799,7 @@ model SNSPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, week], name: "userId_week")
+  @@unique([userId, week, postType], name: "userId_week_postType")
   @@index([userId, week])
   @@index([userId, postedAt])
 }

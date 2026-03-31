@@ -52,9 +52,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               <Menu className="h-6 w-6 text-gray-700 dark:text-gray-300" />
             </button>
             
-            <h1 className="text-lg md:text-xl font-bold text-primary truncate">
-              長沼町地域おこし協力隊ポータル
-            </h1>
+            <div className="min-w-0">
+              <h1 className="text-lg md:text-xl font-bold text-primary truncate leading-tight">
+                協力隊クリアベース
+              </h1>
+              <p className="hidden sm:block text-[11px] text-gray-500 dark:text-gray-400 truncate max-w-md">
+                地域おこし協力隊の活動・報告・提出を一元管理するツール
+              </p>
+            </div>
             <span className="hidden sm:inline-block text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
               VER: {version}
             </span>
