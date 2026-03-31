@@ -16,6 +16,7 @@ const snsPostCreateSchema = z.object({
     message: 'Invalid URL format',
   }),
   note: z.string().max(2000).optional(),
+  followerCount: z.number().int().min(0).max(99_999_999).optional().nullable(),
 });
 
 const snsPostUpdateSchema = snsPostCreateSchema.partial();
@@ -51,25 +52,19 @@ router.get('/', async (req: AuthRequest, res) => {
 
     // 期間指定（優先）
     if (from || to) {
-      where.postedAt = {};
-      if (from) {
-        where.postedAt.gte = new Date(from as string);
-      }
+      const pa: Record<string, unknown> = { not: null };
+      if (from) pa.gte = new Date(from as string);
       if (to) {
         const toDate = new Date(to as string);
         toDate.setHours(23, 59, 59, 999);
-        where.postedAt.lte = toDate;
+        pa.lte = toDate;
       }
-      // postedAtがnullのレコードを除外（期間指定時も）
-      where.postedAt.isNot = null;
+      where.postedAt = pa;
     } else if (week) {
-      // 後方互換性: week指定
       where.week = week;
-      // postedAtがnullのレコードを除外
-      where.postedAt = { isNot: null };
+      where.postedAt = { not: null };
     } else {
-      // postedAtがnullのレコードを除外
-      where.postedAt = { isNot: null };
+      where.postedAt = { not: null };
     }
 
     const posts = await prisma.sNSPost.findMany({
@@ -173,12 +168,20 @@ router.post('/', async (req: AuthRequest, res) => {
           postType: data.postType,
           url: data.url && data.url.trim() !== '' ? data.url : null,
           note: data.note && data.note.trim() !== '' ? data.note : null,
+          followerCount:
+            data.followerCount !== undefined && data.followerCount !== null ? data.followerCount : null,
         },
         update: {
           postedAt,
           week: weekKey,
           url: data.url && data.url.trim() !== '' ? data.url : null,
           note: data.note !== undefined ? (data.note && data.note.trim() !== '' ? data.note : null) : undefined,
+          followerCount:
+            data.followerCount !== undefined
+              ? data.followerCount === null
+                ? null
+                : data.followerCount
+              : undefined,
         },
         include: { user: true },
       });
@@ -272,6 +275,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
     if (data.note !== undefined) {
       updateData.note = data.note && data.note.trim() !== '' ? data.note : null;
+    }
+    if (data.followerCount !== undefined) {
+      updateData.followerCount =
+        data.followerCount === null || data.followerCount === undefined ? null : data.followerCount;
     }
 
     const post = await prisma.sNSPost.update({

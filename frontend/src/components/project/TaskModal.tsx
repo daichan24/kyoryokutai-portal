@@ -12,6 +12,10 @@ interface TaskModalProps {
   onClose: () => void;
   onSaved: () => void;
   readOnly?: boolean; // 閲覧専用モード
+  /** 上位で別モーダル（例: プロジェクト作成）が開いている間は外側クリックで閉じない */
+  suspendOutsidePointerClose?: boolean;
+  /** ミッション内から新規プロジェクト作成を開く */
+  onCreateProjectRequest?: () => void;
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
@@ -21,6 +25,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onClose,
   onSaved,
   readOnly = false,
+  suspendOutsidePointerClose = false,
+  onCreateProjectRequest,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -66,7 +72,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   useEffect(() => {
-    if (readOnly) return;
+    if (readOnly || suspendOutsidePointerClose) return;
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         handleCloseClick();
@@ -77,7 +83,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [title, description, status, projectId, dueDate, readOnly, attachMode]);
+  }, [title, description, status, projectId, dueDate, readOnly, attachMode, suspendOutsidePointerClose]);
 
   useEffect(() => {
     // プロジェクトを取得（missionIdが空の場合は全プロジェクトを取得）
@@ -175,7 +181,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   return (
     <>
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={readOnly ? onClose : handleCloseClick}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]" onClick={readOnly ? onClose : handleCloseClick}>
       <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full m-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
           <h2 className="text-xl font-bold dark:text-gray-100">
@@ -232,19 +238,30 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <option value="TRIAGE">あとで振り分け（当日メモ・保留）</option>
             </select>
             {attachMode === 'PROJECT' && (
-              <select
-                value={projectId || ''}
-                onChange={(e) => setProjectId(e.target.value || null)}
-                className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={readOnly}
-              >
-                <option value="">プロジェクトを選択</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.projectName}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  value={projectId || ''}
+                  onChange={(e) => setProjectId(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={readOnly}
+                >
+                  <option value="">プロジェクトを選択</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.projectName}
+                    </option>
+                  ))}
+                </select>
+                {!readOnly && missionId && onCreateProjectRequest && (
+                  <button
+                    type="button"
+                    className="mt-2 text-sm text-primary hover:underline"
+                    onClick={() => onCreateProjectRequest()}
+                  >
+                    ＋ 新規プロジェクトを作成
+                  </button>
+                )}
+              </>
             )}
           </div>
 

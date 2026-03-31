@@ -3,6 +3,21 @@ import prisma from '../lib/prisma';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
+/** Puppeteer 用: 日本語グリフ（Google Fonts 経由で読み込み） */
+const PDF_FONT_LINKS = `
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet" />
+`;
+
+function escapeHtmlForPdf(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 /**
  * HTML文字列からPDFを生成
  */
@@ -65,6 +80,12 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
       waitUntil: 'domcontentloaded',
       timeout: 45000,
     });
+
+    try {
+      await page.evaluate('document.fonts.ready');
+    } catch {
+      /* フォント待ち失敗時も PDF は生成を試行 */
+    }
 
     console.log('Page content set, generating PDF...');
 
@@ -134,6 +155,7 @@ export async function generateNudgePDF(): Promise<Buffer> {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      ${PDF_FONT_LINKS}
       <style>
         @page {
           size: A4;
@@ -147,7 +169,7 @@ export async function generateNudgePDF(): Promise<Buffer> {
         }
         
         body {
-          font-family: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'MS Gothic', sans-serif;
+          font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'MS Gothic', sans-serif;
           font-size: 12pt;
           line-height: 1.8;
           color: #000;
@@ -233,14 +255,23 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       throw new Error('Inspection user information is missing for PDF generation.');
     }
 
+  const plain = (htmlish: string) =>
+    escapeHtmlForPdf((htmlish || '').replace(/<[^>]*>/g, '').replace(/\r\n/g, '\n')).replace(/\n/g, '<br/>');
+
+  const participantsExtra =
+    Array.isArray(inspection.participants) && inspection.participants.length > 0
+      ? '、' + inspection.participants.map((p) => escapeHtmlForPdf(String(p))).join('、')
+      : '';
+
   const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="ja">
     <head>
-      <meta charset="UTF-8">
+      <meta charset="UTF-8" />
+      ${PDF_FONT_LINKS}
       <style>
-        body { font-family: 'MS Gothic', monospace; font-size: 12pt; margin: 40px; }
-        h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; }
+        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 12pt; margin: 40px; color: #111; }
+        h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; font-weight: 700; }
         .section { margin: 25px 0; page-break-inside: avoid; }
         .label { font-weight: bold; margin-bottom: 8px; background-color: #f0f0f0; padding: 5px; }
         .content { margin-left: 15px; white-space: pre-wrap; line-height: 1.8; }
@@ -251,46 +282,46 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       <h1>復命書</h1>
 
       <div class="info">
-        <strong>日付:</strong> ${format(new Date(inspection.date), 'yyyy年MM月dd日(E)', { locale: ja })}
+        <strong>日付:</strong> ${escapeHtmlForPdf(format(new Date(inspection.date), 'yyyy年MM月dd日(E)', { locale: ja }))}
       </div>
 
       <div class="info">
-        <strong>視察先:</strong> ${inspection.destination}
+        <strong>視察先:</strong> ${escapeHtmlForPdf(inspection.destination)}
       </div>
 
       <div class="info">
-        <strong>参加者:</strong> ${inspection.user.name}${Array.isArray(inspection.participants) && inspection.participants.length > 0 ? '、' + inspection.participants.join('、') : ''}
+        <strong>参加者:</strong> ${escapeHtmlForPdf(inspection.user.name)}${participantsExtra}
       </div>
 
       ${inspection.project ? `
       <div class="info">
-        <strong>関連プロジェクト:</strong> ${inspection.project.projectName}
+        <strong>関連プロジェクト:</strong> ${escapeHtmlForPdf(inspection.project.projectName)}
       </div>
       ` : ''}
 
       <div class="section">
         <div class="label">1. 視察目的</div>
-        <div class="content">${(inspection.inspectionPurpose || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
+        <div class="content">${plain(inspection.inspectionPurpose || '')}</div>
       </div>
 
       <div class="section">
         <div class="label">2. 視察内容</div>
-        <div class="content">${(inspection.inspectionContent || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
+        <div class="content">${plain(inspection.inspectionContent || '')}</div>
       </div>
 
       <div class="section">
         <div class="label">3. 所感</div>
-        <div class="content">${(inspection.reflection || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
+        <div class="content">${plain(inspection.reflection || '')}</div>
       </div>
 
       <div class="section">
         <div class="label">4. 今後のアクション</div>
-        <div class="content">${(inspection.futureAction || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>')}</div>
+        <div class="content">${plain(inspection.futureAction || '')}</div>
       </div>
 
       <div style="margin-top: 60px; text-align: right;">
-        <div>${format(new Date(), 'yyyy年MM月dd日')}</div>
-        <div style="margin-top: 10px;">${inspection.user.name}</div>
+        <div>${escapeHtmlForPdf(format(new Date(), 'yyyy年MM月dd日'))}</div>
+        <div style="margin-top: 10px;">${escapeHtmlForPdf(inspection.user.name)}</div>
       </div>
     </body>
     </html>

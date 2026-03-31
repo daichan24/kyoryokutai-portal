@@ -609,58 +609,33 @@ router.post('/:id/respond', async (req: AuthRequest, res) => {
   }
 });
 
-// イベント参加状況サマリー（自分の参加回数・ポイント）
+// イベント参加状況サマリー（隊員参加枠＋メンバー主催イベントへの参加）
 router.get('/participation-summary', async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
-    const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // 今月の参加
-    const thisMonthParticipations = await prisma.eventParticipation.findMany({
+    const mandatedCount = await prisma.mandatedTeamEventAttendance.count({
+      where: { userId, attended: true },
+    });
+
+    const memberHostedEventCount = await prisma.eventParticipation.count({
       where: {
         userId,
-        createdAt: {
-          gte: currentMonthStart,
-          lte: currentMonthEnd,
-        },
-      },
-      include: {
+        status: 'APPROVED',
+        participationType: 'PARTICIPATION',
         event: {
-          select: {
-            id: true,
-            eventName: true,
-            date: true,
-          },
+          creator: { role: 'MEMBER' },
+          NOT: { createdBy: userId },
         },
       },
     });
 
-    // 累計参加
-    const allParticipations = await prisma.eventParticipation.findMany({
-      where: {
-        userId,
-      },
-      include: {
-        event: {
-          select: {
-            id: true,
-            eventName: true,
-            date: true,
-          },
-        },
-      },
-    });
-
-    const thisMonthCount = thisMonthParticipations.length;
-    const totalCount = allParticipations.length;
-    const totalPoints = allParticipations.reduce((sum, p) => sum + p.pointEarned, 0);
+    const totalCumulative = mandatedCount + memberHostedEventCount;
 
     res.json({
-      thisMonthCount,
-      totalCount,
-      totalPoints,
+      mandatedCount,
+      memberHostedEventCount,
+      totalCumulative,
     });
   } catch (error) {
     console.error('Get participation summary error:', error);

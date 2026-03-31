@@ -487,7 +487,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
               相談（この隊員・対象月に関係なく一覧）
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              面談で扱うため、未対応・対応済みをまとめて表示します（依頼ボックスの「相談」と同じデータです）。
+              面談で扱うため、未対応・対応済みをまとめて表示します（相談機能と同じデータです）。
             </p>
             {consultations.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">相談の記録はありません。</p>

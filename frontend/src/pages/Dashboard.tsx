@@ -11,13 +11,11 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DashboardCustomizeModal } from '../components/dashboard/DashboardCustomizeModal';
 import { SNSHistoryWidget } from '../components/dashboard/SNSHistoryWidget';
-import { TaskRequestsWidget } from '../components/dashboard/TaskRequestsWidget';
 import { ProjectsWidget } from '../components/dashboard/ProjectsWidget';
 import { GoalsWidget } from '../components/dashboard/GoalsWidget';
 import { TasksWidget } from '../components/dashboard/TasksWidget';
 import { EventsWidget } from '../components/dashboard/EventsWidget';
 import { SNSLinksWidget } from '../components/dashboard/SNSLinksWidget';
-import { TaskRequestModal } from '../components/taskRequest/TaskRequestModal';
 import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
 import { ContactsWidget } from '../components/dashboard/ContactsWidget';
 import { EventParticipationWidget } from '../components/dashboard/EventParticipationWidget';
@@ -101,7 +99,6 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [weeklyScheduleCount, setWeeklyScheduleCount] = useState<3 | 5 | 10>(5);
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
-  const [isTaskRequestModalOpen, setIsTaskRequestModalOpen] = useState(false);
   const [isSNSPostModalOpen, setIsSNSPostModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
@@ -138,51 +135,57 @@ export const Dashboard: React.FC = () => {
 
   // デフォルト設定（role別）※API失敗時のフォールバック。通常はAPIが全8件を返す
   const getDefaultConfig = (role: string = 'MEMBER'): DashboardConfig => {
-    const baseWidgets = [
-      { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 1 },
-      { key: 'taskRequests', enabled: true, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 2 as const, order: 2 },
+    const tail = [
       { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 3 },
-      { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
-      // メンバー以外の場合はgoals-personalとgoals-viewを追加
-      ...(role !== 'MEMBER' ? [
-        { key: 'goals-personal', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4.5 },
-        { key: 'goals-view', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4.6 },
-      ] : []),
       { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 5 },
       { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 6 },
       { key: 'contacts', enabled: false, displayMode: 'add-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 7 },
       { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const, order: 8 },
       { key: 'nextWish', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 9 },
     ];
+    const sns = { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 1 };
+
+    let baseWidgets: typeof tail & { key: string }[];
+    if (role !== 'MEMBER') {
+      baseWidgets = [
+        sns,
+        { key: 'goals-personal', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
+        { key: 'goals-view', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4.5 },
+        ...tail,
+      ] as any;
+    } else {
+      baseWidgets = [
+        sns,
+        { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
+        ...tail,
+      ] as any;
+    }
 
     if (role === 'MEMBER') {
       return {
         widgets: [
           { ...baseWidgets[0], enabled: true },
-          { ...baseWidgets[1], enabled: false },
+          { ...baseWidgets[1], enabled: true },
           { ...baseWidgets[2], enabled: true },
           { ...baseWidgets[3], enabled: true },
           { ...baseWidgets[4], enabled: true },
           { ...baseWidgets[5], enabled: true },
-          { ...baseWidgets[8], enabled: false }, // nextWish
-        ],
+          { ...baseWidgets[6], enabled: false },
+          { ...baseWidgets[7], enabled: false },
+        ].map((w, i) => ({ ...w, order: i + 1 })),
       };
     } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
       return {
-        widgets: [
-          { ...baseWidgets[0], enabled: false },
-          { ...baseWidgets[1], enabled: true },
-          { ...baseWidgets[2], enabled: true },
-          { ...baseWidgets[3], enabled: false },
-          { ...baseWidgets[4], enabled: true },
-          { ...baseWidgets[5], enabled: true },
-          { ...baseWidgets[6], enabled: true },
-          { ...baseWidgets[7], enabled: true },
-          { ...baseWidgets[8], enabled: false }, // nextWish
-        ],
+        widgets: baseWidgets.map((w: any, i: number) => {
+          let enabled = true;
+          if (w.key === 'snsHistory') enabled = false;
+          if (w.key === 'goals-personal' || w.key === 'goals-view') enabled = false;
+          if (w.key === 'nextWish') enabled = false;
+          return { ...w, enabled, order: i + 1 };
+        }),
       };
     } else if (role === 'MASTER') {
-      return { widgets: baseWidgets.map((w, i) => ({ ...w, enabled: true, order: i + 1 })) };
+      return { widgets: baseWidgets.map((w: any, i: number) => ({ ...w, enabled: true, order: i + 1 })) };
     }
 
     return { widgets: baseWidgets };
@@ -272,21 +275,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // 依頼への応答
-  const handleRequestResponse = async (requestId: string, decision: 'APPROVED' | 'REJECTED') => {
-    try {
-      await api.post(`/api/requests/${requestId}/respond`, {
-        approvalStatus: decision,
-      });
-      queryClient.invalidateQueries({ queryKey: ['inbox'] });
-      queryClient.invalidateQueries({ queryKey: ['requests'] });
-    } catch (error) {
-      console.error('Failed to respond to task request:', error);
-      alert('応答に失敗しました');
-    }
-  };
-
-  const totalInboxCount = (inboxData?.scheduleInvites?.length || 0) + (inboxData?.taskRequests?.length || 0); // taskRequestsは後方互換性のため残す
+  const totalInboxCount = inboxData?.scheduleInvites?.length || 0;
 
   const renderWidget = (widget: WidgetConfig) => {
     const displayMode = widget.displayMode || (widget.showAddButton ? 'view-with-add' : 'view-only');
@@ -294,12 +283,7 @@ export const Dashboard: React.FC = () => {
     const commonProps = {
       displayMode,
       showAddButton: displayMode === 'view-with-add' || displayMode === 'add-only',
-      onAddClick:
-        widget.key === 'taskRequests'
-          ? () => setIsTaskRequestModalOpen(true)
-          : widget.key === 'contacts'
-          ? () => setIsContactModalOpen(true)
-          : undefined,
+      onAddClick: widget.key === 'contacts' ? () => setIsContactModalOpen(true) : undefined,
       ...(widget.key === 'contacts' && { contactCount: (widget as any).contactCount || 3 }),
     };
 
@@ -307,8 +291,6 @@ export const Dashboard: React.FC = () => {
       switch (widget.key) {
         case 'snsHistory':
           return <SNSHistoryWidget key={widget.key} {...commonProps} />;
-        case 'taskRequests':
-          return <TaskRequestsWidget key={widget.key} {...commonProps} />;
         case 'projects':
           return <ProjectsWidget key={widget.key} {...commonProps} />;
         case 'goals':
@@ -350,7 +332,7 @@ export const Dashboard: React.FC = () => {
   };
 
   let enabledWidgets = (dashboardConfig?.widgets
-    .filter((w) => w.enabled)
+    .filter((w) => w.enabled && w.key !== 'taskRequests')
     .sort((a, b) => a.order - b.order) || []).slice();
 
   const isStaffUser =
@@ -426,7 +408,7 @@ export const Dashboard: React.FC = () => {
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">表示モード（個人 / 閲覧）</h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed max-w-2xl">
-                ミッション・プロジェクト・タスク・スケジュール・SNS・やりたいこと・依頼ボックスなど、画面全体で同じ基準が使われます。ここで選んだモードはこのブラウザに保存され、次回ログイン時も維持されます。
+                ミッション・プロジェクト・タスク・スケジュール・SNS・やりたいことなど、画面全体で同じ基準が使われます。ここで選んだモードはこのブラウザに保存され、次回ログイン時も維持されます。
               </p>
             </div>
             <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 p-1 bg-gray-50 dark:bg-gray-900/60 shrink-0">
@@ -618,68 +600,6 @@ export const Dashboard: React.FC = () => {
                 </div>
               )}
 
-              {/* タスクボックス（メンバー向け） */}
-              {inboxData?.taskRequests && inboxData.taskRequests.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                    {user?.role === 'MEMBER' ? '依頼ボックス' : '依頼'}
-                  </h3>
-                  <div className="space-y-3">
-                    {inboxData.taskRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                                style={{ backgroundColor: request.requester.avatarColor }}
-                              >
-                                {(request.requester.avatarLetter || request.requester.name || '').charAt(0)}
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900 dark:text-gray-100">
-                                  {user?.role === 'MEMBER' 
-                                    ? `${request.requester.name}さんからのタスク`
-                                    : `${request.requester.name}さんからの依頼`}
-                                </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">{request.requestTitle}</p>
-                              </div>
-                            </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 ml-10">{request.requestDescription}</p>
-                            {request.deadline && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 ml-10 mt-1">
-                                期限: {formatDate(request.deadline, 'M月d日')}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleRequestResponse(request.id, 'APPROVED')}
-                              className="flex items-center gap-1"
-                            >
-                              <Check className="w-4 h-4" />
-                              承認
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRequestResponse(request.id, 'REJECTED')}
-                              className="flex items-center gap-1"
-                            >
-                              <X className="w-4 h-4" />
-                              却下
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -706,17 +626,6 @@ export const Dashboard: React.FC = () => {
         isOpen={isCustomizeModalOpen}
         onClose={() => setIsCustomizeModalOpen(false)}
       />
-
-      {/* 依頼追加モーダル */}
-      {isTaskRequestModalOpen && (
-        <TaskRequestModal
-          onClose={() => setIsTaskRequestModalOpen(false)}
-          onSaved={() => {
-            setIsTaskRequestModalOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['requests'] });
-          }}
-        />
-      )}
 
       {/* SNS投稿追加モーダル */}
       {isSNSPostModalOpen && (

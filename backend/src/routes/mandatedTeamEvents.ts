@@ -112,6 +112,100 @@ router.get('/summary/year', async (req: AuthRequest, res) => {
   }
 });
 
+/** GET /api/mandated-team-events/matrix?year=2026 — イベント×隊員の参加マトリクス */
+router.get('/matrix', async (req: AuthRequest, res) => {
+  try {
+    const year = parseInt(String(req.query.year || new Date().getFullYear()), 10);
+    if (Number.isNaN(year)) return res.status(400).json({ error: 'year が不正です' });
+
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
+
+    const events = await prisma.mandatedTeamEvent.findMany({
+      where: { AND: [{ startDate: { lte: yearEnd } }, { endDate: { gte: yearStart } }] },
+      orderBy: [{ startDate: 'asc' }, { title: 'asc' }],
+      select: { id: true, title: true, startDate: true, endDate: true, requiredSlots: true },
+    });
+
+    const members = await prisma.user.findMany({
+      where: { role: 'MEMBER' },
+      select: { id: true, name: true, displayOrder: true },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+    });
+
+    const cells: Record<string, boolean> = {};
+    for (const ev of events) {
+      await ensureAttendanceRows(ev.id);
+      const rows = await prisma.mandatedTeamEventAttendance.findMany({
+        where: { eventId: ev.id },
+        select: { userId: true, attended: true },
+      });
+      for (const r of rows) {
+        cells[`${ev.id}:${r.userId}`] = r.attended;
+      }
+    }
+
+    res.json({ year, members, events, cells });
+  } catch (e) {
+    console.error('mandated-team-events matrix:', e);
+    res.status(500).json({ error: 'マトリクスの取得に失敗しました' });
+  }
+});
+
+const matrixSaveSchema = z.object({
+  changes: z.array(
+    z.object({
+      eventId: z.string().uuid(),
+      userId: z.string().uuid(),
+      attended: z.boolean(),
+    }),
+  ),
+});
+
+/** POST /api/mandated-team-events/matrix/save — マトリクス一括保存（履歴付き） */
+router.post('/matrix/save', async (req: AuthRequest, res) => {
+  try {
+    const { changes } = matrixSaveSchema.parse(req.body);
+    const uid = req.user!.id;
+    const role = req.user!.role;
+
+    for (const ch of changes) {
+      if (role === 'MEMBER' && ch.userId !== uid) {
+        return res.status(403).json({ error: '他の隊員のチェックは変更できません' });
+      }
+
+      await ensureAttendanceRows(ch.eventId);
+
+      const prev = await prisma.mandatedTeamEventAttendance.findUnique({
+        where: { eventId_userId: { eventId: ch.eventId, userId: ch.userId } },
+      });
+      if (prev && prev.attended === ch.attended) continue;
+
+      await prisma.$transaction([
+        prisma.mandatedTeamEventAttendance.upsert({
+          where: { eventId_userId: { eventId: ch.eventId, userId: ch.userId } },
+          create: { eventId: ch.eventId, userId: ch.userId, attended: ch.attended },
+          update: { attended: ch.attended },
+        }),
+        prisma.mandatedAttendanceAuditLog.create({
+          data: {
+            eventId: ch.eventId,
+            userId: ch.userId,
+            attended: ch.attended,
+            changedById: uid,
+          },
+        }),
+      ]);
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    if (e instanceof z.ZodError) return res.status(400).json({ error: e.errors });
+    console.error('mandated-team-events matrix/save:', e);
+    res.status(500).json({ error: '保存に失敗しました' });
+  }
+});
+
 /** GET /api/mandated-team-events?year=2026 */
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -202,6 +296,45 @@ router.get('/:id/detail', async (req: AuthRequest, res) => {
   } catch (e) {
     console.error('mandated-team-events detail:', e);
     res.status(500).json({ error: '取得に失敗しました' });
+  }
+});
+
+/** GET /api/mandated-team-events/:id/audit-logs */
+router.get('/:id/audit-logs', async (req: AuthRequest, res) => {
+  try {
+    const eventId = req.params.id;
+    const ev = await prisma.mandatedTeamEvent.findUnique({ where: { id: eventId } });
+    if (!ev) return res.status(404).json({ error: '見つかりません' });
+
+    const where: { eventId: string; userId?: string } = { eventId };
+    if (req.user!.role === 'MEMBER') {
+      where.userId = req.user!.id;
+    }
+
+    const logs = await prisma.mandatedAttendanceAuditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        changedBy: { select: { id: true, name: true } },
+        member: { select: { id: true, name: true } },
+      },
+    });
+
+    res.json(
+      logs.map((l) => ({
+        id: l.id,
+        userId: l.userId,
+        memberName: l.member.name,
+        attended: l.attended,
+        changedById: l.changedById,
+        changedByName: l.changedBy.name,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    );
+  } catch (e) {
+    console.error('mandated-team-events audit-logs:', e);
+    res.status(500).json({ error: '履歴の取得に失敗しました' });
   }
 });
 
@@ -324,13 +457,30 @@ router.patch('/:id/attendance', async (req: AuthRequest, res) => {
 
     await ensureAttendanceRows(eventId);
 
-    await prisma.mandatedTeamEventAttendance.upsert({
-      where: {
-        eventId_userId: { eventId, userId: data.userId },
-      },
-      create: { eventId, userId: data.userId, attended: data.attended },
-      update: { attended: data.attended },
+    const prev = await prisma.mandatedTeamEventAttendance.findUnique({
+      where: { eventId_userId: { eventId, userId: data.userId } },
     });
+    if (prev?.attended === data.attended) {
+      return res.json({ ok: true });
+    }
+
+    await prisma.$transaction([
+      prisma.mandatedTeamEventAttendance.upsert({
+        where: {
+          eventId_userId: { eventId, userId: data.userId },
+        },
+        create: { eventId, userId: data.userId, attended: data.attended },
+        update: { attended: data.attended },
+      }),
+      prisma.mandatedAttendanceAuditLog.create({
+        data: {
+          eventId,
+          userId: data.userId,
+          attended: data.attended,
+          changedById: req.user!.id,
+        },
+      }),
+    ]);
 
     res.json({ ok: true });
   } catch (e) {

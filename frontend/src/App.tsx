@@ -27,7 +27,6 @@ const EventParticipationSummary = lazy(() =>
 const SNSPosts = lazy(() => import('./pages/SNSPosts').then((m) => ({ default: m.SNSPosts })));
 const Goals = lazy(() => import('./pages/Goals').then((m) => ({ default: m.Goals })));
 const Tasks = lazy(() => import('./pages/Tasks').then((m) => ({ default: m.Tasks })));
-const TaskRequests = lazy(() => import('./pages/TaskRequests').then((m) => ({ default: m.TaskRequests })));
 const Inspections = lazy(() => import('./pages/Inspections').then((m) => ({ default: m.Inspections })));
 const Contacts = lazy(() => import('./pages/Contacts').then((m) => ({ default: m.Contacts })));
 const MonthlyReport = lazy(() => import('./pages/MonthlyReport').then((m) => ({ default: m.MonthlyReport })));
@@ -256,17 +255,6 @@ const App: React.FC = () => {
             <PrivateRoute>
               <Layout>
                 <Contacts />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/task-requests"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <TaskRequests />
               </Layout>
             </PrivateRoute>
           }

@@ -100,32 +100,6 @@ router.get('/', async (req: AuthRequest, res) => {
       take: 20, // 最新20件
     });
 
-    // C) 依頼（未対応/未読、旧：タスク依頼）
-    const requests = await prisma.request.findMany({
-      where: {
-        requestedTo: currentUserId,
-        approvalStatus: 'PENDING',
-      },
-      include: {
-        requester: {
-          select: {
-            id: true,
-            name: true,
-            avatarColor: true,
-          },
-        },
-        project: {
-          select: {
-            id: true,
-            projectName: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
     // D) 相談（メンバー: 未対応の自分宛、スタッフ: 対応待ちで自分が拾えるもの）
     let consultationMemberOpen: { id: string; subject: string | null; createdAt: Date }[] = [];
     let consultationStaffOpen: { id: string; subject: string | null; member: { name: string }; createdAt: Date }[] =
@@ -178,16 +152,7 @@ router.get('/', async (req: AuthRequest, res) => {
         decision: response.status,
         respondedAt: response.respondedAt,
       })),
-      taskRequests: requests.map((request) => ({
-        id: request.id,
-        requester: request.requester,
-        requestTitle: request.requestTitle,
-        requestDescription: request.requestDescription,
-        deadline: request.deadline,
-        project: request.project,
-        approvalStatus: request.approvalStatus,
-        createdAt: request.createdAt,
-      })),
+      taskRequests: [],
       consultationMemberOpen,
       consultationStaffOpen,
     };

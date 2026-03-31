@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileDown, Edit2, Eye } from 'lucide-react';
 import { api } from '../../utils/api';
+import { fileNameFromContentDisposition } from '../../utils/contentDispositionFilename';
 import { format } from 'date-fns';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { Button } from '../common/Button';
@@ -109,10 +110,14 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
         throw new Error(errorData.error || 'PDF出力に失敗しました');
       }
       
+      const fallback = `復命書_${inspection?.user?.name || 'user'}_${format(new Date(inspection?.date || new Date()), 'yyyyMMdd')}.pdf`;
+      const cd = response.headers?.['content-disposition'] as string | undefined;
+      const filename = fileNameFromContentDisposition(cd, fallback);
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `復命書_${format(new Date(inspection?.date || new Date()), 'yyyyMMdd')}_${inspection?.destination || ''}.pdf`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       window.URL.revokeObjectURL(url);

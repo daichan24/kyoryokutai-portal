@@ -2,60 +2,38 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { CalendarDays, Award, TrendingUp, Users, ClipboardList } from 'lucide-react';
+import { CalendarDays, ClipboardList, Users } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 
 interface ParticipationSummary {
-  thisMonthCount: number;
-  totalCount: number;
-  totalPoints: number;
+  mandatedCount: number;
+  memberHostedEventCount: number;
+  totalCumulative: number;
 }
 
-interface MandatedEventRow {
-  id: string;
-  title: string;
-  description: string | null;
-  startDate: string;
-  endDate: string;
-  requiredSlots: number;
-  attendedCount: number;
-  totalRows: number;
-  creator: { id: string; name: string };
-}
-
-interface YearSummary {
+interface MatrixResponse {
   year: number;
-  members: { userId: string; name: string; count: number }[];
-  events: {
-    id: string;
-    title: string;
-    startDate: string;
-    endDate: string;
-    requiredSlots: number;
-    attendedCount: number;
-  }[];
-  stats: { avg: number; min: number; max: number; spread: number };
+  members: { id: string; name: string; displayOrder: number }[];
+  events: { id: string; title: string; startDate: string; endDate: string; requiredSlots: number }[];
+  cells: Record<string, boolean>;
 }
 
-interface MandatedDetail {
+interface AuditRow {
   id: string;
-  title: string;
-  description: string | null;
-  startDate: string;
-  endDate: string;
-  requiredSlots: number;
-  members: {
-    userId: string;
-    name: string;
-    attended: boolean;
-    avatarColor?: string;
-    avatarLetter?: string | null;
-  }[];
+  userId: string;
+  memberName: string;
+  attended: boolean;
+  changedByName: string;
+  createdAt: string;
 }
 
 const STAFF_ROLES = ['MASTER', 'SUPPORT', 'GOVERNMENT'] as const;
+
+function cellKey(eventId: string, userId: string) {
+  return `${eventId}:${userId}`;
+}
 
 export const EventParticipationSummary: React.FC = () => {
   const { user } = useAuthStore();
@@ -63,14 +41,16 @@ export const EventParticipationSummary: React.FC = () => {
   const isStaff = user && STAFF_ROLES.includes(user.role as (typeof STAFF_ROLES)[number]);
   const yearNow = new Date().getFullYear();
   const [year, setYear] = useState(yearNow);
-  const [tab, setTab] = useState<'personal' | 'mandated'>('personal');
+  const [tab, setTab] = useState<'matrix' | 'admin'>('matrix');
+  const [editMode, setEditMode] = useState(false);
+  const [draftCells, setDraftCells] = useState<Record<string, boolean>>({});
+  const [auditEventId, setAuditEventId] = useState<string | null>(null);
 
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formStart, setFormStart] = useState('');
   const [formEnd, setFormEnd] = useState('');
   const [formSlots, setFormSlots] = useState(1);
-  const [selectedMandatedId, setSelectedMandatedId] = useState<string | null>(null);
 
   const { data: summary, isLoading: summaryLoading } = useQuery<ParticipationSummary>({
     queryKey: ['event-participation-summary'],
@@ -78,34 +58,50 @@ export const EventParticipationSummary: React.FC = () => {
       const response = await api.get('/api/events/participation-summary');
       return response.data;
     },
-    enabled: tab === 'personal',
   });
 
-  const { data: mandatedList = [], isLoading: mandatedLoading } = useQuery<MandatedEventRow[]>({
-    queryKey: ['mandated-team-events', year],
+  const { data: matrix, isLoading: matrixLoading } = useQuery<MatrixResponse>({
+    queryKey: ['mandated-team-events', 'matrix', year],
     queryFn: async () => {
-      const r = await api.get<MandatedEventRow[]>(`/api/mandated-team-events?year=${year}`);
+      const r = await api.get<MatrixResponse>(`/api/mandated-team-events/matrix?year=${year}`);
+      return r.data;
+    },
+    enabled: tab === 'matrix',
+  });
+
+  const { data: auditLogs = [], isLoading: auditLoading } = useQuery<AuditRow[]>({
+    queryKey: ['mandated-team-events', 'audit', auditEventId],
+    queryFn: async () => {
+      const r = await api.get<AuditRow[]>(`/api/mandated-team-events/${auditEventId}/audit-logs`);
       return r.data || [];
     },
-    enabled: tab === 'mandated',
+    enabled: !!auditEventId && tab === 'matrix',
   });
 
-  const { data: yearSummary, isLoading: yearSummaryLoading } = useQuery<YearSummary>({
-    queryKey: ['mandated-team-events', 'summary', year],
+  const effectiveCells = useMemo(() => {
+    if (!matrix) return {};
+    if (!editMode) return matrix.cells;
+    return { ...matrix.cells, ...draftCells };
+  }, [matrix, editMode, draftCells]);
+
+  const { data: mandatedList = [] } = useQuery<
+    { id: string; title: string; startDate: string; endDate: string }[]
+  >({
+    queryKey: ['mandated-team-events', 'list', year, 'admin'],
     queryFn: async () => {
-      const r = await api.get<YearSummary>(`/api/mandated-team-events/summary/year?year=${year}`);
-      return r.data;
+      const r = await api.get(`/api/mandated-team-events?year=${year}`);
+      return r.data || [];
     },
-    enabled: tab === 'mandated',
+    enabled: tab === 'admin' && !!isStaff,
   });
 
-  const { data: mandatedDetail, isLoading: detailLoading } = useQuery<MandatedDetail>({
-    queryKey: ['mandated-team-events', 'detail', selectedMandatedId],
-    queryFn: async () => {
-      const r = await api.get<MandatedDetail>(`/api/mandated-team-events/${selectedMandatedId}/detail`);
-      return r.data;
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/mandated-team-events/${id}`);
     },
-    enabled: !!selectedMandatedId && tab === 'mandated',
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mandated-team-events'] });
+    },
   });
 
   const createMut = useMutation({
@@ -115,7 +111,7 @@ export const EventParticipationSummary: React.FC = () => {
         description: formDesc.trim() || null,
         startDate: formStart,
         endDate: formEnd,
-        requiredSlots: formSlots,
+        requiredSlots: Math.max(1, formSlots),
       });
     },
     onSuccess: () => {
@@ -128,30 +124,63 @@ export const EventParticipationSummary: React.FC = () => {
     },
   });
 
-  const attendanceMut = useMutation({
-    mutationFn: async ({ userId, attended }: { userId: string; attended: boolean }) => {
-      if (!selectedMandatedId) return;
-      await api.patch(`/api/mandated-team-events/${selectedMandatedId}/attendance`, { userId, attended });
+  const saveMatrixMut = useMutation({
+    mutationFn: async (changes: { eventId: string; userId: string; attended: boolean }[]) => {
+      await api.post('/api/mandated-team-events/matrix/save', { changes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mandated-team-events'] });
+      setDraftCells({});
+      setEditMode(false);
     },
   });
 
-  const deleteMut = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/mandated-team-events/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mandated-team-events'] });
-      setSelectedMandatedId(null);
-    },
-  });
+  const startEdit = () => {
+    if (!matrix) return;
+    setDraftCells({});
+    setEditMode(true);
+  };
 
-  const maxCount = useMemo(() => {
-    if (!yearSummary?.members.length) return 1;
-    return Math.max(1, ...yearSummary.members.map((m) => m.count));
-  }, [yearSummary]);
+  const cancelEdit = () => {
+    setDraftCells({});
+    setEditMode(false);
+  };
+
+  const toggleCell = (eventId: string, userId: string) => {
+    if (!matrix || !editMode) return;
+    if (!isStaff && user?.id !== userId) return;
+    const k = cellKey(eventId, userId);
+    const base = matrix.cells[k] ?? false;
+    const current = draftCells[k] !== undefined ? draftCells[k] : base;
+    setDraftCells((prev) => ({ ...prev, [k]: !current }));
+  };
+
+  const saveChanges = () => {
+    if (!matrix || !user) return;
+    const changes: { eventId: string; userId: string; attended: boolean }[] = [];
+    const keys = new Set<string>();
+    for (const ev of matrix.events) {
+      for (const m of matrix.members) {
+        keys.add(cellKey(ev.id, m.id));
+      }
+    }
+    for (const k of keys) {
+      const [eventId, userId] = k.split(':');
+      const orig = matrix.cells[k] ?? false;
+      const next = draftCells[k] !== undefined ? draftCells[k] : orig;
+      if (next !== orig) {
+        if (!isStaff && userId !== user.id) continue;
+        changes.push({ eventId, userId, attended: next });
+      }
+    }
+    if (changes.length === 0) {
+      setEditMode(false);
+      return;
+    }
+    saveMatrixMut.mutate(changes);
+  };
+
+  const memberColWidth = 'min-w-[52px] w-[52px]';
 
   if (!user) return null;
 
@@ -160,104 +189,90 @@ export const EventParticipationSummary: React.FC = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">イベント参加状況</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          個人のイベント参加記録と、役場・スタッフが登録する「隊員参加が必要な業務イベント」の集計をまとめて確認できます。
+          役場・スタッフが登録する隊員参加枠はマトリクスで管理します。累計参加回数は「隊員参加枠でのチェック」と「他メンバーのイベント主催への参加（承認済み）」の内訳で表示します。
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-border dark:border-gray-700 pb-2">
         <button
           type="button"
-          onClick={() => setTab('personal')}
+          onClick={() => {
+            setTab('matrix');
+            setAuditEventId(null);
+          }}
           className={`px-4 py-2 rounded-lg text-sm font-medium ${
-            tab === 'personal'
+            tab === 'matrix'
               ? 'bg-primary text-white'
               : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
           }`}
         >
-          個人の参加記録
+          隊員参加マトリクス
         </button>
-        <button
-          type="button"
-          onClick={() => setTab('mandated')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${
-            tab === 'mandated'
-              ? 'bg-primary text-white'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          隊員参加枠（役場・スタッフ登録）
-        </button>
+        {isStaff && (
+          <button
+            type="button"
+            onClick={() => setTab('admin')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              tab === 'admin'
+                ? 'bg-primary text-white'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+          >
+            参加枠イベントの登録
+          </button>
+        )}
       </div>
 
-      {tab === 'personal' && (
+      {tab === 'matrix' && (
         <>
           {summaryLoading ? (
-            <div className="flex justify-center h-48">
+            <div className="flex justify-center h-32">
               <LoadingSpinner />
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-card dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <CalendarDays className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">今月の参加回数</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        {summary?.thisMonthCount || 0}
-                      </p>
-                    </div>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-5">
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <Users className="h-4 w-4" />
+                  累計（合計）
                 </div>
-                <div className="bg-card dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                      <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">累計参加回数</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        {summary?.totalCount || 0}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-card dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                      <Award className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-medium text-gray-600 dark:text-gray-400">参加ポイント合計</h2>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                        {summary?.totalPoints?.toFixed(1) || '0.0'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {summary?.totalCumulative ?? 0}
+                </p>
               </div>
-              <div className="bg-card dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">補足</h2>
-                <div className="space-y-2 text-gray-600 dark:text-gray-400 text-sm">
-                  <p>ここは「イベント主催」への参加や、既存のイベント機能で記録された参加の集計です。</p>
-                  <p>町・スタッフが指定する隊員参加枠の集計は「隊員参加枠」タブを開いてください。</p>
+              <div className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-5">
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <ClipboardList className="h-4 w-4" />
+                  内訳: 隊員参加枠
                 </div>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                  {summary?.mandatedCount ?? 0}
+                </p>
               </div>
-            </>
+              <div className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-5">
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  <CalendarDays className="h-4 w-4" />
+                  内訳: メンバー主催イベント参加
+                </div>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                  {summary?.memberHostedEventCount ?? 0}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  他メンバーが作成したイベントに、あなたが参加承認された回数です。
+                </p>
+              </div>
+            </div>
           )}
-        </>
-      )}
 
-      {tab === 'mandated' && (
-        <div className="space-y-8">
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              集計年
+              表示年
               <select
                 value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
+                onChange={(e) => {
+                  setYear(Number(e.target.value));
+                  cancelEdit();
+                }}
                 className="border border-border dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-900"
               >
                 {[yearNow + 1, yearNow, yearNow - 1, yearNow - 2].map((y) => (
@@ -267,180 +282,212 @@ export const EventParticipationSummary: React.FC = () => {
                 ))}
               </select>
             </label>
+            {!editMode ? (
+              <Button type="button" variant="outline" size="sm" onClick={startEdit}>
+                更新（チェックを変更）
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={saveChanges}
+                  disabled={saveMatrixMut.isPending}
+                >
+                  {saveMatrixMut.isPending ? '保存中…' : '変更を保存'}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={cancelEdit}>
+                  キャンセル
+                </Button>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {isStaff ? '全員のチェックを変更できます。' : '自分の列のみ変更できます。'}
+                </span>
+              </>
+            )}
           </div>
 
-          {yearSummaryLoading ? (
+          {matrixLoading || !matrix ? (
             <LoadingSpinner />
-          ) : yearSummary ? (
-            <section className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-6 space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                {year}年の参加回数（隊員別・均等化の目安）
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                チェック済みの参加のみカウントします。平均 {yearSummary.stats.avg} 回、最小 {yearSummary.stats.min} 回、最大{' '}
-                {yearSummary.stats.max} 回（ばらつき {yearSummary.stats.spread}）。
-              </p>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border dark:border-gray-600 text-left">
-                      <th className="py-2 pr-4">隊員</th>
-                      <th className="py-2 pr-4 w-28">参加回数</th>
-                      <th className="py-2">比較（最大に対する割合）</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {yearSummary.members.map((m) => (
-                      <tr key={m.userId} className="border-b border-border/60 dark:border-gray-700/80">
-                        <td className="py-2 pr-4 font-medium text-gray-900 dark:text-gray-100">{m.name}</td>
-                        <td className="py-2 pr-4">{m.count}</td>
-                        <td className="py-2">
-                          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden max-w-xs">
-                            <div
-                              className="h-full bg-primary rounded-full"
-                              style={{ width: `${maxCount ? (m.count / maxCount) * 100 : 0}%` }}
-                            />
-                          </div>
-                        </td>
-                      </tr>
+          ) : matrix.events.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {year}年に該当する隊員参加枠のイベントがありません。管理者は「参加枠イベントの登録」から追加してください。
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800 shadow-sm">
+              <table className="text-xs border-collapse min-w-max">
+                <thead>
+                  <tr className="bg-gray-100 dark:bg-gray-900/80">
+                    <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-900/80 border-b border-r border-gray-200 dark:border-gray-700 px-3 py-2 text-left font-semibold text-gray-900 dark:text-gray-100 min-w-[200px] max-w-[280px]">
+                      イベント
+                    </th>
+                    {matrix.members.map((m) => (
+                      <th
+                        key={m.id}
+                        className={`border-b border-gray-200 dark:border-gray-700 px-0.5 py-2 text-center font-medium text-gray-800 dark:text-gray-200 ${memberColWidth}`}
+                        title={m.name}
+                      >
+                        <span className="block line-clamp-3 break-all text-[10px] leading-tight">{m.name}</span>
+                      </th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ) : null}
-
-          {isStaff && (
-            <section className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-6 space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                隊員参加枠の新規登録（MASTER / サポート / 行政）
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="タイトル" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
-                <Input
-                  label="必要人数（目安）"
-                  type="number"
-                  min={1}
-                  value={String(formSlots)}
-                  onChange={(e) => setFormSlots(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                />
-                <Input label="開始日" type="date" value={formStart} onChange={(e) => setFormStart(e.target.value)} />
-                <Input label="終了日" type="date" value={formEnd} onChange={(e) => setFormEnd(e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">説明（任意）</label>
-                <textarea
-                  className="w-full border border-border dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-sm"
-                  rows={3}
-                  value={formDesc}
-                  onChange={(e) => setFormDesc(e.target.value)}
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={() => createMut.mutate()}
-                disabled={!formTitle.trim() || !formStart || !formEnd || createMut.isPending}
-              >
-                登録する
-              </Button>
-            </section>
+                    <th className="border-b border-gray-200 dark:border-gray-700 px-2 py-2 w-24 text-center text-gray-600 dark:text-gray-400">
+                      履歴
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrix.events.map((ev) => (
+                    <tr key={ev.id} className="border-b border-gray-100 dark:border-gray-700/80">
+                      <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 px-3 py-2 align-top">
+                        <div className="font-medium text-gray-900 dark:text-gray-100 leading-snug">{ev.title}</div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 whitespace-nowrap">
+                          {ev.startDate} 〜 {ev.endDate}
+                        </div>
+                      </td>
+                      {matrix.members.map((m) => {
+                        const k = cellKey(ev.id, m.id);
+                        const checked = effectiveCells[k] ?? false;
+                        const canToggle =
+                          editMode && (isStaff || user.id === m.id);
+                        return (
+                          <td key={m.id} className={`border-r border-gray-100 dark:border-gray-700/50 text-center p-1 ${memberColWidth}`}>
+                            <button
+                              type="button"
+                              disabled={!canToggle}
+                              onClick={() => toggleCell(ev.id, m.id)}
+                              className={`w-9 h-9 rounded border text-sm font-bold mx-auto flex items-center justify-center ${
+                                checked
+                                  ? 'bg-green-100 dark:bg-green-900/40 border-green-400 text-green-800 dark:text-green-200'
+                                  : 'bg-gray-50 dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-400'
+                              } ${canToggle ? 'cursor-pointer hover:opacity-90' : 'cursor-default opacity-90'}`}
+                              title={m.name}
+                            >
+                              {checked ? '✓' : ''}
+                            </button>
+                          </td>
+                        );
+                      })}
+                      <td className="text-center p-1">
+                        <button
+                          type="button"
+                          className="text-primary text-xs underline"
+                          onClick={() => setAuditEventId(auditEventId === ev.id ? null : ev.id)}
+                        >
+                          {auditEventId === ev.id ? '閉じる' : '表示'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {year}年に期間が重なる枠一覧
+          {auditEventId && (
+            <div className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-4">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">変更履歴</h3>
+              {auditLoading ? (
+                <LoadingSpinner />
+              ) : auditLogs.length === 0 ? (
+                <p className="text-xs text-gray-500">まだ変更履歴がありません。</p>
+              ) : (
+                <ul className="space-y-2 max-h-56 overflow-y-auto text-xs">
+                  {auditLogs.map((log) => (
+                    <li
+                      key={log.id}
+                      className="flex flex-wrap gap-x-3 gap-y-1 border-b border-gray-100 dark:border-gray-700 pb-2"
+                    >
+                      <span className="text-gray-500">
+                        {new Date(log.createdAt).toLocaleString('ja-JP')}
+                      </span>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">{log.memberName}</span>
+                      <span>{log.attended ? '参加 ✓' : '不参加'}</span>
+                      <span className="text-gray-600 dark:text-gray-400">担当: {log.changedByName}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === 'admin' && isStaff && (
+        <div className="space-y-6">
+          <section className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              隊員参加枠イベントの新規登録
             </h2>
-            {mandatedLoading ? (
-              <LoadingSpinner />
-            ) : mandatedList.length === 0 ? (
-              <p className="text-sm text-gray-500">該当する登録がありません。</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input label="タイトル" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} required />
+              <Input
+                label="必要人数（目安）"
+                type="number"
+                min={1}
+                value={String(formSlots)}
+                onChange={(e) => setFormSlots(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              />
+              <Input label="開始日" type="date" value={formStart} onChange={(e) => setFormStart(e.target.value)} />
+              <Input label="終了日" type="date" value={formEnd} onChange={(e) => setFormEnd(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">説明（任意）</label>
+              <textarea
+                className="w-full border border-border dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-900 text-sm"
+                rows={3}
+                value={formDesc}
+                onChange={(e) => setFormDesc(e.target.value)}
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={() => createMut.mutate()}
+              disabled={!formTitle.trim() || !formStart || !formEnd || createMut.isPending}
+            >
+              登録する
+            </Button>
+          </section>
+
+          <section className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              {year}年の登録一覧
+            </h2>
+            {mandatedList.length === 0 ? (
+              <p className="text-sm text-gray-500">該当がありません。</p>
             ) : (
               <ul className="space-y-2">
                 {mandatedList.map((ev) => (
-                  <li key={ev.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMandatedId(ev.id === selectedMandatedId ? null : ev.id)}
-                      className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
-                        selectedMandatedId === ev.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border dark:border-gray-700 bg-card dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                      }`}
-                    >
+                  <li
+                    key={ev.id}
+                    className="flex flex-wrap items-center justify-between gap-2 border border-border dark:border-gray-600 rounded-lg px-3 py-2"
+                  >
+                    <div>
                       <div className="font-medium text-gray-900 dark:text-gray-100">{ev.title}</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {ev.startDate} 〜 {ev.endDate} ／ 必要 {ev.requiredSlots} 名 ／ 参加チェック {ev.attendedCount} /{' '}
-                        {ev.totalRows}
+                      <div className="text-xs text-gray-500">
+                        {ev.startDate} 〜 {ev.endDate}
                       </div>
-                    </button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      disabled={deleteMut.isPending}
+                      onClick={() => {
+                        if (window.confirm('この参加枠イベントを削除しますか？')) deleteMut.mutate(ev.id);
+                      }}
+                    >
+                      削除
+                    </Button>
                   </li>
                 ))}
               </ul>
             )}
           </section>
-
-          {selectedMandatedId && (
-            <section className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-6 space-y-4">
-              {detailLoading || !mandatedDetail ? (
-                <LoadingSpinner />
-              ) : (
-                <>
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{mandatedDetail.title}</h3>
-                    {isStaff && (
-                      <Button
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        onClick={() => {
-                          if (window.confirm('この登録を削除しますか？')) deleteMut.mutate(mandatedDetail.id);
-                        }}
-                        disabled={deleteMut.isPending}
-                      >
-                        削除
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {mandatedDetail.startDate} 〜 {mandatedDetail.endDate} ／ 必要人数 {mandatedDetail.requiredSlots} 名
-                  </p>
-                  {mandatedDetail.description && (
-                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                      {mandatedDetail.description}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    隊員は自分の行のみ変更できます。スタッフは全員分を変更できます。
-                  </p>
-                  <ul className="divide-y divide-border dark:divide-gray-700">
-                    {mandatedDetail.members.map((m) => {
-                      const canEdit = isStaff || user.id === m.userId;
-                      return (
-                        <li key={m.userId} className="flex items-center justify-between gap-3 py-2">
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{m.name}</span>
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={m.attended}
-                              disabled={!canEdit || attendanceMut.isPending}
-                              onChange={(e) =>
-                                attendanceMut.mutate({ userId: m.userId, attended: e.target.checked })
-                              }
-                              className="rounded border-gray-300 text-primary"
-                            />
-                            参加した
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </>
-              )}
-            </section>
-          )}
         </div>
+      )}
+
+      {tab === 'admin' && !isStaff && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">このタブは行政・サポート・マスターのみ利用できます。</p>
       )}
     </div>
   );

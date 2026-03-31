@@ -25,9 +25,7 @@ const dashboardConfigSchema = z.object({
 // 全ウィジェットのテンプレート（カスタマイズ画面に必ず表示するため）
 // メンバー以外の場合はgoals-personalとgoals-viewを分離
 const getFullWidgetTemplate = (role: string) => {
-  const base = [
-    { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 1 },
-    { key: 'taskRequests', enabled: true, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 2 as const, order: 2 },
+  const tail = [
     { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 3 },
     { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 5 },
     { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 6 },
@@ -35,22 +33,30 @@ const getFullWidgetTemplate = (role: string) => {
     { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const, order: 8 },
     { key: 'nextWish', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const, order: 9 },
   ];
-  
-  // メンバー以外の場合はgoals-personalとgoals-viewを追加
+
+  const sns = {
+    key: 'snsHistory',
+    enabled: true,
+    displayMode: 'view-with-add' as const,
+    showAddButton: true,
+    size: 'M' as const,
+    columnSpan: 2 as const,
+    order: 1,
+  };
+
   if (role !== 'MEMBER') {
     return [
-      ...base.slice(0, 3),
+      sns,
       { key: 'goals-personal', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
       { key: 'goals-view', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4.5 },
-      ...base.slice(3),
+      ...tail,
     ];
   }
-  
-  // メンバーの場合は従来通りgoalsのみ
+
   return [
-    ...base.slice(0, 3),
+    sns,
     { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
-    ...base.slice(3),
+    ...tail,
   ];
 };
 
@@ -66,30 +72,24 @@ const getDefaultConfig = (role: string) => {
     return {
       widgets: [
         { ...base[0], enabled: true },
-        { ...base[1], enabled: false },
+        { ...base[1], enabled: true },
         { ...base[2], enabled: true },
         { ...base[3], enabled: true },
         { ...base[4], enabled: true },
         { ...base[5], enabled: true },
         { ...base[6], enabled: false },
         { ...base[7], enabled: false },
-        { ...base[8], enabled: false },
-      ],
+      ].map((w, i) => ({ ...w, order: i + 1 })),
     };
   } else if (role === 'SUPPORT' || role === 'GOVERNMENT') {
     return {
-      widgets: [
-        { ...base[0], enabled: false },
-        { ...base[1], enabled: true },
-        { ...base[2], enabled: true },
-        { ...base[3], enabled: false }, // goals-personal
-        { ...base[4], enabled: false }, // goals-view
-        { ...base[5], enabled: true },
-        { ...base[6], enabled: true },
-        { ...base[7], enabled: true },
-        { ...base[8], enabled: true },
-        { ...base[9], enabled: false }, // nextWish
-      ],
+      widgets: base.map((w, i) => {
+        let enabled = true;
+        if (w.key === 'snsHistory') enabled = false;
+        if (w.key === 'goals-personal' || w.key === 'goals-view') enabled = false;
+        if (w.key === 'nextWish') enabled = false;
+        return { ...w, enabled, order: i + 1 };
+      }),
     };
   } else if (role === 'MASTER') {
     return { widgets: base.map((w, i) => ({ ...w, enabled: true, order: i + 1 })) };
@@ -109,7 +109,10 @@ function mergeWithTemplate(saved: { widgets: any[]; weeklyScheduleCount?: 3 | 5 
   }
 
   const byKey = new Map<string, any>();
-  for (const w of saved.widgets) byKey.set(w.key, w);
+  for (const w of saved.widgets) {
+    if (w.key === 'taskRequests') continue;
+    byKey.set(w.key, w);
+  }
 
   // 古いgoalsウィジェットをgoals-personalとgoals-viewに変換（メンバー以外の場合）
   if (role !== 'MEMBER' && byKey.has('goals') && !byKey.has('goals-personal') && !byKey.has('goals-view')) {

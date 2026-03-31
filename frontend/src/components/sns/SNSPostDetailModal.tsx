@@ -10,6 +10,7 @@ interface SNSPost {
   postType: 'STORY' | 'FEED';
   url?: string | null;
   note?: string | null;
+  followerCount?: number | null;
 }
 
 interface SNSPostDetailModalProps {
@@ -17,6 +18,8 @@ interface SNSPostDetailModalProps {
   post?: SNSPost | null;
   /** 新規時に週を固定したい場合（週次表から開いたとき） */
   defaultPostType?: 'STORY' | 'FEED';
+  /** 新規時の初期日付 YYYY-MM-DD（週次表の週の代表日など） */
+  defaultPostedDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -25,6 +28,7 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   isOpen,
   post,
   defaultPostType = 'STORY',
+  defaultPostedDate,
   onClose,
   onSaved,
 }) => {
@@ -32,6 +36,7 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   const [postType, setPostType] = useState<'STORY' | 'FEED'>('STORY');
   const [url, setUrl] = useState('');
   const [note, setNote] = useState('');
+  const [followerCount, setFollowerCount] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -41,14 +46,18 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       setPostType(post.postType);
       setUrl(post.url || '');
       setNote(post.note || '');
+      setFollowerCount(
+        post.followerCount !== undefined && post.followerCount !== null ? String(post.followerCount) : '',
+      );
     } else {
       const now = new Date();
-      setPostedAt(now.toISOString().split('T')[0]);
+      setPostedAt(defaultPostedDate || now.toISOString().split('T')[0]);
       setPostType(defaultPostType);
       setUrl('');
       setNote('');
+      setFollowerCount('');
     }
-  }, [post, defaultPostType]);
+  }, [post, defaultPostType, defaultPostedDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +70,13 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       };
       if (url.trim()) data.url = url.trim();
       if (note.trim()) data.note = note.trim();
+      const fc = followerCount.trim();
+      if (fc !== '') {
+        const n = parseInt(fc, 10);
+        if (!Number.isNaN(n) && n >= 0) data.followerCount = n;
+      } else if (post) {
+        data.followerCount = null;
+      }
 
       if (post) {
         await api.put(`/api/sns-posts/${post.id}`, data);
@@ -125,6 +141,15 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."
+          />
+
+          <Input
+            label="フォロワー数（任意・その時点の人数）"
+            type="number"
+            min={0}
+            value={followerCount}
+            onChange={(e) => setFollowerCount(e.target.value)}
+            placeholder="例: 1200"
           />
 
           <div>

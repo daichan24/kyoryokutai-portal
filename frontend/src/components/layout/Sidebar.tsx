@@ -16,7 +16,6 @@ import {
   Contact,
   FileBarChart,
   MessageSquareText,
-  Inbox,
   Check,
   ListChecks,
   HardDrive,
@@ -61,7 +60,6 @@ function matchesStatusPath(pathname: string) {
   return (
     pathname.startsWith('/sns-posts') ||
     pathname.startsWith('/events/participation-summary') ||
-    pathname.startsWith('/task-requests') ||
     pathname.startsWith('/contacts')
   );
 }
@@ -182,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
       items.push({ to: '/reports/monthly', icon: FileBarChart, label: '月次報告' });
     }
-    items.push({ to: '/inspections', icon: Eye, label: '視察記録' });
+    items.push({ to: '/inspections', icon: Eye, label: '復命書' });
     return items;
   };
 
@@ -264,7 +262,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const statusItems: Array<{ to: string; icon: NavIcon; label: string; end?: boolean }> = [
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/events/participation-summary', icon: CalendarDays, label: 'イベント参加状況' },
-    { to: '/task-requests', icon: Inbox, label: '依頼ボックス' },
     { to: '/contacts', icon: Contact, label: '町民データベース' },
   ];
 

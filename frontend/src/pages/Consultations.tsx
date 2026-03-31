@@ -138,7 +138,7 @@ export const Consultations: React.FC = () => {
         </h1>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
           {isMember
-            ? 'サポート・行政・マスターへ相談を送れます。内容は依頼ボックスにも表示され、面談画面でも担当者が確認できます。'
+            ? 'サポート・行政・マスターへ相談を送れます。面談画面でも担当者が確認できます。'
             : '隊員からの相談に対応し、解決したら「対応済み」にしてください。'}
         </p>
       </div>

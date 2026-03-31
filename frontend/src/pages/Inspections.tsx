@@ -8,6 +8,7 @@ import { InspectionDetailModal } from '../components/inspection/InspectionDetail
 import { Button } from '../components/common/Button';
 import { Plus } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { fileNameFromContentDisposition } from '../utils/contentDispositionFilename';
 
 interface Inspection {
   id: string;
@@ -41,7 +42,7 @@ export const Inspections: React.FC = () => {
     }
   });
 
-  const downloadPDF = async (id: string, destination: string, date: string) => {
+  const downloadPDF = async (id: string, destination: string, date: string, authorName: string) => {
     try {
       const response = await api.get(`/api/inspections/${id}/pdf`, {
         responseType: 'blob'
@@ -53,11 +54,15 @@ export const Inspections: React.FC = () => {
         const errorData = JSON.parse(text);
         throw new Error(errorData.error || 'PDF出力に失敗しました');
       }
+
+      const fallback = `復命書_${authorName}_${format(new Date(date), 'yyyyMMdd')}.pdf`;
+      const cd = response.headers?.['content-disposition'] as string | undefined;
+      const filename = fileNameFromContentDisposition(cd, fallback);
       
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `復命書_${format(new Date(date), 'yyyyMMdd')}_${destination}.pdf`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       window.URL.revokeObjectURL(url);
@@ -116,7 +121,9 @@ export const Inspections: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={() => downloadPDF(inspection.id, inspection.destination, inspection.date)}
+                onClick={() =>
+                  downloadPDF(inspection.id, inspection.destination, inspection.date, inspection.user.name)
+                }
                 className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >
                 📄 PDF出力

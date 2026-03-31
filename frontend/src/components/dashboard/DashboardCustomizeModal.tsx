@@ -33,7 +33,6 @@ interface DashboardCustomizeModalProps {
 const widgetLabels: Record<string, string> = {
   snsHistory: 'SNS投稿履歴',
   snsQuickAdd: 'SNS投稿追加',
-  taskRequests: '依頼',
   projects: 'プロジェクト',
   goals: 'ミッション',
   'goals-personal': 'ミッション（個人）',
@@ -48,9 +47,7 @@ const widgetLabels: Record<string, string> = {
 // カスタマイズ画面に必ず表示する全ウィジェットのテンプレート
 // メンバー以外の場合はgoals-personalとgoals-viewを分離
 const getFullWidgetTemplate = (role: string): Omit<WidgetConfig, 'order'>[] => {
-  const base = [
-    { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const },
-    { key: 'taskRequests', enabled: true, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 2 as const },
+  const tail = [
     { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const },
     { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const },
     { key: 'events', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const },
@@ -58,22 +55,29 @@ const getFullWidgetTemplate = (role: string): Omit<WidgetConfig, 'order'>[] => {
     { key: 'eventParticipation', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'L' as const, columnSpan: 1 as const },
     { key: 'nextWish', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const },
   ];
-  
-  // メンバー以外の場合はgoals-personalとgoals-viewを追加
+
+  const sns = {
+    key: 'snsHistory',
+    enabled: true,
+    displayMode: 'view-with-add' as const,
+    showAddButton: true,
+    size: 'M' as const,
+    columnSpan: 2 as const,
+  };
+
   if (role !== 'MEMBER') {
     return [
-      ...base.slice(0, 3),
+      sns,
       { key: 'goals-personal', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
       { key: 'goals-view', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
-      ...base.slice(3),
+      ...tail,
     ];
   }
-  
-  // メンバーの場合は従来通りgoalsのみ
+
   return [
-    ...base.slice(0, 3),
+    sns,
     { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
-    ...base.slice(3),
+    ...tail,
   ];
 };
 
@@ -84,7 +88,10 @@ function mergeWithTemplate(apiConfig: DashboardConfig | null | undefined, role: 
     return getDefaultConfig(role);
   }
   const byKey = new Map<string, any>();
-  raw.forEach((w) => byKey.set(w.key, w));
+  raw.forEach((w) => {
+    if (w.key === 'taskRequests') return;
+    byKey.set(w.key, w);
+  });
   
   // 古いgoalsウィジェットをgoals-personalとgoals-viewに変換（メンバー以外の場合）
   if (role !== 'MEMBER' && byKey.has('goals') && !byKey.has('goals-personal') && !byKey.has('goals-view')) {
@@ -111,18 +118,28 @@ function getDefaultConfig(role: string = 'MEMBER'): DashboardConfig {
   const base = template.map((w, i) => ({ ...w, order: i + 1 } as WidgetConfig));
   
   if (role === 'MEMBER') {
-    return { widgets: [base[0], { ...base[1], enabled: false }, base[2], base[3], base[4], base[5], base[6], base[7]].map((w, i) => ({ ...w, order: i + 1 })) };
+    return {
+      widgets: [
+        { ...base[0], enabled: true },
+        { ...base[1], enabled: true },
+        { ...base[2], enabled: true },
+        { ...base[3], enabled: true },
+        { ...base[4], enabled: true },
+        { ...base[5], enabled: true },
+        { ...base[6], enabled: false },
+        { ...base[7], enabled: false },
+      ].map((w, i) => ({ ...w, order: i + 1 })),
+    };
   }
   if (role === 'SUPPORT' || role === 'GOVERNMENT') {
-    // goals-personalとgoals-viewのインデックスを考慮
-    const goalsPersonalIndex = base.findIndex(w => w.key === 'goals-personal');
-    const goalsViewIndex = base.findIndex(w => w.key === 'goals-view');
-    return { 
-      widgets: base.map((w, i) => ({ 
-        ...w, 
-        enabled: (goalsPersonalIndex !== -1 && i === goalsPersonalIndex) ? false : (goalsViewIndex !== -1 && i === goalsViewIndex) ? false : [0, 3].includes(i) ? false : true, 
-        order: i + 1 
-      })) 
+    return {
+      widgets: base.map((w, i) => {
+        let enabled = true;
+        if (w.key === 'snsHistory') enabled = false;
+        if (w.key === 'goals-personal' || w.key === 'goals-view') enabled = false;
+        if (w.key === 'nextWish') enabled = false;
+        return { ...w, enabled, order: i + 1 };
+      }),
     };
   }
   if (role === 'MASTER') {

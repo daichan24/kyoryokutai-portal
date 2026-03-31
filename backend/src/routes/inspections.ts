@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { format } from 'date-fns';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateInspectionPDF } from '../services/pdfGenerator';
@@ -213,10 +214,21 @@ router.get('/:id/pdf', async (req, res) => {
   try {
     const { id } = req.params;
 
+    const row = await prisma.inspection.findUnique({
+      where: { id },
+      include: { user: { select: { name: true } } },
+    });
+    const displayName = row?.user?.name?.trim() || 'user';
+    const asciiSafe = displayName.replace(/[^\w.-]+/g, '_').slice(0, 60) || 'user';
+    const dateStr = format(new Date(), 'yyyyMMdd');
     const pdf = await generateInspectionPDF(id);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="inspection_${id}.pdf"`);
+    const utfName = encodeURIComponent(`復命書_${displayName}_${dateStr}.pdf`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="fukumeisho_${asciiSafe}_${dateStr}.pdf"; filename*=UTF-8''${utfName}`,
+    );
     res.send(pdf);
   } catch (error) {
     console.error('Generate inspection PDF error:', error);

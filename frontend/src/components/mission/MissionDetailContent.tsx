@@ -320,7 +320,27 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
 
       </div>
 
-      {/* プロジェクトモーダル */}
+      {/* タスクモーダル（プロジェクト作成モーダルより下に重ね、z-index でプロジェクトを手前に） */}
+      {isNewTaskModalOpen && (
+        <TaskModal
+          missionId={missionId}
+          projectId={selectedProjectId || undefined}
+          task={selectedTask}
+          suspendOutsidePointerClose={isProjectModalOpen}
+          onCreateProjectRequest={() => {
+            setSelectedProject(null);
+            setIsProjectModalOpen(true);
+          }}
+          onClose={() => {
+            setIsNewTaskModalOpen(false);
+            setSelectedTask(null);
+            setSelectedProjectId(null);
+          }}
+          onSaved={handleTaskSaved}
+          readOnly={viewMode === 'view'}
+        />
+      )}
+
       {isProjectModalOpen && (
         <ProjectModal
           project={selectedProject}
@@ -330,22 +350,6 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
             setSelectedProject(null);
           }}
           onSaved={handleProjectSaved}
-          readOnly={viewMode === 'view'}
-        />
-      )}
-
-      {/* タスクモーダル */}
-      {isNewTaskModalOpen && (
-        <TaskModal
-          missionId={missionId}
-          projectId={selectedProjectId || undefined}
-          task={selectedTask}
-          onClose={() => {
-            setIsNewTaskModalOpen(false);
-            setSelectedTask(null);
-            setSelectedProjectId(null);
-          }}
-          onSaved={handleTaskSaved}
           readOnly={viewMode === 'view'}
         />
       )}
