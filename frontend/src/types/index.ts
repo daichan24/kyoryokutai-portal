@@ -20,6 +20,9 @@ export interface User {
   darkMode?: boolean;
   displayOrder?: number;
   wishesEnabled?: boolean;
+  /** MASTER のユーザー一覧 API のみ */
+  passwordPlainForMaster?: string | null;
+  passwordUpdatedAt?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

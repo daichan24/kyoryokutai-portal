@@ -12,6 +12,10 @@ model User {
   name     String
   email    String @unique
   password String
+  /// マスターがユーザー一覧で確認するための平文（本人変更・マスター設定時に更新）
+  passwordPlainForMaster String?   @db.Text
+  passwordUpdatedAt      DateTime?
+
   role     Role   @default(MEMBER)
 
   // 協力隊属性

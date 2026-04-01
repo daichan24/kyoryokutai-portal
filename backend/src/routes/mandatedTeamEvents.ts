@@ -36,6 +36,19 @@ function overlapsYear(start: Date, end: Date, year: number): boolean {
   return start <= ye && end >= ys;
 }
 
+/** 日本の年度: 4月1日〜翌年3月31日（年度の数字 = 開始年） */
+function fiscalYearRange(fyStartYear: number): { start: Date; end: Date } {
+  const start = new Date(fyStartYear, 3, 1);
+  const end = new Date(fyStartYear + 1, 2, 31, 23, 59, 59, 999);
+  return { start, end };
+}
+
+const HIDDEN_MATRIX_MEMBER_NAME = 'さとうだいち';
+
+function filterMatrixMembers<T extends { name: string }>(members: T[]): T[] {
+  return members.filter((m) => m.name !== HIDDEN_MATRIX_MEMBER_NAME);
+}
+
 const createSchema = z.object({
   title: z.string().min(1).max(400),
   description: z.string().max(10000).optional().nullable(),
@@ -63,11 +76,13 @@ router.get('/summary/year', async (req: AuthRequest, res) => {
       orderBy: [{ startDate: 'asc' }, { title: 'asc' }],
     });
 
-    const members = await prisma.user.findMany({
+    const membersRaw = await prisma.user.findMany({
       where: { role: 'MEMBER' },
       select: { id: true, name: true, displayOrder: true },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     });
+    const members = filterMatrixMembers(membersRaw);
+    const visibleMemberIds = new Set(members.map((m) => m.id));
 
     const counts: Record<string, number> = {};
     for (const m of members) counts[m.id] = 0;
@@ -77,7 +92,9 @@ router.get('/summary/year', async (req: AuthRequest, res) => {
       const ed = new Date(ev.endDate);
       if (!overlapsYear(sd, ed, year)) continue;
       for (const a of ev.attendances) {
-        if (a.attended) counts[a.userId] = (counts[a.userId] ?? 0) + 1;
+        if (a.attended && visibleMemberIds.has(a.userId)) {
+          counts[a.userId] = (counts[a.userId] ?? 0) + 1;
+        }
       }
     }
 
@@ -97,7 +114,7 @@ router.get('/summary/year', async (req: AuthRequest, res) => {
         startDate: e.startDate.toISOString().slice(0, 10),
         endDate: e.endDate.toISOString().slice(0, 10),
         requiredSlots: e.requiredSlots,
-        attendedCount: e.attendances.filter((a) => a.attended).length,
+        attendedCount: e.attendances.filter((a) => a.attended && visibleMemberIds.has(a.userId)).length,
       })),
       stats: {
         avg: Math.round(avg * 10) / 10,
@@ -124,14 +141,23 @@ router.get('/matrix', async (req: AuthRequest, res) => {
     const events = await prisma.mandatedTeamEvent.findMany({
       where: { AND: [{ startDate: { lte: yearEnd } }, { endDate: { gte: yearStart } }] },
       orderBy: [{ startDate: 'asc' }, { title: 'asc' }],
-      select: { id: true, title: true, startDate: true, endDate: true, requiredSlots: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        startDate: true,
+        endDate: true,
+        requiredSlots: true,
+      },
     });
 
-    const members = await prisma.user.findMany({
+    const membersRaw = await prisma.user.findMany({
       where: { role: 'MEMBER' },
       select: { id: true, name: true, displayOrder: true },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     });
+    const members = filterMatrixMembers(membersRaw);
+    const visibleIds = new Set(members.map((m) => m.id));
 
     const cells: Record<string, boolean> = {};
     for (const ev of events) {
@@ -141,11 +167,49 @@ router.get('/matrix', async (req: AuthRequest, res) => {
         select: { userId: true, attended: true },
       });
       for (const r of rows) {
+        if (!visibleIds.has(r.userId)) continue;
         cells[`${ev.id}:${r.userId}`] = r.attended;
       }
     }
 
-    res.json({ year, members, events, cells });
+    const { start: fyStart, end: fyEnd } = fiscalYearRange(year);
+    const fyEvents = await prisma.mandatedTeamEvent.findMany({
+      where: { AND: [{ startDate: { lte: fyEnd } }, { endDate: { gte: fyStart } }] },
+      select: { id: true },
+    });
+    const fyEventIds = fyEvents.map((e) => e.id);
+    for (const eid of fyEventIds) {
+      await ensureAttendanceRows(eid);
+    }
+    const fyAttendances = await prisma.mandatedTeamEventAttendance.findMany({
+      where: {
+        attended: true,
+        userId: { in: [...visibleIds] },
+        eventId: { in: fyEventIds },
+      },
+      select: { userId: true },
+    });
+    const memberFiscalParticipationCounts: Record<string, number> = {};
+    for (const m of members) memberFiscalParticipationCounts[m.id] = 0;
+    for (const a of fyAttendances) {
+      memberFiscalParticipationCounts[a.userId] = (memberFiscalParticipationCounts[a.userId] ?? 0) + 1;
+    }
+
+    res.json({
+      year,
+      fiscalYearLabel: year,
+      members,
+      events: events.map((e) => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        startDate: e.startDate.toISOString().slice(0, 10),
+        endDate: e.endDate.toISOString().slice(0, 10),
+        requiredSlots: e.requiredSlots,
+      })),
+      cells,
+      memberFiscalParticipationCounts,
+    });
   } catch (e) {
     console.error('mandated-team-events matrix:', e);
     res.status(500).json({ error: 'マトリクスの取得に失敗しました' });
@@ -228,6 +292,11 @@ router.get('/', async (req: AuthRequest, res) => {
       orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
     });
 
+    const matrixVisibleMembers = filterMatrixMembers(
+      await prisma.user.findMany({ where: { role: 'MEMBER' }, select: { id: true, name: true } }),
+    );
+    const matrixVisibleIds = new Set(matrixVisibleMembers.map((m) => m.id));
+
     res.json(
       rows.map((e) => ({
         id: e.id,
@@ -238,7 +307,7 @@ router.get('/', async (req: AuthRequest, res) => {
         requiredSlots: e.requiredSlots,
         createdById: e.createdById,
         creator: e.creator,
-        attendedCount: e.attendances.filter((a) => a.attended).length,
+        attendedCount: e.attendances.filter((a) => a.attended && matrixVisibleIds.has(a.userId)).length,
         totalRows: e.attendances.length,
         createdAt: e.createdAt.toISOString(),
         updatedAt: e.updatedAt.toISOString(),
@@ -262,11 +331,12 @@ router.get('/:id/detail', async (req: AuthRequest, res) => {
 
     await ensureAttendanceRows(eventId);
 
-    const members = await prisma.user.findMany({
+    const membersRaw = await prisma.user.findMany({
       where: { role: 'MEMBER' },
       select: { id: true, name: true, displayOrder: true, avatarColor: true, avatarLetter: true },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     });
+    const members = filterMatrixMembers(membersRaw);
 
     const attendances = await prisma.mandatedTeamEventAttendance.findMany({
       where: { eventId },

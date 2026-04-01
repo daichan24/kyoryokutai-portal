@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { api } from '../../utils/api';
-import { User } from '../../types';
+import type { User } from '../../types';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { formatDate } from '../../utils/date';
 import { Button } from '../../components/common/Button';
@@ -28,6 +28,9 @@ export const UsersSettings: React.FC = () => {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [pwTarget, setPwTarget] = useState<User | null>(null);
+  const [pwNew, setPwNew] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -178,6 +181,19 @@ export const UsersSettings: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   メール
                 </th>
+                {currentUser?.role === 'MASTER' && (
+                  <>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      パスワード（確認用）
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      パスワード更新
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                      操作
+                    </th>
+                  </>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   役割
                 </th>
@@ -213,6 +229,34 @@ export const UsersSettings: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {user.email}
                   </td>
+                  {currentUser?.role === 'MASTER' && (
+                    <>
+                      <td
+                        className="px-6 py-4 text-sm font-mono text-gray-800 dark:text-gray-200 max-w-[160px] truncate"
+                        title={user.passwordPlainForMaster || undefined}
+                      >
+                        {user.passwordPlainForMaster ?? '（未登録）'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
+                        {user.passwordUpdatedAt
+                          ? formatDate(user.passwordUpdatedAt, 'yyyy/M/d HH:mm')
+                          : '—'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setPwTarget(user);
+                            setPwNew('');
+                          }}
+                        >
+                          再設定
+                        </Button>
+                      </td>
+                    </>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary">
                       {user.role}
@@ -290,6 +334,74 @@ export const UsersSettings: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {pwTarget && currentUser?.role === 'MASTER' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6 space-y-4">
+            <div className="flex justify-between items-start">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                パスワード再設定: {pwTarget.name}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setPwTarget(null);
+                  setPwNew('');
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <Input
+              label="新しいパスワード（6文字以上）"
+              type="password"
+              autoComplete="new-password"
+              value={pwNew}
+              onChange={(e) => setPwNew(e.target.value)}
+              minLength={6}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPwTarget(null);
+                  setPwNew('');
+                }}
+                disabled={pwLoading}
+              >
+                キャンセル
+              </Button>
+              <Button
+                type="button"
+                disabled={pwLoading}
+                onClick={async () => {
+                  if (pwNew.length < 6) {
+                    alert('パスワードは6文字以上にしてください');
+                    return;
+                  }
+                  setPwLoading(true);
+                  try {
+                    await api.put(`/api/users/${pwTarget.id}`, { password: pwNew });
+                    setPwTarget(null);
+                    setPwNew('');
+                    await fetchUsers();
+                    alert('パスワードを更新しました');
+                  } catch (e: any) {
+                    console.error(e);
+                    alert(e?.response?.data?.error || '更新に失敗しました');
+                  } finally {
+                    setPwLoading(false);
+                  }
+                }}
+              >
+                {pwLoading ? '保存中...' : '保存'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

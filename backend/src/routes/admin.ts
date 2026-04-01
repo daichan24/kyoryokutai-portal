@@ -56,6 +56,8 @@ router.post('/users', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, r
         name: data.name,
         email: data.email,
         password: hashedPassword,
+        passwordPlainForMaster: data.password,
+        passwordUpdatedAt: new Date(),
         role: data.role,
         missionType: data.missionType,
         department: data.department,

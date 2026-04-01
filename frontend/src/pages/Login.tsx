@@ -11,7 +11,6 @@ interface LoginHint {
   name: string;
   email: string;
   role: string;
-  password: string;
 }
 
 export const Login: React.FC = () => {
@@ -117,6 +116,7 @@ export const Login: React.FC = () => {
           <Input
             label="パスワード"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -150,7 +150,7 @@ export const Login: React.FC = () => {
             )}
           </button>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
-            初回は閉じた状態です。展開すると一覧を読み込みます（ログインの体感を軽くします）。
+            初回は閉じた状態です。展開すると一覧を読み込みます（ログインの体感を軽くします）。セキュリティのため、一覧にパスワードは表示しません。
           </p>
           {accountListOpen && (
             <>
@@ -173,9 +173,6 @@ export const Login: React.FC = () => {
                           役割
                         </th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          パスワード
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           操作
                         </th>
                       </tr>
@@ -195,9 +192,6 @@ export const Login: React.FC = () => {
                             >
                               {hint.role}
                             </span>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-400 font-mono text-xs">
-                            {hint.password}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
                             <button

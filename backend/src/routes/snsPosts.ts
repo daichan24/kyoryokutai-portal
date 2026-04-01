@@ -3,20 +3,45 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { PostType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { getCurrentWeekBoundary, getWeekBoundaryForDate } from '../utils/weekBoundary';
+import { getCurrentWeekBoundary, getWeekBoundaryForDate, jstWallToUtcDate } from '../utils/weekBoundary';
 
 const router = Router();
 router.use(authenticate);
 
+function parsePostedAtInput(raw: string): Date {
+  const t = raw.trim();
+  if (t.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(t)) {
+    const y = parseInt(t.slice(0, 4), 10);
+    const mo = parseInt(t.slice(5, 7), 10);
+    const d = parseInt(t.slice(8, 10), 10);
+    return jstWallToUtcDate(y, mo, d, 12, 0, 0);
+  }
+  return new Date(t);
+}
+
+const followerCountField = z
+  .union([z.number(), z.string(), z.null()])
+  .optional()
+  .transform((v) => {
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (v === '') return undefined;
+    const n = typeof v === 'string' ? parseInt(String(v).replace(/,/g, ''), 10) : Number(v);
+    if (!Number.isFinite(n) || Number.isNaN(n)) return undefined;
+    const t = Math.trunc(n);
+    if (t < 0 || t > 99_999_999) return undefined;
+    return t;
+  });
+
 // 新スキーマ（日付＋種別中心。テーマ・フォロワー等は廃止）
 const snsPostCreateSchema = z.object({
-  postedAt: z.string(), // ISO 日時または YYYY-MM-DD（日付のみの場合は UTC 正午で解釈）
+  postedAt: z.string(), // ISO 日時または YYYY-MM-DD（日付のみは JST 正午として週境界と整合）
   postType: z.enum(['STORY', 'FEED']),
   url: z.string().optional().refine((val) => !val || val === '' || z.string().url().safeParse(val).success, {
     message: 'Invalid URL format',
   }),
   note: z.string().max(2000).optional(),
-  followerCount: z.number().int().min(0).max(99_999_999).optional().nullable(),
+  followerCount: followerCountField,
 });
 
 const snsPostUpdateSchema = snsPostCreateSchema.partial();
@@ -62,9 +87,6 @@ router.get('/', async (req: AuthRequest, res) => {
       where.postedAt = pa;
     } else if (week) {
       where.week = week;
-      where.postedAt = { not: null };
-    } else {
-      where.postedAt = { not: null };
     }
 
     const posts = await prisma.sNSPost.findMany({
@@ -146,11 +168,7 @@ router.post('/', async (req: AuthRequest, res) => {
     // 新スキーマで試行
     try {
       const data = snsPostCreateSchema.parse(req.body);
-      const raw = data.postedAt.trim();
-      const postedAt =
-        raw.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(raw)
-          ? new Date(`${raw}T12:00:00.000Z`)
-          : new Date(raw);
+      const postedAt = parsePostedAtInput(data.postedAt);
       const { weekKey } = getWeekBoundaryForDate(postedAt);
 
       const post = await prisma.sNSPost.upsert({
@@ -260,11 +278,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     const updateData: any = {};
     if (data.postedAt) {
-      const raw = data.postedAt.trim();
-      const pd =
-        raw.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(raw)
-          ? new Date(`${raw}T12:00:00.000Z`)
-          : new Date(data.postedAt);
+      const pd = parsePostedAtInput(data.postedAt);
       updateData.postedAt = pd;
       const { weekKey } = getWeekBoundaryForDate(pd);
       updateData.week = weekKey;

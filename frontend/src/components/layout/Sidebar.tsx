@@ -117,15 +117,15 @@ function NavRow({
       onClick={onNavigate}
       className={({ isActive }) =>
         cn(
-          'flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
+          'flex items-center space-x-2 md:space-x-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors text-sm md:text-base',
           isActive
             ? 'bg-primary text-white'
             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
         )
       }
     >
-      <Icon className="h-5 w-5" />
-      <span className="font-medium">{label}</span>
+      <Icon className="h-[1.125rem] w-[1.125rem] md:h-5 md:w-5 shrink-0" />
+      <span className="font-medium leading-snug">{label}</span>
     </NavLink>
   );
 }

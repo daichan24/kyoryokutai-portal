@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { SimpleRichTextEditor } from '../components/editor/SimpleRichTextEditor';
 import { Edit, History, X, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
+import { useIsMobileBreakpoint } from '../hooks/useIsMobileBreakpoint';
 
 interface NudgeDocument {
   id: string;
@@ -36,6 +37,7 @@ interface NudgeRevision {
 export const Nudges: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobileBreakpoint();
   const [isEditing, setIsEditing] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -194,47 +196,52 @@ export const Nudges: React.FC = () => {
           </div>
           
           <div className="mt-4 flex justify-end">
-            <Button
-              variant="outline"
-              onClick={async () => {
-                try {
-                  const response = await api.get('/api/nudges/pdf', {
-                    responseType: 'blob'
-                  });
-                  
-                  // エラーレスポンスのチェック
-                  if (response.data.type === 'application/json') {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      try {
-                        const errorData = JSON.parse(reader.result as string);
-                        alert(errorData.error || 'PDF出力に失敗しました');
-                      } catch (e) {
-                        alert('PDF出力に失敗しました');
-                      }
-                    };
-                    reader.readAsText(response.data);
-                    return;
+            {!isMobile ? (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const response = await api.get('/api/nudges/pdf', {
+                      responseType: 'blob'
+                    });
+
+                    if (response.data.type === 'application/json') {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        try {
+                          const errorData = JSON.parse(reader.result as string);
+                          alert(errorData.error || 'PDF出力に失敗しました');
+                        } catch (e) {
+                          alert('PDF出力に失敗しました');
+                        }
+                      };
+                      reader.readAsText(response.data);
+                      return;
+                    }
+
+                    const url = window.URL.createObjectURL(new Blob([response.data]));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `協力隊細則_${format(new Date(), 'yyyyMMdd')}.pdf`);
+                    document.body.appendChild(link);
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+                    link.remove();
+                  } catch (error: any) {
+                    console.error('PDF download failed:', error);
+                    const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
+                    alert(errorMessage);
                   }
-                  
-                  const url = window.URL.createObjectURL(new Blob([response.data]));
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.setAttribute('download', `協力隊細則_${format(new Date(), 'yyyyMMdd')}.pdf`);
-                  document.body.appendChild(link);
-                  link.click();
-                  window.URL.revokeObjectURL(url);
-                  link.remove();
-                } catch (error: any) {
-                  console.error('PDF download failed:', error);
-                  const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
-                  alert(errorMessage);
-                }
-              }}
-            >
-              <FileDown className="w-4 h-4 mr-2" />
-              PDF出力
-            </Button>
+                }}
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                PDF出力
+              </Button>
+            ) : (
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
+                PDF出力はパソコン表示のときのみ利用できます。
+              </p>
+            )}
           </div>
         </div>
       )}

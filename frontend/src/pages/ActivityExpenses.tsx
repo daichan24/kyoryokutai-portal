@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/authStore';
 import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
+import { HelpCircle, X } from 'lucide-react';
 
 function formatYen(n: number) {
   return `¥${n.toLocaleString('ja-JP')}`;
@@ -59,12 +60,12 @@ interface MissionOption {
 }
 
 const DEFAULT_EXPENSE_PROCEDURE = `【購入までの大枠の流れ】
-1. 欲しいもの・支出が発生しそうになったら、まず下の「経費として使えるか」公式チェックリストを確認する。
+1. 欲しいもの・支出が発生しそうになったら、まず下の「セルフチェック」を確認する。
 2. 問題なさそうなら、役場に「この活動のためにこれを買いたい」と相談し、口頭または書面で了承を得る。
 3. OKが出たら、この画面で「紐づくプロジェクト」を選び、支出を登録する。
 4. その後、実際に購入する。
 
-※ 具体例はチェックリストとは別枠で掲載しています。ミッションごとの文脈・理由があるため、自分のケースに当てはまるかは必ず上記1〜3を踏んで判断してください。`;
+※ 「過去の事例」は参考用です。ミッションごとの文脈・理由があるため、自分のケースに当てはまるかは必ず上記1〜3を踏んで最終確認してください。`;
 
 interface ExpenseSummary {
   allocatedAmount: number;
@@ -95,8 +96,13 @@ export const ActivityExpenses: React.FC = () => {
   const [exampleSummary, setExampleSummary] = useState('');
   const [exampleRationale, setExampleRationale] = useState('');
   const [guidanceDraft, setGuidanceDraft] = useState('');
+  const [procedureHelpOpen, setProcedureHelpOpen] = useState(false);
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
+
+  const procedureBody =
+    (guidance?.procedureText?.trim() ? guidance.procedureText : DEFAULT_EXPENSE_PROCEDURE) ||
+    DEFAULT_EXPENSE_PROCEDURE;
 
   React.useEffect(() => {
     setEditingId(null);
@@ -330,11 +336,57 @@ export const ActivityExpenses: React.FC = () => {
       </div>
 
       <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">購入までの手順</h2>
-        <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap border border-dashed border-gray-200 dark:border-gray-600 rounded-md p-3 bg-gray-50/80 dark:bg-gray-900/40">
-          {(guidance?.procedureText?.trim() ? guidance.procedureText : DEFAULT_EXPENSE_PROCEDURE) ||
-            DEFAULT_EXPENSE_PROCEDURE}
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">購入までの手続き</h2>
+          <button
+            type="button"
+            onClick={() => setProcedureHelpOpen(true)}
+            className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="手続きの詳細を表示"
+            aria-label="購入までの手続きの説明を開く"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
         </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          支出前の流れは「？」ボタンで確認できます。行政・サポート・マスターは下から手順文を編集できます。
+        </p>
+        {procedureHelpOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={() => setProcedureHelpOpen(false)}
+            role="presentation"
+          >
+            <div
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col border border-gray-200 dark:border-gray-700"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-labelledby="procedure-help-title"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <h3 id="procedure-help-title" className="font-semibold text-gray-900 dark:text-gray-100">
+                  購入までの手続き
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setProcedureHelpOpen(false)}
+                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
+                  aria-label="閉じる"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {procedureBody}
+              </div>
+              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                <Button type="button" variant="outline" size="sm" onClick={() => setProcedureHelpOpen(false)}>
+                  閉じる
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         {isStaff && (
           <div className="space-y-2">
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">手順文の編集（行政・サポート・マスター）</label>
@@ -352,9 +404,9 @@ export const ActivityExpenses: React.FC = () => {
       </section>
 
       <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">経費として使えるか（公式チェックリスト）</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">セルフチェック</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          隊員はセルフチェック用にご利用ください。〇＝経費として認められる想定、✕＝原則不可などの目安です（最終判断は役場との相談）。
+          経費として使えるか確認してください。〇＝経費として認められる想定、✕＝原則不可などの目安です（最終判断は役場との相談）。
         </p>
         {checklistItems.length === 0 ? (
           <p className="text-sm text-gray-500">項目がまだありません。スタッフが追加できます。</p>
@@ -431,12 +483,12 @@ export const ActivityExpenses: React.FC = () => {
       </section>
 
       <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">具体例（チェックリストとは別枠）</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">過去の事例</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          過去に「この文脈ならOKだった」事例です。必ずミッション（活動）と理由が紐づいています。自分のケースにそのまま当てはまるとは限りません。
+          あくまで参考程度にしてください。必ずミッション（活動）と理由が紐づいた過去の事例です。自分のケースにそのまま当てはまるとは限らないため、セルフチェックと役場との相談で最終確認してください。
         </p>
         {examples.length === 0 ? (
-          <p className="text-sm text-gray-500">具体例はまだありません。</p>
+          <p className="text-sm text-gray-500">過去の事例はまだありません。</p>
         ) : (
           <ul className="space-y-3">
             {examples.map((ex) => (
@@ -456,7 +508,7 @@ export const ActivityExpenses: React.FC = () => {
                     type="button"
                     className="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline"
                     onClick={() => {
-                      if (confirm('この具体例を削除しますか？')) exampleDeleteMut.mutate(ex.id);
+                            if (confirm('この事例を削除しますか？')) exampleDeleteMut.mutate(ex.id);
                     }}
                   >
                     削除
@@ -468,7 +520,7 @@ export const ActivityExpenses: React.FC = () => {
         )}
         {isStaff && (
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">具体例の追加</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">過去の事例の追加</p>
             <select
               value={exampleMissionId}
               onChange={(e) => setExampleMissionId(e.target.value)}
@@ -508,7 +560,7 @@ export const ActivityExpenses: React.FC = () => {
               }}
               disabled={exampleAddMut.isPending}
             >
-              具体例を登録
+              事例を登録
             </Button>
           </div>
         )}

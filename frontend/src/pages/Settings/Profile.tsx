@@ -24,6 +24,9 @@ export const ProfileSettings: React.FC = () => {
   const [department, setDepartment] = useState('');
   const [missionType, setMissionType] = useState<'FREE' | 'MISSION' | ''>('');
   const [wishesEnabled, setWishesEnabled] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -63,6 +66,25 @@ export const ProfileSettings: React.FC = () => {
       console.error('Failed to save profile:', error);
       const errorMessage = error?.response?.data?.error || error?.response?.data?.details?.[0]?.message || error?.message || '表示設定の保存に失敗しました';
       alert(`保存に失敗しました: ${errorMessage}`);
+    },
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: async (payload: { currentPassword: string; newPassword: string }) => {
+      await api.put('/api/auth/me/password', payload);
+    },
+    onSuccess: () => {
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      alert('パスワードを更新しました');
+    },
+    onError: (error: any) => {
+      const msg =
+        error?.response?.data?.error ||
+        error?.message ||
+        'パスワードの更新に失敗しました';
+      alert(msg);
     },
   });
 
@@ -135,6 +157,57 @@ export const ProfileSettings: React.FC = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">プロフィール設定</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">表示設定とSNSリンクを設定できます</p>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">パスワード変更</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          ログインに使うパスワードを変更します。マスターはユーザー一覧で全員の現在のパスワードと最終更新日時を確認できます。
+        </p>
+        <div className="space-y-3 max-w-md">
+          <Input
+            label="現在のパスワード"
+            type="password"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+          <Input
+            label="新しいパスワード（6文字以上）"
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <Input
+            label="新しいパスワード（確認）"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          <Button
+            type="button"
+            onClick={() => {
+              if (!currentPassword || !newPassword) {
+                alert('現在のパスワードと新しいパスワードを入力してください');
+                return;
+              }
+              if (newPassword.length < 6) {
+                alert('新しいパスワードは6文字以上にしてください');
+                return;
+              }
+              if (newPassword !== confirmPassword) {
+                alert('新しいパスワードが一致しません');
+                return;
+              }
+              passwordMutation.mutate({ currentPassword, newPassword });
+            }}
+            disabled={passwordMutation.isPending}
+          >
+            {passwordMutation.isPending ? '更新中...' : 'パスワードを更新'}
+          </Button>
+        </div>
       </div>
 
       {/* 表示設定: ダークモード・アイコン色・アイコン1文字 */}

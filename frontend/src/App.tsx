@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { Layout } from './components/layout/Layout';
+import { PcOnlyPage } from './components/layout/PcOnlyPage';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 
@@ -111,7 +112,9 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Layout>
-                <WeeklyReport />
+                <PcOnlyPage title="週次報告">
+                  <WeeklyReport />
+                </PcOnlyPage>
               </Layout>
             </PrivateRoute>
           }
@@ -265,7 +268,9 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Layout>
-                <Inspections />
+                <PcOnlyPage title="復命書（視察）">
+                  <Inspections />
+                </PcOnlyPage>
               </Layout>
             </PrivateRoute>
           }
@@ -276,7 +281,9 @@ const App: React.FC = () => {
           element={
             <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT']}>
               <Layout>
-                <MonthlyReport />
+                <PcOnlyPage title="月次報告">
+                  <MonthlyReport />
+                </PcOnlyPage>
               </Layout>
             </RoleProtectedRoute>
           }
@@ -287,7 +294,9 @@ const App: React.FC = () => {
           element={
             <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
               <Layout>
-                <SupportRecords />
+                <PcOnlyPage title="支援記録">
+                  <SupportRecords />
+                </PcOnlyPage>
               </Layout>
             </RoleProtectedRoute>
           }
@@ -298,7 +307,9 @@ const App: React.FC = () => {
           element={
             <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT', 'GOVERNMENT']}>
               <Layout>
-                <InterviewMonthlySchedules />
+                <PcOnlyPage title="面談・月次スケジュール">
+                  <InterviewMonthlySchedules />
+                </PcOnlyPage>
               </Layout>
             </RoleProtectedRoute>
           }

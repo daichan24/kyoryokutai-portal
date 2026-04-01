@@ -9,6 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Input } from '../common/Input';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { MonthlyReportPreview } from './MonthlyReportPreview';
+import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface MonthlyReport {
   id: string;
@@ -76,6 +77,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   viewMode: initialViewMode = 'edit',
 }) => {
   const { user } = useAuthStore();
+  const isMobile = useIsMobileBreakpoint();
   const queryClient = useQueryClient();
   const [showRevisions, setShowRevisions] = useState(false);
   const [isEditing, setIsEditing] = useState(initialViewMode === 'edit');
@@ -861,10 +863,14 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 <Eye className="h-4 w-4 mr-1" />
                 全体プレビュー
               </Button>
-              <Button onClick={handlePDFButtonClick} variant="outline" size="sm">
-                <FileDown className="h-4 w-4 mr-1" />
-                PDF出力
-              </Button>
+              {!isMobile ? (
+                <Button onClick={handlePDFButtonClick} variant="outline" size="sm">
+                  <FileDown className="h-4 w-4 mr-1" />
+                  PDF出力
+                </Button>
+              ) : (
+                <span className="text-xs text-gray-500 dark:text-gray-400 px-1">PDFはPC表示で</span>
+              )}
               {canDelete && (
                 <Button onClick={handleDelete} variant="outline" size="sm">
                   <Trash2 className="h-4 w-4 mr-1" />

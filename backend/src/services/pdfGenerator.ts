@@ -1,14 +1,31 @@
+import fs from 'fs';
+import path from 'path';
 import puppeteer from 'puppeteer';
 import prisma from '../lib/prisma';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-/** Puppeteer 用: 日本語グリフ（Google Fonts 経由で読み込み） */
-const PDF_FONT_LINKS = `
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet" />
-`;
+/** Puppeteer 用: ネットワーク不要で日本語表示（@fontsource/noto-sans-jp の japanese サブセットを base64 埋め込み） */
+let cachedEmbeddedNotoStyle: string | null = null;
+
+function getEmbeddedNotoSansJpStyle(): string {
+  if (cachedEmbeddedNotoStyle) return cachedEmbeddedNotoStyle;
+  try {
+    const dir = path.join(process.cwd(), 'node_modules/@fontsource/noto-sans-jp/files');
+    const p400 = path.join(dir, 'noto-sans-jp-japanese-400-normal.woff2');
+    const p700 = path.join(dir, 'noto-sans-jp-japanese-700-normal.woff2');
+    const b64 = (p: string) => fs.readFileSync(p).toString('base64');
+    cachedEmbeddedNotoStyle = `<style>
+@font-face{font-family:'Noto Sans JP';font-style:normal;font-weight:400;font-display:swap;src:url(data:font/woff2;base64,${b64(p400)}) format('woff2');}
+@font-face{font-family:'Noto Sans JP';font-style:normal;font-weight:700;font-display:swap;src:url(data:font/woff2;base64,${b64(p700)}) format('woff2');}
+</style>`;
+  } catch (e) {
+    console.warn('Noto Sans JP embed failed:', e);
+    cachedEmbeddedNotoStyle =
+      '<style>body{font-family:system-ui,sans-serif;}</style>';
+  }
+  return cachedEmbeddedNotoStyle;
+}
 
 function escapeHtmlForPdf(s: string): string {
   return s
@@ -155,7 +172,7 @@ export async function generateNudgePDF(): Promise<Buffer> {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      ${PDF_FONT_LINKS}
+      ${getEmbeddedNotoSansJpStyle()}
       <style>
         @page {
           size: A4;
@@ -268,7 +285,7 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
     <html lang="ja">
     <head>
       <meta charset="UTF-8" />
-      ${PDF_FONT_LINKS}
+      ${getEmbeddedNotoSansJpStyle()}
       <style>
         body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 12pt; margin: 40px; color: #111; }
         h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; font-weight: 700; }
@@ -372,11 +389,12 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
 
   const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="ja">
     <head>
       <meta charset="UTF-8">
+      ${getEmbeddedNotoSansJpStyle()}
       <style>
-        body { font-family: 'MS Gothic', monospace; font-size: 12pt; margin: 40px; }
+        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 12pt; margin: 40px; color: #111; }
         h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; }
         .section { margin: 25px 0; }
         .label { font-weight: bold; background-color: #f0f0f0; padding: 5px; margin-bottom: 10px; }
@@ -480,11 +498,12 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
 
     const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="ja">
     <head>
       <meta charset="UTF-8">
+      ${getEmbeddedNotoSansJpStyle()}
       <style>
-        body { font-family: 'MS Gothic', monospace; font-size: 11pt; margin: 30px; }
+        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 11pt; margin: 30px; color: #111; }
         h1 { text-align: center; font-size: 16pt; }
         h2 { font-size: 14pt; margin-top: 30px; border-bottom: 2px solid #333; padding-bottom: 5px; }
         .section { margin: 20px 0; page-break-inside: avoid; }

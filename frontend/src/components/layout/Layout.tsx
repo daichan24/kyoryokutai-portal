@@ -50,8 +50,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
         
         {/* メインコンテンツエリア（モバイル: 全画面、デスクトップ: サイドバー横） */}
-        <main className="flex-1 overflow-y-auto bg-background dark:bg-gray-900 p-4 md:p-6 w-full">
-          <div className="max-w-7xl mx-auto">{children}</div>
+        <main className="flex-1 overflow-y-auto bg-background dark:bg-gray-900 p-3 sm:p-4 md:p-6 w-full min-w-0">
+          <div className="max-w-7xl mx-auto w-full">{children}</div>
         </main>
       </div>
     </div>

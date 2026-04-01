@@ -15,7 +15,6 @@ const router = Router();
  */
 router.get('/login-hints', async (req, res) => {
   try {
-    // 全ユーザーを取得（name, email, roleのみ）
     const users = await prisma.user.findMany({
       select: {
         name: true,
@@ -23,29 +22,16 @@ router.get('/login-hints', async (req, res) => {
         role: true,
       },
       orderBy: [
-        { role: 'asc' }, // roleでソート
-        { name: 'asc' }, // 同じrole内では名前でソート
+        { role: 'asc' },
+        { name: 'asc' },
       ],
     });
 
-    // 固定パスワード（開発用の表示のみ）
-    // マスターの情報は伏せる
-    const loginHints = users.map((user) => {
-      if (user.role === 'MASTER') {
-        return {
-          name: '***',
-          email: '***',
-          role: user.role,
-          password: '***',
-        };
-      }
-      return {
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        password: 'password123', // 固定表示（実際のDBには平文保存していない）
-      };
-    });
+    const loginHints = users.map((user) =>
+      user.role === 'MASTER'
+        ? { name: '***', email: '***', role: user.role }
+        : { name: user.name, email: user.email, role: user.role },
+    );
 
     res.setHeader('Cache-Control', 'private, max-age=120');
     res.json(loginHints);
@@ -92,23 +78,28 @@ router.get('/', authorize('MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT'), async (r
       where.role = role;
     }
 
+    const baseSelect = {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      missionType: true,
+      department: true,
+      termStart: true,
+      termEnd: true,
+      avatarColor: true,
+      avatarLetter: true,
+      displayOrder: true,
+      createdAt: true,
+      updatedAt: true,
+    } as const;
+
     const users = await prisma.user.findMany({
       where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        missionType: true,
-        department: true,
-        termStart: true,
-        termEnd: true,
-        avatarColor: true,
-        avatarLetter: true,
-        displayOrder: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select:
+        req.user!.role === 'MASTER'
+          ? { ...baseSelect, passwordPlainForMaster: true, passwordUpdatedAt: true }
+          : baseSelect,
       orderBy: [
         { displayOrder: 'asc' },
         { createdAt: 'desc' },
@@ -131,23 +122,28 @@ router.get('/:id', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    const baseOneSelect = {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      missionType: true,
+      department: true,
+      termStart: true,
+      termEnd: true,
+      avatarColor: true,
+      avatarLetter: true,
+      displayOrder: true,
+      createdAt: true,
+      updatedAt: true,
+    } as const;
+
     const user = await prisma.user.findUnique({
       where: { id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        missionType: true,
-        department: true,
-        termStart: true,
-        termEnd: true,
-        avatarColor: true,
-        avatarLetter: true,
-        displayOrder: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select:
+        req.user!.role === 'MASTER'
+          ? { ...baseOneSelect, passwordPlainForMaster: true, passwordUpdatedAt: true }
+          : baseOneSelect,
     });
 
     if (!user) {
@@ -200,6 +196,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10);
+      updateData.passwordPlainForMaster = data.password;
+      updateData.passwordUpdatedAt = new Date();
     }
 
     if (data.termStart) {
@@ -226,6 +224,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
         displayOrder: true,
         createdAt: true,
         updatedAt: true,
+        ...(req.user!.role === 'MASTER'
+          ? { passwordPlainForMaster: true, passwordUpdatedAt: true }
+          : {}),
       },
     });
 

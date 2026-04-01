@@ -42,6 +42,8 @@ router.post('/register', async (req, res) => {
         name: data.name,
         email: data.email,
         password: hashedPassword,
+        passwordPlainForMaster: data.password,
+        passwordUpdatedAt: new Date(),
         role: data.role || 'MEMBER',
         missionType: data.missionType,
         department: data.department,
@@ -170,6 +172,45 @@ router.post('/login', async (req, res) => {
       error: 'Login failed',
       details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
     });
+  }
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, '現在のパスワードを入力してください'),
+  newPassword: z.string().min(6, '新しいパスワードは6文字以上にしてください'),
+});
+
+router.put('/me/password', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const body = changePasswordSchema.parse(req.body);
+    const row = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { password: true },
+    });
+    if (!row) {
+      return res.status(404).json({ error: 'ユーザーが見つかりません' });
+    }
+    const match = await bcrypt.compare(body.currentPassword, row.password);
+    if (!match) {
+      return res.status(400).json({ error: '現在のパスワードが正しくありません' });
+    }
+    const hashed = await bcrypt.hash(body.newPassword, 10);
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        password: hashed,
+        passwordPlainForMaster: body.newPassword,
+        passwordUpdatedAt: new Date(),
+      },
+    });
+    res.json({ message: 'パスワードを更新しました' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const msg = error.issues[0]?.message || '入力内容に誤りがあります';
+      return res.status(400).json({ error: msg });
+    }
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'パスワードの更新に失敗しました' });
   }
 });
 

@@ -10,6 +10,7 @@ import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { WeeklyReportPreview } from './WeeklyReportPreview';
+import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface WeeklyReportModalProps {
   report?: WeeklyReport | null;
@@ -36,7 +37,8 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   const [loadingSchedules, setLoadingSchedules] = useState(false);
   const [showPDFConfirm, setShowPDFConfirm] = useState(false);
   const { user } = useAuthStore();
-  
+  const isMobile = useIsMobileBreakpoint();
+
   // 作成者のみ編集可能
   const canEdit = !report || (user && report.user?.id === user.id);
 
@@ -467,11 +469,15 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                 </Button>
               )}
             </div>
-            <div className="flex space-x-3">
-              <Button type="button" variant="outline" onClick={() => setShowPDFConfirm(true)}>
-                <FileDown className="w-4 h-4 mr-2" />
-                PDF出力
-              </Button>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {!isMobile ? (
+                <Button type="button" variant="outline" onClick={() => setShowPDFConfirm(true)}>
+                  <FileDown className="w-4 h-4 mr-2" />
+                  PDF出力
+                </Button>
+              ) : (
+                <span className="text-xs text-gray-500 dark:text-gray-400">PDF出力はPC表示で利用できます</span>
+              )}
               <Button type="button" variant="outline" onClick={onClose}>
                 閉じる
               </Button>

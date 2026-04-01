@@ -8,6 +8,7 @@ import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { useAuthStore } from '../../stores/authStore';
 import { InspectionPreview } from './InspectionPreview';
+import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface Inspection {
   id: string;
@@ -37,6 +38,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
   viewMode: initialViewMode = 'edit',
 }) => {
   const { user } = useAuthStore();
+  const isMobile = useIsMobileBreakpoint();
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [isEditing, setIsEditing] = useState(initialViewMode === 'edit');
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
@@ -199,10 +201,14 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
             </button>
             {!isEditing && viewMode === 'edit' && (
               <>
-                <Button variant="outline" onClick={handlePDFButtonClick} size="sm">
-                  <FileDown className="w-4 h-4 mr-2" />
-                  PDF出力
-                </Button>
+                {!isMobile ? (
+                  <Button variant="outline" onClick={handlePDFButtonClick} size="sm">
+                    <FileDown className="w-4 h-4 mr-2" />
+                    PDF出力
+                  </Button>
+                ) : (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 self-center">PDFはPC表示で</span>
+                )}
                 {canEdit && (
                   <Button variant="outline" onClick={() => setIsEditing(true)} size="sm">
                     <Edit2 className="w-4 h-4 mr-2" />

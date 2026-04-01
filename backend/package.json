@@ -20,6 +20,7 @@
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
+    "@fontsource/noto-sans-jp": "^5.2.9",
     "@prisma/client": "^5.21.1",
     "@types/node-cron": "^3.0.11",
     "bcrypt": "^5.1.1",

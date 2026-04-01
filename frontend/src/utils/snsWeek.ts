@@ -1,29 +1,42 @@
+import { addDays } from 'date-fns';
 import { format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { ja } from 'date-fns/locale';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 const TZ = 'Asia/Tokyo';
 
-/** バックエンド weekBoundary.ts と同じく「月曜 9:00 JST」を週の始まりとする */
+/** バックエンド weekBoundary.ts と同一（UTC サーバとブラウザで weekKey が一致） */
+function jstWallToUtcDate(y: number, mo: number, d: number, h: number, mi = 0, se = 0): Date {
+  return new Date(Date.UTC(y, mo - 1, d, h - 9, mi, se));
+}
+
 export function getWeekMetaForDate(d: Date): { weekKey: string; weekStart: Date; weekEnd: Date } {
-  const dateJST = toZonedTime(d, TZ);
-  const dayOfWeek = dateJST.getDay();
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday9amJST = new Date(dateJST);
-  monday9amJST.setDate(dateJST.getDate() + mondayOffset);
-  monday9amJST.setHours(9, 0, 0, 0);
-  if (dateJST < monday9amJST) {
-    monday9amJST.setDate(monday9amJST.getDate() - 7);
+  const y = Number(formatInTimeZone(d, TZ, 'yyyy'));
+  const mo = Number(formatInTimeZone(d, TZ, 'M'));
+  const da = Number(formatInTimeZone(d, TZ, 'd'));
+
+  const noonJst = jstWallToUtcDate(y, mo, da, 12, 0, 0);
+  const isoDow = Number(formatInTimeZone(noonJst, TZ, 'i'));
+  const deltaToMonday = 1 - isoDow;
+  const mondayNoon = addDays(noonJst, deltaToMonday);
+
+  const mY = Number(formatInTimeZone(mondayNoon, TZ, 'yyyy'));
+  const mMo = Number(formatInTimeZone(mondayNoon, TZ, 'M'));
+  const mD = Number(formatInTimeZone(mondayNoon, TZ, 'd'));
+
+  let weekStart = jstWallToUtcDate(mY, mMo, mD, 9, 0, 0);
+  if (d.getTime() < weekStart.getTime()) {
+    weekStart = addDays(weekStart, -7);
   }
-  const nextMonday9amJST = new Date(monday9amJST);
-  nextMonday9amJST.setDate(monday9amJST.getDate() + 7);
-  const weekStart = fromZonedTime(monday9amJST, TZ);
-  const weekEnd = fromZonedTime(nextMonday9amJST, TZ);
-  const year = monday9amJST.getFullYear();
-  const startOfYear = new Date(year, 0, 1);
-  const daysDiff = Math.floor((monday9amJST.getTime() - startOfYear.getTime()) / 86400000);
+
+  const weekEnd = addDays(weekStart, 7);
+
+  const wkY = Number(formatInTimeZone(weekStart, TZ, 'yyyy'));
+  const yearStart = jstWallToUtcDate(wkY, 1, 1, 0, 0, 0);
+  const daysDiff = Math.floor((weekStart.getTime() - yearStart.getTime()) / 86400000);
   const weekNumber = Math.floor(daysDiff / 7) + 1;
-  const weekKey = `${year}-W${String(weekNumber).padStart(2, '0')}`;
+  const weekKey = `${wkY}-W${String(weekNumber).padStart(2, '0')}`;
+
   return { weekKey, weekStart, weekEnd };
 }
 
