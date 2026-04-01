@@ -90,71 +90,73 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
     scrollContainer.scrollTop = scrollTo7am;
   }, [dates]);
 
+  /** 時間列 + 7日を画面幅内で均等配分（Googleカレンダー風・はみ出し防止） */
+  const weekGridTemplate = 'minmax(2rem, 3.5rem) repeat(7, minmax(0, 1fr))' as const;
+
   return (
-    <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-      {/* 上部の日付ヘッダー（固定） */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        {/* 時間軸のヘッダー部分（空白） */}
-        <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0"></div>
-        {/* 日付ヘッダー（横スクロール可能） */}
-        <div className="flex-1 flex overflow-x-auto">
-          {dates.map((date, dateIndex) => {
-            const isToday = formatDate(date) === formatDate(new Date());
-            return (
+    <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 w-full min-w-0">
+      {/* 上部の日付ヘッダー */}
+      <div
+        className="grid w-full min-w-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+        style={{ gridTemplateColumns: weekGridTemplate }}
+      >
+        <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" aria-hidden />
+        {dates.map((date, dateIndex) => {
+          const isToday = formatDate(date) === formatDate(new Date());
+          return (
+            <div
+              key={dateIndex}
+              className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-11 sm:h-12 flex flex-col items-center justify-center px-0.5 ${
+                isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : 'bg-gray-50 dark:bg-gray-900'
+              }`}
+            >
+              <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 leading-none truncate max-w-full text-center">
+                {formatDate(date, 'E')}
+              </div>
               <div
-                key={dateIndex}
-                className={`flex-1 border-r border-gray-200 dark:border-gray-700 min-w-[200px] h-12 flex flex-col items-center justify-center ${
-                  isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : 'bg-gray-50 dark:bg-gray-900'
+                className={`text-sm sm:text-lg leading-tight mt-0.5 ${
+                  isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'
                 }`}
               >
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                  {formatDate(date, 'E')}
-                </div>
-                <div className={`text-lg ${isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
-                  {formatDate(date, 'd')}
-                </div>
+                {formatDate(date, 'd')}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* 下部のスクロール可能エリア（時間軸とスケジュール部分が一緒にスクロール） */}
-      <div 
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-auto"
-      >
-        <div className="flex">
-          {/* 時間軸 */}
-          <div className="w-16 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+      {/* 縦スクロールのみ（横はグリッドで収める） */}
+      <div ref={scrollContainerRef} className="w-full min-w-0 max-h-[min(75vh,52rem)] overflow-y-auto overflow-x-hidden">
+        <div className="grid w-full min-w-0" style={{ gridTemplateColumns: weekGridTemplate }}>
+          <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0">
             <div className="relative" style={{ height: '48rem' }}>
               {hours.map((hour) => (
-                <div 
-                  key={hour} 
-                  className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-2"
-                  style={{ 
-                    top: `${hour * 4}rem`, 
+                <div
+                  key={hour}
+                  className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-0.5 sm:pr-2"
+                  style={{
+                    top: `${hour * 4}rem`,
                     height: '4rem',
-                    width: '100%'
+                    width: '100%',
                   }}
                 >
-                  <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">{hour}:00</span>
+                  <span className="text-[8px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium tabular-nums whitespace-nowrap">
+                    {hour}:00
+                  </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* 日付列（横スクロール可能、縦スクロールは親コンテナで制御） */}
-          <div className="flex flex-shrink-0">
-            {dates.map((date, dateIndex) => {
+          {dates.map((date, dateIndex) => {
               const daySchedules = getSchedulesForDate(date);
               const dayEvents = getEventsForDate(date);
               const isToday = formatDate(date) === formatDate(new Date());
 
-              return (
+            return (
                 <div
                   key={dateIndex}
-                  className={`flex-1 border-r border-gray-200 dark:border-gray-700 min-w-[200px] ${
+                  className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${
                     isToday ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
                   }`}
                 >
@@ -355,7 +357,6 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                 </div>
               );
             })}
-          </div>
         </div>
       </div>
     </div>

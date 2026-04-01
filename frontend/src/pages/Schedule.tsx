@@ -441,7 +441,7 @@ export const Schedule: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-3 sm:p-6 min-w-0">
         <div className="flex justify-between items-center mb-6">
           <Button variant="outline" onClick={handlePrev}>
             <ChevronLeft className="h-4 w-4" />
@@ -502,9 +502,9 @@ export const Schedule: React.FC = () => {
             currentUserId={user?.id}
           />
         ) : (
-          <div className="w-full max-w-full overflow-x-auto md:overflow-x-visible">
+          <div className="w-full max-w-full min-w-0 overflow-x-hidden">
             <div
-              className="grid gap-1 sm:gap-2 w-full min-w-0 md:min-w-0"
+              className="grid gap-0.5 sm:gap-2 w-full min-w-0"
               style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}
             >
             {weekDates.map((date, index) => {
@@ -579,17 +579,17 @@ export const Schedule: React.FC = () => {
               return (
                 <div
                   key={index}
-                  className={`border rounded-lg p-3 ${dayBgColor} ${
+                  className={`border rounded-md sm:rounded-lg min-w-0 w-full flex flex-col p-1.5 sm:p-3 ${dayBgColor} ${
                     isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300' : 'border-border'
                   } ${calendarViewMode === 'all' && daySchedules.length > 0 ? 'cursor-pointer' : ''}`}
-                  style={{ height: '180px', minWidth: '180px', display: 'flex', flexDirection: 'column' }}
+                  style={{ minHeight: '6.5rem', height: 'clamp(6.5rem, 28vw, 11.25rem)' }}
                   onClick={calendarViewMode === 'all' && daySchedules.length > 0 ? () => setSelectedDateForDetail(date) : undefined}
                 >
-                  <div className="text-center mb-2 flex-shrink-0">
-                    <p className={`text-xs ${dayLabelColor}`}>
+                  <div className="text-center mb-1 sm:mb-2 flex-shrink-0 min-w-0">
+                    <p className={`text-[10px] sm:text-xs truncate ${dayLabelColor}`}>
                       {formatDate(date, 'E')}
                     </p>
-                    <p className={`text-lg font-bold ${dayTextColor} ${
+                    <p className={`text-sm sm:text-lg font-bold ${dayTextColor} ${
                       formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'opacity-40' : ''
                     }`}>
                       {formatDate(date, 'd')}
