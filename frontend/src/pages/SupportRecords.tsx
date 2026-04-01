@@ -190,7 +190,7 @@ export const SupportRecords: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">支援内容</h1>
+        <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">支援内容</h1>
         <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
           新規作成

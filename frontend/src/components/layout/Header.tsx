@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
-import { LogOut, Menu, MoreVertical } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '../common/Button';
 import { api } from '../../utils/api';
 
@@ -11,7 +11,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [version, setVersion] = React.useState<string>('dev-local');
 
   const { data: unreadAnnounce } = useQuery({
@@ -87,19 +87,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{user.role}</p>
                   </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={logout} className="hidden sm:flex">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-                {/* モバイル: 三点リーダー（ログアウトを含むドロップダウン） */}
-                <div className="sm:hidden relative">
-                  <button
-                    onClick={logout}
-                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    aria-label="ログアウト"
-                  >
-                    <MoreVertical className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                  </button>
                 </div>
               </>
             )}

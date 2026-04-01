@@ -388,7 +388,7 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">ダッシュボード</h1>
+          <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">ダッシュボード</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">ようこそ、{user?.name}さん</p>
         </div>
         <Button

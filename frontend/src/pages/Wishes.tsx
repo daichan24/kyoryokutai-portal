@@ -289,7 +289,7 @@ export const Wishes: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">やりたいこと100</h1>
+          <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">やりたいこと100</h1>
           <button
             onClick={() => setShowUsageHelp(true)}
             className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"

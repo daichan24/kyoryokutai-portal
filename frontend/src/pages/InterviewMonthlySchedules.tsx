@@ -271,7 +271,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
   return (
     <div className="space-y-8 max-w-5xl">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">面談</h1>
+        <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">面談</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
           隊員と対象月を選ぶと、その月の予定（自分が作成したもの＋承認済みの共同予定）と、対象月と期間が重なるミッション・プロジェクトの達成状況をまとめて表示します。月初の前月振り返りでは、既定の対象月（前月）で KPI を確認しつつ、スケジュールと週次報告で行動をたどってください。
         </p>

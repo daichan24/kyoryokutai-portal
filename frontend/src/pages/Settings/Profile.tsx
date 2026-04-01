@@ -15,7 +15,7 @@ interface SNSLink {
 const AVATAR_COLOR_PRESETS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
 export const ProfileSettings: React.FC = () => {
-  const { user, fetchMe } = useAuthStore();
+  const { user, fetchMe, logout } = useAuthStore();
   const queryClient = useQueryClient();
   const [snsLinks, setSnsLinks] = useState<SNSLink[]>([]);
   const [darkMode, setDarkMode] = useState(false);
@@ -155,7 +155,7 @@ export const ProfileSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">プロフィール設定</h1>
+        <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">プロフィール設定</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">表示設定とSNSリンクを設定できます</p>
       </div>
 
@@ -388,6 +388,16 @@ export const ProfileSettings: React.FC = () => {
             {saveMutation.isPending ? '保存中...' : '保存'}
           </Button>
         </div>
+      </div>
+
+      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg shadow border border-red-200 dark:border-red-800 p-6">
+        <h2 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">ログアウト</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          現在の端末からログアウトします。再度利用する場合はログインが必要です。
+        </p>
+        <Button variant="danger" onClick={logout}>
+          ログアウト
+        </Button>
       </div>
     </div>
   );

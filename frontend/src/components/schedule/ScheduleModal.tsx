@@ -393,8 +393,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="開始日"
               type="date"
@@ -420,8 +420,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="max-w-[200px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="w-full">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 開始時刻 *
               </label>
@@ -444,7 +444,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 })}
               </select>
             </div>
-            <div className="max-w-[200px]">
+            <div className="w-full">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 終了時刻 *
               </label>

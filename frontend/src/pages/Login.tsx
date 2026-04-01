@@ -92,9 +92,9 @@ export const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            長沼町地域おこし協力隊
+            協力隊クリアベース
           </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">ポータルシステム</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">ログイン画面</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">

@@ -338,10 +338,10 @@ export const Schedule: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
           スケジュール管理
         </h1>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-1 sm:gap-2 items-center">
           {/* カレンダー表示: 隊員は従来どおり。スタッフはダッシュボードの個人/閲覧に連動 */}
           {viewMode === 'month' && !isStaff ? (
             <div className="flex items-center gap-2 mr-2">
@@ -417,12 +417,6 @@ export const Schedule: React.FC = () => {
                 )}
               </div>
             </div>
-          ) : isStaff ? (
-            <div className="mr-2 max-w-md text-right">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                表示はダッシュボードの「{workspaceMode === 'browse' ? '閲覧' : '個人'}」モードに連動しています
-              </p>
-            </div>
           ) : null}
           <Button
             variant="outline"
@@ -431,18 +425,19 @@ export const Schedule: React.FC = () => {
             }}
             title="スケジュールとタスクを更新"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            更新
+            <RefreshCw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">更新</span>
           </Button>
           <Button onClick={() => handleCreateSchedule(new Date())}>
-            <Plus className="h-4 w-4 mr-2" />
-            新規作成
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">新規作成</span>
+            <span className="sm:hidden leading-tight text-xs">新規<br/>作成</span>
           </Button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-3 sm:p-6 min-w-0">
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow sm:border lg:border-border dark:border-gray-700 p-0 sm:p-6 min-w-0">
+        <div className="flex justify-between items-center mb-4 sm:mb-6 px-3 sm:px-0 pt-3 sm:pt-0">
           <Button variant="outline" onClick={handlePrev}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -503,8 +498,27 @@ export const Schedule: React.FC = () => {
           />
         ) : (
           <div className="w-full max-w-full min-w-0 overflow-x-hidden">
+            {/* Header row for days of the week */}
+            <div className="grid grid-cols-7 gap-0 sm:gap-2 w-full min-w-0 mb-1 px-0">
+              {weekDates.slice(0, 7).map((date, index) => {
+                const isHoliday = isHolidayDate(date);
+                const isSun = isSunday(date);
+                const isSat = isSaturday(date);
+                let dayLabelColor = 'text-gray-500 dark:text-gray-400';
+                if (isHoliday || isSun) {
+                  dayLabelColor = 'text-red-500 dark:text-red-400';
+                } else if (isSat) {
+                  dayLabelColor = 'text-blue-500 dark:text-blue-400';
+                }
+                return (
+                  <div key={`header-${index}`} className={`text-center text-[10px] sm:text-xs font-semibold py-1 ${dayLabelColor}`}>
+                    {formatDate(date, 'E')}
+                  </div>
+                );
+              })}
+            </div>
             <div
-              className="grid gap-0.5 sm:gap-2 w-full min-w-0"
+              className="grid gap-0 sm:gap-2 w-full min-w-0 border-t border-l border-border dark:border-gray-700 sm:border-0"
               style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}
             >
             {weekDates.map((date, index) => {
@@ -579,16 +593,13 @@ export const Schedule: React.FC = () => {
               return (
                 <div
                   key={index}
-                  className={`border rounded-md sm:rounded-lg min-w-0 w-full flex flex-col p-1.5 sm:p-3 ${dayBgColor} ${
-                    isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300' : 'border-border'
+                  className={`bg-white dark:bg-gray-800 border-r border-b sm:border rounded-none sm:rounded-lg min-w-0 w-full flex flex-col p-1 sm:p-3 ${
+                    isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300 relative z-10' : 'border-border dark:border-gray-700'
                   } ${calendarViewMode === 'all' && daySchedules.length > 0 ? 'cursor-pointer' : ''}`}
                   style={{ minHeight: '6.5rem', height: 'clamp(6.5rem, 28vw, 11.25rem)' }}
                   onClick={calendarViewMode === 'all' && daySchedules.length > 0 ? () => setSelectedDateForDetail(date) : undefined}
                 >
                   <div className="text-center mb-1 sm:mb-2 flex-shrink-0 min-w-0">
-                    <p className={`text-[10px] sm:text-xs truncate ${dayLabelColor}`}>
-                      {formatDate(date, 'E')}
-                    </p>
                     <p className={`text-sm sm:text-lg font-bold ${dayTextColor} ${
                       formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'opacity-40' : ''
                     }`}>

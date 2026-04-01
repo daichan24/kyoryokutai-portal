@@ -179,7 +179,7 @@ export const EventDetail: React.FC = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             一覧に戻る
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{event.eventName}</h1>
+          <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">{event.eventName}</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>

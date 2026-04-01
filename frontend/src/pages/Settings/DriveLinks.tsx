@@ -115,7 +115,7 @@ export const DriveLinksSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">ドライブ</h1>
+      <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">ドライブ</h1>
 
       <form onSubmit={handleAddLink} className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">新規追加</h2>
