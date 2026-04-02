@@ -44,7 +44,6 @@ export const Contacts: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>(''); // ジャンルでフィルタ
-  const [filterRelationship, setFilterRelationship] = useState<string>(''); // 関わり方でフィルタ
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'nameAsc'>('newest'); // ソート順
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card'); // カード/リスト表示切り替え
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,8 +88,7 @@ export const Contacts: React.FC = () => {
       false;
     const matchesTag = !selectedTag || contact.tags.includes(selectedTag);
     const matchesCategory = !filterCategory || contact.category === filterCategory;
-    const matchesRelationship = !filterRelationship || contact.relationshipType === filterRelationship;
-    return matchesSearch && matchesTag && matchesCategory && matchesRelationship;
+    return matchesSearch && matchesTag && matchesCategory;
   })?.sort((a, b) => {
     if (sortOrder === 'nameAsc') {
       return a.name.localeCompare(b.name, 'ja');
@@ -106,7 +104,6 @@ export const Contacts: React.FC = () => {
 
   // ソート用のユニークな値リストを取得
   const categories = Array.from(new Set(contacts?.map(c => c.category).filter(Boolean) || []));
-  const relationshipTypes = Array.from(new Set(contacts?.map(c => c.relationshipType).filter(Boolean) || []));
 
   // 【UIイベント定義】「町民を追加する」ボタンのonClickイベント
   // カレンダーの実装パターンに合わせて関数として定義
@@ -253,16 +250,6 @@ export const Contacts: React.FC = () => {
           ))}
         </select>
         <select
-          value={filterRelationship}
-          onChange={(e) => setFilterRelationship(e.target.value)}
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="">全ての関わり方</option>
-          {relationshipTypes.map(rel => (
-            <option key={rel} value={rel}>{rel}</option>
-          ))}
-        </select>
-        <select
           value={selectedTag}
           onChange={(e) => setSelectedTag(e.target.value)}
           className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -308,20 +295,15 @@ export const Contacts: React.FC = () => {
                 </p>
               )}
 
-              {/* 関わり方 */}
-              {contact.relationshipType && (
+              {/* 関わった協力隊 */}
+              {contact.relatedMembers && contact.relatedMembers.length > 0 && (
                 <p className="text-sm mb-2">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    contact.relationshipType === '協力的' 
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                      : contact.relationshipType === '要注意'
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                      : contact.relationshipType === '未知'
-                      ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                  }`}>
-                    {contact.relationshipType}
-                  </span>
+                  <span className="font-medium">関わった協力隊:</span>{' '}
+                  {contact.relatedMembers.map((memberId, i) => (
+                    <span key={memberId} className="text-gray-600 dark:text-gray-400">
+                      {i > 0 ? '、' : ''}{memberId}
+                    </span>
+                  ))}
                 </p>
               )}
 
@@ -410,7 +392,6 @@ export const Contacts: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名前</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">所属</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ジャンル</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">関わり方</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">接触履歴</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">登録者</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
@@ -438,23 +419,6 @@ export const Contacts: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {contact.category || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {contact.relationshipType ? (
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        contact.relationshipType === '協力的' 
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                          : contact.relationshipType === '要注意'
-                          ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                          : contact.relationshipType === '未知'
-                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                      }`}>
-                        {contact.relationshipType}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-900 dark:text-gray-100">-</span>
-                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {contact.histories.length}件
@@ -523,7 +487,7 @@ export const Contacts: React.FC = () => {
             <div className="px-5 py-4 space-y-2 text-sm text-gray-700 dark:text-gray-200">
               <p>• 追加: 右上の「町民を追加する」から誰でも登録できます（後で編集・削除も可能）。</p>
               <p>• 表示切替: 右上のボタンでカード/リスト表示を切り替えられます。</p>
-              <p>• フィルタ: 検索・タグ・ジャンル・関わり方で絞り込みできます。</p>
+              <p>• フィルタ: 検索・タグ・ジャンルで絞り込みできます。</p>
               <p>• 履歴: カードから「履歴を追加」で接点の記録を残せます。</p>
             </div>
             <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">

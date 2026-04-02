@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
-import { Menu } from 'lucide-react';
+import { Menu, Box } from 'lucide-react';
 import { Button } from '../common/Button';
 import { api } from '../../utils/api';
 
@@ -14,6 +14,19 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user } = useAuthStore();
   const [version, setVersion] = React.useState<string>('dev-local');
 
+  // 受付ボックスの未読数
+  const { data: unreadReception } = useQuery({
+    queryKey: ['reception-box', 'unread-count'],
+    queryFn: async () => {
+      const r = await api.get<{ count: number }>('/api/reception-box/unread-count');
+      return r.data;
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
+
+  // お知らせの未読数
   const { data: unreadAnnounce } = useQuery({
     queryKey: ['announcements', 'unread-count'],
     queryFn: async () => {
@@ -68,6 +81,17 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <div className="flex items-center space-x-2 md:space-x-4">
             {user && (
               <>
+                {/* 受付ボックス（未読数表示） */}
+                {unreadReception?.count && unreadReception.count > 0 && (
+                  <Link
+                    to="/reception-box"
+                    className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline whitespace-nowrap"
+                    title="受付ボックス"
+                  >
+                    <Box className="h-4 w-4" />
+                    <span>{unreadReception.count}</span>
+                  </Link>
+                )}
                 {user.role === 'MEMBER' && (unreadAnnounce?.count ?? 0) > 0 && (
                   <Link
                     to="/announcements"

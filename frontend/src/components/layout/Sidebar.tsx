@@ -170,7 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     { to: '/goals', icon: Target, label: 'ミッション' },
     { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/tasks', icon: Check, label: 'タスク' },
-    { to: '/events', icon: CalendarDays, label: 'イベント主催', end: true as const },
+    { to: '/events', icon: CalendarDays, label: 'オーガナイザー', end: true as const },
   ];
 
   const getReportDocumentItems = (): Array<{ to: string; icon: NavIcon; label: string }> => {
@@ -287,7 +287,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
 
         <div className="pt-4 pb-2">
           <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            目標・イベント主催
+            目標・オーガナイザー
           </p>
         </div>
         {goalsAndEventsItems.map((item) => (

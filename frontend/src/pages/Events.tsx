@@ -78,7 +78,7 @@ export const Events: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">イベント主催</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">オーガナイザー</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-xl">
             隊員が他の隊員に協力要請するときに使います。登録するとサポート・行政・マスターが活動のひも付きを確認でき、応援に入った隊員のスケジュールに自動反映されます。町が隊員参加を求める枠の集計は「状況」→「イベント参加状況」の隊員参加枠タブを利用してください。
           </p>

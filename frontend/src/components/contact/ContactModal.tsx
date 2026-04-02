@@ -36,7 +36,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const [organization, setOrganization] = useState('');
   const [category, setCategory] = useState('');
   const [relatedMembers, setRelatedMembers] = useState<string[]>([]);
-  const [relationshipType, setRelationshipType] = useState<'協力的' | '要注意' | '未知' | '未登録' | ''>('');
   const [memo, setMemo] = useState('');
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -67,7 +66,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       setOrganization(contact.organization || '');
       setCategory(contact.category || '');
       setRelatedMembers(contact.relatedMembers || []);
-      setRelationshipType(contact.relationshipType || '');
       setMemo(contact.memo || '');
     } else {
       // 新規作成時：自分をデフォルトで選択
@@ -75,7 +73,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       setOrganization('');
       setCategory('');
       setRelatedMembers(user ? [user.id] : []);
-      setRelationshipType('');
       setMemo('');
     }
   }, [contact, user]);
@@ -92,7 +89,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         organization: organization || undefined,
         category: category || undefined,
         relatedMembers: relatedMembers,
-        relationshipType: relationshipType || undefined,
         memo: memo || undefined,
       };
 
@@ -211,24 +207,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                 選択中: {relatedMembers.length}名
               </p>
             )}
-          </div>
-
-          {/* 関わり方（選択式） */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              関わり方
-            </label>
-            <select
-              value={relationshipType}
-              onChange={(e) => setRelationshipType(e.target.value as typeof relationshipType)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">選択してください</option>
-              <option value="協力的">協力的</option>
-              <option value="要注意">要注意</option>
-              <option value="未知">未知</option>
-              <option value="未登録">未登録</option>
-            </select>
           </div>
 
           {/* 備考 */}

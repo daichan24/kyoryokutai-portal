@@ -51,6 +51,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const [autoCreateTask, setAutoCreateTask] = useState(true);
   const { user: currentUser } = useAuthStore();
 
   useEffect(() => {
@@ -104,6 +105,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         setActivityDescription(defaultActivityDescription);
       }
       setSupportEventId(null);
+      setAutoCreateTask(true);
     }
   }, [schedule, defaultDate, defaultStartTime, defaultEndTime, defaultTaskId, defaultProjectId, defaultActivityDescription]);
 
@@ -171,11 +173,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const fetchUsers = async () => {
     try {
       const response = await api.get<User[]>('/api/users');
-      // MASTERを除外（招待候補から）
-      // サポート・行政・マスターユーザーの場合は表示順0番目のユーザーも除外（テストユーザー）
+      // 協力隊メンバーのみ（MASTERを除外、テストユーザーも除外）
       const users = (response.data || []).filter(u => {
-        if (u.role === 'MASTER' || u.id === currentUser?.id) return false;
-        if ((currentUser?.role === 'SUPPORT' || currentUser?.role === 'GOVERNMENT' || currentUser?.role === 'MASTER') && (u.displayOrder ?? 0) === 0 && u.role === 'MEMBER') return false;
+        if (u.role !== 'MEMBER' || u.id === currentUser?.id) return false;
+        if ((currentUser?.role === 'SUPPORT' || currentUser?.role === 'GOVERNMENT' || currentUser?.role === 'MASTER') && (u.displayOrder ?? 0) === 0) return false;
         return true;
       });
       setAvailableUsers(users);
@@ -251,6 +252,14 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         data.supportEventId = supportEventId;
       } else if (schedule) {
         data.supportEventId = null;
+      }
+
+      // タスク自動作成フラグがONの場合は、スケジュールタイトルをタスクとして自動作成
+      if (autoCreateTask && !schedule && title && selectedProjectId) {
+        data.autoCreateTask = {
+          title: title.trim(),
+          projectId: selectedProjectId,
+        };
       }
 
       // 新規作成時・編集時ともに参加者を追加・変更可能
@@ -496,10 +505,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               value={selectedProjectId || ''}
               onChange={(e) => {
                 setSelectedProjectId(e.target.value || null);
-                // プロジェクトが変更されたら、そのプロジェクトに紐づくタスクのみ表示
-                if (!e.target.value) {
-                  setSelectedTaskId(null);
-                }
+                // プロジェクトが変更されたら、タスク選択をクリア
+                setSelectedTaskId(null);
               }}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               disabled={readOnly}
@@ -513,54 +520,62 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              タスク（任意）
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="autoCreateTask"
+              checked={autoCreateTask}
+              onChange={(e) => setAutoCreateTask(e.target.checked)}
+              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-600 rounded"
+              disabled={readOnly || !selectedProjectId}
+            />
+            <label htmlFor="autoCreateTask" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              タスクを自動作成（スケジュールタイトルをタスクとして登録）
             </label>
-            <select
-              value={selectedTaskId || ''}
-              onChange={(e) => setSelectedTaskId(e.target.value || null)}
-              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              disabled={readOnly || (!selectedProjectId && tasks.filter(t => !t.projectId).length === 0)}
-            >
-              <option value="">選択しない</option>
-              {tasks
-                .filter((task) => {
-                  // プロジェクトが選択されている場合は、そのプロジェクトのタスクのみ表示
-                  if (selectedProjectId) {
-                    return task.projectId === selectedProjectId;
-                  }
-                  // プロジェクトが選択されていない場合は、プロジェクトに紐づいていないタスクのみ表示
-                  return !task.projectId;
-                })
-                .map((task) => (
-                  <option key={task.id} value={task.id}>
-                    {task.title}
-                  </option>
-                ))}
-            </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              イベント主催への応援出勤（任意）
-            </label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              主催イベントの応援枠として記録する場合に紐づけます。
-            </p>
-            <select
-              value={supportEventId || ''}
-              onChange={(e) => setSupportEventId(e.target.value || null)}
-              className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              disabled={readOnly}
-            >
-              <option value="">紐づけない</option>
-              {supportEvents.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {ev.eventName}（{ev.startDate?.slice?.(0, 10) ?? ''}）
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center mb-2">
+              <input
+                type="checkbox"
+                id="isSupportEvent"
+                checked={!!supportEventId}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    // イベント選択モードに切り替え
+                  } else {
+                    setSupportEventId(null);
+                  }
+                }}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-600 rounded"
+              />
+              <label htmlFor="isSupportEvent" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                オーガナイザーへの応援出勤（任意）
+              </label>
+            </div>
+
+            {supportEventId && (
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  イベントを選択
+                </label>
+                <select
+                  value={supportEventId || ''}
+                  onChange={(e) => setSupportEventId(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">イベントを選択</option>
+                  {supportEvents.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.eventName}（{ev.startDate?.slice?.(0, 10) ?? ''}）
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  主催イベントの応援枠として記録します。イベントの日時が自動で反映されます。
+                </p>
+              </div>
+            )}
           </div>
 
           <div>
@@ -730,7 +745,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             {isCollaborative && (
               <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  参加メンバーを選択
+                  参加メンバーを選択（協力隊メンバーのみ）
                 </label>
                 <div className="max-h-48 overflow-y-auto space-y-2">
                   {availableUsers.map((user) => (

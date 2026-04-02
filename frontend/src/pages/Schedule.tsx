@@ -9,6 +9,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { GovernmentAttendanceCalendar, useGovernmentAttendanceForMonth, AttendanceEditModal } from '../components/schedule/GovernmentAttendanceCalendar';
+import { GovernmentAttendanceModal } from '../components/schedule/GovernmentAttendanceModal';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { format } from 'date-fns';
@@ -59,6 +60,7 @@ export const Schedule: React.FC = () => {
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<Date | null>(null); // 詳細表示用の選択日
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null); // 週表示の個人モードで選択されたメンバーID
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
+  const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
 
   // 行政出勤記録
   const isGovStaff = user?.role === 'GOVERNMENT' || user?.role === 'MASTER' || user?.role === 'SUPPORT';
@@ -347,11 +349,12 @@ export const Schedule: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      {/* スマホ: タイトルとボタンを別カラムに配置 */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
           スケジュール管理
         </h1>
-        <div className="flex gap-1 sm:gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           {/* カレンダー表示切り替え: 隊員・スタッフ共通 */}
           {viewMode === 'month' ? (
             <div className="flex items-center gap-2 mr-2">
@@ -442,6 +445,15 @@ export const Schedule: React.FC = () => {
               </div>
             </div>
           ) : null}
+          <Button
+            variant="outline"
+            onClick={() => setIsGovernmentAttendanceModalOpen(true)}
+            title="行政出勤カレンダーを表示"
+          >
+            <CalendarDays className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">行政カレンダー</span>
+            <span className="sm:hidden">行政</span>
+          </Button>
           <Button
             variant="outline"
             onClick={async () => {
@@ -634,11 +646,20 @@ export const Schedule: React.FC = () => {
               return (
                 <div
                   key={index}
-                  className={`bg-white dark:bg-gray-800 border-r border-b sm:border rounded-none min-w-0 w-full flex flex-col p-1 sm:p-2 ${
+                  className={`bg-white dark:bg-gray-800 border-r border-b sm:border rounded-none min-w-0 w-full flex flex-col p-1 sm:p-2 cursor-pointer ${
                     isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300 relative z-10' : 'border-border dark:border-gray-700'
-                  } ${calendarViewMode === 'all' && daySchedules.length > 0 ? 'cursor-pointer' : ''}`}
+                  }`}
                   style={{ minHeight: '5.5rem', height: 'clamp(5.5rem, 22vw, 10rem)' }}
-                  onClick={calendarViewMode === 'all' && daySchedules.length > 0 ? () => setSelectedDateForDetail(date) : undefined}
+                  onClick={(e) => {
+                    // 行政出勤記録ボタンのクリックは無視
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    // 全体表示でスケジュールがある場合は詳細表示、それ以外は新規追加
+                    if (calendarViewMode === 'all' && daySchedules.length > 0) {
+                      setSelectedDateForDetail(date);
+                    } else {
+                      handleCreateSchedule(date);
+                    }
+                  }}
                 >
                   <div className="text-center mb-1 sm:mb-2 flex-shrink-0 min-w-0">
                     <p className={`text-sm sm:text-lg font-bold ${dayTextColor} ${
@@ -770,13 +791,6 @@ export const Schedule: React.FC = () => {
                       );
                     })}
                   </div>
-
-                  <button
-                    onClick={() => handleCreateSchedule(date)}
-                    className="w-full mt-2 text-xs text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-blue-400"
-                  >
-                    + 追加
-                  </button>
                 </div>
               );
             })}
@@ -1012,6 +1026,13 @@ export const Schedule: React.FC = () => {
           onClose={() => setAttendanceEditDate(null)}
           onSaved={() => setAttendanceEditDate(null)}
           onDeleted={() => setAttendanceEditDate(null)}
+        />
+      )}
+      {/* 行政出勤カレンダーモーダル */}
+      {isGovernmentAttendanceModalOpen && (
+        <GovernmentAttendanceModal
+          isOpen={isGovernmentAttendanceModalOpen}
+          onClose={() => setIsGovernmentAttendanceModalOpen(false)}
         />
       )}
     </div>
