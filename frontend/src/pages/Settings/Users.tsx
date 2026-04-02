@@ -16,6 +16,8 @@ export const UsersSettings: React.FC = () => {
   const [allUsers, setAllUsers] = useState<User[]>([]); // 全ユーザー（フィルター前）
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all'); // 初期は全件表示
   const [formData, setFormData] = useState({
     name: '',
@@ -81,32 +83,62 @@ export const UsersSettings: React.FC = () => {
     }
   };
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setFormLoading(true);
 
     try {
-      await api.post<User>('/api/admin/users', formData);
+      if (isEditMode && editingUser) {
+        // 編集時: passwordが空なら送信しない
+        const updateData: any = { ...formData };
+        if (!updateData.password) delete updateData.password;
+        
+        await api.put<User>(`/api/users/${editingUser.id}`, updateData);
+      } else {
+        // 新規作成
+        await api.post<User>('/api/admin/users', formData);
+      }
+      
       setIsModalOpen(false);
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        role: 'MEMBER',
-        department: '',
-        termStart: '',
-        termEnd: '',
-      });
+      resetForm();
       await fetchUsers(); // 一覧を再取得
     } catch (error: any) {
-      console.error('Failed to create user:', error);
-      const errorMessage = error.response?.data?.error || 'ユーザーの作成に失敗しました';
-      const errorDetails = error.response?.data?.details;
-      setFormError(errorDetails ? JSON.stringify(errorDetails, null, 2) : errorMessage);
+      console.error('Failed to save user:', error);
+      const errorMessage = error.response?.data?.error || 'ユーザーの保存に失敗しました';
+      setFormError(errorMessage);
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      role: 'MEMBER',
+      department: '',
+      termStart: '',
+      termEnd: '',
+    });
+    setEditingUser(null);
+    setIsEditMode(false);
+  };
+
+  const openEditModal = (user: User) => {
+    setEditingUser(user);
+    setIsEditMode(true);
+    setFormData({
+      name: user.name || '',
+      email: user.email || '',
+      password: '', // パスワードは入力された場合のみ更新
+      role: user.role as any,
+      department: user.department || '',
+      termStart: user.termStart ? formatDate(user.termStart, 'yyyy-MM-dd') : '',
+      termEnd: user.termEnd ? formatDate(user.termEnd, 'yyyy-MM-dd') : '',
+    });
+    setIsModalOpen(true);
   };
 
   // 管理者（MASTER / SUPPORT）のみが新規作成ボタンを表示
@@ -124,7 +156,7 @@ export const UsersSettings: React.FC = () => {
         <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
         <div className="flex gap-3">
           {canCreateUser && (
-            <Button onClick={() => setIsModalOpen(true)}>
+            <Button onClick={() => { resetForm(); setIsModalOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" />
               新規ユーザー追加
             </Button>
@@ -242,7 +274,15 @@ export const UsersSettings: React.FC = () => {
                           ? formatDate(user.passwordUpdatedAt, 'yyyy/M/d HH:mm')
                           : '—'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditModal(user)}
+                        >
+                          編集
+                        </Button>
                         <Button
                           type="button"
                           variant="outline"
@@ -410,11 +450,13 @@ export const UsersSettings: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">新規ユーザー追加</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                {isEditMode ? 'ユーザー編集' : '新規ユーザー追加'}
+              </h2>
               <button
                 onClick={() => {
                   setIsModalOpen(false);
-                  setFormError(null);
+                  resetForm();
                 }}
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
@@ -422,7 +464,7 @@ export const UsersSettings: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {formError && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded">
                   <p className="text-sm">{formError}</p>
@@ -446,11 +488,11 @@ export const UsersSettings: React.FC = () => {
               />
 
               <Input
-                label="パスワード *"
+                label={isEditMode ? "パスワード（変更する場合のみ入力）" : "パスワード *"}
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
+                required={!isEditMode}
                 minLength={6}
               />
 
@@ -503,14 +545,14 @@ export const UsersSettings: React.FC = () => {
                   variant="outline"
                   onClick={() => {
                     setIsModalOpen(false);
-                    setFormError(null);
+                    resetForm();
                   }}
                   disabled={formLoading}
                 >
                   キャンセル
                 </Button>
                 <Button type="submit" disabled={formLoading}>
-                  {formLoading ? '作成中...' : '作成'}
+                  {formLoading ? '保存中...' : (isEditMode ? '更新' : '作成')}
                 </Button>
               </div>
             </form>

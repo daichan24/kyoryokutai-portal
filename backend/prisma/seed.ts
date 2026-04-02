@@ -289,6 +289,25 @@ async function main() {
     },
   });
 
+  // メンバー12: 守屋岳杜
+  const member12 = await prisma.user.upsert({
+    where: { email: 'gakuto.moriya@gmail.com' },
+    update: { name: '守屋岳杜' },
+    create: {
+      name: '守屋岳杜',
+      email: 'gakuto.moriya@gmail.com',
+      password: hashedPassword,
+      passwordPlainForMaster: 'password123',
+      passwordUpdatedAt: new Date(),
+      role: 'MEMBER',
+      missionType: 'FREE',
+      department: '住宅課',
+      termStart: new Date('2024-10-01'),
+      termEnd: new Date('2027-09-30'),
+      avatarColor: '#10B981',
+    },
+  });
+
   // メンバーの「さとうだいち」を作成/更新（テスト用）
   // 既存のメンバー「佐藤大地」が存在する場合は「さとうだいち」に更新
   const existingSatoMember = await prisma.user.findFirst({
@@ -306,13 +325,15 @@ async function main() {
     console.log('✅ Updated existing member 佐藤大地 to さとうだいち');
   } else {
     // メンバーの「さとうだいち」を作成（テスト用）
-    const member12 = await prisma.user.upsert({
+    const testMember = await prisma.user.upsert({
       where: { email: 'sato.daichi.member@test.com' },
       update: { name: 'さとうだいち' },
       create: {
         name: 'さとうだいち',
         email: 'sato.daichi.member@test.com',
         password: hashedPassword,
+        passwordPlainForMaster: 'password123',
+        passwordUpdatedAt: new Date(),
         role: 'MEMBER',
         missionType: 'FREE',
         department: '企画課',
@@ -321,7 +342,7 @@ async function main() {
         avatarColor: '#6366F1',
       },
     });
-    console.log('✅ Created/Updated test member:', member12.name);
+    console.log('✅ Created/Updated test member:', testMember.name);
   }
 
   console.log('✅ Created/Updated users:', {
@@ -342,6 +363,7 @@ async function main() {
       member9.name,
       member10.name,
       member11.name,
+      member12.name,
       'さとうだいち',
     ],
   });
@@ -369,6 +391,8 @@ async function main() {
     data: {
       userId: member1.id,
       date: today,
+      startDate: today,
+      endDate: today,
       startTime: '09:00',
       endTime: '17:00',
       locationText: 'ながぬまホワイトベース',
@@ -382,6 +406,8 @@ async function main() {
     data: {
       userId: member2.id,
       date: today,
+      startDate: today,
+      endDate: today,
       startTime: '10:00',
       endTime: '16:00',
       locationText: '役場',
