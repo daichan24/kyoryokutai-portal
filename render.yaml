@@ -6,8 +6,7 @@ services:
     plan: starter
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    # ダッシュボードの Start Command が古い echo+migrate のままだと P3009 用の resolve が走らないため明示
-    dockerCommand: npm run start:prod:recover-p3009
+    dockerCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production

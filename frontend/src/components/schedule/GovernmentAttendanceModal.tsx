@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { X, CalendarDays, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { X, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO, addDays, subDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 type AttendanceStatus = 'PRESENT' | 'REMOTE' | 'ABSENT' | 'HALF_DAY';
 
@@ -75,10 +74,11 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
   const fetchMembers = async () => {
     try {
       const response = await api.get('/api/users');
-      const members = (response.data || []).filter((u: any) => 
-        u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
+      // 行政（GOVERNMENT）のみを取得
+      const govMembers = (response.data || []).filter((u: any) => 
+        u.role === 'GOVERNMENT'
       ).sort((a: any, b: any) => a.name.localeCompare(b.name, 'ja'));
-      setMembers(members);
+      setMembers(govMembers);
     } catch (error) {
       console.error('Failed to fetch members:', error);
     }
