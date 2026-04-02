@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -9,7 +9,7 @@ import { ContactHistoryModal } from '../components/contact/ContactHistoryModal';
 import { ContactDetailModal } from '../components/contact/ContactDetailModal';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
-import { LayoutGrid, List, HelpCircle, X } from 'lucide-react';
+import { LayoutGrid, List, HelpCircle, X, Trash2 } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -26,6 +26,8 @@ interface Contact {
   endYear?: number;
   status?: '在籍中' | '任期終了'; // APIで計算される
   histories: ContactHistory[];
+  creator?: { id: string; name: string };
+  createdAt?: string;
 }
 
 interface ContactHistory {
@@ -43,6 +45,7 @@ export const Contacts: React.FC = () => {
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [filterCategory, setFilterCategory] = useState<string>(''); // ジャンルでフィルタ
   const [filterRelationship, setFilterRelationship] = useState<string>(''); // 関わり方でフィルタ
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'nameAsc'>('newest'); // ソート順
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card'); // カード/リスト表示切り替え
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -88,6 +91,17 @@ export const Contacts: React.FC = () => {
     const matchesCategory = !filterCategory || contact.category === filterCategory;
     const matchesRelationship = !filterRelationship || contact.relationshipType === filterRelationship;
     return matchesSearch && matchesTag && matchesCategory && matchesRelationship;
+  })?.sort((a, b) => {
+    if (sortOrder === 'nameAsc') {
+      return a.name.localeCompare(b.name, 'ja');
+    }
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (sortOrder === 'oldest') {
+      return dateA - dateB;
+    }
+    // デフォルト newest
+    return dateB - dateA;
   });
 
   // ソート用のユニークな値リストを取得
@@ -147,7 +161,6 @@ export const Contacts: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['contacts'] });
     handleCloseHistoryModal();
     if (isDetailModalOpen && selectedContact) {
-      // 詳細モーダルが開いている場合は、データを再取得
       const fetchContact = async () => {
         try {
           const response = await api.get(`/api/citizens/${selectedContact.id}`);
@@ -158,6 +171,21 @@ export const Contacts: React.FC = () => {
       };
       fetchContact();
     }
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/citizens/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    },
+  });
+
+  const handleDeleteContact = (contact: Contact) => {
+    if (!confirm(`「${contact.name}」を削除しますか？この操作は取り消せません。`)) return;
+    deleteMutation.mutate(contact.id);
+    if (isDetailModalOpen) handleCloseDetailModal();
   };
 
   if (isLoading) {
@@ -244,6 +272,15 @@ export const Contacts: React.FC = () => {
           <option value="要注意">要注意</option>
           <option value="専門家">専門家</option>
         </select>
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest' | 'nameAsc')}
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="newest">登録日（新しい順）</option>
+          <option value="oldest">登録日（古い順）</option>
+          <option value="nameAsc">名前（五十音順）</option>
+        </select>
       </div>
 
       {/* 【一覧表示】カード/リスト表示切り替え */}
@@ -327,9 +364,16 @@ export const Contacts: React.FC = () => {
               )}
 
               <div className="flex justify-between items-center mt-3 pt-3 border-t dark:border-gray-700">
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  接触履歴: {contact.histories.length}件
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    接触履歴: {contact.histories.length}件
+                  </span>
+                  {contact.creator && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      登録: {contact.creator.name}
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -346,6 +390,13 @@ export const Contacts: React.FC = () => {
                   >
                     詳細
                   </Button>
+                  <button
+                    onClick={() => handleDeleteContact(contact)}
+                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    title="削除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -361,6 +412,7 @@ export const Contacts: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ジャンル</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">関わり方</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">接触履歴</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">登録者</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
               </tr>
             </thead>
@@ -407,6 +459,9 @@ export const Contacts: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {contact.histories.length}件
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {contact.creator?.name || '-'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -424,6 +479,13 @@ export const Contacts: React.FC = () => {
                       >
                         詳細
                       </Button>
+                      <button
+                        onClick={() => handleDeleteContact(contact)}
+                        className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                        title="削除"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -495,6 +557,10 @@ export const Contacts: React.FC = () => {
           onClose={handleCloseDetailModal}
           onEdit={() => handleEditContact(selectedContact)}
           onHistoryAdded={handleHistorySaved}
+          onDeleted={() => {
+            handleCloseDetailModal();
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+          }}
         />
       )}
     </div>

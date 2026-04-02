@@ -243,5 +243,35 @@ router.put('/:id', async (req: AuthRequest, res) => {
   }
 });
 
+/**
+ * 【API定義】町民（協力隊メンバー）削除
+ * 
+ * 役割: フロントエンドからのDELETEリクエストを受け取り、DBから削除する
+ * エンドポイント: DELETE /api/citizens/:id
+ */
+router.delete('/:id', async (req: AuthRequest, res) => {
+  console.log(`🔵 [API] DELETE /api/citizens/${req.params.id} リクエスト受信`);
+
+  try {
+    const contact = await prisma.contact.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!contact) {
+      return res.status(404).json({ error: '町民情報が見つかりません' });
+    }
+
+    await prisma.contact.delete({
+      where: { id: req.params.id },
+    });
+
+    console.log('✅ [API] DB削除成功。削除されたID:', req.params.id);
+    res.status(200).json({ message: '削除しました' });
+  } catch (error) {
+    console.error('❌ [API] エラー発生:', error);
+    res.status(500).json({ error: '町民情報の削除に失敗しました' });
+  }
+});
+
 export default router;
 

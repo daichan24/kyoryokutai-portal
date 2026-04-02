@@ -684,22 +684,22 @@ export const ActivityExpenses: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {editingId ? '支出の修正' : '支出を追加'}
             </h2>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-medium mb-1">日付</label>
                 <input
                   type="date"
                   value={spentAt}
                   onChange={(e) => setSpentAt(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
                 />
               </div>
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-medium mb-1">紐づくプロジェクト（必須）</label>
                 <select
                   value={projectIdForEntry}
                   onChange={(e) => setProjectIdForEntry(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
                 >
                   <option value="">選択してください</option>
                   {memberProjects.map((p) => (
@@ -714,13 +714,13 @@ export const ActivityExpenses: React.FC = () => {
                   </p>
                 )}
               </div>
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-medium mb-1">内容</label>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
                   placeholder="例：会議資料コピー代"
                   maxLength={500}
                 />
@@ -732,7 +732,7 @@ export const ActivityExpenses: React.FC = () => {
                   inputMode="numeric"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
                   placeholder="1000"
                 />
               </div>
@@ -798,52 +798,92 @@ export const ActivityExpenses: React.FC = () => {
             {summary.entries.length === 0 ? (
               <p className="text-sm text-gray-500">まだ登録がありません。</p>
             ) : (
-              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-700/80">
-                    <tr>
-                      <th className="text-left px-3 py-2 font-medium">日付</th>
-                      <th className="text-left px-3 py-2 font-medium">プロジェクト</th>
-                      <th className="text-left px-3 py-2 font-medium">内容</th>
-                      <th className="text-right px-3 py-2 font-medium">金額</th>
-                      <th className="text-right px-3 py-2 font-medium w-40">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                    {summary.entries.map((row) => (
-                      <tr key={row.id}>
-                        <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
-                          {format(parseISO(row.spentAt), 'yyyy年M月d日', { locale: ja })}
-                        </td>
-                        <td className="px-3 py-2 text-gray-700 dark:text-gray-200 text-sm">
-                          {row.project?.projectName || (
-                            <span className="text-amber-600 dark:text-amber-400">未設定</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-gray-800 dark:text-gray-100">{row.description}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-medium">{formatYen(row.amount)}</td>
-                        <td className="px-3 py-2 text-right space-x-2">
-                          <button
-                            type="button"
-                            className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
-                            onClick={() => startEdit(row)}
-                          >
-                            編集
-                          </button>
-                          <button
-                            type="button"
-                            className="text-red-600 dark:text-red-400 hover:underline text-xs"
-                            onClick={() => {
-                              if (confirm('この行を削除しますか？')) deleteMut.mutate(row.id);
-                            }}
-                          >
-                            削除
-                          </button>
-                        </td>
+              <div className="space-y-2">
+                {/* PC表示: テーブル */}
+                <div className="hidden sm:block overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-700/80">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium">日付</th>
+                        <th className="text-left px-3 py-2 font-medium">プロジェクト</th>
+                        <th className="text-left px-3 py-2 font-medium">内容</th>
+                        <th className="text-right px-3 py-2 font-medium">金額</th>
+                        <th className="text-right px-3 py-2 font-medium w-40">操作</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                      {summary.entries.map((row) => (
+                        <tr key={row.id}>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                            {format(parseISO(row.spentAt), 'yyyy年M月d日', { locale: ja })}
+                          </td>
+                          <td className="px-3 py-2 text-gray-700 dark:text-gray-200 text-sm">
+                            {row.project?.projectName || (
+                              <span className="text-amber-600 dark:text-amber-400">未設定</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-gray-800 dark:text-gray-100">{row.description}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-medium">{formatYen(row.amount)}</td>
+                          <td className="px-3 py-2 text-right space-x-2">
+                            <button
+                              type="button"
+                              className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                              onClick={() => startEdit(row)}
+                            >
+                              編集
+                            </button>
+                            <button
+                              type="button"
+                              className="text-red-600 dark:text-red-400 hover:underline text-xs"
+                              onClick={() => {
+                                if (confirm('この行を削除しますか？')) deleteMut.mutate(row.id);
+                              }}
+                            >
+                              削除
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* スマホ表示: カード */}
+                <div className="sm:hidden space-y-2">
+                  {summary.entries.map((row) => (
+                    <div key={row.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                            {format(parseISO(row.spentAt), 'M/d', { locale: ja })}
+                          </p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{row.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {row.project?.projectName || <span className="text-amber-600 dark:text-amber-400">プロジェクト未設定</span>}
+                          </p>
+                        </div>
+                        <p className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatYen(row.amount)}</p>
+                      </div>
+                      <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <button
+                          type="button"
+                          className="flex-1 text-center text-xs text-blue-600 dark:text-blue-400 py-1 rounded border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                          onClick={() => startEdit(row)}
+                        >
+                          編集
+                        </button>
+                        <button
+                          type="button"
+                          className="flex-1 text-center text-xs text-red-600 dark:text-red-400 py-1 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          onClick={() => {
+                            if (confirm('この行を削除しますか？')) deleteMut.mutate(row.id);
+                          }}
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </section>

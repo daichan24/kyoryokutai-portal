@@ -97,6 +97,8 @@ model User {
   mandatedAttendanceAuditAsMember MandatedAttendanceAuditLog[] @relation("MandatedAttendanceMember")
   mandatedAttendanceAuditAsStaff  MandatedAttendanceAuditLog[] @relation("MandatedAttendanceChangedBy")
 
+  governmentAttendances GovernmentAttendance[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1313,4 +1315,32 @@ model DriveLink {
   updatedAt   DateTime @updatedAt
 
   @@index([order])
+}
+
+// ========================================
+// 行政出勤記録（役場スタッフの出勤状況）
+// ========================================
+
+model GovernmentAttendance {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date   DateTime @db.Date
+  status GovernmentAttendanceStatus @default(PRESENT)
+  note   String?  @db.VarChar(500)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@index([date])
+}
+
+enum GovernmentAttendanceStatus {
+  PRESENT    // 出勤
+  REMOTE     // テレワーク
+  ABSENT     // 不在
+  HALF_DAY   // 半日
 }

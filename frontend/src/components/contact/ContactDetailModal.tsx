@@ -34,6 +34,7 @@ interface ContactDetailModalProps {
   onClose: () => void;
   onEdit: () => void;
   onHistoryAdded: () => void;
+  onDeleted: () => void;
 }
 
 export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
@@ -41,6 +42,7 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
   onClose,
   onEdit,
   onHistoryAdded,
+  onDeleted,
 }) => {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [contactData, setContactData] = useState<Contact>(contact);
@@ -77,6 +79,19 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
     fetchContact();
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('本当にこの町民情報を削除しますか？\n（関連する履歴も削除されます）')) {
+      return;
+    }
+    try {
+      await api.delete(`/api/citizens/${contact.id}`);
+      onDeleted();
+    } catch (error) {
+      console.error('Failed to delete contact:', error);
+      alert('削除に失敗しました');
+    }
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -100,7 +115,14 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
                 <Edit2 className="h-4 w-4 mr-1" />
                 編集
               </Button>
-              <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleDelete}
+              >
+                削除
+              </Button>
+              <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 ml-2">
                 <X className="h-6 w-6" />
               </button>
             </div>

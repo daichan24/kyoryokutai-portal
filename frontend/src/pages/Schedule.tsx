@@ -8,8 +8,10 @@ import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
+import { GovernmentAttendanceCalendar, useGovernmentAttendanceForMonth, AttendanceEditModal } from '../components/schedule/GovernmentAttendanceCalendar';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
+import { format } from 'date-fns';
 
 type ViewMode = 'week' | 'month';
 
@@ -58,6 +60,13 @@ export const Schedule: React.FC = () => {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null); // 週表示の個人モードで選択されたメンバーID
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
 
+  // 行政出勤記録
+  const isGovStaff = user?.role === 'GOVERNMENT' || user?.role === 'MASTER' || user?.role === 'SUPPORT';
+  const [attendanceEditDate, setAttendanceEditDate] = useState<string | null>(null);
+  const govAttendanceFrom = weekDates[0] ? format(weekDates[0], 'yyyy-MM-dd') : '';
+  const govAttendanceTo = weekDates[weekDates.length - 1] ? format(weekDates[weekDates.length - 1], 'yyyy-MM-dd') : '';
+  const { data: govAttendances = [] } = useGovernmentAttendanceForMonth(govAttendanceFrom, govAttendanceTo);
+
   useEffect(() => {
     if (isStaff && workspaceMode === 'browse') {
       setSelectedMemberId(null);
@@ -80,12 +89,10 @@ export const Schedule: React.FC = () => {
     }
   }, [weekDates, calendarViewMode, selectedMemberId, user?.id, isStaff, workspaceMode]);
 
-  // メンバーリストを取得（週表示用）
+  // メンバーリストを取得（週表示・月表示共通）
   useEffect(() => {
-    if (viewMode === 'week') {
-      fetchMembers();
-    }
-  }, [viewMode]);
+    fetchMembers();
+  }, []);
 
   const fetchMembers = async () => {
     try {
@@ -126,17 +133,20 @@ export const Schedule: React.FC = () => {
         view: viewMode,
       });
       
-      // 月表示の場合
       if (viewMode === 'month') {
-        if (calendarViewMode === 'all') {
+        if (selectedMemberId) {
+          // 特定メンバーを選択している場合
+          params.append('userId', selectedMemberId);
+        } else if (calendarViewMode === 'all') {
           params.append('allMembers', 'true');
         }
-        // calendarViewMode === 'individual'の場合は自分のスケジュール（デフォルト）
+        // individual の場合は自分のスケジュール（デフォルト）
       } else {
-        if (isStaff && workspaceMode === 'browse') {
-          params.append('allMembers', 'true');
-        } else if (selectedMemberId) {
+        // 週表示
+        if (selectedMemberId) {
           params.append('userId', selectedMemberId);
+        } else if (isStaff && workspaceMode === 'browse') {
+          params.append('allMembers', 'true');
         }
       }
       
@@ -342,19 +352,19 @@ export const Schedule: React.FC = () => {
           スケジュール管理
         </h1>
         <div className="flex gap-1 sm:gap-2 items-center">
-          {/* カレンダー表示: 隊員は従来どおり。スタッフはダッシュボードの個人/閲覧に連動 */}
-          {viewMode === 'month' && !isStaff ? (
+          {/* カレンダー表示切り替え: 隊員・スタッフ共通 */}
+          {viewMode === 'month' ? (
             <div className="flex items-center gap-2 mr-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
-              <div className="flex gap-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">表示:</span>
+              <div className="flex gap-1 sm:gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setCalendarViewModeMember('individual');
                     setSelectedMemberId(null);
                   }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                    calendarViewModeMember === 'individual'
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
+                    calendarViewModeMember === 'individual' && !selectedMemberId
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                   }`}
@@ -367,7 +377,7 @@ export const Schedule: React.FC = () => {
                     setCalendarViewModeMember('all');
                     setSelectedMemberId(null);
                   }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
                     calendarViewModeMember === 'all'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
@@ -375,18 +385,37 @@ export const Schedule: React.FC = () => {
                 >
                   全体
                 </button>
+                {/* スタッフは特定メンバーも選択可能 */}
+                {isStaff && availableMembers.length > 0 && (
+                  <select
+                    value={selectedMemberId || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedMemberId(value || null);
+                      if (value) setCalendarViewModeMember('individual');
+                    }}
+                    className={`px-2 py-1.5 rounded-lg border font-medium transition-colors text-sm ${
+                      selectedMemberId
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+                    }`}
+                  >
+                    <option value="">個人を選択</option>
+                    {availableMembers.map((member) => (
+                      <option key={member.id} value={member.id}>{member.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
-          ) : viewMode === 'week' && (!isStaff || workspaceMode === 'personal') ? (
+          ) : viewMode === 'week' ? (
             <div className="flex items-center gap-2 mr-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</span>
-              <div className="flex gap-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">表示:</span>
+              <div className="flex gap-1 sm:gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedMemberId(null);
-                  }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+                  onClick={() => setSelectedMemberId(null)}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
                     !selectedMemberId
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
@@ -397,21 +426,16 @@ export const Schedule: React.FC = () => {
                 {availableMembers.length > 0 && (
                   <select
                     value={selectedMemberId || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSelectedMemberId(value || null);
-                    }}
-                    className={`px-3 py-2 rounded-lg border font-medium transition-colors text-sm ${
+                    onChange={(e) => setSelectedMemberId(e.target.value || null)}
+                    className={`px-2 py-1.5 rounded-lg border font-medium transition-colors text-sm ${
                       selectedMemberId
                         ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
                     }`}
                   >
-                    <option value="">他のメンバーを選択</option>
+                    <option value="">メンバーを選択</option>
                     {availableMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.name}
-                      </option>
+                      <option key={member.id} value={member.id}>{member.name}</option>
                     ))}
                   </select>
                 )}
@@ -436,7 +460,7 @@ export const Schedule: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow sm:border lg:border-border dark:border-gray-700 p-0 sm:p-6 min-w-0">
+      <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow sm:border lg:border-border dark:border-gray-700 p-0 sm:p-6 min-w-0 w-full">
         <div className="flex justify-between items-center mb-4 sm:mb-6 px-3 sm:px-0 pt-3 sm:pt-0">
           <Button variant="outline" onClick={handlePrev}>
             <ChevronLeft className="h-4 w-4" />
@@ -477,29 +501,36 @@ export const Schedule: React.FC = () => {
         {loading ? (
           <LoadingSpinner />
         ) : viewMode === 'week' ? (
-          <TimeAxisView
-            dates={weekDates}
-            schedules={schedules}
-            events={events}
-            onScheduleClick={(schedule) => {
-              const isOtherUser = calendarViewMode === 'all' && schedule.userId !== user?.id;
-              if (isOtherUser) {
-                setSelectedSchedule(schedule);
-                setIsModalOpen(true);
-              } else {
-                handleEditSchedule(schedule);
-              }
-            }}
-            onEventClick={handleEventClick}
-            onCreateSchedule={handleCreateSchedule}
-            viewMode={viewMode}
-            calendarViewMode={calendarViewMode}
-            currentUserId={user?.id}
-          />
+          <>
+            <TimeAxisView
+              dates={weekDates}
+              schedules={schedules}
+              events={events}
+              onScheduleClick={(schedule) => {
+                const isOtherUser = calendarViewMode === 'all' && schedule.userId !== user?.id;
+                if (isOtherUser) {
+                  setSelectedSchedule(schedule);
+                  setIsModalOpen(true);
+                } else {
+                  handleEditSchedule(schedule);
+                }
+              }}
+              onEventClick={handleEventClick}
+              onCreateSchedule={handleCreateSchedule}
+              viewMode={viewMode}
+              calendarViewMode={calendarViewMode}
+              currentUserId={user?.id}
+            />
+            {/* 行政出勤カレンダー（週表示） */}
+            <GovernmentAttendanceCalendar
+              dates={weekDates}
+              viewMode="week"
+            />
+          </>
         ) : (
-          <div className="w-full max-w-full min-w-0 overflow-x-hidden">
+          <div className="w-full min-w-0 overflow-x-hidden">
             {/* Header row for days of the week */}
-            <div className="grid grid-cols-7 gap-0 sm:gap-2 w-full min-w-0 mb-1 px-0">
+            <div className="grid grid-cols-7 gap-0 w-full min-w-0 mb-1 px-0">
               {weekDates.slice(0, 7).map((date, index) => {
                 const isHoliday = isHolidayDate(date);
                 const isSun = isSunday(date);
@@ -518,7 +549,7 @@ export const Schedule: React.FC = () => {
               })}
             </div>
             <div
-              className="grid gap-0 sm:gap-2 w-full min-w-0 border-t border-l border-border dark:border-gray-700 sm:border-0"
+              className="grid gap-0 w-full min-w-0 border-t border-l border-border dark:border-gray-700 sm:border-0"
               style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}
             >
             {weekDates.map((date, index) => {
@@ -572,7 +603,17 @@ export const Schedule: React.FC = () => {
                 return schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
               };
 
-              // 背景色に応じたテキスト色を取得（白または黒）
+              // 行政出勤情報
+              const dateStr = format(date, 'yyyy-MM-dd');
+              const dayGovAttendances = govAttendances.filter((a: any) => a.date.slice(0, 10) === dateStr);
+              const myGovAttendance = govAttendances.find((a: any) => a.userId === user?.id && a.date.slice(0, 10) === dateStr);
+              const GOV_STATUS_COLORS: Record<string, string> = {
+                PRESENT: '#22c55e', REMOTE: '#3b82f6', ABSENT: '#ef4444', HALF_DAY: '#eab308',
+              };
+              const GOV_STATUS_LABELS: Record<string, string> = {
+                PRESENT: '出勤', REMOTE: 'テレワーク', ABSENT: '不在', HALF_DAY: '半日',
+              };
+
               const getTextColor = (backgroundColor: string) => {
                 // HEXカラーをRGBに変換
                 const hex = backgroundColor.replace('#', '');
@@ -593,10 +634,10 @@ export const Schedule: React.FC = () => {
               return (
                 <div
                   key={index}
-                  className={`bg-white dark:bg-gray-800 border-r border-b sm:border rounded-none sm:rounded-lg min-w-0 w-full flex flex-col p-1 sm:p-3 ${
+                  className={`bg-white dark:bg-gray-800 border-r border-b sm:border rounded-none min-w-0 w-full flex flex-col p-1 sm:p-2 ${
                     isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300 relative z-10' : 'border-border dark:border-gray-700'
                   } ${calendarViewMode === 'all' && daySchedules.length > 0 ? 'cursor-pointer' : ''}`}
-                  style={{ minHeight: '6.5rem', height: 'clamp(6.5rem, 28vw, 11.25rem)' }}
+                  style={{ minHeight: '5.5rem', height: 'clamp(5.5rem, 22vw, 10rem)' }}
                   onClick={calendarViewMode === 'all' && daySchedules.length > 0 ? () => setSelectedDateForDetail(date) : undefined}
                 >
                   <div className="text-center mb-1 sm:mb-2 flex-shrink-0 min-w-0">
@@ -605,6 +646,34 @@ export const Schedule: React.FC = () => {
                     }`}>
                       {formatDate(date, 'd')}
                     </p>
+                    {/* 行政出勤ドット */}
+                    {dayGovAttendances.length > 0 && (
+                      <div className="flex justify-center gap-0.5 mt-0.5 flex-wrap">
+                        {dayGovAttendances.map((a: any) => (
+                          <span
+                            key={a.id}
+                            className="w-1.5 h-1.5 rounded-full inline-block"
+                            style={{ backgroundColor: GOV_STATUS_COLORS[a.status] || '#6B7280' }}
+                            title={`${a.user.name}: ${GOV_STATUS_LABELS[a.status] || a.status}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {/* 自分の出勤記録ボタン（行政スタッフのみ） */}
+                    {isGovStaff && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAttendanceEditDate(dateStr); }}
+                        className={`mt-0.5 text-[9px] px-1 rounded transition-colors ${
+                          myGovAttendance
+                            ? 'text-white px-1.5'
+                            : 'text-gray-400 hover:text-blue-500'
+                        }`}
+                        style={myGovAttendance ? { backgroundColor: GOV_STATUS_COLORS[myGovAttendance.status] } : {}}
+                        title={myGovAttendance ? `出勤記録: ${GOV_STATUS_LABELS[myGovAttendance.status]}` : '出勤記録を追加'}
+                      >
+                        {myGovAttendance ? GOV_STATUS_LABELS[myGovAttendance.status] : '+ 出勤'}
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-1 flex-1 overflow-hidden">
@@ -932,6 +1001,18 @@ export const Schedule: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      {/* 行政出勤記録編集モーダル */}
+      {attendanceEditDate && isGovStaff && (
+        <AttendanceEditModal
+          date={attendanceEditDate}
+          existingId={govAttendances.find((a: any) => a.userId === user?.id && a.date.slice(0, 10) === attendanceEditDate)?.id}
+          initialStatus={govAttendances.find((a: any) => a.userId === user?.id && a.date.slice(0, 10) === attendanceEditDate)?.status ?? 'PRESENT'}
+          initialNote={govAttendances.find((a: any) => a.userId === user?.id && a.date.slice(0, 10) === attendanceEditDate)?.note ?? ''}
+          onClose={() => setAttendanceEditDate(null)}
+          onSaved={() => setAttendanceEditDate(null)}
+          onDeleted={() => setAttendanceEditDate(null)}
+        />
       )}
     </div>
   );

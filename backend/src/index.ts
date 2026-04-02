@@ -34,6 +34,7 @@ import consultationsRoutes from './routes/consultations';
 import activityExpensesRoutes from './routes/activityExpenses';
 import announcementsRoutes from './routes/announcements';
 import mandatedTeamEventsRoutes from './routes/mandatedTeamEvents';
+import governmentAttendanceRoutes from './routes/governmentAttendance';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -122,6 +123,7 @@ app.use('/api/consultations', consultationsRoutes);
 app.use('/api/activity-expenses', activityExpensesRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/mandated-team-events', mandatedTeamEventsRoutes);
+app.use('/api/government-attendance', governmentAttendanceRoutes);
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');

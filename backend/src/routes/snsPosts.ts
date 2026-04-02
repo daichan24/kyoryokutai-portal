@@ -171,40 +171,50 @@ router.post('/', async (req: AuthRequest, res) => {
       const postedAt = parsePostedAtInput(data.postedAt);
       const { weekKey } = getWeekBoundaryForDate(postedAt);
 
-      const post = await prisma.sNSPost.upsert({
+      // upsertの代わりにfindFirst + create/updateで安全に処理
+      const existing = await prisma.sNSPost.findFirst({
         where: {
-          userId_week_postType: {
-            userId: req.user!.id,
-            week: weekKey,
-            postType: data.postType,
-          },
-        },
-        create: {
           userId: req.user!.id,
           week: weekKey,
-          postedAt,
           postType: data.postType,
-          url: data.url && data.url.trim() !== '' ? data.url : null,
-          note: data.note && data.note.trim() !== '' ? data.note : null,
-          followerCount:
-            data.followerCount !== undefined && data.followerCount !== null ? data.followerCount : null,
         },
-        update: {
-          postedAt,
-          week: weekKey,
-          url: data.url && data.url.trim() !== '' ? data.url : null,
-          note: data.note !== undefined ? (data.note && data.note.trim() !== '' ? data.note : null) : undefined,
-          followerCount:
-            data.followerCount !== undefined
-              ? data.followerCount === null
-                ? null
-                : data.followerCount
-              : undefined,
-        },
-        include: { user: true },
       });
 
-      console.log('[API] SNS post upserted:', post.id);
+      let post;
+      if (existing) {
+        post = await prisma.sNSPost.update({
+          where: { id: existing.id },
+          data: {
+            postedAt,
+            week: weekKey,
+            url: data.url && data.url.trim() !== '' ? data.url : null,
+            note: data.note !== undefined ? (data.note && data.note.trim() !== '' ? data.note : null) : undefined,
+            followerCount:
+              data.followerCount !== undefined
+                ? data.followerCount === null
+                  ? null
+                  : data.followerCount
+                : undefined,
+          },
+          include: { user: true },
+        });
+      } else {
+        post = await prisma.sNSPost.create({
+          data: {
+            userId: req.user!.id,
+            week: weekKey,
+            postedAt,
+            postType: data.postType,
+            url: data.url && data.url.trim() !== '' ? data.url : null,
+            note: data.note && data.note.trim() !== '' ? data.note : null,
+            followerCount:
+              data.followerCount !== undefined && data.followerCount !== null ? data.followerCount : null,
+          },
+          include: { user: true },
+        });
+      }
+
+      console.log('[API] SNS post saved:', post.id);
       return res.json(post);
     } catch (zodError) {
       // 旧スキーマで試行（後方互換性）

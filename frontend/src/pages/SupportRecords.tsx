@@ -307,39 +307,38 @@ export const SupportRecords: React.FC = () => {
         {filteredRecords.map((record) => (
           <div
             key={record.id}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
           >
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
+            <div className="flex justify-between items-start mb-3 gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
-                    style={{
-                      backgroundColor: record.user.avatarColor || '#6B7280',
-                    }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
+                    style={{ backgroundColor: record.user.avatarColor || '#6B7280' }}
                   >
                     {(record.user.avatarLetter || record.user.name || '').charAt(0)}
                   </div>
-                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{record.user.name}</h3>
+                  <h3 className="font-semibold text-base text-gray-900 dark:text-gray-100 truncate">{record.user.name}</h3>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {format(new Date(record.supportDate), 'yyyy年M月d日')}
                 </p>
                 {record.monthlyReport && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     月次報告: {record.monthlyReport.month}
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              {/* PC: 横並び / スマホ: 縦並び */}
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-2 flex-shrink-0">
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => handleEdit(record)}
                   title="編集"
                 >
-                  <Edit2 className="h-4 w-4 mr-1" />
-                  編集
+                  <Edit2 className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">編集</span>
                 </Button>
                 <Button
                   variant="danger"
@@ -347,8 +346,8 @@ export const SupportRecords: React.FC = () => {
                   onClick={() => handleDelete(record)}
                   title="削除"
                 >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  削除
+                  <Trash2 className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">削除</span>
                 </Button>
               </div>
             </div>
@@ -357,13 +356,13 @@ export const SupportRecords: React.FC = () => {
               <div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">支援内容:</span>
                 <div 
-                  className="text-gray-900 dark:text-gray-100 mt-1 prose max-w-none dark:prose-invert"
+                  className="text-gray-900 dark:text-gray-100 mt-1 prose max-w-none dark:prose-invert text-sm"
                   dangerouslySetInnerHTML={{ __html: record.supportContent }}
                 />
               </div>
               <div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">支援者:</span>
-                <p className="text-gray-900 dark:text-gray-100 mt-1">{record.supportBy}</p>
+                <p className="text-gray-900 dark:text-gray-100 mt-0.5 text-sm">{record.supportBy}</p>
               </div>
             </div>
           </div>

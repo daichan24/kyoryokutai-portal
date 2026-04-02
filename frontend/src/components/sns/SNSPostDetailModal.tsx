@@ -85,9 +85,10 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       }
 
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save SNS post:', error);
-      alert('保存に失敗しました');
+      const errMsg = error.response?.data?.error || error.response?.data?.details || error.message || '不明なエラー';
+      alert(`保存に失敗しました: ${typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg)}`);
     } finally {
       setLoading(false);
     }

@@ -191,12 +191,12 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                             backgroundColor: scheduleColor,
                             minHeight: '1.5rem',
                           }}
-                          title={`${schedule.activityDescription} (${schedule.startTime}-${schedule.endTime})${calendarViewMode === 'all' && schedule.user ? ` - ${schedule.user.name}` : ''}`}
+                          title={`${(schedule as any).title || schedule.activityDescription} (${schedule.startTime}-${schedule.endTime})${calendarViewMode === 'all' && schedule.user ? ` - ${schedule.user.name}` : ''}`}
                         >
                           <div className="flex items-start justify-between h-full">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate text-white">
-                                {schedule.activityDescription}
+                                {(schedule as any).title || schedule.activityDescription}
                               </p>
                               <p className="text-xs text-white/80 truncate">
                                 {schedule.startTime}-{schedule.endTime}
