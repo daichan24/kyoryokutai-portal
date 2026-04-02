@@ -100,9 +100,7 @@ export const ActivityExpenses: React.FC = () => {
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
 
-  const procedureBody =
-    (guidance?.procedureText?.trim() ? guidance.procedureText : DEFAULT_EXPENSE_PROCEDURE) ||
-    DEFAULT_EXPENSE_PROCEDURE;
+
 
   React.useEffect(() => {
     setEditingId(null);
@@ -118,6 +116,10 @@ export const ActivityExpenses: React.FC = () => {
       return r.data;
     },
   });
+
+  const procedureBody =
+    (guidance?.procedureText?.trim() ? guidance.procedureText : DEFAULT_EXPENSE_PROCEDURE) ||
+    DEFAULT_EXPENSE_PROCEDURE;
 
   React.useEffect(() => {
     if (guidance) setGuidanceDraft(guidance.procedureText || '');
