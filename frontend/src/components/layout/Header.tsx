@@ -81,18 +81,20 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <div className="flex items-center space-x-2 md:space-x-4">
             {user && (
               <>
-                {/* 受付ボックス（未読数表示） */}
-                {unreadReception?.count && unreadReception.count > 0 && (
-                  <Link
-                    to="/reception-box"
-                    className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline whitespace-nowrap"
-                    title="受付ボックス"
-                  >
-                    <Box className="h-4 w-4" />
-                    <span>{unreadReception.count}</span>
-                  </Link>
-                )}
-                {user.role === 'MEMBER' && (unreadAnnounce?.count ?? 0) > 0 && (
+                {/* 受付ボックス（常に表示、未読数バッジ付き） */}
+                <Link
+                  to="/reception-box"
+                  className="relative flex items-center gap-1 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title="受付ボックス"
+                >
+                  <Box className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                  {(unreadReception?.count ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[1.1rem] h-[1.1rem] flex items-center justify-center px-0.5">
+                      {unreadReception!.count > 99 ? '99+' : unreadReception!.count}
+                    </span>
+                  )}
+                </Link>
+                {(unreadAnnounce?.count ?? 0) > 0 && (
                   <Link
                     to="/announcements"
                     className="text-sm font-semibold text-primary hover:underline whitespace-nowrap"

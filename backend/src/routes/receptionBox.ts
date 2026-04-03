@@ -90,7 +90,7 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
         },
       });
 
-      count = scheduleCount + consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount;
+      count += scheduleCount + consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount;
     }
 
     res.json({ count });

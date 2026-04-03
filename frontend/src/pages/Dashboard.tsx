@@ -490,7 +490,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-card dark:bg-gray-800 p-6 rounded-lg shadow border border-border dark:border-gray-700">
+        <Link to="/reception-box" className="bg-card dark:bg-gray-800 p-6 rounded-lg shadow border border-border dark:border-gray-700 hover:shadow-md transition-shadow block">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
               <Inbox className="h-6 w-6 text-orange-600 dark:text-orange-400" />
@@ -502,7 +502,7 @@ export const Dashboard: React.FC = () => {
               </p>
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* 受付ボックスセクション */}
