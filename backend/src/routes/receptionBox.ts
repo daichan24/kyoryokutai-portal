@@ -77,7 +77,9 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
       // ⑤ 復命書の提出（メンバーから届いたもの）
       const inspectionCount = await prisma.inspection.count({
         where: {
-          status: 'SUBMITTED',
+          user: {
+            role: 'MEMBER',
+          },
         },
       });
 
@@ -87,7 +89,7 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
           submittedAt: {
             not: null,
           },
-          user: {
+          creator: {
             role: 'MEMBER',
           },
         },
