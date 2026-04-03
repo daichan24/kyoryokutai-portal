@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, ChevronLeft, ChevronRight, CalendarDays, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, RefreshCw, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, RefreshCw, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType, Project, Task, User } from '../types';
@@ -464,11 +464,7 @@ export const Schedule: React.FC = () => {
             <RefreshCw className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">更新</span>
           </Button>
-          <Button onClick={() => handleCreateSchedule(new Date())}>
-            <Plus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">新規作成</span>
-            <span className="sm:hidden leading-tight text-xs">新規<br/>作成</span>
-          </Button>
+
         </div>
       </div>
 

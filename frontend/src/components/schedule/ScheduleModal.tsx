@@ -40,24 +40,21 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [title, setTitle] = useState(''); // タイトル（短い説明）
   const [activityDescription, setActivityDescription] = useState(''); // 活動内容（詳細）
   const [freeNote, setFreeNote] = useState('');
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [supportEventId, setSupportEventId] = useState<string | null>(null);
   const [supportEvents, setSupportEvents] = useState<Array<{ id: string; eventName: string; startDate: string }>>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
-  const [autoCreateTask, setAutoCreateTask] = useState(true);
+
   const { user: currentUser } = useAuthStore();
 
   useEffect(() => {
     fetchLocations();
     fetchUsers();
-    fetchTasks();
     fetchProjects();
     fetchSupportEvents();
 
@@ -71,7 +68,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setTitle(schedule.title || '');
       setActivityDescription(schedule.activityDescription);
       setFreeNote(schedule.freeNote || '');
-      setSelectedTaskId(schedule.taskId || null);
       setSelectedProjectId(schedule.projectId || null);
       setSupportEventId(schedule.supportEventId || null);
       // 編集時も参加者を追加・変更できるようにする
@@ -95,9 +91,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       if (defaultEndTime) {
         setEndTime(defaultEndTime);
       }
-      if (defaultTaskId) {
-        setSelectedTaskId(defaultTaskId);
-      }
       if (defaultProjectId) {
         setSelectedProjectId(defaultProjectId);
       }
@@ -105,9 +98,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         setActivityDescription(defaultActivityDescription);
       }
       setSupportEventId(null);
-      setAutoCreateTask(true);
     }
-  }, [schedule, defaultDate, defaultStartTime, defaultEndTime, defaultTaskId, defaultProjectId, defaultActivityDescription]);
+  }, [schedule, defaultDate, defaultStartTime, defaultEndTime, defaultProjectId, defaultActivityDescription]);
 
   const fetchSupportEvents = async () => {
     try {
@@ -122,36 +114,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       );
     } catch {
       setSupportEvents([]);
-    }
-  };
-
-  const fetchTasks = async () => {
-    try {
-      // メンバー以外の役職の場合は自分のミッションのみ取得
-      let missionsUrl = '/api/missions';
-      if (currentUser?.role !== 'MEMBER') {
-        missionsUrl = `/api/missions?userId=${currentUser?.id}`;
-      }
-      
-      // ユーザーのミッションを取得
-      const missionsResponse = await api.get(missionsUrl);
-      const missions = missionsResponse.data || [];
-      
-      // 各ミッションからタスクを取得
-      const allTasks: any[] = [];
-      for (const mission of missions) {
-        try {
-          const tasksResponse = await api.get(`/api/missions/${mission.id}/tasks`);
-          const tasks = tasksResponse.data || [];
-          allTasks.push(...tasks);
-        } catch (error) {
-          console.error(`Failed to fetch tasks for mission ${mission.id}:`, error);
-        }
-      }
-      setTasks(allTasks);
-    } catch (error) {
-      console.error('Failed to fetch tasks:', error);
-      setTasks([]);
     }
   };
 
@@ -242,9 +204,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
       console.log('Sending schedule data:', JSON.stringify(data, null, 2));
 
-      if (selectedTaskId) {
-        data.taskId = selectedTaskId;
-      }
       if (selectedProjectId) {
         data.projectId = selectedProjectId;
       }
@@ -252,14 +211,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         data.supportEventId = supportEventId;
       } else if (schedule) {
         data.supportEventId = null;
-      }
-
-      // タスク自動作成フラグがONの場合は、スケジュールタイトルをタスクとして自動作成
-      if (autoCreateTask && !schedule && title && selectedProjectId) {
-        data.autoCreateTask = {
-          title: title.trim(),
-          projectId: selectedProjectId,
-        };
       }
 
       // 新規作成時・編集時ともに参加者を追加・変更可能
@@ -503,11 +454,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             </label>
             <select
               value={selectedProjectId || ''}
-              onChange={(e) => {
-                setSelectedProjectId(e.target.value || null);
-                // プロジェクトが変更されたら、タスク選択をクリア
-                setSelectedTaskId(null);
-              }}
+              onChange={(e) => setSelectedProjectId(e.target.value || null)}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               disabled={readOnly}
             >
@@ -518,20 +465,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 </option>
               ))}
             </select>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="autoCreateTask"
-              checked={autoCreateTask}
-              onChange={(e) => setAutoCreateTask(e.target.checked)}
-              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 dark:border-gray-600 rounded"
-              disabled={readOnly || !selectedProjectId}
-            />
-            <label htmlFor="autoCreateTask" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              タスクを自動作成（スケジュールタイトルをタスクとして登録）
-            </label>
           </div>
 
           <div>
