@@ -106,7 +106,7 @@ export const ReceptionBox: React.FC = () => {
                       {c.member.name}さんからの相談: {c.subject || '（件名なし）'}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {format(new Date(c.createdAt), 'yyyy/MM/dd HH:mm', { locale: ja })}
+                      {c.createdAt ? format(new Date(c.createdAt), 'yyyy/MM/dd HH:mm', { locale: ja }) : '日時不明'}
                     </p>
                   </div>
                   <Link to="/consultations" className="w-full sm:w-auto">
@@ -133,7 +133,7 @@ export const ReceptionBox: React.FC = () => {
                   <div>
                     <p className="font-medium text-gray-900 dark:text-gray-100">{r.user.name}さんの週報</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      提出日時: {format(new Date(r.submittedAt), 'yyyy/MM/dd HH:mm', { locale: ja })}
+                      提出日時: {r.submittedAt ? format(new Date(r.submittedAt), 'yyyy/MM/dd HH:mm', { locale: ja }) : '不明'}
                     </p>
                   </div>
                   <Link to="/reports/weekly" className="w-full sm:w-auto">
@@ -162,7 +162,7 @@ export const ReceptionBox: React.FC = () => {
                       {i.user.name}さんの復命書 ({i.destination || '宛先なし'})
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      作成: {format(new Date(i.createdAt), 'yyyy/MM/dd HH:mm', { locale: ja })}
+                      作成: {i.createdAt ? format(new Date(i.createdAt), 'yyyy/MM/dd HH:mm', { locale: ja }) : '不明'}
                     </p>
                   </div>
                   <Link to="/inspections" className="w-full sm:w-auto">
@@ -191,7 +191,7 @@ export const ReceptionBox: React.FC = () => {
                       {m.creator.name}さんの月次報告 ({m.targetMonth})
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      提出日時: {format(new Date(m.submittedAt), 'yyyy/MM/dd HH:mm', { locale: ja })}
+                      提出日時: {m.submittedAt ? format(new Date(m.submittedAt), 'yyyy/MM/dd HH:mm', { locale: ja }) : '不明'}
                     </p>
                   </div>
                   <Link to="/reports/monthly" className="w-full sm:w-auto">

@@ -166,7 +166,7 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
 
                 {contactData.role && (
                   <div>
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">所属</span>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">種別</span>
                     <p className="text-gray-900 dark:text-gray-100">{contactData.role}</p>
                   </div>
                 )}

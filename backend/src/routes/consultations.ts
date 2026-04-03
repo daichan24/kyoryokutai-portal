@@ -97,7 +97,7 @@ router.post('/', authorize('MEMBER'), async (req: AuthRequest, res) => {
       });
       return res.status(201).json(row);
     }
-  } catch (e) {
+  } catch (e: any) {
     if (e instanceof z.ZodError) {
       return res.status(400).json({ error: e.errors });
     }
@@ -119,7 +119,7 @@ router.get('/mine', authorize('MEMBER'), async (req: AuthRequest, res) => {
       take: 100,
     });
     res.json(list);
-  } catch (e) {
+  } catch (e: any) {
     console.error('consultation mine:', e);
     res.status(500).json({ error: '取得に失敗しました' });
   }
@@ -148,7 +148,7 @@ router.get('/inbox', async (req: AuthRequest, res) => {
 
     const filtered = all.filter((c) => consultationMatchesStaff(c, req.user!.id, req.user!.role));
     res.json(filtered);
-  } catch (e) {
+  } catch (e: any) {
     console.error('consultation inbox:', e);
     res.status(500).json({ error: '取得に失敗しました' });
   }
@@ -194,7 +194,7 @@ router.patch('/:id/resolve', async (req: AuthRequest, res) => {
     });
 
     res.json(updated);
-  } catch (e) {
+  } catch (e: any) {
     if (e instanceof z.ZodError) {
       return res.status(400).json({ error: e.errors });
     }
@@ -237,7 +237,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
     }
 
     res.json(row);
-  } catch (e) {
+  } catch (e: any) {
     console.error('consultation detail:', e);
     res.status(500).json({ error: '取得に失敗しました' });
   }
@@ -286,7 +286,7 @@ router.post('/:id/comments', async (req: AuthRequest, res) => {
     });
 
     res.status(201).json(comment);
-  } catch (e) {
+  } catch (e: any) {
     if (e instanceof z.ZodError) return res.status(400).json({ error: e.errors });
     console.error('consultation comment create:', e);
     res.status(500).json({ error: 'コメントの投稿に失敗しました' });

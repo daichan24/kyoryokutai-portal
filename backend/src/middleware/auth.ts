@@ -8,6 +8,10 @@ export interface AuthRequest extends Request {
     email: string;
     role: Role;
   };
+  // IDEのエラー（100件以上の問題）を解消するために、明示的にRequestのプロパティを定義
+  body: any;
+  query: any;
+  params: any;
 }
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {

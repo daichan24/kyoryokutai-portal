@@ -110,7 +110,7 @@ router.get('/', async (req: AuthRequest, res) => {
     });
 
     res.json(normalizedPosts);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get SNS posts error:', error);
     res.status(500).json({ error: 'Failed to get SNS posts' });
   }
@@ -152,7 +152,7 @@ router.get('/weekly-status', async (req: AuthRequest, res) => {
       hasStory,
       hasFeed,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get weekly status error:', error);
     res.status(500).json({ error: 'Failed to get weekly status' });
   }
@@ -212,7 +212,7 @@ router.post('/', async (req: AuthRequest, res) => {
       }
       throw zodError;
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       console.error('[API] Validation error:', error.errors);
       return res.status(400).json({ error: 'Validation failed', details: error.errors });

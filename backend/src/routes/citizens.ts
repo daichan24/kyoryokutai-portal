@@ -90,7 +90,7 @@ router.post('/', async (req: AuthRequest, res) => {
 
     // 成功時: status 200 + JSONを返す
     res.status(200).json(contact);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [API] エラー発生:', error);
 
     // バリデーションエラーの場合
@@ -165,7 +165,7 @@ router.get('/', async (req: AuthRequest, res) => {
 
     console.log(`✅ [API] ${contacts.length}件の町民情報を取得`);
 
-    // ステータス（在籍中/任期終了）を計算して追加
+    // status（在籍中/任期終了）を計算して追加
     const contactsWithStatus = contacts.map(contact => {
       let status = '在籍中';
       
@@ -184,7 +184,54 @@ router.get('/', async (req: AuthRequest, res) => {
 
     // 成功時: status 200 + JSONを返す
     res.status(200).json(contactsWithStatus);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ [API] エラー発生:', error);
+    res.status(500).json({ error: '町民情報の取得に失敗しました' });
+  }
+});
+
+/**
+ * 【API定義】町民（協力隊メンバー）詳細取得
+ * 
+ * 役割: 特定の町民情報をIDで取得（履歴も含む）
+ * エンドポイント: GET /api/citizens/:id
+ */
+router.get('/:id', async (req: AuthRequest, res) => {
+  console.log(`🔵 [API] GET /api/citizens/${req.params.id} リクエスト受信`);
+
+  try {
+    const contact = await prisma.contact.findUnique({
+      where: { id: req.params.id },
+      include: {
+        creator: { select: { id: true, name: true } },
+        histories: {
+          include: {
+            user: { select: { id: true, name: true } },
+            project: { select: { id: true, projectName: true } },
+          },
+          orderBy: { date: 'desc' },
+        },
+      },
+    });
+
+    if (!contact) {
+      return res.status(404).json({ error: '町民情報が見つかりません' });
+    }
+
+    // ステータス（在籍中/任期終了）を計算
+    let status = '在籍中';
+    if (contact.endYear) {
+      const currentYear = new Date().getFullYear();
+      if (currentYear > contact.endYear) {
+        status = '任期終了';
+      }
+    }
+
+    res.status(200).json({
+      ...contact,
+      status,
+    });
+  } catch (error: any) {
     console.error('❌ [API] エラー発生:', error);
     res.status(500).json({ error: '町民情報の取得に失敗しました' });
   }
@@ -228,7 +275,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     // 成功時: status 200 + JSONを返す
     res.status(200).json(contact);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [API] エラー発生:', error);
 
     // バリデーションエラーの場合
@@ -270,7 +317,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
 
     console.log('✅ [API] DB削除成功。削除されたID:', req.params.id);
     res.status(200).json({ message: '削除しました' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [API] エラー発生:', error);
     res.status(500).json({ error: '町民情報の削除に失敗しました' });
   }
