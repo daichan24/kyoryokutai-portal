@@ -11,8 +11,7 @@ interface Contact {
   name: string;
   organization?: string;
   category?: string; // ジャンル
-  relatedMembers?: string[]; // 関わった協力隊
-  relationshipType?: '協力的' | '要注意' | '未知' | '未登録'; // 関わり方
+  relatedMembers?: string[]; // 関わった協力隊（MEMBERのみ）
   memo?: string; // 備考
   tags: string[];
   role?: '現役' | 'OB' | 'サポート' | '役場';
@@ -40,14 +39,15 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
 
-  // ユーザー一覧を取得（協力隊メンバー選択用）
+  // ユーザー一覧を取得（協力隊メンバー選択用：MEMBERのみ）
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         const response = await api.get<User[]>('/api/users');
-        // サポート・行政・マスターユーザーの場合は表示順0番目のユーザーを除外（テストユーザー）
+        // MEMBERロールのみに絞る（テストユーザー除外）
         const filteredUsers = (response.data || []).filter(u => {
-          if ((user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT' || user?.role === 'MASTER') && (u.displayOrder ?? 0) === 0 && u.role === 'MEMBER') return false;
+          if (u.role !== 'MEMBER') return false;
+          if ((u.displayOrder ?? 0) === 0) return false;
           return true;
         });
         setUsers(filteredUsers);
@@ -57,7 +57,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       }
     };
     fetchUsers();
-  }, [user]);
+  }, []);
 
   // 初期化：編集時は既存データをセット、新規作成時は空にする
   useEffect(() => {

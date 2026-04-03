@@ -388,8 +388,8 @@ export const Schedule: React.FC = () => {
                 >
                   全体
                 </button>
-                {/* スタッフは特定メンバーも選択可能 */}
-                {isStaff && availableMembers.length > 0 && (
+                {/* 全ロールで特定メンバーを選択可能 */}
+                {availableMembers.length > 0 && (
                   <select
                     value={selectedMemberId || ''}
                     onChange={(e) => {
@@ -403,7 +403,7 @@ export const Schedule: React.FC = () => {
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
                     }`}
                   >
-                    <option value="">個人を選択</option>
+                    <option value="">{isStaff ? '個人を選択' : '他のメンバー'}</option>
                     {availableMembers.map((member) => (
                       <option key={member.id} value={member.id}>{member.name}</option>
                     ))}
