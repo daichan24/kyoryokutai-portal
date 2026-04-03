@@ -81,6 +81,8 @@ model User {
   consultationsAsMember Consultation[] @relation("ConsultationMember")
   consultationsTargeted Consultation[] @relation("ConsultationTargetUser")
   consultationsResolved Consultation[] @relation("ConsultationResolvedBy")
+  consultationsAssigned Consultation[] @relation("ConsultationAssignedUsers")
+  consultationComments ConsultationComment[] @relation("ConsultationCommentAuthor")
 
   activityExpenseBudget     ActivityExpenseBudget?  @relation("ActivityExpenseBudgetMember")
   activityExpenseEntries    ActivityExpenseEntry[]  @relation("ActivityExpenseEntryMember")
@@ -483,9 +485,27 @@ model Consultation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  assignedUsers User[] @relation("ConsultationAssignedUsers")
+  comments      ConsultationComment[]
+
   @@index([memberId, status])
   @@index([status, createdAt])
   @@index([audience, status])
+}
+
+model ConsultationComment {
+  id             String   @id @default(uuid())
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  authorId       String
+  author         User     @relation("ConsultationCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body           String   @db.Text
+  isInternal     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([consultationId])
+  @@index([authorId])
 }
 
 enum ConsultationAudience {
@@ -826,7 +846,6 @@ model SNSPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, week, postType], name: "userId_week_postType")
   @@index([userId, week])
   @@index([userId, postedAt])
 }
@@ -920,6 +939,7 @@ model Contact {
   category         String? // ジャンル
   relatedMembers   String[] // 関わった協力隊（User IDの配列）
   relationshipType String? // 関わり方: '協力的' | '要注意' | '未知' | '未登録'
+  instagramUrl     String? // InstagramのURL
 
   createdBy String
   creator   User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)

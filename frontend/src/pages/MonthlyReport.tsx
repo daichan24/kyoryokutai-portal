@@ -246,7 +246,7 @@ export const MonthlyReport: React.FC = () => {
           onUpdated={() => {
             queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
           }}
-          viewMode="edit"
+          viewMode={canCreate ? 'edit' : 'preview'}
         />
       )}
     </div>

@@ -55,6 +55,7 @@ const updateUserSchema = z.object({
   termEnd: z.string().optional(),
   avatarColor: z.string().optional(),
   displayOrder: z.number().int().optional(), // 表示順（メンバー以外が設定可能）
+  snsLinks: z.any().optional(),
 });
 
 router.get('/', authorize('MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, res) => {
@@ -90,6 +91,7 @@ router.get('/', authorize('MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT'), async (r
       avatarColor: true,
       avatarLetter: true,
       displayOrder: true,
+      snsLinks: true,
       createdAt: true,
       updatedAt: true,
     } as const;
@@ -134,6 +136,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
       avatarColor: true,
       avatarLetter: true,
       displayOrder: true,
+      snsLinks: true,
       createdAt: true,
       updatedAt: true,
     } as const;
@@ -222,6 +225,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         termEnd: true,
         avatarColor: true,
         displayOrder: true,
+        snsLinks: true,
         createdAt: true,
         updatedAt: true,
         ...(req.user!.role === 'MASTER'

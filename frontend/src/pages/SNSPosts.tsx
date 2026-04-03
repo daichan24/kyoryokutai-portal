@@ -29,8 +29,8 @@ interface MemberStatus {
   userName: string;
   hasFeed: boolean;
   hasStory: boolean;
-  feedPost?: SNSPost;
-  storyPost?: SNSPost;
+  feedPosts: SNSPost[];
+  storyPosts: SNSPost[];
 }
 
 export const SNSPosts: React.FC = () => {
@@ -125,8 +125,10 @@ export const SNSPosts: React.FC = () => {
     };
   }, [personalPosts]);
 
-  const postForWeek = (weekKey: string, type: 'STORY' | 'FEED') =>
-    (personalPosts || []).find((p) => p.week === weekKey && p.postType === type);
+  const postsForWeek = (weekKey: string, type: 'STORY' | 'FEED') =>
+    (personalPosts || [])
+      .filter((p) => p.week === weekKey && p.postType === type)
+      .sort((a, b) => new Date(a.postedAt).getTime() - new Date(b.postedAt).getTime());
 
   // 閲覧タブ用の投稿取得（全員分）
   const { data: allPosts, isLoading: isLoadingView } = useQuery<SNSPost[]>({
@@ -171,18 +173,18 @@ export const SNSPosts: React.FC = () => {
         new Date(p.postedAt) < weekEnd
       );
 
-      const feedPost = memberPosts.find(p => p.postType === 'FEED');
-      const storyPost = memberPosts.find(p => p.postType === 'STORY');
-
-      return {
-        userId: member.id,
-        userName: member.name,
-        hasFeed: !!feedPost,
-        hasStory: !!storyPost,
-        feedPost,
-        storyPost,
-      };
-    });
+      const feedPosts = memberPosts.filter(p => p.postType === 'FEED');
+      const storyPosts = memberPosts.filter(p => p.postType === 'STORY');
+ 
+       return {
+         userId: member.id,
+         userName: member.name,
+         hasFeed: feedPosts.length > 0,
+         hasStory: storyPosts.length > 0,
+         feedPosts,
+         storyPosts,
+       };
+     });
   }, [allPosts, members, weekStart, weekEnd]);
 
   // 過去の記録（閲覧モード用、月別・ユーザー別ソート）
@@ -362,14 +364,18 @@ export const SNSPosts: React.FC = () => {
                         <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{status.userName}</td>
                         <td className="py-3 px-4 text-center">
                           {status.hasFeed ? (
-                            <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">
+                              ✓ {status.feedPosts.length > 1 ? `${status.feedPosts.length}件` : '投稿済み'}
+                            </span>
                           ) : (
                             <span className="text-red-600 dark:text-red-400 font-medium">未投稿</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           {status.hasStory ? (
-                            <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">
+                              ✓ {status.storyPosts.length > 1 ? `${status.storyPosts.length}件` : '投稿済み'}
+                            </span>
                           ) : (
                             <span className="text-red-600 dark:text-red-400 font-medium">未投稿</span>
                           )}
@@ -476,54 +482,82 @@ export const SNSPosts: React.FC = () => {
                 </thead>
                 <tbody>
                   {personalWeekRows.map((row) => {
-                    const sPost = postForWeek(row.weekKey, 'STORY');
-                    const fPost = postForWeek(row.weekKey, 'FEED');
+                    const sPosts = postsForWeek(row.weekKey, 'STORY');
+                    const fPosts = postsForWeek(row.weekKey, 'FEED');
                     return (
                       <tr key={row.weekKey} className="border-b border-gray-100 dark:border-gray-700/80">
                         <td className="py-2 px-4 text-gray-800 dark:text-gray-200 whitespace-nowrap">{row.label}</td>
                         <td className="py-2 px-2 text-center">
-                          <button
-                            type="button"
-                            className="w-full min-h-[44px] rounded-md border border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs"
-                            onClick={() => {
-                              if (sPost) setEditingPost(sPost);
-                              else {
+                          <div className="flex flex-col gap-1 items-center">
+                            {sPosts.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                className="w-full min-h-[32px] rounded-md border border-green-200 dark:border-green-900/50 bg-green-50/50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-xs px-2 transition-colors"
+                                onClick={() => setEditingPost(p)}
+                              >
+                                <span className="text-green-600 dark:text-green-400 font-medium">
+                                  ✓ {format(new Date(p.postedAt), 'M/d', { locale: ja })}
+                                </span>
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              className={`w-full min-h-[32px] rounded-md border border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs flex items-center justify-center gap-1 ${
+                                sPosts.length > 0 ? 'mt-1 py-1' : 'min-h-[44px]'
+                              }`}
+                              onClick={() => {
                                 setAddModalDefaultType('STORY');
                                 setAddModalDefaultDate(format(row.weekStart, 'yyyy-MM-dd'));
                                 setIsAddModalOpen(true);
-                              }
-                            }}
-                          >
-                            {sPost ? (
-                              <span className="text-green-600 dark:text-green-400 font-medium">
-                                ✓ {format(new Date(sPost.postedAt), 'M/d', { locale: ja })}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">— 未記録</span>
-                            )}
-                          </button>
+                              }}
+                            >
+                              {sPosts.length > 0 ? (
+                                <>
+                                  <Plus className="w-3 h-3" />
+                                  追加
+                                </>
+                              ) : (
+                                <span className="text-gray-400">— 未記録</span>
+                              )}
+                            </button>
+                          </div>
                         </td>
                         <td className="py-2 px-2 text-center">
-                          <button
-                            type="button"
-                            className="w-full min-h-[44px] rounded-md border border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs"
-                            onClick={() => {
-                              if (fPost) setEditingPost(fPost);
-                              else {
+                          <div className="flex flex-col gap-1 items-center">
+                            {fPosts.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                className="w-full min-h-[32px] rounded-md border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-xs px-2 transition-colors"
+                                onClick={() => setEditingPost(p)}
+                              >
+                                <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                  ✓ {format(new Date(p.postedAt), 'M/d', { locale: ja })}
+                                </span>
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              className={`w-full min-h-[32px] rounded-md border border-dashed border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs flex items-center justify-center gap-1 ${
+                                fPosts.length > 0 ? 'mt-1 py-1' : 'min-h-[44px]'
+                              }`}
+                              onClick={() => {
                                 setAddModalDefaultType('FEED');
                                 setAddModalDefaultDate(format(row.weekStart, 'yyyy-MM-dd'));
                                 setIsAddModalOpen(true);
-                              }
-                            }}
-                          >
-                            {fPost ? (
-                              <span className="text-green-600 dark:text-green-400 font-medium">
-                                ✓ {format(new Date(fPost.postedAt), 'M/d', { locale: ja })}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">— 未記録</span>
-                            )}
-                          </button>
+                              }}
+                            >
+                              {fPosts.length > 0 ? (
+                                <>
+                                  <Plus className="w-3 h-3" />
+                                  追加
+                                </>
+                              ) : (
+                                <span className="text-gray-400">— 未記録</span>
+                              )}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

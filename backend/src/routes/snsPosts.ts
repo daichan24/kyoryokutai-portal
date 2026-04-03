@@ -171,15 +171,9 @@ router.post('/', async (req: AuthRequest, res) => {
       const postedAt = parsePostedAtInput(data.postedAt);
       const { weekKey } = getWeekBoundaryForDate(postedAt);
 
-      const post = await prisma.sNSPost.upsert({
-        where: {
-          userId_week_postType: {
-            userId: req.user!.id,
-            week: weekKey,
-            postType: data.postType,
-          },
-        },
-        create: {
+      console.log('[API] Creating new SNS post:', data.postType, 'for user:', req.user!.id);
+      const post = await prisma.sNSPost.create({
+        data: {
           userId: req.user!.id,
           week: weekKey,
           postedAt,
@@ -188,18 +182,6 @@ router.post('/', async (req: AuthRequest, res) => {
           note: data.note && data.note.trim() !== '' ? data.note : null,
           followerCount:
             data.followerCount !== undefined && data.followerCount !== null ? data.followerCount : null,
-        },
-        update: {
-          postedAt,
-          week: weekKey,
-          url: data.url !== undefined ? (data.url && data.url.trim() !== '' ? data.url : null) : undefined,
-          note: data.note !== undefined ? (data.note && data.note.trim() !== '' ? data.note : null) : undefined,
-          followerCount:
-            data.followerCount !== undefined
-              ? data.followerCount === null
-                ? null
-                : data.followerCount
-              : undefined,
         },
         include: { user: true },
       });
@@ -214,32 +196,18 @@ router.post('/', async (req: AuthRequest, res) => {
         const legacyPostType: PostType =
           legacyData.postType === 'BOTH' || !legacyData.postType ? 'STORY' : (legacyData.postType as PostType);
         const postedAtLegacy = legacyData.postDate ? new Date(legacyData.postDate) : new Date();
-        const existing = await prisma.sNSPost.findFirst({
-          where: { userId: req.user!.id, week: legacyData.week, postType: legacyPostType },
+        
+        const post = await prisma.sNSPost.create({
+          data: {
+            userId: req.user!.id,
+            week: legacyData.week,
+            postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
+            postType: legacyPostType,
+            isPosted: legacyData.isPosted,
+            postedAt: postedAtLegacy,
+          },
+          include: { user: true },
         });
-        const post = existing
-          ? await prisma.sNSPost.update({
-              where: { id: existing.id },
-              data: {
-                postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-                postType: legacyData.postType ? (legacyData.postType as PostType) : undefined,
-                isPosted: legacyData.isPosted,
-                postedAt: postedAtLegacy,
-              },
-              include: { user: true },
-            })
-          : await prisma.sNSPost.create({
-              data: {
-                userId: req.user!.id,
-                week: legacyData.week,
-                postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-                postType: legacyPostType,
-                isPosted: legacyData.isPosted,
-                postedAt: postedAtLegacy,
-              },
-              include: { user: true },
-            });
-
         return res.json(post);
       }
       throw zodError;

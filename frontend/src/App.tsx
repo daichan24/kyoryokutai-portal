@@ -2,7 +2,6 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { Layout } from './components/layout/Layout';
-import { PcOnlyPage } from './components/layout/PcOnlyPage';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 
@@ -39,6 +38,7 @@ const Consultations = lazy(() => import('./pages/Consultations').then((m) => ({ 
 const ActivityExpenses = lazy(() => import('./pages/ActivityExpenses').then((m) => ({ default: m.ActivityExpenses })));
 const Announcements = lazy(() => import('./pages/Announcements').then((m) => ({ default: m.Announcements })));
 const Wishes = lazy(() => import('./pages/Wishes').then((m) => ({ default: m.Wishes })));
+const ReceptionBox = lazy(() => import('./pages/ReceptionBox').then((m) => ({ default: m.ReceptionBox })));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -112,9 +112,7 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Layout>
-                <PcOnlyPage title="週次報告">
-                  <WeeklyReport />
-                </PcOnlyPage>
+                <WeeklyReport />
               </Layout>
             </PrivateRoute>
           }
@@ -268,9 +266,7 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Layout>
-                <PcOnlyPage title="復命書（視察）">
-                  <Inspections />
-                </PcOnlyPage>
+                <Inspections />
               </Layout>
             </PrivateRoute>
           }
@@ -279,11 +275,9 @@ const App: React.FC = () => {
         <Route
           path="/reports/monthly"
           element={
-            <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT']}>
+            <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT', 'GOVERNMENT']}>
               <Layout>
-                <PcOnlyPage title="月次報告">
-                  <MonthlyReport />
-                </PcOnlyPage>
+                <MonthlyReport />
               </Layout>
             </RoleProtectedRoute>
           }
@@ -294,9 +288,7 @@ const App: React.FC = () => {
           element={
             <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
               <Layout>
-                <PcOnlyPage title="支援記録">
-                  <SupportRecords />
-                </PcOnlyPage>
+                <SupportRecords />
               </Layout>
             </RoleProtectedRoute>
           }
@@ -307,9 +299,7 @@ const App: React.FC = () => {
           element={
             <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT', 'GOVERNMENT']}>
               <Layout>
-                <PcOnlyPage title="面談・月次スケジュール">
-                  <InterviewMonthlySchedules />
-                </PcOnlyPage>
+                <InterviewMonthlySchedules />
               </Layout>
             </RoleProtectedRoute>
           }
@@ -354,6 +344,17 @@ const App: React.FC = () => {
             <PrivateRoute>
               <Layout>
                 <Announcements />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/reception-box"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <ReceptionBox />
               </Layout>
             </PrivateRoute>
           }

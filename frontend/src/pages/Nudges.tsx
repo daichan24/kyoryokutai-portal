@@ -26,7 +26,12 @@ interface NudgeDocument {
 interface NudgeRevision {
   id: string;
   content: string;
-  updatedBy: {
+  updatedBy?: {
+    id: string;
+    name: string;
+    avatarColor?: string;
+  };
+  updater?: {
     id: string;
     name: string;
     avatarColor?: string;
@@ -275,19 +280,41 @@ export const Nudges: React.FC = () => {
                         <div
                           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
                           style={{
-                            backgroundColor: revision.updatedBy.avatarColor || '#6B7280',
+                            backgroundColor: (revision.updatedBy || revision.updater)?.avatarColor || '#6B7280',
                           }}
                         >
-                          {(revision.updatedBy.avatarLetter || revision.updatedBy.name || '').charAt(0)}
+                          {((revision.updatedBy || revision.updater)?.name || '').charAt(0)}
                         </div>
-                        <span className="font-medium dark:text-gray-100">{revision.updatedBy.name}</span>
+                        <span className="font-medium dark:text-gray-100">{(revision.updatedBy || revision.updater)?.name}</span>
                       </div>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {format(new Date(revision.createdAt), 'yyyy年M月d日 HH:mm')}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {format(new Date(revision.createdAt), 'yyyy年M月d日 HH:mm')}
+                        </span>
+                        {canEdit && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (confirm('このバージョンに復元しますか？（現在の内容は新しい履歴として保存されます）')) {
+                                saveMutation.mutate({
+                                  title: document?.title || '協力隊細則',
+                                  content: revision.content
+                                });
+                                setIsHistoryOpen(false);
+                              }
+                            }}
+                          >
+                            この版に戻す
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-3 whitespace-pre-wrap text-gray-700 dark:text-gray-300 text-sm">
-                      {revision.content}
+                    <div className="mt-3 prose prose-sm max-w-none dark:prose-invert border-t dark:border-gray-700 pt-3">
+                      <div
+                        className="text-gray-700 dark:text-gray-300"
+                        dangerouslySetInnerHTML={{ __html: revision.content }}
+                      />
                     </div>
                   </div>
                 ))

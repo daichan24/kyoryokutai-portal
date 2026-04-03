@@ -177,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     const items: Array<{ to: string; icon: NavIcon; label: string }> = [
       { to: '/reports/weekly', icon: FileText, label: '週次報告' },
     ];
-    if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
+    if (user?.role === 'SUPPORT' || user?.role === 'MASTER' || user?.role === 'GOVERNMENT') {
       items.push({ to: '/reports/monthly', icon: FileBarChart, label: '月次報告' });
     }
     items.push({ to: '/inspections', icon: Eye, label: '復命書' });

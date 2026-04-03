@@ -17,6 +17,7 @@ interface Contact {
   role?: '現役' | 'OB' | 'サポート' | '役場';
   startYear?: number;
   endYear?: number;
+  instagramUrl?: string;
 }
 
 interface ContactModalProps {
@@ -36,6 +37,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const [category, setCategory] = useState('');
   const [relatedMembers, setRelatedMembers] = useState<string[]>([]);
   const [memo, setMemo] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
 
@@ -67,6 +69,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       setCategory(contact.category || '');
       setRelatedMembers(contact.relatedMembers || []);
       setMemo(contact.memo || '');
+      setInstagramUrl(contact.instagramUrl || '');
     } else {
       // 新規作成時：自分をデフォルトで選択
       setName('');
@@ -74,6 +77,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       setCategory('');
       setRelatedMembers(user ? [user.id] : []);
       setMemo('');
+      setInstagramUrl('');
     }
   }, [contact, user]);
 
@@ -90,6 +94,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         category: category || undefined,
         relatedMembers: relatedMembers,
         memo: memo || undefined,
+        instagramUrl: instagramUrl || undefined,
       };
 
       console.log('🔵 [UI] APIに送信するデータ:', data);
@@ -222,6 +227,15 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               placeholder="備考を入力"
             />
           </div>
+
+          {/* Instagram URL */}
+          <Input
+            label="Instagram URL"
+            type="url"
+            value={instagramUrl}
+            onChange={(e) => setInstagramUrl(e.target.value)}
+            placeholder="https://www.instagram.com/username/"
+          />
 
           <div className="flex justify-end space-x-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

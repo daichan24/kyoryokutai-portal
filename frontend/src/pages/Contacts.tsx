@@ -9,7 +9,7 @@ import { ContactHistoryModal } from '../components/contact/ContactHistoryModal';
 import { ContactDetailModal } from '../components/contact/ContactDetailModal';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
-import { LayoutGrid, List, HelpCircle, X, Trash2 } from 'lucide-react';
+import { LayoutGrid, List, HelpCircle, X, Trash2, Instagram } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -24,6 +24,7 @@ interface Contact {
   role?: '現役' | 'OB' | 'サポート' | '役場';
   startYear?: number;
   endYear?: number;
+  instagramUrl?: string;
   status?: '在籍中' | '任期終了'; // APIで計算される
   histories: ContactHistory[];
   creator?: { id: string; name: string };
@@ -51,6 +52,7 @@ export const Contacts: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [users, setUsers] = useState<any[]>([]);
 
   // 【データ取得】UIイベント → API → DB の流れ
   // useQueryが自動的にGET /api/citizensを呼び出す
@@ -63,6 +65,19 @@ export const Contacts: React.FC = () => {
       return response.data;
     }
   });
+
+  // ユーザー一覧を取得（名前解決用）
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get('/api/users');
+        setUsers(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   // URLパラメータからcontactIdを取得して、自動的に詳細モーダルを開く
   useEffect(() => {
@@ -276,7 +291,20 @@ export const Contacts: React.FC = () => {
           {filteredContacts?.map((contact) => (
             <div key={contact.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{contact.name}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{contact.name}</h3>
+                  {contact.instagramUrl && (
+                    <a 
+                      href={contact.instagramUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 transition-colors"
+                      title="Instagramプロフィールを表示"
+                    >
+                      <Instagram className="h-5 w-5" />
+                    </a>
+                  )}
+                </div>
                 {contact.tags.length > 0 && (
                   <div className="flex gap-1">
                     {contact.tags.map((tag) => (
@@ -299,11 +327,14 @@ export const Contacts: React.FC = () => {
               {contact.relatedMembers && contact.relatedMembers.length > 0 && (
                 <p className="text-sm mb-2">
                   <span className="font-medium">関わった協力隊:</span>{' '}
-                  {contact.relatedMembers.map((memberId, i) => (
-                    <span key={memberId} className="text-gray-600 dark:text-gray-400">
-                      {i > 0 ? '、' : ''}{memberId}
-                    </span>
-                  ))}
+                  {contact.relatedMembers.map((memberId, i) => {
+                    const member = users.find(u => u.id === memberId);
+                    return (
+                      <span key={memberId} className="text-gray-600 dark:text-gray-400">
+                        {i > 0 ? '、' : ''}{member ? member.name : memberId}
+                      </span>
+                    );
+                  })}
                 </p>
               )}
 
@@ -392,6 +423,7 @@ export const Contacts: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名前</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">所属</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ジャンル</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Instagram</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">接触履歴</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">登録者</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
@@ -419,6 +451,21 @@ export const Contacts: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {contact.category || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {contact.instagramUrl ? (
+                      <a 
+                        href={contact.instagramUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-pink-600 hover:underline flex items-center gap-1"
+                      >
+                        <Instagram className="h-4 w-4" />
+                        <span>リンク</span>
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {contact.histories.length}件

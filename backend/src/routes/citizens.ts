@@ -20,6 +20,7 @@ const citizenSchema = z.object({
   startYear: z.number().int().min(2000).max(2100).optional(),
   endYear: z.number().int().min(2000).max(2100).optional(),
   tags: z.array(z.string()).default([]),
+  instagramUrl: z.string().url().or(z.literal('')).optional(),
 });
 
 /**
@@ -80,6 +81,7 @@ router.post('/', async (req: AuthRequest, res) => {
         role: data.role || null,
         startYear: data.startYear || null,
         endYear: data.endYear || null,
+        instagramUrl: data.instagramUrl || null,
       },
       include: { creator: { select: { id: true, name: true } } },
     });
@@ -217,6 +219,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         role: data.role || null,
         startYear: data.startYear || null,
         endYear: data.endYear || null,
+        instagramUrl: data.instagramUrl || null,
       },
       include: { creator: { select: { id: true, name: true } } },
     });

@@ -23,6 +23,7 @@ export interface User {
   /** MASTER のユーザー一覧 API のみ */
   passwordPlainForMaster?: string | null;
   passwordUpdatedAt?: string | null;
+  snsLinks?: any;
   createdAt: string;
   updatedAt?: string;
 }

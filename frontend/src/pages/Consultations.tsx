@@ -6,6 +6,7 @@ import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
+import { X, MessageSquare, ShieldAlert, User as UserIcon } from 'lucide-react';
 import type { User } from '../types';
 
 type ConsultationAudience = 'ANY' | 'SUPPORT_ONLY' | 'GOVERNMENT_ONLY' | 'SPECIFIC_USER';
@@ -21,7 +22,21 @@ interface ConsultationRow {
   resolutionNote: string | null;
   member?: { id: string; name: string; avatarColor: string };
   targetUser?: { id: string; name: string; role: string } | null;
+  assignedUsers?: Array<{ id: string; name: string; role: string }>;
   resolvedBy?: { id: string; name: string } | null;
+}
+
+interface ConsultationComment {
+  id: string;
+  body: string;
+  isInternal: boolean;
+  createdAt: string;
+  author: { id: string; name: string; role: string; avatarColor: string };
+}
+
+interface ConsultationDetail extends ConsultationRow {
+  assignedUsers: Array<{ id: string; name: string; role: string; avatarColor: string }>;
+  comments: ConsultationComment[];
 }
 
 function audienceLabel(a: ConsultationAudience): string {
@@ -41,11 +56,14 @@ export const Consultations: React.FC = () => {
   const isStaff = user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT';
 
   const [audience, setAudience] = useState<ConsultationAudience>('ANY');
-  const [targetUserId, setTargetUserId] = useState('');
+  const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [resolveId, setResolveId] = useState<string | null>(null);
   const [resolutionNote, setResolutionNote] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [commentBody, setCommentBody] = useState('');
+  const [isInternalComment, setIsInternalComment] = useState(false);
 
   const { data: staffUsers = [] } = useQuery({
     queryKey: ['consultations', 'staff-users'],
@@ -90,7 +108,7 @@ export const Consultations: React.FC = () => {
     mutationFn: async () => {
       await api.post('/api/consultations', {
         audience,
-        targetUserId: audience === 'SPECIFIC_USER' ? targetUserId : undefined,
+        targetUserIds: audience === 'SPECIFIC_USER' ? targetUserIds : undefined,
         subject: subject.trim() || undefined,
         body: body.trim(),
       });
@@ -103,7 +121,7 @@ export const Consultations: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['consultations', 'inbox', 'task-requests-preview'] });
       setBody('');
       setSubject('');
-      setTargetUserId('');
+      setTargetUserIds([]);
       setAudience('ANY');
     },
   });
@@ -119,6 +137,28 @@ export const Consultations: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['consultations', 'inbox', 'task-requests-preview'] });
       setResolveId(null);
       setResolutionNote('');
+    },
+  });
+
+  const { data: detail, isLoading: detailLoading } = useQuery({
+    queryKey: ['consultations', selectedId],
+    queryFn: async () => {
+      if (!selectedId) return null;
+      const r = await api.get<ConsultationDetail>(`/api/consultations/${selectedId}`);
+      return r.data;
+    },
+    enabled: !!selectedId,
+  });
+
+  const commentMut = useMutation({
+    mutationFn: async (data: { body: string; isInternal: boolean }) => {
+      if (!selectedId) return;
+      await api.post(`/api/consultations/${selectedId}/comments`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['consultations', selectedId] });
+      setCommentBody('');
+      setIsInternalComment(false);
     },
   });
 
@@ -162,19 +202,23 @@ export const Consultations: React.FC = () => {
             </div>
             {audience === 'SPECIFIC_USER' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ユーザー</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ユーザー（複数選択可）</label>
                 <select
-                  value={targetUserId}
-                  onChange={(e) => setTargetUserId(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  multiple
+                  value={targetUserIds}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions, option => option.value);
+                    setTargetUserIds(values);
+                  }}
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 h-32"
                 >
-                  <option value="">選択してください</option>
                   {pickerUsers.map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.name}（{u.role === 'SUPPORT' ? 'サポート' : '行政'}）
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">※複数人選択する場合は、Ctrlキー（MacはCommandキー）を押しながらクリックしてください</p>
               </div>
             )}
             <div>
@@ -204,8 +248,8 @@ export const Consultations: React.FC = () => {
                   alert('内容を入力してください');
                   return;
                 }
-                if (audience === 'SPECIFIC_USER' && !targetUserId) {
-                  alert('相手を選んでください');
+                if (audience === 'SPECIFIC_USER' && targetUserIds.length === 0) {
+                  alert('宛先を1人以上選んでください');
                   return;
                 }
                 createMut.mutate();
@@ -245,10 +289,16 @@ export const Consultations: React.FC = () => {
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
                       {audienceLabel(c.audience)}
-                      {c.targetUser && ` → ${c.targetUser.name}`} ·{' '}
+                      {c.targetUser && ` → ${c.targetUser.name}`}
+                      {c.assignedUsers && c.assignedUsers.length > 0 && ` → ${c.assignedUsers.map(u => u.name).join(', ')}`} ·{' '}
                       {format(new Date(c.createdAt), 'yyyy/M/d HH:mm', { locale: ja })}
                     </p>
-                    <p className="text-sm text-gray-800 dark:text-gray-200 mt-2 whitespace-pre-wrap">{c.body}</p>
+                    <p className="text-sm text-gray-800 dark:text-gray-200 mt-2 whitespace-pre-wrap line-clamp-3">{c.body}</p>
+                    <div className="mt-3 flex justify-end">
+                      <Button size="sm" variant="outline" onClick={() => setSelectedId(c.id)}>
+                        詳細・相談履歴を見る
+                      </Button>
+                    </div>
                     {c.status === 'RESOLVED' && c.resolutionNote && (
                       <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-600 text-sm">
                         <p className="text-xs font-semibold text-gray-500">対応内容</p>
@@ -295,10 +345,16 @@ export const Consultations: React.FC = () => {
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
                         {audienceLabel(c.audience)}
-                        {c.targetUser && ` → ${c.targetUser.name}`} ·{' '}
+                        {c.targetUser && ` → ${c.targetUser.name}`}
+                        {c.assignedUsers && c.assignedUsers.length > 0 && ` → ${c.assignedUsers.map(u => u.name).join(', ')}`} ·{' '}
                         {format(new Date(c.createdAt), 'yyyy/M/d HH:mm', { locale: ja })}
                       </p>
-                      <p className="text-sm text-gray-800 dark:text-gray-200 mt-2 whitespace-pre-wrap">{c.body}</p>
+                      <p className="text-sm text-gray-800 dark:text-gray-200 mt-2 whitespace-pre-wrap line-clamp-3">{c.body}</p>
+                      <div className="mt-3 flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setSelectedId(c.id)}>
+                          詳細・スレッドを見る
+                        </Button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -361,6 +417,115 @@ export const Consultations: React.FC = () => {
               >
                 保存
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full h-[95vh] sm:h-[90vh] flex flex-col">
+            <div className="p-3 sm:p-4 border-b dark:border-gray-700 flex justify-between items-center shrink-0">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate pr-4">
+                詳細: {detail?.subject || '（件名なし）'}
+              </h3>
+              <button onClick={() => setSelectedId(null)} className="text-gray-500 hover:text-gray-700 shrink-0">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6 text-gray-900 dark:text-gray-100">
+              {detailLoading ? (
+                <div className="flex justify-center py-12"><LoadingSpinner /></div>
+              ) : detail ? (
+                <>
+                  {/* 相談元内容 */}
+                  <div className="bg-blue-50 dark:bg-blue-900/10 p-4 sm:p-5 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0" style={{ backgroundColor: detail.member?.avatarColor || '#ccc' }}>
+                        {detail.member?.name?.[0] || '？'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{detail.member?.name}さん</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500">{format(new Date(detail.createdAt), 'yyyy/MM/dd HH:mm', { locale: ja })}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm shadow-none whitespace-pre-wrap">{detail.body}</p>
+                    <div className="mt-4 pt-3 border-t border-blue-200 dark:border-blue-800 text-[10px] sm:text-xs text-blue-700 dark:text-blue-300">
+                      宛先: {audienceLabel(detail.audience)}
+                      {detail.assignedUsers && detail.assignedUsers.length > 0 && ` [${detail.assignedUsers.map(u => u.name).join(', ')}]`}
+                    </div>
+                  </div>
+
+                  {/* スレッド（コメント） */}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" /> 相談履歴・返信
+                    </h4>
+                    {detail.comments && detail.comments.length === 0 ? (
+                      <p className="text-sm text-gray-500 italic p-4 text-center">まだ返信はありません。</p>
+                    ) : (
+                      detail.comments?.map((comment) => (
+                        <div key={comment.id} className={`flex flex-col ${comment.isInternal ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-100 dark:border-gray-700'} p-4 rounded-lg border`}>
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-gray-900 dark:text-gray-100">{comment.author.name}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300">
+                                {comment.author.role === 'MEMBER' ? '隊員' : 'スタッフ'}
+                              </span>
+                              {comment.isInternal && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-700 flex items-center gap-1">
+                                  <ShieldAlert className="w-3 h-3" /> 内部共有のみ
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-gray-400">
+                              {format(new Date(comment.createdAt), 'M/d HH:mm', { locale: ja })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{comment.body}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* コメント入力 */}
+            <div className="p-3 sm:p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 shrink-0 space-y-3">
+              <textarea
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                placeholder="返信・協議内容を入力..."
+                className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
+                rows={3}
+              />
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-gray-900 dark:text-gray-100">
+                {isStaff ? (
+                  <label className="flex items-center gap-2 text-[11px] sm:text-xs text-amber-600 dark:text-amber-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isInternalComment}
+                      onChange={(e) => setIsInternalComment(e.target.checked)}
+                      className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    スタッフ間のみで協議（隊員には非表示）
+                  </label>
+                ) : <div />}
+                <div className="flex w-full sm:w-auto gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    onClick={() => {
+                      if (!commentBody.trim()) return;
+                      commentMut.mutate({ body: commentBody, isInternal: isInternalComment });
+                    }}
+                    disabled={commentMut.isPending || !commentBody.trim()}
+                  >
+                    送信する
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

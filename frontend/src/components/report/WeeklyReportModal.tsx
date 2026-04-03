@@ -243,11 +243,11 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full sm:max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
-          <h2 className="text-2xl font-bold dark:text-gray-100">
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b dark:border-gray-700 flex-shrink-0">
+          <h2 className="text-xl sm:text-2xl font-bold dark:text-gray-100">
             {currentReport ? '週次報告' : '週次報告作成'}
           </h2>
           <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
@@ -289,7 +289,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
               </div>
             </div>
           ) : (
-            <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-6 pb-0">
+            <form onSubmit={(e) => handleSubmit(e, false)} className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-0">
               {!canEdit && (
                 <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm">
                   この報告は作成者のみが編集できます。
@@ -368,36 +368,41 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
                 <div className="space-y-3">
                   {activities.map((activity, index) => (
-                    <div key={index} className="flex space-x-2">
-                      <Input
-                        type="date"
-                        value={activity.date}
-                        onChange={(e) =>
-                          handleActivityChange(index, 'date', e.target.value)
-                        }
-                        className="w-1/3"
-                        required
-                      />
-                      <input
-                        type="text"
-                        value={activity.activity}
-                        onChange={(e) =>
-                          handleActivityChange(index, 'activity', e.target.value)
-                        }
-                        placeholder="活動内容"
-                        className="flex-1 px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        required
-                      />
-                      {activities.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleRemoveActivity(index)}
-                        >
-                          削除
-                        </Button>
-                      )}
+                    <div key={index} className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 p-3 sm:p-0 border sm:border-0 border-gray-100 dark:border-gray-700 rounded-lg sm:rounded-none">
+                      <div className="w-full sm:w-1/3">
+                        <Input
+                          type="date"
+                          value={activity.date}
+                          onChange={(e) =>
+                            handleActivityChange(index, 'date', e.target.value)
+                          }
+                          className="w-full"
+                          required
+                        />
+                      </div>
+                      <div className="flex-1 flex space-x-2">
+                        <input
+                          type="text"
+                          value={activity.activity}
+                          onChange={(e) =>
+                            handleActivityChange(index, 'activity', e.target.value)
+                          }
+                          placeholder="活動内容"
+                          className="flex-1 px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-w-0"
+                          required
+                        />
+                        {activities.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleRemoveActivity(index)}
+                            className="shrink-0"
+                          >
+                            削除
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -432,53 +437,57 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
         {/* フッター固定 */}
         {viewMode === 'edit' && (
-          <div className="flex justify-end space-x-3 p-6 border-t dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex flex-wrap justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
+            <Button type="button" variant="outline" onClick={onClose} className="order-last sm:order-first w-full sm:w-auto">
               キャンセル
             </Button>
-            <Button 
-              type="button" 
-              onClick={(e) => {
-                e.preventDefault();
-                const form = document.querySelector('form');
-                if (form) {
-                  const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-                  form.dispatchEvent(submitEvent);
-                }
-              }}
-              disabled={loading}
-            >
-              {loading ? '保存中...' : '下書き保存'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={(e) => handleSubmit(e, true)}
-              disabled={loading}
-            >
-              提出
-            </Button>
+            <div className="flex flex-1 sm:flex-none gap-2 w-full sm:w-auto">
+              <Button 
+                type="button" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  const form = document.querySelector('form');
+                  if (form) {
+                    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                    form.dispatchEvent(submitEvent);
+                  }
+                }}
+                disabled={loading}
+                className="flex-1 sm:flex-none"
+              >
+                {loading ? '保存中...' : '下書き保存'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={(e) => handleSubmit(e, true)}
+                disabled={loading}
+                className="flex-1 sm:flex-none"
+              >
+                提出
+              </Button>
+            </div>
           </div>
         )}
         {viewMode === 'preview' && previewReport && (
-          <div className="flex justify-between items-center p-6 border-t dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
-            <div>
+          <div className="flex flex-col sm:flex-row justify-between items-center p-4 sm:p-6 gap-4 border-t dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
+            <div className="w-full sm:w-auto">
               {canEdit && (
-                <Button type="button" variant="outline" onClick={() => setViewMode('edit')}>
-                  編集
+                <Button type="button" variant="outline" onClick={() => setViewMode('edit')} className="w-full sm:w-auto">
+                  編集再開
                 </Button>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
               {!isMobile ? (
-                <Button type="button" variant="outline" onClick={() => setShowPDFConfirm(true)}>
+                <Button type="button" variant="outline" onClick={() => setShowPDFConfirm(true)} className="w-full sm:w-auto">
                   <FileDown className="w-4 h-4 mr-2" />
                   PDF出力
                 </Button>
               ) : (
-                <span className="text-xs text-gray-500 dark:text-gray-400">PDF出力はPC表示で利用できます</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 text-center py-1">PDF出力はPC表示専用です</span>
               )}
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
                 閉じる
               </Button>
             </div>

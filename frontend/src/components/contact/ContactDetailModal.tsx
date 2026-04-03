@@ -17,6 +17,7 @@ interface Contact {
   role?: '現役' | 'OB' | 'サポート' | '役場';
   startYear?: number;
   endYear?: number;
+  instagramUrl?: string;
   status?: '在籍中' | '任期終了';
   histories: ContactHistory[];
 }
@@ -46,6 +47,7 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
 }) => {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [contactData, setContactData] = useState<Contact>(contact);
+  const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
     // 最新のデータを取得
@@ -58,6 +60,17 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
       }
     };
     fetchContact();
+
+    // ユーザー一覧を取得（名前解決用）
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get('/api/users');
+        setUsers(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    };
+    fetchUsers();
   }, [contact.id]);
 
   const handleAddHistory = () => {
@@ -179,7 +192,37 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
                     </p>
                   </div>
                 )}
+                {contactData.instagramUrl && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Instagram</span>
+                    <p>
+                      <a 
+                        href={contactData.instagramUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        <span className="text-sm">プロフィールを表示</span>
+                      </a>
+                    </p>
+                  </div>
+                )}
               </div>
+              {contactData.relatedMembers && contactData.relatedMembers.length > 0 && (
+                <div className="mt-4">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">関わった協力隊</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {contactData.relatedMembers.map((memberId) => {
+                      const member = users.find(u => u.id === memberId);
+                      return (
+                        <span key={memberId} className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded text-blue-700 dark:text-blue-300">
+                          {member ? member.name : '不明なメンバー'}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {contactData.tags.length > 0 && (
                 <div className="mt-4">
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">タグ</span>

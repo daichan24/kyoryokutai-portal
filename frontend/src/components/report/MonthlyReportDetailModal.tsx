@@ -832,12 +832,14 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         onClick={handleClose}
       >
         <div 
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col"
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full sm:max-w-[210mm] max-h-[95vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-            <h2 className="text-xl font-bold dark:text-gray-100">{report?.month || ''} 月次報告</h2>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+            <h2 className="text-lg sm:text-xl font-bold dark:text-gray-100 truncate w-full sm:w-auto">
+              {report?.month || ''} 月次報告
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
               {canEdit && !isEditing && pageTab !== 'full' && (
                 <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
                   <Edit2 className="h-4 w-4 mr-1" />
@@ -845,7 +847,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 </Button>
               )}
               {isEditing && pageTab !== 'full' && (
-                <>
+                <div className="flex gap-2">
                   <Button onClick={handleSave} variant="primary" size="sm" disabled={saving}>
                     <Save className="h-4 w-4 mr-1" />
                     {saving ? '保存中...' : '保存'}
@@ -853,7 +855,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                   <Button onClick={handleCancel} variant="outline" size="sm">
                     キャンセル
                   </Button>
-                </>
+                </div>
               )}
               <Button 
                 onClick={() => setPageTab(pageTab === 'full' ? 'cover' : 'full')} 
@@ -861,7 +863,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 size="sm"
               >
                 <Eye className="h-4 w-4 mr-1" />
-                全体プレビュー
+                <span className="hidden sm:inline">全体</span>プレビュー
               </Button>
               {!isMobile ? (
                 <Button onClick={handlePDFButtonClick} variant="outline" size="sm">
@@ -869,25 +871,15 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                   PDF出力
                 </Button>
               ) : (
-                <span className="text-xs text-gray-500 dark:text-gray-400 px-1">PDFはPC表示で</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 px-1">PDFはPCで</span>
               )}
               {canDelete && (
                 <Button onClick={handleDelete} variant="outline" size="sm">
                   <Trash2 className="h-4 w-4 mr-1" />
-                  削除
+                  <span className="hidden sm:inline">削除</span>
                 </Button>
               )}
-              {report && report.revisions && report.revisions.length > 0 && (
-                <Button
-                  onClick={() => setShowRevisions(!showRevisions)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <History className="h-4 w-4 mr-1" />
-                  変更履歴
-                </Button>
-              )}
-              <button onClick={handleClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+              <button onClick={handleClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-1">
                 <X className="h-6 w-6" />
               </button>
             </div>

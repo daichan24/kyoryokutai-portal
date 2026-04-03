@@ -27,6 +27,7 @@ export const UsersSettings: React.FC = () => {
     department: '',
     termStart: '',
     termEnd: '',
+    instagramUrl: '',
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -89,16 +90,21 @@ export const UsersSettings: React.FC = () => {
     setFormLoading(true);
 
     try {
-      if (isEditMode && editingUser) {
-        // 編集時: passwordが空なら送信しない
-        const updateData: any = { ...formData };
-        if (!updateData.password) delete updateData.password;
-        
-        await api.put<User>(`/api/users/${editingUser.id}`, updateData);
-      } else {
-        // 新規作成
-        await api.post<User>('/api/admin/users', formData);
-      }
+        // SNSリンクの整形
+        const snsLinks = formData.instagramUrl 
+          ? [{ platform: 'instagram', url: formData.instagramUrl }]
+          : [];
+        const payload = { ...formData, snsLinks };
+        delete (payload as any).instagramUrl;
+
+        if (isEditMode && editingUser) {
+          // 編集時: passwordが空なら送信しない
+          if (!payload.password) delete (payload as any).password;
+          await api.put<User>(`/api/users/${editingUser.id}`, payload);
+        } else {
+          // 新規作成
+          await api.post<User>('/api/admin/users', payload);
+        }
       
       setIsModalOpen(false);
       resetForm();
@@ -121,6 +127,7 @@ export const UsersSettings: React.FC = () => {
       department: '',
       termStart: '',
       termEnd: '',
+      instagramUrl: '',
     });
     setEditingUser(null);
     setIsEditMode(false);
@@ -137,6 +144,7 @@ export const UsersSettings: React.FC = () => {
       department: user.department || '',
       termStart: user.termStart ? formatDate(user.termStart, 'yyyy-MM-dd') : '',
       termEnd: user.termEnd ? formatDate(user.termEnd, 'yyyy-MM-dd') : '',
+      instagramUrl: (user.snsLinks as any[])?.find(s => s.platform === 'instagram')?.url || '',
     });
     setIsModalOpen(true);
   };
@@ -236,6 +244,9 @@ export const UsersSettings: React.FC = () => {
                 )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   任期
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                  Instagram
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   登録日
@@ -366,6 +377,22 @@ export const UsersSettings: React.FC = () => {
                     {user.termStart && user.termEnd
                       ? `${formatDate(user.termStart, 'yyyy/M/d')} - ${formatDate(user.termEnd, 'yyyy/M/d')}`
                       : '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {(() => {
+                      const ig = (user.snsLinks as any[])?.find(s => s.platform === 'instagram');
+                      if (!ig?.url) return '-';
+                      return (
+                        <a 
+                          href={ig.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline truncate max-w-[150px] inline-block"
+                        >
+                          {ig.url.replace('https://www.instagram.com/', '@').replace(/\/$/, '')}
+                        </a>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(user.createdAt, 'yyyy/M/d')}
@@ -537,6 +564,13 @@ export const UsersSettings: React.FC = () => {
                 type="date"
                 value={formData.termEnd}
                 onChange={(e) => setFormData({ ...formData, termEnd: e.target.value })}
+              />
+              <Input
+                label="Instagram URL"
+                type="url"
+                placeholder="https://www.instagram.com/username/"
+                value={formData.instagramUrl}
+                onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
               />
 
               <div className="flex justify-end space-x-3 pt-4">
