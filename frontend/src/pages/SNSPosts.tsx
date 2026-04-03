@@ -154,6 +154,8 @@ export const SNSPosts: React.FC = () => {
       return response.data;
     },
     enabled: viewMode === 'view',
+    staleTime: 0, // 常に最新データを取得（スタッフが閲覧する際に古いデータが表示されないように）
+    refetchInterval: 60_000, // 1分ごとに自動更新
   });
 
   // 現在の週の投稿状況を計算（閲覧モード用）
