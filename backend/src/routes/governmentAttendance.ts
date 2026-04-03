@@ -54,37 +54,24 @@ router.post('/', async (req: AuthRequest, res) => {
     }
 
     const data = attendanceSchema.parse(req.body);
-    const date = new Date(`${data.date}T12:00:00.000Z`);
+    const date = new Date(`${data.date}T00:00:00.000Z`);
 
-    const existing = await prisma.governmentAttendance.findUnique({
+    const record = await prisma.governmentAttendance.upsert({
       where: { userId_date: { userId: req.user!.id, date } },
+      update: {
+        status: data.status,
+        note: data.note ?? null,
+      },
+      create: {
+        userId: req.user!.id,
+        date,
+        status: data.status,
+        note: data.note ?? null,
+      },
+      include: {
+        user: { select: { id: true, name: true, avatarColor: true, avatarLetter: true, role: true } },
+      },
     });
-
-    let record;
-    if (existing) {
-      record = await prisma.governmentAttendance.update({
-        where: { id: existing.id },
-        data: {
-          status: data.status,
-          note: data.note ?? null,
-        },
-        include: {
-          user: { select: { id: true, name: true, avatarColor: true, avatarLetter: true, role: true } },
-        },
-      });
-    } else {
-      record = await prisma.governmentAttendance.create({
-        data: {
-          userId: req.user!.id,
-          date,
-          status: data.status,
-          note: data.note ?? null,
-        },
-        include: {
-          user: { select: { id: true, name: true, avatarColor: true, avatarLetter: true, role: true } },
-        },
-      });
-    }
 
     res.json(record);
   } catch (error) {

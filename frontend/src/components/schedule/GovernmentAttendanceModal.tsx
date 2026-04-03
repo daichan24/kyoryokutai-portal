@@ -106,6 +106,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
       queryClient.invalidateQueries({ queryKey: ['government-attendance'] });
       setEditStatus('PRESENT');
       setEditNote('');
+      setSelectedDate(null);
     },
   });
 
@@ -115,6 +116,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['government-attendance'] });
+      setSelectedDate(null);
     },
   });
 
