@@ -31,7 +31,7 @@ interface GovernmentAttendanceModalProps {
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
   PRESENT: '◯ (出勤)',
-  REMOTE: 'テレワーク',
+  REMOTE: '出張',
   ABSENT: '✕ (休み)',
   HALF_DAY: '△ (半休・短時間)',
 };
@@ -336,7 +336,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: a.user.avatarColor }}
                           />
-                          <span className="truncate">{a.user.name}</span>
+                          <span className="truncate">{a.user.name.split(/[\s　]/)[0]}</span>
                         </div>
                       ))}
                       {/* 自分の出勤記録はサーバー＋ドラフト（結合済み）を表示 */}
@@ -349,7 +349,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: user?.avatarColor || '#ccc' }}
                           />
-                          <span className="truncate">自分</span>
+                          <span className="truncate">{(user?.name || '').split(/[\s　]/)[0]}</span>
                         </div>
                       )}
                     </div>

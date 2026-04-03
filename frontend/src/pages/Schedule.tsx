@@ -617,7 +617,7 @@ export const Schedule: React.FC = () => {
                 PRESENT: '#22c55e', REMOTE: '#3b82f6', ABSENT: '#ef4444', HALF_DAY: '#eab308',
               };
               const GOV_STATUS_LABELS: Record<string, string> = {
-                PRESENT: '出勤', REMOTE: 'テレワーク', ABSENT: '不在', HALF_DAY: '半日',
+                PRESENT: '出勤', REMOTE: '出張', ABSENT: '不在', HALF_DAY: '半日',
               };
 
               const getTextColor = (backgroundColor: string) => {

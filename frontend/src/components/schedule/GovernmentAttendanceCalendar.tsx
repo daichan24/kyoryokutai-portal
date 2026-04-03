@@ -31,7 +31,7 @@ interface GovernmentAttendanceCalendarProps {
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
   PRESENT: '出勤',
-  REMOTE: 'テレワーク',
+  REMOTE: '出張',
   ABSENT: '不在',
   HALF_DAY: '半日',
 };
@@ -147,7 +147,7 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
                         className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: a.user.avatarColor }}
                       />
-                      <span className="truncate">{a.user.name.split('')[0]}</span>
+                      <span className="truncate">{a.user.name.split(/[\s　]/)[0]}</span>
                       <span className="truncate">{STATUS_LABELS[a.status]}</span>
                     </div>
                   ))}

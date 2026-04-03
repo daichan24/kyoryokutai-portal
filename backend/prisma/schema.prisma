@@ -1360,7 +1360,7 @@ model GovernmentAttendance {
 
 enum GovernmentAttendanceStatus {
   PRESENT    // 出勤
-  REMOTE     // テレワーク
+  REMOTE     // 出張
   ABSENT     // 不在
   HALF_DAY   // 半日
 }
