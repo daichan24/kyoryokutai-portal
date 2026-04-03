@@ -48,17 +48,17 @@ const STATUS_LABELS: Record<AttendanceStatus, string> = {
 };
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
-  PRESENT: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700',
-  REMOTE: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700',
-  ABSENT: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700',
-  HALF_DAY: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700',
+  PRESENT: 'bg-green-600 text-white border-green-700',
+  REMOTE: 'bg-blue-600 text-white border-blue-700',
+  ABSENT: 'bg-gray-700 text-white border-gray-800',
+  HALF_DAY: 'bg-orange-500 text-white border-orange-600',
 };
 
 const STATUS_DOT: Record<AttendanceStatus, string> = {
-  PRESENT: 'bg-green-500',
-  REMOTE: 'bg-blue-500',
-  ABSENT: 'bg-red-500',
-  HALF_DAY: 'bg-yellow-500',
+  PRESENT: 'bg-green-600',
+  REMOTE: 'bg-blue-600',
+  ABSENT: 'bg-gray-700',
+  HALF_DAY: 'bg-orange-500',
 };
 
 function isDateInRange(dateStr: string, startStr: string, endStr: string | null | undefined): boolean {
@@ -319,8 +319,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                             }`}
                             title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${a.startTime}〜${a.endTime || ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
                           >
-                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: a.user.avatarColor }} />
-                            <span className="truncate">{a.user.name.split(/[\s　]/)[0]}</span>
+                            <span className="truncate font-medium">{a.user.name.split(/[\s　]/)[0]}</span>
                             {a.startTime && isStart && <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{a.startTime}</span>}
                           </div>
                         );
@@ -335,8 +334,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                             }`}
                             title={`${user?.name}: ${STATUS_LABELS[myAttendance.status]}${myAttendance.startTime ? ` ${myAttendance.startTime}〜${myAttendance.endTime || ''}` : ''}${myAttendance.note ? ` (${myAttendance.note})` : ''}`}
                           >
-                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: user?.avatarColor || '#ccc' }} />
-                            <span className="truncate">{(user?.name || '').split(/[\s　]/)[0]}</span>
+                            <span className="truncate font-medium">{(user?.name || '').split(/[\s　]/)[0]}</span>
                             {myAttendance.startTime && <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{myAttendance.startTime}</span>}
                           </div>
                         );

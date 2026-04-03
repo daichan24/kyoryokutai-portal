@@ -37,17 +37,17 @@ const STATUS_LABELS: Record<AttendanceStatus, string> = {
 };
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
-  PRESENT: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700',
-  REMOTE: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700',
-  ABSENT: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700',
-  HALF_DAY: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700',
+  PRESENT: 'bg-green-600 text-white border-green-700',
+  REMOTE: 'bg-blue-600 text-white border-blue-700',
+  ABSENT: 'bg-gray-700 text-white border-gray-800',
+  HALF_DAY: 'bg-orange-500 text-white border-orange-600',
 };
 
 const STATUS_DOT: Record<AttendanceStatus, string> = {
-  PRESENT: 'bg-green-500',
-  REMOTE: 'bg-blue-500',
-  ABSENT: 'bg-red-500',
-  HALF_DAY: 'bg-yellow-500',
+  PRESENT: 'bg-green-600',
+  REMOTE: 'bg-blue-600',
+  ABSENT: 'bg-gray-700',
+  HALF_DAY: 'bg-orange-500',
 };
 
 export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendarProps> = ({
@@ -143,12 +143,8 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
                       className={`text-[10px] px-1 py-0.5 rounded border flex items-center gap-1 ${STATUS_COLORS[a.status]}`}
                       title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.note ? ` (${a.note})` : ''}`}
                     >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: a.user.avatarColor }}
-                      />
-                      <span className="truncate">{a.user.name.split(/[\s　]/)[0]}</span>
-                      <span className="truncate">{STATUS_LABELS[a.status]}</span>
+                      <span className="truncate font-medium">{a.user.name.split(/[\s　]/)[0]}</span>
+                      <span className="truncate text-[9px] opacity-80">{STATUS_LABELS[a.status]}</span>
                     </div>
                   ))}
                 </div>
