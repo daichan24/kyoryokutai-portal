@@ -16,23 +16,14 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
     // メンバー：スケジュール承認リクエスト（共同作業・イベント応援）
     if (role === 'MEMBER') {
       const scheduleCount = await prisma.scheduleParticipant.count({
-        where: {
-          userId,
-          status: 'PENDING',
-        },
+        where: { userId, status: 'PENDING' },
       });
       count += scheduleCount;
-    }
-    // スタッフ（行政・サポート・マスター）：受信箱系
-    else if (role === 'GOVERNMENT' || role === 'SUPPORT' || role === 'MASTER') {
-      // ① スケジュール承認リクエスト（共同作業・イベント応援）
+    } else if (role === 'GOVERNMENT' || role === 'SUPPORT' || role === 'MASTER') {
+      // ① スケジュール承認リクエスト
       const scheduleCount = await prisma.scheduleParticipant.count({
         where: {
-          schedule: {
-            userId: {
-              not: userId, // 自分のスケジュールは除く
-            },
-          },
+          schedule: { userId: { not: userId } },
           status: 'PENDING',
         },
       });
@@ -50,52 +41,36 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
         },
       });
 
-      // ③ 活動経費承認（行政・サポートのみ）
+      // ③ 活動経費（行政・サポートのみ）
       let expenseCount = 0;
       if (role === 'GOVERNMENT' || role === 'SUPPORT') {
         expenseCount = await prisma.activityExpenseEntry.count({
-          where: {
-            userId: {
-              not: userId,
-            },
-          },
+          where: { userId: { not: userId } },
         });
       }
 
-      // ④ 週次報告の提出（メンバーから届いたもの）
+      // ④ 週次報告の提出
       const weeklyReportCount = await prisma.weeklyReport.count({
         where: {
-          submittedAt: {
-            not: null,
-          },
-          user: {
-            role: 'MEMBER',
-          },
+          submittedAt: { not: null },
+          user: { role: 'MEMBER' },
         },
       });
 
-      // ⑤ 復命書の提出（メンバーから届いたもの）
+      // ⑤ 復命書の提出
       const inspectionCount = await prisma.inspection.count({
-        where: {
-          user: {
-            role: 'MEMBER',
-          },
-        },
+        where: { user: { role: 'MEMBER' } },
       });
 
-      // ⑥ 月次報告の提出（メンバーから届いたもの）
+      // ⑥ 月次報告の提出
       const monthlyReportCount = await prisma.monthlyReport.count({
         where: {
-          submittedAt: {
-            not: null,
-          },
-          creator: {
-            role: 'MEMBER',
-          },
+          submittedAt: { not: null },
+          creator: { role: 'MEMBER' },
         },
       });
 
-      count = consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount;
+      count = scheduleCount + consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount;
     }
 
     res.json({ count });
@@ -111,23 +86,24 @@ router.get('/', async (req: AuthRequest, res) => {
     const userId = req.user!.id;
     const role = req.user!.role;
 
-    let scheduleInvites = [];
-    let consultations = [];
-    let expenses = [];
-    let weeklyReports = [];
-    let inspections = [];
-    let monthlyReports = [];
+    const scheduleInvites: any[] = [];
+    const consultations: any[] = [];
+    const expenses: any[] = [];
+    const weeklyReports: any[] = [];
+    const inspections: any[] = [];
+    const monthlyReports: any[] = [];
 
     if (role === 'MEMBER') {
-       scheduleInvites = await prisma.scheduleParticipant.findMany({
+      const invites = await prisma.scheduleParticipant.findMany({
         where: { userId, status: 'PENDING' },
         include: {
           schedule: { include: { user: { select: { id: true, name: true, avatarColor: true } } } },
         },
         orderBy: { createdAt: 'desc' },
       });
+      scheduleInvites.push(...invites);
     } else if (role === 'GOVERNMENT' || role === 'SUPPORT' || role === 'MASTER') {
-      scheduleInvites = await prisma.scheduleParticipant.findMany({
+      const invites = await prisma.scheduleParticipant.findMany({
         where: {
           schedule: { userId: { not: userId } },
           status: 'PENDING',
@@ -138,8 +114,9 @@ router.get('/', async (req: AuthRequest, res) => {
         },
         orderBy: { createdAt: 'desc' },
       });
+      scheduleInvites.push(...invites);
 
-      consultations = await prisma.consultation.findMany({
+      const consults = await prisma.consultation.findMany({
         where: {
           status: 'OPEN',
           OR: [
@@ -155,35 +132,39 @@ router.get('/', async (req: AuthRequest, res) => {
         },
         orderBy: { createdAt: 'desc' },
       });
+      consultations.push(...consults);
 
       if (role === 'GOVERNMENT' || role === 'SUPPORT') {
-        expenses = await prisma.activityExpenseEntry.findMany({
+        const expenseList = await prisma.activityExpenseEntry.findMany({
           where: { userId: { not: userId } },
           include: {
             user: { select: { id: true, name: true, avatarColor: true } },
-            schedule: { select: { id: true, activityDescription: true } },
           },
           orderBy: { createdAt: 'desc' },
         });
+        expenses.push(...expenseList);
       }
 
-      weeklyReports = await prisma.weeklyReport.findMany({
+      const reports = await prisma.weeklyReport.findMany({
         where: { submittedAt: { not: null }, user: { role: 'MEMBER' } },
         include: { user: { select: { id: true, name: true, avatarColor: true } } },
         orderBy: { submittedAt: 'desc' },
       });
+      weeklyReports.push(...reports);
 
-      inspections = await prisma.inspection.findMany({
+      const insp = await prisma.inspection.findMany({
         where: { user: { role: 'MEMBER' } },
         include: { user: { select: { id: true, name: true, avatarColor: true } } },
         orderBy: { createdAt: 'desc' },
       });
+      inspections.push(...insp);
 
-      monthlyReports = await prisma.monthlyReport.findMany({
+      const monthly = await prisma.monthlyReport.findMany({
         where: { submittedAt: { not: null }, creator: { role: 'MEMBER' } },
         include: { creator: { select: { id: true, name: true, avatarColor: true } } },
         orderBy: { submittedAt: 'desc' },
       });
+      monthlyReports.push(...monthly);
     }
 
     res.json({

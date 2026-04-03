@@ -50,7 +50,7 @@ export const Nudges: React.FC = () => {
 
   const canEdit = ['MASTER', 'SUPPORT', 'GOVERNMENT'].includes(user?.role || '');
 
-  const { data: document, isLoading } = useQuery<NudgeDocument | null>({
+  const { data: nudgeDoc, isLoading } = useQuery<NudgeDocument | null>({
     queryKey: ['nudges'],
     queryFn: async () => {
       const response = await api.get('/api/nudges');
@@ -84,11 +84,11 @@ export const Nudges: React.FC = () => {
   });
 
   React.useEffect(() => {
-    if (document && !isEditing) {
-      setTitle(document.title);
-      setContent(document.content);
+    if (nudgeDoc && !isEditing) {
+      setTitle(nudgeDoc.title);
+      setContent(nudgeDoc.content);
     }
-  }, [document, isEditing]);
+  }, [nudgeDoc, isEditing]);
 
   const handleSave = () => {
     if (!title.trim() || !content.trim()) {
@@ -133,7 +133,7 @@ export const Nudges: React.FC = () => {
         )}
       </div>
 
-      {!document && !isEditing ? (
+      {!nudgeDoc && !isEditing ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 text-center">
           <p className="text-gray-500 dark:text-gray-400">文書がまだ作成されていません</p>
           {canEdit && (
@@ -145,7 +145,7 @@ export const Nudges: React.FC = () => {
       ) : isEditing ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 max-w-[210mm] mx-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            {document ? '文書を編集' : '文書を作成'}
+            {nudgeDoc ? '文書を編集' : '文書を作成'}
           </h2>
 
           <div className="space-y-4">
@@ -182,12 +182,12 @@ export const Nudges: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6 max-w-[210mm] mx-auto" style={{ width: '210mm', maxWidth: '210mm' }}>
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{document.title}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{nudgeDoc!.title}</h2>
               <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                <p>発行日: {format(new Date(document.publishedAt), 'yyyy年M月d日')}</p>
+                <p>発行日: {format(new Date(nudgeDoc!.publishedAt), 'yyyy年M月d日')}</p>
                 <p>
-                  最終更新: {format(new Date(document.updatedAt), 'yyyy年M月d日 HH:mm')} by{' '}
-                  {document.updatedBy.name}
+                  最終更新: {format(new Date(nudgeDoc!.updatedAt), 'yyyy年M月d日 HH:mm')} by{' '}
+                  {nudgeDoc!.updatedBy.name}
                 </p>
               </div>
             </div>
@@ -196,7 +196,7 @@ export const Nudges: React.FC = () => {
           <div className="prose max-w-none dark:prose-invert">
             <div 
               className="text-gray-700 dark:text-gray-300"
-              dangerouslySetInnerHTML={{ __html: document.content }}
+              dangerouslySetInnerHTML={{ __html: nudgeDoc!.content }}
             />
           </div>
           
@@ -225,10 +225,10 @@ export const Nudges: React.FC = () => {
                     }
 
                     const url = window.URL.createObjectURL(new Blob([response.data]));
-                    const link = document.createElement('a');
+                    const link = window.document.createElement('a');
                     link.href = url;
                     link.setAttribute('download', `協力隊細則_${format(new Date(), 'yyyyMMdd')}.pdf`);
-                    document.body.appendChild(link);
+                    window.document.body.appendChild(link);
                     link.click();
                     window.URL.revokeObjectURL(url);
                     link.remove();
@@ -298,7 +298,7 @@ export const Nudges: React.FC = () => {
                             onClick={() => {
                               if (confirm('このバージョンに復元しますか？（現在の内容は新しい履歴として保存されます）')) {
                                 saveMutation.mutate({
-                                  title: document?.title || '協力隊細則',
+                                  title: nudgeDoc?.title || '協力隊細則',
                                   content: revision.content
                                 });
                                 setIsHistoryOpen(false);

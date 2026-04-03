@@ -219,7 +219,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     setShowPDFConfirm(true);
   };
 
-  const canEdit = user?.role === 'MASTER' || (!report?.submittedAt && (user?.role === 'SUPPORT' || user?.role === 'MASTER'));
+  const canEdit = user?.role === 'MASTER' || (!report?.submittedAt && (user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT'));
   const canDelete = user?.role === 'SUPPORT' || user?.role === 'MASTER';
 
   const handleSave = async () => {

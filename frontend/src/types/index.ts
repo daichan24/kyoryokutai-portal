@@ -47,8 +47,9 @@ export interface Schedule {
   startTime: string;
   endTime: string;
   locationText?: string;
-  title?: string; // タイトル（短い説明）
-  activityDescription: string; // 活動内容（詳細）
+  location?: { id: string; name: string };
+  title?: string;
+  activityDescription: string;
   freeNote?: string;
   isPending: boolean;
   projectId?: string;
@@ -157,12 +158,17 @@ export type ApprovalStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface Project {
   id: string;
+  userId?: string;
+  user?: User;
   projectName: string;
   missionId?: string;
   mission?: Mission;
-  themeColor?: string; // プロジェクトのテーマカラー（HEX形式）
-  relatedTasks?: Task[]; // このプロジェクトに関連するタスク（小目標、任意）
-  taskProgress?: number; // プロジェクト配下のタスクの進捗率
+  themeColor?: string;
+  startDate?: string;
+  endDate?: string;
+  phase?: 'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW';
+  relatedTasks?: Task[];
+  taskProgress?: number;
 }
 
 // ミッション（旧：起業準備進捗 / Goal）
@@ -238,15 +244,16 @@ export interface GoalTask {
 // タスク（ミッション配下の小目標、プロジェクトは任意）
 export interface Task {
   id: string;
+  userId?: string;
   missionId: string;
   mission?: Mission;
-  projectId?: string | null; // プロジェクトへの紐付けは任意
+  projectId?: string | null;
   project?: Project;
   title: string;
   description?: string;
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   order: number;
-  dueDate?: string | null; // タスクの期日（YYYY-MM-DD形式）
+  dueDate?: string | null;
   linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING';
   createdAt: string;
   updatedAt: string;

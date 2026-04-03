@@ -19,6 +19,7 @@ interface SimpleRichTextEditorProps {
   placeholder?: string;
   className?: string;
   minHeight?: string;
+  disabled?: boolean;
 }
 
 export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
@@ -27,6 +28,7 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   placeholder = 'テキストを入力...',
   className = '',
   minHeight = '300px',
+  disabled = false,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -210,9 +212,9 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       {/* エディタエリア */}
       <div
         ref={editorRef}
-        contentEditable
+        contentEditable={!disabled}
         onInput={handleInput}
-        className="p-4 focus:outline-none prose max-w-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-b-lg dark:prose-invert"
+        className={`p-4 focus:outline-none prose max-w-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-b-lg dark:prose-invert ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         style={{
           wordBreak: 'break-word',
           color: 'inherit',

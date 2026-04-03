@@ -81,7 +81,6 @@ router.post('/', async (req: AuthRequest, res) => {
         role: data.role || null,
         startYear: data.startYear || null,
         endYear: data.endYear || null,
-        instagramUrl: data.instagramUrl || null,
       },
       include: { creator: { select: { id: true, name: true } } },
     });
@@ -266,7 +265,6 @@ router.put('/:id', async (req: AuthRequest, res) => {
         role: data.role || null,
         startYear: data.startYear || null,
         endYear: data.endYear || null,
-        instagramUrl: data.instagramUrl || null,
       },
       include: { creator: { select: { id: true, name: true } } },
     });

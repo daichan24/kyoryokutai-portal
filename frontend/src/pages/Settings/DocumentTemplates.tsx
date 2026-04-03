@@ -103,6 +103,8 @@ export const DocumentTemplatesSettings: React.FC = () => {
         },
         inspection: {
           recipient: '長沼町長　齋　藤　良　彦　様',
+          title: '復命書',
+          namePrefix: '長沼町地域おこし協力隊',
           text1: '次の通り復命します。',
           item1: '（参考: 視察日時を記入してください）',
           item2: '（参考: 視察先の場所を記入してください）',

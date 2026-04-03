@@ -36,6 +36,7 @@ interface EventDetail {
   project?: { id: string; projectName: string } | null;
   participations: Array<{
     id: string;
+    userId?: string;
     participationType: string;
     status?: 'PENDING' | 'APPROVED' | 'REJECTED';
     user: {
@@ -115,6 +116,17 @@ export const EventDetail: React.FC = () => {
     } catch (error) {
       console.error('Failed to delete event:', error);
       alert('削除に失敗しました');
+    }
+  };
+
+  const handleRespondToInvite = async (decision: 'APPROVED' | 'REJECTED') => {
+    if (!event) return;
+    try {
+      await api.post(`/api/events/${event.id}/respond`, { decision });
+      queryClient.invalidateQueries({ queryKey: ['event', id] });
+    } catch (error) {
+      console.error('Failed to respond to invite:', error);
+      alert('応答に失敗しました');
     }
   };
 

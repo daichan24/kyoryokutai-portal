@@ -12,7 +12,7 @@ interface Project {
   id: string;
   projectName: string;
   description?: string;
-  phase: 'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW';
+  phase?: 'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW';
   startDate?: string;
   endDate?: string;
   missionId?: string;
