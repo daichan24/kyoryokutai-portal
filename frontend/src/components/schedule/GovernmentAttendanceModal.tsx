@@ -30,10 +30,10 @@ interface GovernmentAttendanceModalProps {
 }
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
-  PRESENT: '出勤',
+  PRESENT: '◯ (出勤)',
   REMOTE: 'テレワーク',
-  ABSENT: '不在',
-  HALF_DAY: '午前/午後休',
+  ABSENT: '✕ (休み)',
+  HALF_DAY: '△ (半休・短時間)',
 };
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
@@ -61,6 +61,9 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState<AttendanceStatus>('PRESENT');
   const [editNote, setEditNote] = useState('');
+
+  // ドラフト保存用: key=dateStr(yyyy-MM-dd), value={status, note} または null(削除)
+  const [draftAttendances, setDraftAttendances] = useState<Record<string, { status: AttendanceStatus; note?: string } | null>>({});
 
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
 
@@ -98,26 +101,30 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
     enabled: isOpen && !!from && !!to,
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async ({ date, status, note }: { date: string; status: AttendanceStatus; note: string }) => {
-      await api.post('/api/government-attendance', { date, status, note: note.trim() || null });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['government-attendance'] });
-      setEditStatus('PRESENT');
-      setEditNote('');
-      setSelectedDate(null);
-    },
-  });
+  const bulkSaveMutation = useMutation({
+    mutationFn: async (drafts: Record<string, { status: AttendanceStatus; note?: string } | null>) => {
+      const updates = Object.entries(drafts)
+        .filter(([_, val]) => val !== null)
+        .map(([date, val]) => ({
+          date,
+          status: val!.status,
+          note: val!.note,
+        }));
+      const deletes = Object.entries(drafts)
+        .filter(([_, val]) => val === null)
+        .map(([date]) => date);
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/government-attendance/${id}`);
+      await api.post('/api/government-attendance/bulk', { updates, deletes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['government-attendance'] });
+      setDraftAttendances({});
       setSelectedDate(null);
+      alert('変更を保存しました');
     },
+    onError: (error: any) => {
+      alert(`保存に失敗しました: ${error.response?.data?.error || error.message}`);
+    }
   });
 
   const handlePrevMonth = () => {
@@ -146,26 +153,63 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
     return attendances.find((a) => a.userId === user?.id && a.date.slice(0, 10) === dateStr);
   };
 
+  const getEffectiveMyAttendance = (dateStr: string) => {
+    const draft = draftAttendances[dateStr];
+    if (draft !== undefined) {
+      // draft===null means deleted
+      return draft ? { status: draft.status, note: draft.note } : null;
+    }
+    const server = getMyAttendanceForDate(dateStr);
+    return server ? { status: server.status, note: server.note } : null;
+  };
+
   const openEdit = (dateStr: string) => {
+    // 自分のデータのみ編集可能（他メンバーを表示中は編集できないようにする）
+    if (selectedMemberId && selectedMemberId !== user?.id) return;
+    
     setSelectedDate(dateStr);
-    const existing = getMyAttendanceForDate(dateStr);
+    const existing = getEffectiveMyAttendance(dateStr);
     setEditStatus(existing?.status ?? 'PRESENT');
     setEditNote(existing?.note ?? '');
   };
 
-  const handleSave = () => {
+  const handleApplyDraft = () => {
     if (selectedDate) {
-      saveMutation.mutate({ date: selectedDate, status: editStatus, note: editNote });
+      setDraftAttendances((prev) => ({
+        ...prev,
+        [selectedDate]: { status: editStatus, note: editNote },
+      }));
+      setSelectedDate(null);
     }
   };
 
-  const handleDelete = () => {
+  const handleDeleteDraft = () => {
     if (selectedDate) {
-      const existing = getMyAttendanceForDate(selectedDate);
-      if (existing && confirm('この出勤記録を削除しますか？')) {
-        deleteMutation.mutate(existing.id);
+      setDraftAttendances((prev) => ({
+        ...prev,
+        [selectedDate]: null, // null means delete
+      }));
+      setSelectedDate(null);
+    }
+  };
+
+  const handleSetWeekdays = () => {
+    const newDrafts = { ...draftAttendances };
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    for (let day = 1; day <= days; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+      if (isWeekend) {
+        newDrafts[dateStr] = null; // ✕(削除/Absent扱い)
+      } else {
+        newDrafts[dateStr] = { status: 'PRESENT', note: '' }; // ◯(出勤)
       }
     }
+    setDraftAttendances(newDrafts);
   };
 
   if (!isOpen) return null;
@@ -181,9 +225,16 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
             <CalendarDays className="h-6 w-6 text-blue-500" />
             行政出勤カレンダー
           </h2>
-          <button onClick={onClose} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-            <X className="h-6 w-6 text-gray-500" />
-          </button>
+          <div className="flex gap-2">
+            {Object.keys(draftAttendances).length > 0 && (
+              <Button onClick={() => bulkSaveMutation.mutate(draftAttendances)} disabled={bulkSaveMutation.isPending}>
+                {bulkSaveMutation.isPending ? '保存中...' : '変更を保存'}
+              </Button>
+            )}
+            <button onClick={onClose} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+              <X className="h-6 w-6 text-gray-500" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -205,15 +256,24 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
           {/* 月表示 */}
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-              <button onClick={handlePrevMonth} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {format(currentDate, 'yyyy年M月', { locale: ja })}
-              </h3>
-              <button onClick={handleNextMonth} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
-                <ChevronRight className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center">
+                  <button onClick={handlePrevMonth} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mx-2">
+                    {format(currentDate, 'yyyy年M月', { locale: ja })}
+                  </h3>
+                  <button onClick={handleNextMonth} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+                {(!selectedMemberId || selectedMemberId === user?.id) && (
+                  <Button variant="outline" size="sm" onClick={handleSetWeekdays}>
+                    平日勤務一括設定
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
@@ -238,21 +298,27 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                 const dateStr = format(new Date(currentDate.getFullYear(), currentDate.getMonth(), day), 'yyyy-MM-dd');
                 const dayAttendances = getAttendancesForDate(dateStr);
                 const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
-                const myAttendance = getMyAttendanceForDate(dateStr);
+                const myAttendance = getEffectiveMyAttendance(dateStr);
+                const hasDraft = draftAttendances[dateStr] !== undefined;
 
                 return (
                   <div
                     key={day}
                     className={`h-24 p-1 relative cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
                       isToday ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-800'
-                    }`}
+                    } ${hasDraft ? 'ring-2 ring-inset ring-yellow-400 dark:ring-yellow-500' : ''}`}
                     onClick={() => openEdit(dateStr)}
                   >
-                    <span className={`text-sm font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                      {day}
-                    </span>
+                    <div className="flex justify-between items-center">
+                      <span className={`text-sm font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {day}
+                      </span>
+                      {hasDraft && <span className="text-[10px] text-yellow-600 dark:text-yellow-400 font-bold">未保存</span>}
+                    </div>
                     <div className="mt-1 space-y-0.5">
-                      {dayAttendances.map((a) => (
+                      {dayAttendances
+                        .filter(a => a.userId !== user?.id) // 自分以外をサーバーデータから表示
+                        .map((a) => (
                         <div
                           key={a.id}
                           className={`text-[10px] px-1 py-0.5 rounded border flex items-center gap-1 truncate ${STATUS_COLORS[a.status]}`}
@@ -262,18 +328,23 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: a.user.avatarColor }}
                           />
-                          <span className="truncate">{STATUS_LABELS[a.status]}</span>
+                          <span className="truncate">{a.user.name}</span>
                         </div>
                       ))}
+                      {/* 自分の出勤記録はサーバー＋ドラフト（結合済み）を表示 */}
+                      {myAttendance && (
+                        <div
+                          className={`text-[10px] px-1 py-0.5 rounded border flex items-center gap-1 truncate ${STATUS_COLORS[myAttendance.status]}`}
+                          title={`${user?.name}: ${STATUS_LABELS[myAttendance.status]}${myAttendance.note ? ` (${myAttendance.note})` : ''}`}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: user?.avatarColor || '#ccc' }}
+                          />
+                          <span className="truncate">自分</span>
+                        </div>
+                      )}
                     </div>
-                    {myAttendance && (
-                      <div className="absolute bottom-1 right-1">
-                        <span
-                          className={`w-2 h-2 rounded-full ${STATUS_DOT[myAttendance.status]}`}
-                          title={STATUS_LABELS[myAttendance.status]}
-                        />
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -335,18 +406,15 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  {getMyAttendanceForDate(selectedDate) && (
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      className="text-sm text-red-600 dark:text-red-400 hover:underline"
-                      disabled={deleteMutation.isPending}
-                    >
-                      削除
-                    </button>
-                  )}
-                  <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
-                    保存
+                  <button
+                    type="button"
+                    onClick={handleDeleteDraft}
+                    className="px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded border border-transparent font-medium"
+                  >
+                    ✕ (なし)にする
+                  </button>
+                  <Button size="sm" onClick={handleApplyDraft}>
+                    仮決定
                   </Button>
                 </div>
               </div>

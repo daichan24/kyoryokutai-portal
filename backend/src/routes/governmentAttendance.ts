@@ -12,6 +12,15 @@ const attendanceSchema = z.object({
   note: z.string().max(500).optional().nullable(),
 });
 
+const bulkAttendanceSchema = z.object({
+  updates: z.array(z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    status: z.enum(['PRESENT', 'REMOTE', 'ABSENT', 'HALF_DAY']),
+    note: z.string().max(500).optional().nullable(),
+  })),
+  deletes: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+});
+
 // 出勤記録一覧取得（全員分 - カレンダー表示用）
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -80,6 +89,58 @@ router.post('/', async (req: AuthRequest, res) => {
     }
     console.error('Create/update government attendance error:', error);
     res.status(500).json({ error: '出勤記録の保存に失敗しました' });
+  }
+});
+
+// 自分の出勤記録を一括保存・更新・削除（GOVERNMENT/MASTER/SUPPORTのみ）
+router.post('/bulk', async (req: AuthRequest, res) => {
+  try {
+    const role = req.user!.role;
+    if (role !== 'GOVERNMENT' && role !== 'MASTER' && role !== 'SUPPORT') {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    const data = bulkAttendanceSchema.parse(req.body);
+    const userId = req.user!.id;
+
+    await prisma.$transaction(async (tx) => {
+      // 削除処理
+      if (data.deletes.length > 0) {
+        const deleteDates = data.deletes.map(d => new Date(`${d}T00:00:00.000Z`));
+        await tx.governmentAttendance.deleteMany({
+          where: {
+            userId,
+            date: { in: deleteDates },
+          },
+        });
+      }
+
+      // 更新・追加処理
+      for (const update of data.updates) {
+        const date = new Date(`${update.date}T00:00:00.000Z`);
+        await tx.governmentAttendance.upsert({
+          where: { userId_date: { userId, date } },
+          update: {
+            status: update.status,
+            note: update.note ?? null,
+          },
+          create: {
+            userId,
+            date,
+            status: update.status,
+            note: update.note ?? null,
+          },
+        });
+      }
+    });
+
+    res.json({ message: '一括保存しました' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error('Bulk government attendance error:', error);
+    res.status(500).json({ error: '出勤記録の一括保存に失敗しました' });
   }
 });
 
