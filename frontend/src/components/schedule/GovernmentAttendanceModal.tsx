@@ -56,6 +56,8 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
 }) => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  // 行政（GOVERNMENT）のみ編集可能
+  const canEdit = user?.role === 'GOVERNMENT';
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -164,7 +166,9 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
   };
 
   const openEdit = (dateStr: string) => {
-    // 自分のデータのみ編集可能（他メンバーを表示中は編集できないようにする）
+    // 行政（GOVERNMENT）のみ編集可能
+    if (!canEdit) return;
+    // 他メンバーを表示中は編集できない
     if (selectedMemberId && selectedMemberId !== user?.id) return;
     
     setSelectedDate(dateStr);
@@ -226,7 +230,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
             行政出勤カレンダー
           </h2>
           <div className="flex gap-2">
-            {Object.keys(draftAttendances).length > 0 && (
+            {canEdit && Object.keys(draftAttendances).length > 0 && (
               <Button onClick={() => bulkSaveMutation.mutate(draftAttendances)} disabled={bulkSaveMutation.isPending}>
                 {bulkSaveMutation.isPending ? '保存中...' : '変更を保存'}
               </Button>
@@ -268,7 +272,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                     <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
-                {(!selectedMemberId || selectedMemberId === user?.id) && (
+                {(!selectedMemberId || selectedMemberId === user?.id) && canEdit && (
                   <Button variant="outline" size="sm" onClick={handleSetWeekdays}>
                     平日勤務一括設定
                   </Button>
@@ -304,7 +308,11 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                 return (
                   <div
                     key={day}
-                    className={`h-24 p-1 relative cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                    className={`h-24 p-1 relative transition-colors ${
+                      canEdit && (!selectedMemberId || selectedMemberId === user?.id)
+                        ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                        : 'cursor-default'
+                    } ${
                       isToday ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-800'
                     } ${hasDraft ? 'ring-2 ring-inset ring-yellow-400 dark:ring-yellow-500' : ''}`}
                     onClick={() => openEdit(dateStr)}
@@ -351,8 +359,8 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
             </div>
           </div>
 
-          {/* 出勤記録編集モーダル */}
-          {selectedDate && (
+          {/* 出勤記録編集フォーム（行政のみ） */}
+          {selectedDate && canEdit && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100">

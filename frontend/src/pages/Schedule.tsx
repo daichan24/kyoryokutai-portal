@@ -8,7 +8,7 @@ import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
-import { GovernmentAttendanceCalendar, useGovernmentAttendanceForMonth, AttendanceEditModal } from '../components/schedule/GovernmentAttendanceCalendar';
+import { GovernmentAttendanceCalendar, useGovernmentAttendanceForMonth } from '../components/schedule/GovernmentAttendanceCalendar';
 import { GovernmentAttendanceModal } from '../components/schedule/GovernmentAttendanceModal';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
@@ -63,8 +63,6 @@ export const Schedule: React.FC = () => {
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
 
   // 行政出勤記録
-  const isGovStaff = user?.role === 'GOVERNMENT' || user?.role === 'MASTER' || user?.role === 'SUPPORT';
-  const [attendanceEditDate, setAttendanceEditDate] = useState<string | null>(null);
   const govAttendanceFrom = weekDates[0] ? format(weekDates[0], 'yyyy-MM-dd') : '';
   const govAttendanceTo = weekDates[weekDates.length - 1] ? format(weekDates[weekDates.length - 1], 'yyyy-MM-dd') : '';
   const { data: govAttendances = [] } = useGovernmentAttendanceForMonth(govAttendanceFrom, govAttendanceTo);
@@ -663,7 +661,7 @@ export const Schedule: React.FC = () => {
                     }`}>
                       {formatDate(date, 'd')}
                     </p>
-                    {/* 行政出勤ドット */}
+                    {/* 行政出勤ドット（全員が確認できる） */}
                     {dayGovAttendances.length > 0 && (
                       <div className="flex justify-center gap-0.5 mt-0.5 flex-wrap">
                         {dayGovAttendances.map((a: any) => (
@@ -675,21 +673,6 @@ export const Schedule: React.FC = () => {
                           />
                         ))}
                       </div>
-                    )}
-                    {/* 自分の出勤記録ボタン（行政スタッフのみ） */}
-                    {isGovStaff && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setAttendanceEditDate(dateStr); }}
-                        className={`mt-0.5 text-[9px] px-1 rounded transition-colors ${
-                          myGovAttendance
-                            ? 'text-white px-1.5'
-                            : 'text-gray-400 hover:text-blue-500'
-                        }`}
-                        style={myGovAttendance ? { backgroundColor: GOV_STATUS_COLORS[myGovAttendance.status] } : {}}
-                        title={myGovAttendance ? `出勤記録: ${GOV_STATUS_LABELS[myGovAttendance.status]}` : '出勤記録を追加'}
-                      >
-                        {myGovAttendance ? GOV_STATUS_LABELS[myGovAttendance.status] : '+ 出勤'}
-                      </button>
                     )}
                   </div>
 
@@ -1011,18 +994,6 @@ export const Schedule: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-      {/* 行政出勤記録編集モーダル */}
-      {attendanceEditDate && isGovStaff && (
-        <AttendanceEditModal
-          date={attendanceEditDate}
-          existingId={govAttendances.find((a: any) => a.userId === user?.id && a.date.slice(0, 10) === attendanceEditDate)?.id}
-          initialStatus={govAttendances.find((a: any) => a.userId === user?.id && a.date.slice(0, 10) === attendanceEditDate)?.status ?? 'PRESENT'}
-          initialNote={govAttendances.find((a: any) => a.userId === user?.id && a.date.slice(0, 10) === attendanceEditDate)?.note ?? ''}
-          onClose={() => setAttendanceEditDate(null)}
-          onSaved={() => setAttendanceEditDate(null)}
-          onDeleted={() => setAttendanceEditDate(null)}
-        />
       )}
       {/* 行政出勤カレンダーモーダル */}
       {isGovernmentAttendanceModalOpen && (

@@ -56,7 +56,8 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
 }) => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const isGovStaff = user?.role === 'GOVERNMENT' || user?.role === 'MASTER' || user?.role === 'SUPPORT';
+  // 行政（GOVERNMENT）のみ編集可能
+  const canEdit = user?.role === 'GOVERNMENT';
 
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState<AttendanceStatus>('PRESENT');
@@ -152,8 +153,8 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
                   ))}
                 </div>
 
-                {/* 自分の記録ボタン（行政スタッフのみ） */}
-                {isGovStaff && (
+                {/* 自分の記録ボタン（行政のみ） */}
+                {canEdit && (
                   <button
                     onClick={() => openEdit(date)}
                     className={`w-full text-[10px] rounded border border-dashed py-0.5 transition-colors ${
