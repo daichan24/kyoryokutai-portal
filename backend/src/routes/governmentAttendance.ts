@@ -8,6 +8,9 @@ router.use(authenticate);
 
 const attendanceSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
   status: z.enum(['PRESENT', 'REMOTE', 'ABSENT', 'HALF_DAY']),
   note: z.string().max(500).optional().nullable(),
 });
@@ -15,6 +18,9 @@ const attendanceSchema = z.object({
 const bulkAttendanceSchema = z.object({
   updates: z.array(z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
     status: z.enum(['PRESENT', 'REMOTE', 'ABSENT', 'HALF_DAY']),
     note: z.string().max(500).optional().nullable(),
   })),
@@ -64,16 +70,23 @@ router.post('/', async (req: AuthRequest, res) => {
 
     const data = attendanceSchema.parse(req.body);
     const date = new Date(`${data.date}T00:00:00.000Z`);
+    const endDate = data.endDate ? new Date(`${data.endDate}T00:00:00.000Z`) : null;
 
     const record = await prisma.governmentAttendance.upsert({
       where: { userId_date: { userId: req.user!.id, date } },
       update: {
         status: data.status,
+        endDate,
+        startTime: data.startTime ?? null,
+        endTime: data.endTime ?? null,
         note: data.note ?? null,
       },
       create: {
         userId: req.user!.id,
         date,
+        endDate,
+        startTime: data.startTime ?? null,
+        endTime: data.endTime ?? null,
         status: data.status,
         note: data.note ?? null,
       },
@@ -118,15 +131,22 @@ router.post('/bulk', async (req: AuthRequest, res) => {
       // 更新・追加処理
       for (const update of data.updates) {
         const date = new Date(`${update.date}T00:00:00.000Z`);
+        const endDate = update.endDate ? new Date(`${update.endDate}T00:00:00.000Z`) : null;
         await tx.governmentAttendance.upsert({
           where: { userId_date: { userId, date } },
           update: {
             status: update.status,
+            endDate,
+            startTime: update.startTime ?? null,
+            endTime: update.endTime ?? null,
             note: update.note ?? null,
           },
           create: {
             userId,
             date,
+            endDate,
+            startTime: update.startTime ?? null,
+            endTime: update.endTime ?? null,
             status: update.status,
             note: update.note ?? null,
           },

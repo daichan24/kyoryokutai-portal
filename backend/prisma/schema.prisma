@@ -1346,7 +1346,10 @@ model GovernmentAttendance {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  date   DateTime @db.Date
+  date      DateTime @db.Date
+  endDate   DateTime? @db.Date  // 出張など複数日の場合の終了日
+  startTime String?  @db.VarChar(5)  // HH:mm 形式（連絡可能開始時間）
+  endTime   String?  @db.VarChar(5)  // HH:mm 形式（連絡可能終了時間）
   status GovernmentAttendanceStatus @default(PRESENT)
   note   String?  @db.VarChar(500)
 

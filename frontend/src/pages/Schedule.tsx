@@ -8,7 +8,7 @@ import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
-import { GovernmentAttendanceCalendar, useGovernmentAttendanceForMonth } from '../components/schedule/GovernmentAttendanceCalendar';
+import { GovernmentAttendanceCalendar } from '../components/schedule/GovernmentAttendanceCalendar';
 import { GovernmentAttendanceModal } from '../components/schedule/GovernmentAttendanceModal';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
@@ -62,10 +62,9 @@ export const Schedule: React.FC = () => {
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
 
-  // 行政出勤記録
-  const govAttendanceFrom = weekDates[0] ? format(weekDates[0], 'yyyy-MM-dd') : '';
-  const govAttendanceTo = weekDates[weekDates.length - 1] ? format(weekDates[weekDates.length - 1], 'yyyy-MM-dd') : '';
-  const { data: govAttendances = [] } = useGovernmentAttendanceForMonth(govAttendanceFrom, govAttendanceTo);
+  // 行政出勤記録（行政カレンダーモーダル用のみ）
+  const govAttendanceFrom = '';
+  const govAttendanceTo = '';
 
   useEffect(() => {
     if (isStaff && workspaceMode === 'browse') {
@@ -609,16 +608,8 @@ export const Schedule: React.FC = () => {
                 return schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
               };
 
-              // 行政出勤情報
+              // 行政出勤ドットは削除（行政カレンダーモーダルのみで確認）
               const dateStr = format(date, 'yyyy-MM-dd');
-              const dayGovAttendances = govAttendances.filter((a: any) => a.date.slice(0, 10) === dateStr);
-              const myGovAttendance = govAttendances.find((a: any) => a.userId === user?.id && a.date.slice(0, 10) === dateStr);
-              const GOV_STATUS_COLORS: Record<string, string> = {
-                PRESENT: '#22c55e', REMOTE: '#3b82f6', ABSENT: '#ef4444', HALF_DAY: '#eab308',
-              };
-              const GOV_STATUS_LABELS: Record<string, string> = {
-                PRESENT: '出勤', REMOTE: '出張', ABSENT: '不在', HALF_DAY: '半日',
-              };
 
               const getTextColor = (backgroundColor: string) => {
                 // HEXカラーをRGBに変換
@@ -640,19 +631,18 @@ export const Schedule: React.FC = () => {
               return (
                 <div
                   key={index}
-                  className={`bg-white dark:bg-gray-800 border-r border-b sm:border rounded-none min-w-0 w-full flex flex-col p-1 sm:p-2 cursor-pointer ${
+                  className={`bg-white dark:bg-gray-800 border-r border-b sm:border rounded-none min-w-0 w-full flex flex-col p-1 sm:p-2 ${
                     isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300 relative z-10' : 'border-border dark:border-gray-700'
-                  }`}
+                  } ${calendarViewMode !== 'all' ? 'cursor-pointer' : 'cursor-default'}`}
                   style={{ minHeight: '5.5rem', height: 'clamp(5.5rem, 22vw, 10rem)' }}
                   onClick={(e) => {
-                    // 行政出勤記録ボタンのクリックは無視
                     if ((e.target as HTMLElement).closest('button')) return;
-                    // 全体表示でスケジュールがある場合は詳細表示、それ以外は新規追加
-                    if (calendarViewMode === 'all' && daySchedules.length > 0) {
-                      setSelectedDateForDetail(date);
-                    } else {
-                      handleCreateSchedule(date);
+                    if (calendarViewMode === 'all') {
+                      // 閲覧モード: スケジュールがあれば詳細表示のみ、新規作成はしない
+                      if (daySchedules.length > 0) setSelectedDateForDetail(date);
+                      return;
                     }
+                    handleCreateSchedule(date);
                   }}
                 >
                   <div className="text-center mb-1 sm:mb-2 flex-shrink-0 min-w-0">
@@ -661,19 +651,6 @@ export const Schedule: React.FC = () => {
                     }`}>
                       {formatDate(date, 'd')}
                     </p>
-                    {/* 行政出勤ドット（全員が確認できる） */}
-                    {dayGovAttendances.length > 0 && (
-                      <div className="flex justify-center gap-0.5 mt-0.5 flex-wrap">
-                        {dayGovAttendances.map((a: any) => (
-                          <span
-                            key={a.id}
-                            className="w-1.5 h-1.5 rounded-full inline-block"
-                            style={{ backgroundColor: GOV_STATUS_COLORS[a.status] || '#6B7280' }}
-                            title={`${a.user.name}: ${GOV_STATUS_LABELS[a.status] || a.status}`}
-                          />
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   <div className="space-y-1 flex-1 overflow-hidden">
@@ -684,6 +661,17 @@ export const Schedule: React.FC = () => {
                       const isOtherUser = isOtherUserSchedule(schedule);
                       const isReadOnly = calendarViewMode === 'all' && isOtherUser;
                       const textColor = getTextColor(scheduleColor);
+
+                      // 複数日またぎの判定
+                      const schedStartDate = (schedule as any).startDate
+                        ? (schedule as any).startDate.slice(0, 10)
+                        : formatDate(schedule.date);
+                      const schedEndDate = (schedule as any).endDate
+                        ? (schedule as any).endDate.slice(0, 10)
+                        : schedStartDate;
+                      const isMultiDay = schedStartDate !== schedEndDate;
+                      const isStartDay = formatDate(date) === schedStartDate;
+                      const isEndDay = formatDate(date) === schedEndDate;
                       
                       return (
                         <button
@@ -691,26 +679,35 @@ export const Schedule: React.FC = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (isReadOnly) {
-                              // 他の人のスケジュールは詳細のみ表示
                               setSelectedSchedule(schedule);
                               setIsModalOpen(true);
                             } else {
                               handleEditSchedule(schedule);
                             }
                           }}
-                          className="w-full text-left px-2 py-1 rounded text-xs hover:opacity-90 transition-opacity"
+                          className={`w-full text-left px-2 py-1 text-xs hover:opacity-90 transition-opacity ${
+                            isMultiDay
+                              ? isStartDay ? 'rounded-l' : isEndDay ? 'rounded-r' : 'rounded-none'
+                              : 'rounded'
+                          }`}
                           style={{
                             backgroundColor: scheduleColor,
                             color: textColor === 'text-white' ? '#ffffff' : '#111827',
+                            marginLeft: isMultiDay && !isStartDay ? '-4px' : undefined,
+                            marginRight: isMultiDay && !isEndDay ? '-4px' : undefined,
                           }}
                         >
                           <div className="flex items-center gap-1.5 truncate">
-                            <span className="font-medium whitespace-nowrap">{schedule.startTime}-{schedule.endTime}</span>
-                            <span className="truncate">{(schedule as any).title || schedule.activityDescription}</span>
-                            {calendarViewMode === 'all' && schedule.user && (
+                            {(!isMultiDay || isStartDay) && (
+                              <span className="font-medium whitespace-nowrap">{schedule.startTime}-{schedule.endTime}</span>
+                            )}
+                            {isStartDay && (
+                              <span className="truncate">{(schedule as any).title || schedule.activityDescription}</span>
+                            )}
+                            {calendarViewMode === 'all' && schedule.user && isStartDay && (
                               <span className="whitespace-nowrap">（{schedule.user.name}）</span>
                             )}
-                            {participantCount > 0 && (
+                            {participantCount > 0 && isStartDay && (
                               <span className="ml-auto text-xs px-1 rounded whitespace-nowrap" style={{
                                 backgroundColor: textColor === 'text-white' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)',
                               }}>
