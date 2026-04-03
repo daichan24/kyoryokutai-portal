@@ -6,7 +6,7 @@ services:
     plan: starter
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    dockerCommand: npm run start:prod
+    dockerCommand: npm run start:prod:baseline
     envVars:
       - key: NODE_ENV
         value: production
