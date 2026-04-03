@@ -26,14 +26,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     refetchInterval: 120_000,
   });
 
-  // お知らせの未読数
+  // お知らせの未確認数（全員対象）
   const { data: unreadAnnounce } = useQuery({
     queryKey: ['announcements', 'unread-count'],
     queryFn: async () => {
       const r = await api.get<{ count: number }>('/api/announcements/unread-count');
       return r.data;
     },
-    enabled: user?.role === 'MEMBER',
+    enabled: !!user,
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -97,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     to="/announcements"
                     className="text-sm font-semibold text-primary hover:underline whitespace-nowrap"
                   >
-                    未読 {unreadAnnounce?.count} 件
+                    未確認 {unreadAnnounce?.count} 件
                   </Link>
                 )}
                 <div className="flex items-center space-x-2">

@@ -13,6 +13,26 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
 
     let count = 0;
 
+    // 全員共通: お知らせの未確認数
+    const allAnnouncements = await prisma.announcement.findMany({
+      select: { id: true, confirmTarget: true, authorId: true },
+    });
+    const targetAnnouncementIds = allAnnouncements
+      .filter((a) => {
+        if (a.authorId === userId) return false;
+        if (a.confirmTarget === 'MEMBER' && role !== 'MEMBER') return false;
+        return true;
+      })
+      .map((a) => a.id);
+    if (targetAnnouncementIds.length > 0) {
+      const announcementReads = await prisma.announcementRead.findMany({
+        where: { userId, announcementId: { in: targetAnnouncementIds } },
+        select: { announcementId: true },
+      });
+      const readSet = new Set(announcementReads.map((r) => r.announcementId));
+      count += targetAnnouncementIds.filter((id) => !readSet.has(id)).length;
+    }
+
     // メンバー：スケジュール承認リクエスト（共同作業・イベント応援）
     if (role === 'MEMBER') {
       const scheduleCount = await prisma.scheduleParticipant.count({

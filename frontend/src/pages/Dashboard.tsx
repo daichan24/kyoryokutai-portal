@@ -496,7 +496,7 @@ export const Dashboard: React.FC = () => {
               <Inbox className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">受信箱</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">受付ボックス</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {totalInboxCount}件
               </p>
@@ -505,10 +505,10 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 受信箱セクション */}
+      {/* 受付ボックスセクション */}
       {totalInboxCount > 0 && (
         <div className="bg-card dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">受信箱</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">受付ボックス</h2>
           
           {inboxLoading ? (
             <LoadingSpinner />

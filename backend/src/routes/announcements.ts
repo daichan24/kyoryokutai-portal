@@ -81,18 +81,33 @@ router.delete('/categories/:id', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'), a
 
 router.get('/unread-count', async (req: AuthRequest, res) => {
   try {
-    if (req.user!.role !== 'MEMBER') {
-      return res.json({ count: 0 });
-    }
-    const [ids, reads] = await Promise.all([
-      prisma.announcement.findMany({ select: { id: true } }),
-      prisma.announcementRead.findMany({
-        where: { userId: req.user!.id },
-        select: { announcementId: true },
-      }),
-    ]);
+    const userId = req.user!.id;
+    const role = req.user!.role;
+
+    // 自分が確認対象のお知らせを取得
+    const allAnnouncements = await prisma.announcement.findMany({
+      select: { id: true, confirmTarget: true, authorId: true },
+    });
+
+    // 自分が確認対象かどうか判定
+    const targetIds = allAnnouncements
+      .filter((a) => {
+        // 自分が投稿したものは確認不要
+        if (a.authorId === userId) return false;
+        // confirmTarget=MEMBERの場合はメンバーのみ
+        if (a.confirmTarget === 'MEMBER' && role !== 'MEMBER') return false;
+        return true;
+      })
+      .map((a) => a.id);
+
+    if (targetIds.length === 0) return res.json({ count: 0 });
+
+    const reads = await prisma.announcementRead.findMany({
+      where: { userId, announcementId: { in: targetIds } },
+      select: { announcementId: true },
+    });
     const readSet = new Set(reads.map((r) => r.announcementId));
-    const count = ids.filter((a) => !readSet.has(a.id)).length;
+    const count = targetIds.filter((id) => !readSet.has(id)).length;
     res.json({ count });
   } catch (e) {
     console.error('announcement unread-count:', e);
@@ -132,6 +147,7 @@ router.get('/', async (req: AuthRequest, res) => {
         updatedAt: a.updatedAt.toISOString(),
         category: a.category,
         author: a.author,
+        confirmTarget: a.confirmTarget,
         isRead: readSet.has(a.id),
       }));
       withFlag.sort((a, b) => {
@@ -141,6 +157,13 @@ router.get('/', async (req: AuthRequest, res) => {
       return res.json(withFlag);
     }
 
+    // スタッフ・全員: 自分の確認状況も返す
+    const readRows = await prisma.announcementRead.findMany({
+      where: { userId },
+      select: { announcementId: true },
+    });
+    const myReadSet = new Set(readRows.map((r) => r.announcementId));
+
     const readCounts = await prisma.announcementRead.groupBy({
       by: ['announcementId'],
       _count: { id: true },
@@ -148,6 +171,7 @@ router.get('/', async (req: AuthRequest, res) => {
     const countMap = Object.fromEntries(readCounts.map((x) => [x.announcementId, x._count.id]));
 
     const memberCount = await prisma.user.count({ where: { role: 'MEMBER' } });
+    const totalCount = await prisma.user.count();
 
     const withCounts = list.map((a) => ({
       id: a.id,
@@ -159,8 +183,10 @@ router.get('/', async (req: AuthRequest, res) => {
       updatedAt: a.updatedAt.toISOString(),
       category: a.category,
       author: a.author,
+      confirmTarget: a.confirmTarget,
+      isRead: myReadSet.has(a.id),
       readCount: countMap[a.id] ?? 0,
-      memberCount,
+      memberCount: a.confirmTarget === 'MEMBER' ? memberCount : totalCount,
     }));
 
     res.json(withCounts);
@@ -174,9 +200,10 @@ const announcementSchema = z.object({
   categoryId: z.string().uuid(),
   title: z.string().min(1).max(400),
   body: z.string().min(1).max(50000),
+  confirmTarget: z.enum(['ALL', 'MEMBER']).optional().default('ALL'),
 });
 
-router.post('/', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, res) => {
+router.post('/', async (req: AuthRequest, res) => {
   try {
     const data = announcementSchema.parse(req.body);
     const cat = await prisma.announcementCategory.findUnique({ where: { id: data.categoryId } });
@@ -189,6 +216,7 @@ router.post('/', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'), async (req: AuthR
         title: data.title.trim(),
         body: data.body.trim(),
         authorId: req.user!.id,
+        confirmTarget: data.confirmTarget,
       },
       include: {
         category: true,
@@ -203,11 +231,16 @@ router.post('/', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'), async (req: AuthR
   }
 });
 
-router.post('/:id/read', authorize('MEMBER'), async (req: AuthRequest, res) => {
+router.post('/:id/read', async (req: AuthRequest, res) => {
   try {
     const announcementId = req.params.id;
-    const exists = await prisma.announcement.findUnique({ where: { id: announcementId }, select: { id: true } });
+    const exists = await prisma.announcement.findUnique({ where: { id: announcementId }, select: { id: true, confirmTarget: true } });
     if (!exists) return res.status(404).json({ error: '見つかりません' });
+
+    // confirmTargetがMEMBERの場合はメンバーのみ確認可能
+    if (exists.confirmTarget === 'MEMBER' && req.user!.role !== 'MEMBER') {
+      return res.status(403).json({ error: 'この確認はメンバーのみ対象です' });
+    }
 
     await prisma.announcementRead.upsert({
       where: {

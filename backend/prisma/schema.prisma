@@ -611,6 +611,8 @@ model Announcement {
   body        String                 @db.Text
   authorId    String
   author      User                   @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  /// 確認を求める対象: ALL=全員, MEMBER=隊員のみ
+  confirmTarget AnnouncementConfirmTarget @default(ALL)
   publishedAt DateTime               @default(now())
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
@@ -618,6 +620,11 @@ model Announcement {
 
   @@index([categoryId, publishedAt])
   @@index([publishedAt])
+}
+
+enum AnnouncementConfirmTarget {
+  ALL    // 全員（行政・サポート・マスター・メンバー）
+  MEMBER // 隊員（メンバー）のみ
 }
 
 model AnnouncementRead {
