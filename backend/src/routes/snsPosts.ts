@@ -246,7 +246,10 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
     console.error('[API] Create SNS post error:', error);
-    res.status(500).json({ error: 'Failed to create SNS post' });
+    console.error('[API] Error name:', error?.name);
+    console.error('[API] Error message:', error?.message);
+    console.error('[API] Error code:', error?.code);
+    res.status(500).json({ error: 'Failed to create SNS post', details: error?.message });
   }
 });
 

@@ -919,79 +919,111 @@ export const Schedule: React.FC = () => {
         />
       )}
 
-      {/* 日詳細表示モーダル（全体表示時、5件以降をクリックした場合） */}
-      {selectedDateForDetail && calendarViewMode === 'all' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedDateForDetail(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full m-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
-              <h2 className="text-2xl font-bold dark:text-gray-100">
-                {formatDate(selectedDateForDetail, 'yyyy年M月d日')} のスケジュール
-              </h2>
-              <button onClick={() => setSelectedDateForDetail(null)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-3">
-                {getSchedulesForDate(selectedDateForDetail).map((schedule) => {
-                  const scheduleColor = schedule.user?.avatarColor || '#6B7280';
-                  return (
-                    <button
-                      key={schedule.id}
-                      onClick={() => {
-                        setSelectedDateForDetail(null);
-                        setSelectedSchedule(schedule);
-                        setIsModalOpen(true);
-                      }}
-                      className="w-full text-left p-4 rounded-lg border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800 transition-colors"
-                      style={{
-                        borderLeftWidth: '4px',
-                        borderLeftColor: scheduleColor,
-                      }}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            {schedule.user && (
-                              <div
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs flex-shrink-0"
-                                style={{ backgroundColor: scheduleColor }}
-                              >
-                                {(schedule.user.avatarLetter || schedule.user.name || '').charAt(0)}
-                              </div>
-                            )}
-                            {schedule.user && (
-                              <span className="font-medium text-gray-900 dark:text-gray-100">
-                                {schedule.user.name}
-                              </span>
-                            )}
-                          </div>
-                          <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                            {schedule.activityDescription}
-                          </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {schedule.startTime}-{schedule.endTime}
-                          </p>
-                          {schedule.locationText && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              📍 {schedule.locationText}
-                            </p>
-                          )}
+      {/* 日詳細表示モーダル（全体表示時） */}
+      {selectedDateForDetail && calendarViewMode === 'all' && (() => {
+        const allDaySchedules = getSchedulesForDate(selectedDateForDetail);
+        // ユーザーごとにグループ化
+        const userMap = new Map<string, { user: ScheduleType['user']; schedules: ScheduleType[] }>();
+        for (const s of allDaySchedules) {
+          const uid = s.userId;
+          if (!userMap.has(uid)) userMap.set(uid, { user: s.user, schedules: [] });
+          userMap.get(uid)!.schedules.push(s);
+        }
+        const userGroups = [...userMap.values()].sort((a, b) =>
+          (a.user?.name || '').localeCompare(b.user?.name || '', 'ja')
+        );
+        const [detailFilterUserId, setDetailFilterUserId] = React.useState<string>('');
+        const filteredGroups = detailFilterUserId
+          ? userGroups.filter(g => g.user?.id === detailFilterUserId)
+          : userGroups;
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedDateForDetail(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-center px-5 py-4 border-b dark:border-gray-700 flex-shrink-0">
+                <h2 className="text-lg font-bold dark:text-gray-100">
+                  {formatDate(selectedDateForDetail, 'yyyy年M月d日')} のスケジュール
+                </h2>
+                <button onClick={() => setSelectedDateForDetail(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {/* 人フィルター */}
+              {userGroups.length > 1 && (
+                <div className="px-5 py-2 border-b dark:border-gray-700 flex-shrink-0">
+                  <select
+                    value={detailFilterUserId}
+                    onChange={(e) => setDetailFilterUserId(e.target.value)}
+                    className="text-sm px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                  >
+                    <option value="">全員 ({allDaySchedules.length}件)</option>
+                    {userGroups.map(g => (
+                      <option key={g.user?.id} value={g.user?.id || ''}>
+                        {g.user?.name} ({g.schedules.length}件)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {filteredGroups.length === 0 ? (
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">スケジュールはありません</p>
+                ) : (
+                  filteredGroups.map(({ user: schedUser, schedules: userSchedules }) => (
+                    <div key={schedUser?.id || 'unknown'}>
+                      {/* ユーザーヘッダー */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                          style={{ backgroundColor: schedUser?.avatarColor || '#6B7280' }}
+                        >
+                          {(schedUser?.avatarLetter || schedUser?.name || '').charAt(0)}
                         </div>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                          {schedUser?.name || '不明'}
+                        </span>
+                        <span className="text-xs text-gray-400">{userSchedules.length}件</span>
                       </div>
-                    </button>
-                  );
-                })}
-                {getSchedulesForDate(selectedDateForDetail).length === 0 && (
-                  <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-                    この日にスケジュールはありません
-                  </p>
+                      {/* そのユーザーのスケジュール（時間順） */}
+                      <div className="space-y-1.5 pl-9">
+                        {[...userSchedules]
+                          .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                          .map((schedule) => {
+                            const scheduleColor = schedUser?.avatarColor || '#6B7280';
+                            return (
+                              <button
+                                key={schedule.id}
+                                onClick={() => {
+                                  setSelectedDateForDetail(null);
+                                  setSelectedSchedule(schedule);
+                                  setIsModalOpen(true);
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-lg border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800 transition-colors"
+                                style={{ borderLeftWidth: '3px', borderLeftColor: scheduleColor }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                    {schedule.startTime}–{schedule.endTime}
+                                  </span>
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                    {(schedule as any).title || schedule.activityDescription}
+                                  </span>
+                                </div>
+                                {schedule.locationText && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">📍 {schedule.locationText}</p>
+                                )}
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       {/* 行政出勤カレンダーモーダル */}
       {isGovernmentAttendanceModalOpen && (
         <GovernmentAttendanceModal

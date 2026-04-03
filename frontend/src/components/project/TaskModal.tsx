@@ -34,6 +34,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [projectId, setProjectId] = useState<string | null>(initialProjectId || null);
   const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'TRIAGE'>('PROJECT');
   const [dueDate, setDueDate] = useState<string>('');
+  const [startTime, setStartTime] = useState<string>('09:00');
+  const [endTime, setEndTime] = useState<string>('17:00');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
@@ -44,7 +46,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     if (!task) {
       return !!(title || description || projectId || dueDate || attachMode !== 'PROJECT');
     }
-    // 編集時は、元の値と比較
     const originalDueDate = task.dueDate ? task.dueDate.split('T')[0] : '';
     const origAttach: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'TRIAGE' = task.projectId
       ? 'PROJECT'
@@ -120,6 +121,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         setAttachMode('UNSET');
       }
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
+      setStartTime((task as any).startTime || '09:00');
+      setEndTime((task as any).endTime || '17:00');
     } else {
       setTitle('');
       setDescription('');
@@ -127,6 +130,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setProjectId(initialProjectId || null);
       setAttachMode(initialProjectId ? 'PROJECT' : 'UNSET');
       setDueDate('');
+      setStartTime('09:00');
+      setEndTime('17:00');
     }
   }, [task, initialProjectId]);
 
@@ -161,6 +166,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         projectId: effectiveProjectId,
         linkKind,
         dueDate: dueDate && dueDate.trim() ? dueDate.trim() : null,
+        startTime: dueDate ? startTime : undefined,
+        endTime: dueDate ? endTime : undefined,
       };
 
       if (task) {
@@ -277,8 +284,44 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               disabled={readOnly}
             />
             {dueDate && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻</label>
+                  <select
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
+                    disabled={readOnly}
+                  >
+                    {Array.from({ length: 24 * 4 }, (_, i) => {
+                      const h = Math.floor(i / 4);
+                      const m = (i % 4) * 15;
+                      const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                      return <option key={v} value={v}>{v}</option>;
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻</label>
+                  <select
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
+                    disabled={readOnly}
+                  >
+                    {Array.from({ length: 24 * 4 }, (_, i) => {
+                      const h = Math.floor(i / 4);
+                      const m = (i % 4) * 15;
+                      const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                      return <option key={v} value={v}>{v}</option>;
+                    })}
+                  </select>
+                </div>
+              </div>
+            )}
+            {dueDate && (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                期日を設定すると、その日にスケジュールが自動で作成されます
+                期日と時刻を設定すると、その日にスケジュールが自動で作成されます
               </p>
             )}
           </div>
