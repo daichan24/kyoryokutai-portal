@@ -4,7 +4,7 @@
   "description": "Backend for 協力隊クリアベース (regional revitalization team portal)",
   "main": "dist/index.js",
   "scripts": {
-    "postinstall": "npx puppeteer browsers install chrome",
+    "postinstall": "node -e \"if(process.env.PUPPETEER_SKIP_DOWNLOAD!=='true'){require('child_process').execSync('npx puppeteer browsers install chrome',{stdio:'inherit'})}\"",
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
