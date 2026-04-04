@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { getPostTypeLabels } from './SNSAccountModal';
 
 interface SNSPost {
   id: string;
@@ -13,33 +14,26 @@ interface SNSPost {
   followerCount?: number | null;
 }
 
+interface SNSAccountOption {
+  id: string;
+  platform: string;
+  accountName: string;
+  displayName?: string | null;
+}
+
 interface SNSPostDetailModalProps {
   isOpen: boolean;
   post?: SNSPost | null;
   defaultPostType?: 'STORY' | 'FEED';
   defaultPostedDate?: string;
-  /** 新規投稿時に紐付けるアカウントID */
+  /** 新規投稿時に紐付けるアカウントID。undefinedの場合はaccountsから選択 */
   accountId?: string | null;
   /** アカウントのプラットフォーム（種別ラベルの切り替えに使用） */
   platform?: string;
+  /** 「すべて」タブ時に表示するアカウント選択肢（accountIdがundefinedの場合に使用） */
+  accounts?: SNSAccountOption[];
   onClose: () => void;
   onSaved: () => void;
-}
-
-/** プラットフォームごとの投稿種別ラベル */
-const PLATFORM_POST_TYPES: Record<string, { story: string; feed: string }> = {
-  instagram: { story: 'ストーリーズ', feed: 'フィード' },
-  twitter:   { story: 'リポスト', feed: 'ポスト' },
-  x:         { story: 'リポスト', feed: 'ポスト' },
-  tiktok:    { story: 'ライブ', feed: '動画' },
-  youtube:   { story: 'ショート', feed: '動画' },
-  facebook:  { story: 'ストーリーズ', feed: '投稿' },
-  other:     { story: 'その他A', feed: 'その他B' },
-};
-
-function getPostTypeLabels(platform?: string): { story: string; feed: string } {
-  if (!platform) return { story: 'ストーリーズ', feed: 'フィード' };
-  return PLATFORM_POST_TYPES[platform.toLowerCase()] ?? { story: 'ストーリーズ', feed: 'フィード' };
 }
 
 export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
@@ -48,7 +42,8 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   defaultPostType = 'STORY',
   defaultPostedDate,
   accountId,
-  platform,
+  platform: platformProp,
+  accounts,
   onClose,
   onSaved,
 }) => {
@@ -58,8 +53,18 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   const [note, setNote] = useState('');
   const [followerCount, setFollowerCount] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  // 「すべて」タブ時のアカウント選択
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
 
-  const labels = getPostTypeLabels(platform);
+  // 実際に使うプラットフォーム: accountIdが指定されていればそのまま、
+  // 「すべて」タブ時は選択中アカウントのプラットフォームを使う
+  const effectivePlatform = platformProp
+    ?? accounts?.find(a => a.id === selectedAccountId)?.platform;
+
+  const labels = getPostTypeLabels(effectivePlatform);
+
+  // 「すべて」タブかどうか（accountIdがundefinedかつaccountsがある）
+  const showAccountSelect = accountId === undefined && accounts && accounts.length > 0;
 
   useEffect(() => {
     if (post) {
@@ -79,6 +84,13 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
     }
   }, [post, defaultPostType, defaultPostedDate]);
 
+  // アカウント選択肢が変わったらデフォルトを設定
+  useEffect(() => {
+    if (showAccountSelect && accounts && accounts.length > 0 && !selectedAccountId) {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [showAccountSelect, accounts, selectedAccountId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -97,7 +109,9 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       if (post) {
         await api.put(`/api/sns-posts/${post.id}`, data);
       } else {
-        if (accountId) data.accountId = accountId;
+        // アカウントIDを設定
+        const finalAccountId = accountId !== undefined ? accountId : selectedAccountId || null;
+        if (finalAccountId) data.accountId = finalAccountId;
         await api.post('/api/sns-posts', data);
       }
       onSaved();
@@ -126,6 +140,27 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
           <p className="text-sm text-gray-600 dark:text-gray-400">
             投稿した日付を選んでください（時刻は不要です）。
           </p>
+
+          {/* 「すべて」タブ時のアカウント選択 */}
+          {showAccountSelect && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                アカウント <span className="text-red-500 dark:text-red-400">*</span>
+              </label>
+              <select
+                value={selectedAccountId}
+                onChange={(e) => setSelectedAccountId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                required
+              >
+                {accounts!.map(acc => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.displayName || acc.accountName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <Input
             label="投稿した日"

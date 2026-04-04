@@ -79,6 +79,15 @@ export const SNSPosts: React.FC = () => {
     enabled: viewMode === 'personal',
   });
 
+  // スタッフ用: 全メンバーのSNSアカウント一覧
+  const { data: allAccounts = [] } = useQuery<SNSAccount[]>({
+    queryKey: ['sns-accounts', 'all'],
+    queryFn: async () => (await api.get('/api/sns-accounts/all')).data || [],
+    enabled: viewMode === 'view',
+    staleTime: 0,
+    refetchInterval: 60_000,
+  });
+
   // メンバー一覧（閲覧モード用）
   const { data: members = [] } = useQuery<Array<{ id: string; name: string }>>({
     queryKey: ['users', 'members'],
@@ -328,6 +337,7 @@ export const SNSPosts: React.FC = () => {
 
       {viewMode === 'view' ? (
         <>
+          {/* 閲覧モード: フィルタ */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -347,58 +357,114 @@ export const SNSPosts: React.FC = () => {
             </div>
           </div>
 
+          {/* 閲覧モード: 現在の週の投稿状況（メンバー×アカウント別） */}
           {!selectedMonth && !selectedUserId && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                現在の週の投稿状況
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
-                  ({format(weekStart, 'M月d日', { locale: ja })} 〜 {format(addDays(weekEnd, -1), 'M月d日', { locale: ja })})
-                </span>
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-gray-100">メンバー</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-900 dark:text-gray-100">フィード</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-900 dark:text-gray-100">ストーリーズ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentWeekStatus.map((status) => (
-                      <tr key={status.userId} className="border-b border-gray-200 dark:border-gray-700">
-                        <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{status.userName}</td>
-                        <td className="py-3 px-4 text-center">
-                          {status.hasFeed ? <span className="text-green-600 dark:text-green-400 font-medium">✓ {status.feedPosts.length > 1 ? `${status.feedPosts.length}件` : '投稿済み'}</span> : <span className="text-red-600 dark:text-red-400 font-medium">未投稿</span>}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {status.hasStory ? <span className="text-green-600 dark:text-green-400 font-medium">✓ {status.storyPosts.length > 1 ? `${status.storyPosts.length}件` : '投稿済み'}</span> : <span className="text-red-600 dark:text-red-400 font-medium">未投稿</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  今週の投稿状況
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                    ({format(weekStart, 'M月d日', { locale: ja })} 〜 {format(addDays(weekEnd, -1), 'M月d日', { locale: ja })})
+                  </span>
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">1分ごとに自動更新</p>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {currentWeekStatus.map((status) => {
+                  // このメンバーのアカウント一覧
+                  const memberAccounts = allAccounts.filter(a => a.userId === status.userId);
+                  return (
+                    <div key={status.userId} className="p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{status.userName}</span>
+                        {/* 全体サマリー */}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${status.hasFeed && status.hasStory ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'}`}>
+                          {status.hasFeed && status.hasStory ? '✓ 完了' : '未完了'}
+                        </span>
+                      </div>
+                      {memberAccounts.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {memberAccounts.map(acc => {
+                            const accPosts = (allPosts || []).filter(p =>
+                              p.userId === status.userId &&
+                              p.accountId === acc.id &&
+                              p.postedAt &&
+                              new Date(p.postedAt) >= weekStart &&
+                              new Date(p.postedAt) < weekEnd
+                            );
+                            const hasFeed = accPosts.some(p => p.postType === 'FEED');
+                            const hasStory = accPosts.some(p => p.postType === 'STORY');
+                            const feedPosts = accPosts.filter(p => p.postType === 'FEED');
+                            const storyPosts = accPosts.filter(p => p.postType === 'STORY');
+                            return (
+                              <div key={acc.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 truncate">
+                                  {acc.displayName || acc.accountName}
+                                  <span className="ml-1 text-gray-400 font-normal">({acc.platform})</span>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-blue-600 dark:text-blue-400">ストーリーズ</span>
+                                    {hasStory ? (
+                                      <span className="text-green-600 dark:text-green-400 font-medium">
+                                        ✓ {storyPosts.map(p => format(new Date(p.postedAt), 'M/d', { locale: ja })).join(', ')}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">未投稿</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-green-600 dark:text-green-400">フィード</span>
+                                    {hasFeed ? (
+                                      <span className="text-green-600 dark:text-green-400 font-medium">
+                                        ✓ {feedPosts.map(p => format(new Date(p.postedAt), 'M/d', { locale: ja })).join(', ')}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">未投稿</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        // アカウント未登録の場合は従来の表示
+                        <div className="flex gap-4 text-sm">
+                          <span>フィード: {status.hasFeed ? <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span> : <span className="text-gray-400">未投稿</span>}</span>
+                          <span>ストーリーズ: {status.hasStory ? <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span> : <span className="text-gray-400">未投稿</span>}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
+          {/* 閲覧モード: 過去の記録 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{selectedMonth || selectedUserId ? '投稿履歴' : '過去の記録'}</h2>
             {historicalPosts.length > 0 ? (
               <div className="space-y-3">
-                {historicalPosts.map((post) => (
-                  <div key={post.id} className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{format(new Date(post.postedAt), 'yyyy年M月d日')}</span>
-                      <span className={`text-xs px-2 py-1 rounded-full ${post.postType === 'STORY' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'}`}>
-                        {post.postType === 'STORY' ? 'ストーリーズ' : 'フィード'}
-                      </span>
-                      {post.user && <span className="text-xs text-gray-500 dark:text-gray-400">({post.user.name})</span>}
-                      {post.url && <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1"><ExternalLink className="w-3 h-3" />投稿リンク</a>}
+                {historicalPosts.map((post) => {
+                  const acc = allAccounts.find(a => a.id === post.accountId);
+                  return (
+                    <div key={post.id} className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{format(new Date(post.postedAt), 'yyyy年M月d日')}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${post.postType === 'STORY' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'}`}>
+                          {post.postType === 'STORY' ? 'ストーリーズ' : 'フィード'}
+                        </span>
+                        {post.user && <span className="text-xs font-medium text-gray-700 dark:text-gray-300">({post.user.name})</span>}
+                        {acc && <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{acc.displayName || acc.accountName}</span>}
+                        {post.followerCount != null && <span className="text-xs text-gray-500 dark:text-gray-400">{post.followerCount.toLocaleString()}人</span>}
+                        {post.url && <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1"><ExternalLink className="w-3 h-3" />投稿リンク</a>}
+                      </div>
+                      {post.note && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{post.note}</p>}
                     </div>
-                    {post.note && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{post.note}</p>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">投稿履歴がありません</div>
@@ -596,7 +662,8 @@ export const SNSPosts: React.FC = () => {
           isOpen={isAddModalOpen}
           defaultPostType={addModalDefaultType}
           defaultPostedDate={addModalDefaultDate}
-          accountId={selectedAccountId}
+          accountId={selectedAccountId !== null ? selectedAccountId : undefined}
+          accounts={selectedAccountId === null && myAccounts.length > 0 ? myAccounts : undefined}
           platform={selectedAccountId ? myAccounts.find(a => a.id === selectedAccountId)?.platform : undefined}
           onClose={() => { setIsAddModalOpen(false); setAddModalDefaultDate(undefined); }}
           onSaved={() => {

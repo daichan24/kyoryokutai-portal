@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Instagram, Twitter, Globe } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { X, Trash2 } from 'lucide-react';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
 
@@ -17,9 +16,10 @@ interface SNSAccountModalProps {
   account?: SNSAccount | null;
   onClose: () => void;
   onSaved: () => void;
+  onDeleted?: () => void;
 }
 
-const PLATFORMS = [
+export const PLATFORMS = [
   { value: 'instagram', label: 'Instagram' },
   { value: 'twitter', label: 'X (Twitter)' },
   { value: 'tiktok', label: 'TikTok' },
@@ -28,14 +28,32 @@ const PLATFORMS = [
   { value: 'other', label: 'その他' },
 ];
 
-export const SNSAccountModal: React.FC<SNSAccountModalProps> = ({ account, onClose, onSaved }) => {
-  const queryClient = useQueryClient();
+/** プラットフォームごとの投稿種別ラベル（SNSPostDetailModalと共有） */
+export const PLATFORM_POST_TYPES: Record<string, { story: string; feed: string }> = {
+  instagram: { story: 'ストーリーズ', feed: 'フィード' },
+  twitter:   { story: 'リポスト', feed: 'ポスト' },
+  x:         { story: 'リポスト', feed: 'ポスト' },
+  tiktok:    { story: 'ライブ', feed: '動画' },
+  youtube:   { story: 'ショート', feed: '動画' },
+  facebook:  { story: 'ストーリーズ', feed: '投稿' },
+  other:     { story: 'その他A', feed: 'その他B' },
+};
+
+export function getPostTypeLabels(platform?: string): { story: string; feed: string } {
+  if (!platform) return { story: 'ストーリーズ', feed: 'フィード' };
+  return PLATFORM_POST_TYPES[platform.toLowerCase()] ?? { story: 'ストーリーズ', feed: 'フィード' };
+}
+
+export const SNSAccountModal: React.FC<SNSAccountModalProps> = ({ account, onClose, onSaved, onDeleted }) => {
   const [platform, setPlatform] = useState('instagram');
   const [accountName, setAccountName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [url, setUrl] = useState('');
   const [isDefault, setIsDefault] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const labels = getPostTypeLabels(platform);
 
   useEffect(() => {
     if (account) {
@@ -44,6 +62,12 @@ export const SNSAccountModal: React.FC<SNSAccountModalProps> = ({ account, onClo
       setDisplayName(account.displayName || '');
       setUrl(account.url || '');
       setIsDefault(account.isDefault);
+    } else {
+      setPlatform('instagram');
+      setAccountName('');
+      setDisplayName('');
+      setUrl('');
+      setIsDefault(false);
     }
   }, [account]);
 
@@ -63,12 +87,26 @@ export const SNSAccountModal: React.FC<SNSAccountModalProps> = ({ account, onClo
       } else {
         await api.post('/api/sns-accounts', data);
       }
-      queryClient.invalidateQueries({ queryKey: ['sns-accounts'] });
       onSaved();
     } catch (e: any) {
       alert(`保存に失敗しました: ${e.response?.data?.error || e.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!account) return;
+    if (!confirm(`「${account.displayName || account.accountName}」を削除しますか？\nこのアカウントに紐付いた投稿記録は残ります。`)) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/sns-accounts/${account.id}`);
+      onDeleted?.();
+      onSaved();
+    } catch (e: any) {
+      alert(`削除に失敗しました: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -96,6 +134,10 @@ export const SNSAccountModal: React.FC<SNSAccountModalProps> = ({ account, onClo
                 <option key={p.value} value={p.value}>{p.label}</option>
               ))}
             </select>
+            {/* プラットフォームに応じた種別ラベルのプレビュー */}
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              投稿種別: <span className="font-medium text-blue-600 dark:text-blue-400">{labels.story}</span> / <span className="font-medium text-green-600 dark:text-green-400">{labels.feed}</span>
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -141,9 +183,22 @@ export const SNSAccountModal: React.FC<SNSAccountModalProps> = ({ account, onClo
             />
             <span className="text-gray-700 dark:text-gray-300">デフォルトアカウントに設定</span>
           </label>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>キャンセル</Button>
-            <Button type="submit" disabled={loading}>{loading ? '保存中...' : '保存'}</Button>
+          <div className="flex items-center justify-between pt-2">
+            {account ? (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deleting ? '削除中...' : 'このアカウントを削除'}
+              </button>
+            ) : <span />}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>キャンセル</Button>
+              <Button type="submit" disabled={loading}>{loading ? '保存中...' : '保存'}</Button>
+            </div>
           </div>
         </form>
       </div>
