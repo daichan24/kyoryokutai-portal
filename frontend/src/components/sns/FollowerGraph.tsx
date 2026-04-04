@@ -85,8 +85,8 @@ export const FollowerGraph: React.FC<FollowerGraphProps> = ({ posts, accountName
             </g>
           ))}
 
-          {/* 折れ線 */}
-          <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />
+          {/* 折れ線（グレー） */}
+          <path d={linePath} fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinejoin="round" strokeDasharray="4 2" />
 
           {/* データポイント */}
           {dataPoints.map((d, i) => (
