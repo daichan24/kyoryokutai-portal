@@ -4,55 +4,10 @@ import prisma from '../lib/prisma';
 import { PostType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getCurrentWeekBoundary, getWeekBoundaryForDate, jstWallToUtcDate } from '../utils/weekBoundary';
+import { followerCountField, snsPostCreateSchema, snsPostUpdateSchema, parsePostedAtInput } from '../utils/snsValidation';
 
 const router = Router();
 router.use(authenticate);
-
-function parsePostedAtInput(raw: string): Date {
-  const t = raw.trim();
-  if (t.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(t)) {
-    const y = parseInt(t.slice(0, 4), 10);
-    const mo = parseInt(t.slice(5, 7), 10);
-    const d = parseInt(t.slice(8, 10), 10);
-    return jstWallToUtcDate(y, mo, d, 12, 0, 0);
-  }
-  return new Date(t);
-}
-
-const followerCountField = z
-  .union([z.number(), z.string(), z.null()])
-  .optional()
-  .transform((v) => {
-    if (v === undefined) return undefined;
-    if (v === null) return null;
-    if (v === '') return undefined;
-    const n = typeof v === 'string' ? parseInt(String(v).replace(/,/g, ''), 10) : Number(v);
-    if (!Number.isFinite(n) || Number.isNaN(n)) return undefined;
-    const t = Math.trunc(n);
-    if (t < 0 || t > 99_999_999) return undefined;
-    return t;
-  });
-
-// 新スキーマ（日付＋種別中心。テーマ・フォロワー等は廃止）
-const snsPostCreateSchema = z.object({
-  postedAt: z.string(), // ISO 日時または YYYY-MM-DD（日付のみは JST 正午として週境界と整合）
-  postType: z.enum(['STORY', 'FEED']),
-  url: z.string().optional().refine((val) => !val || val === '' || z.string().url().safeParse(val).success, {
-    message: 'Invalid URL format',
-  }),
-  note: z.string().max(2000).optional(),
-  followerCount: followerCountField,
-});
-
-const snsPostUpdateSchema = snsPostCreateSchema.partial();
-
-// 旧スキーマ（後方互換性のため残す）
-const snsPostLegacySchema = z.object({
-  week: z.string(),
-  postDate: z.string().optional(),
-  postType: z.enum(['STORY', 'FEED', 'BOTH']).optional(),
-  isPosted: z.boolean().default(false),
-});
 
 /**
  * GET /api/sns-posts
@@ -160,9 +115,13 @@ router.get('/weekly-status', async (req: AuthRequest, res) => {
 
 /**
  * POST /api/sns-posts
- * SNS投稿を作成（詳細入力対応）
- * 生SQLのINSERT ... ON CONFLICT DO UPDATEを使用
- * DB制約の状態に関わらず確実に動作する
+ * SNS投稿を作成（upsert: 同じuserId+week+postType+accountIdなら更新）
+ *
+ * Upsertロジック:
+ * 1. userId+week+postType+accountIdで既存レコードを検索
+ * 2. 存在する場合はIDベースで更新（最も確実）
+ * 3. 存在しない場合は新規作成
+ * 4. P2002（unique制約違反）発生時は再検索して更新（競合状態への対応）
  */
 router.post('/', async (req: AuthRequest, res) => {
   try {
@@ -173,15 +132,16 @@ router.post('/', async (req: AuthRequest, res) => {
     const { weekKey } = getWeekBoundaryForDate(postedAt);
     const userId = req.user!.id;
     const postType = data.postType;
+    const accountId = data.accountId || null;
     const url = data.url?.trim() || null;
     const note = data.note?.trim() || null;
     const followerCount = data.followerCount ?? null;
 
-    console.log('[API] weekKey:', weekKey, 'postType:', postType, 'userId:', userId);
+    console.log('[API] weekKey:', weekKey, 'postType:', postType, 'userId:', userId, 'accountId:', accountId);
 
-    // 既存レコードをIDで検索
+    // 既存レコードをIDで検索（accountIdも含めて検索）
     const existing = await prisma.sNSPost.findFirst({
-      where: { userId, week: weekKey, postType },
+      where: { userId, week: weekKey, postType, accountId },
     });
 
     let post;
@@ -198,7 +158,7 @@ router.post('/', async (req: AuthRequest, res) => {
       try {
         console.log('[API] Creating new post:', postType);
         post = await prisma.sNSPost.create({
-          data: { userId, week: weekKey, postedAt, postType, url, note, followerCount },
+          data: { userId, week: weekKey, postedAt, postType, accountId, url, note, followerCount },
           include: { user: true },
         });
       } catch (createErr: any) {
@@ -219,7 +179,7 @@ router.post('/', async (req: AuthRequest, res) => {
             // 同じweekの全レコードを確認
             const allForWeek = await prisma.sNSPost.findMany({
               where: { userId, week: weekKey },
-              select: { id: true, postType: true },
+              select: { id: true, postType: true, accountId: true },
             });
             console.error('[API] P2002 but no matching postType found. allForWeek:', JSON.stringify(allForWeek));
             console.error('[API] This means DB has userId+week unique constraint (without postType)');

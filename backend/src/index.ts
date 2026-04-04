@@ -17,6 +17,7 @@ import projectsRoutes from './routes/projects';
 import tasksRoutes from './routes/tasks';
 import eventsRoutes from './routes/events';
 import snsPostsRoutes from './routes/snsPosts';
+import snsAccountsRoutes from './routes/snsAccounts';
 import contactsRoutes from './routes/contacts';
 import citizensRoutes from './routes/citizens';
 import monthlyReportsRoutes from './routes/monthlyReports';
@@ -133,6 +134,7 @@ app.use('/api/projects', projectsRoutes);
 app.use('/api', tasksRoutes); // /api/missions/:missionId/tasks のルート
 app.use('/api/events', eventsRoutes);
 app.use('/api/sns-posts', snsPostsRoutes);
+app.use('/api/sns-accounts', snsAccountsRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/citizens', citizensRoutes); // 町民（協力隊メンバー）データベース用API
 app.use('/api/monthly-reports', monthlyReportsRoutes);

@@ -5,11 +5,13 @@ import { format, addDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
-import { Plus, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, Edit, Trash2, ExternalLink, Settings } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { WeeklyStatusAlert } from '../components/sns/WeeklyStatusAlert';
 import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
+import { SNSAccountModal } from '../components/sns/SNSAccountModal';
+import { FollowerGraph } from '../components/sns/FollowerGraph';
 import { getWeekMetaForDate, getRecentWeekRows } from '../utils/snsWeek';
 
 interface SNSPost {
@@ -21,7 +23,19 @@ interface SNSPost {
   note?: string | null;
   followerCount?: number | null;
   userId: string;
+  accountId?: string | null;
   user?: { id: string; name: string };
+}
+
+interface SNSAccount {
+  id: string;
+  platform: string;
+  accountName: string;
+  displayName?: string | null;
+  url?: string | null;
+  isDefault: boolean;
+  userId?: string;
+  user?: { id: string; name: string; avatarColor: string };
 }
 
 interface MemberStatus {
@@ -41,6 +55,9 @@ export const SNSPosts: React.FC = () => {
   const [addModalDefaultType, setAddModalDefaultType] = useState<'STORY' | 'FEED'>('STORY');
   const [addModalDefaultDate, setAddModalDefaultDate] = useState<string | undefined>(undefined);
   const [editingPost, setEditingPost] = useState<SNSPost | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null); // null=デフォルト
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<SNSAccount | null>(null);
   const viewMode: 'personal' | 'view' =
     user?.role === 'MEMBER'
       ? 'personal'
@@ -54,6 +71,26 @@ export const SNSPosts: React.FC = () => {
 
   const { weekStart, weekEnd } = getWeekMetaForDate(new Date());
   const personalWeekRows = useMemo(() => getRecentWeekRows(12), []);
+
+  // 自分のSNSアカウント一覧
+  const { data: myAccounts = [] } = useQuery<SNSAccount[]>({
+    queryKey: ['sns-accounts', user?.id],
+    queryFn: async () => {
+      const r = await api.get('/api/sns-accounts');
+      return r.data || [];
+    },
+    enabled: viewMode === 'personal',
+  });
+
+  // スタッフ用: 全メンバーのSNSアカウント一覧
+  const { data: allAccounts = [] } = useQuery<SNSAccount[]>({
+    queryKey: ['sns-accounts', 'all'],
+    queryFn: async () => {
+      const r = await api.get('/api/sns-accounts/all');
+      return r.data || [];
+    },
+    enabled: viewMode === 'view',
+  });
 
   // メンバー一覧の取得（閲覧モード用）
   const { data: members = [] } = useQuery<Array<{ id: string; name: string }>>({
@@ -75,12 +112,13 @@ export const SNSPosts: React.FC = () => {
     enabled: user?.role !== 'MEMBER',
   });
 
-  // 個人タブ用の投稿取得
+  // 個人タブ用の投稿取得（選択アカウントでフィルタ）
   const { data: personalPosts, isLoading: isLoadingPersonal } = useQuery<SNSPost[]>({
-    queryKey: ['sns-posts', 'personal', user?.id, isStaff ? workspaceMode : 'm'],
+    queryKey: ['sns-posts', 'personal', user?.id, selectedAccountId, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
-      const url = `/api/sns-posts?userId=${user?.id}`;
-      const response = await api.get(url);
+      const params = new URLSearchParams({ userId: user?.id || '' });
+      if (selectedAccountId) params.append('accountId', selectedAccountId);
+      const response = await api.get(`/api/sns-posts?${params}`);
       return response.data;
     },
     enabled: viewMode === 'personal',
@@ -101,29 +139,6 @@ export const SNSPosts: React.FC = () => {
       feed: list.some((p) => p.postType === 'FEED' && inMonth(p.postedAt)),
     };
   }, [personalPosts, currentMonthStart, currentMonthEnd]);
-
-  const followerStats = useMemo(() => {
-    const list = (personalPosts || []).filter(
-      (p) => p.followerCount !== undefined && p.followerCount !== null,
-    );
-    const byWeek = new Map<string, { count: number; postedAt: string }>();
-    const byMonth = new Map<string, number>();
-    for (const p of list) {
-      const prevW = byWeek.get(p.week);
-      if (!prevW || new Date(p.postedAt) > new Date(prevW.postedAt)) {
-        byWeek.set(p.week, { count: p.followerCount!, postedAt: p.postedAt });
-      }
-      const m = format(new Date(p.postedAt), 'yyyy-MM');
-      const prevM = byMonth.get(m);
-      if (prevM === undefined || p.followerCount! > prevM) byMonth.set(m, p.followerCount!);
-    }
-    return {
-      byWeek: [...byWeek.entries()]
-        .map(([week, v]) => ({ week, count: v.count }))
-        .sort((a, b) => b.week.localeCompare(a.week)),
-      byMonth: [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0])),
-    };
-  }, [personalPosts]);
 
   const postsForWeek = (weekKey: string, type: 'STORY' | 'FEED') =>
     (personalPosts || [])
@@ -267,21 +282,69 @@ export const SNSPosts: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">SNS投稿管理</h1>
-        {viewMode === 'personal' && (
-          <Button
-            onClick={() => {
-              setAddModalDefaultType('STORY');
-              setAddModalDefaultDate(undefined);
-              setIsAddModalOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            投稿を記録
-          </Button>
-        )}
+        <div className="flex gap-2 flex-wrap">
+          {viewMode === 'personal' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setEditingAccount(null); setIsAccountModalOpen(true); }}
+              >
+                <Settings className="h-4 w-4 mr-1" />
+                アカウント管理
+              </Button>
+              <Button
+                onClick={() => {
+                  setAddModalDefaultType('STORY');
+                  setAddModalDefaultDate(undefined);
+                  setIsAddModalOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                投稿を記録
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* アカウントタブ（個人モードで複数アカウントがある場合） */}
+      {viewMode === 'personal' && myAccounts.length > 0 && (
+        <div className="flex gap-1 flex-wrap border-b dark:border-gray-700 pb-0">
+          <button
+            onClick={() => setSelectedAccountId(null)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              selectedAccountId === null
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            すべて
+          </button>
+          {myAccounts.map((acc) => (
+            <button
+              key={acc.id}
+              onClick={() => setSelectedAccountId(acc.id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                selectedAccountId === acc.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              {acc.displayName || acc.accountName}
+              {acc.isDefault && <span className="ml-1 text-xs text-gray-400">（既定）</span>}
+            </button>
+          ))}
+          <button
+            onClick={() => { setEditingAccount(null); setIsAccountModalOpen(true); }}
+            className="px-3 py-2 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-b-2 border-transparent"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {user?.role !== 'MEMBER' && isStaff && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
@@ -449,6 +512,16 @@ export const SNSPosts: React.FC = () => {
         </>
       ) : (
         <>
+          {/* フォロワーグラフ（フォロワー数が入力されている場合のみ表示） */}
+          {(personalPosts || []).some(p => p.followerCount != null) && (
+            <FollowerGraph
+              posts={personalPosts || []}
+              accountName={selectedAccountId
+                ? myAccounts.find(a => a.id === selectedAccountId)?.displayName || myAccounts.find(a => a.id === selectedAccountId)?.accountName
+                : undefined}
+            />
+          )}
+
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4 space-y-2">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">今月の記録状況</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">

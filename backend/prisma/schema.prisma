@@ -100,6 +100,7 @@ model User {
   mandatedAttendanceAuditAsStaff  MandatedAttendanceAuditLog[] @relation("MandatedAttendanceChangedBy")
 
   governmentAttendances GovernmentAttendance[]
+  snsAccounts           SNSAccount[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -829,6 +830,10 @@ model SNSPost {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // SNSアカウント（任意・未設定時はデフォルトアカウント扱い）
+  accountId String?
+  account   SNSAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
   // 週のキー（YYYY-WW形式、月曜9:00 JST基準で週を判定）
   week String
 
@@ -854,9 +859,30 @@ model SNSPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, week, postType], name: "userId_week_postType")
+  @@unique([userId, week, postType, accountId], name: "userId_week_postType_accountId")
   @@index([userId, week])
   @@index([userId, postedAt])
+  @@index([accountId])
+}
+
+// SNSアカウント（ユーザーが複数持てる）
+model SNSAccount {
+  id       String @id @default(uuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  platform    String  @db.VarChar(50)  // 'instagram', 'twitter', 'tiktok' 等
+  accountName String  @db.VarChar(200) // @username 等
+  displayName String? @db.VarChar(200) // 表示名
+  url         String? @db.Text         // プロフィールURL
+  isDefault   Boolean @default(false)  // デフォルトアカウント
+
+  posts SNSPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 enum PostType {

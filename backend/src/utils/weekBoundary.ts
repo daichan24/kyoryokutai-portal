@@ -3,6 +3,13 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 const JST = 'Asia/Tokyo';
 
+/** 週境界の計算結果 */
+export interface WeekBoundary {
+  weekStart: Date;  // 月曜 9:00 JST (UTC 0:00)
+  weekEnd: Date;    // 翌月曜 9:00 JST (UTC 0:00)
+  weekKey: string;  // YYYY-WNN 形式
+}
+
 /**
  * JST の壁時計（年・月・日・時…）を、その瞬間の UTC の Date に変換（日本は DST なし・常に UTC+9）
  */
@@ -14,7 +21,7 @@ export function jstWallToUtcDate(y: number, mo: number, d: number, h: number, mi
  * 月曜 9:00 JST を週の始まりとする境界（Render 等 UTC サーバとブラウザで同一の weekKey になるよう、
  * `new Date(y,0,1)` / `setHours` は使わない）
  */
-export function getWeekBoundaryForDate(date: Date): { weekStart: Date; weekEnd: Date; weekKey: string } {
+export function getWeekBoundaryForDate(date: Date): WeekBoundary {
   const y = Number(formatInTimeZone(date, JST, 'yyyy'));
   const mo = Number(formatInTimeZone(date, JST, 'M'));
   const da = Number(formatInTimeZone(date, JST, 'd'));
@@ -44,6 +51,7 @@ export function getWeekBoundaryForDate(date: Date): { weekStart: Date; weekEnd: 
   return { weekStart, weekEnd, weekKey };
 }
 
-export function getCurrentWeekBoundary(): { weekStart: Date; weekEnd: Date; weekKey: string } {
+/** 現在日時の週境界を返す */
+export function getCurrentWeekBoundary(): WeekBoundary {
   return getWeekBoundaryForDate(new Date());
 }
