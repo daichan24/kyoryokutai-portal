@@ -61,6 +61,7 @@ export const Schedule: React.FC = () => {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null); // 週表示の個人モードで選択されたメンバーID
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
+  const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
 
   // 行政出勤記録（行政カレンダーモーダル用のみ）
   const govAttendanceFrom = '';
@@ -71,6 +72,10 @@ export const Schedule: React.FC = () => {
       setSelectedMemberId(null);
     }
   }, [isStaff, workspaceMode]);
+
+  useEffect(() => {
+    setDetailFilterUserId('');
+  }, [selectedDateForDetail]);
 
   useEffect(() => {
     if (viewMode === 'week') {
@@ -933,7 +938,6 @@ export const Schedule: React.FC = () => {
         const userGroups = [...userMap.values()].sort((a, b) =>
           (a.user?.name || '').localeCompare(b.user?.name || '', 'ja')
         );
-        const [detailFilterUserId, setDetailFilterUserId] = React.useState<string>('');
         const filteredGroups = detailFilterUserId
           ? userGroups.filter(g => g.user?.id === detailFilterUserId)
           : userGroups;
