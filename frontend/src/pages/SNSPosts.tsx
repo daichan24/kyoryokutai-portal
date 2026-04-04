@@ -145,6 +145,34 @@ export const SNSPosts: React.FC = () => {
       .filter((p) => p.week === weekKey && p.postType === type)
       .sort((a, b) => new Date(a.postedAt).getTime() - new Date(b.postedAt).getTime());
 
+  // フォロワー数統計（週別・月別）
+  const followerStats = useMemo(() => {
+    const list = (personalPosts || []).filter((p) => p.followerCount != null);
+
+    // 週別: 各週の最新フォロワー数
+    const weekMap = new Map<string, number>();
+    list.forEach((p) => {
+      const existing = weekMap.get(p.week);
+      if (existing == null || new Date(p.postedAt).getTime() > new Date(existing).getTime()) {
+        weekMap.set(p.week, p.followerCount!);
+      }
+    });
+    const byWeek = Array.from(weekMap.entries())
+      .map(([week, count]) => ({ week, count }))
+      .sort((a, b) => b.week.localeCompare(a.week));
+
+    // 月別: 各月の最大フォロワー数
+    const monthMap = new Map<string, number>();
+    list.forEach((p) => {
+      const month = p.postedAt.slice(0, 7);
+      const existing = monthMap.get(month) ?? 0;
+      if (p.followerCount! > existing) monthMap.set(month, p.followerCount!);
+    });
+    const byMonth = Array.from(monthMap.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+
+    return { byWeek, byMonth };
+  }, [personalPosts]);
+
   // 閲覧タブ用の投稿取得（全員分）
   const { data: allPosts, isLoading: isLoadingView } = useQuery<SNSPost[]>({
     queryKey: ['sns-posts', 'view', selectedMonth, selectedUserId, isStaff ? workspaceMode : 'm'],
