@@ -7,6 +7,17 @@ import prisma from '../src/lib/prisma';
 async function main() {
   console.log('Checking and fixing production DB schema...');
 
+  // SNSPostのユニーク制約を確認・作成
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "SNSPost_userId_week_postType_key" 
+      ON "SNSPost" ("userId", week, "postType");
+    `);
+    console.log('✓ SNSPost userId_week_postType unique index OK');
+  } catch (e) {
+    console.log('SNSPost unique index (may already exist):', (e as any).message);
+  }
+
   // GovernmentAttendanceテーブルの確認・作成
   try {
     await prisma.$executeRawUnsafe(`

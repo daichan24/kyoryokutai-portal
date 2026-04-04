@@ -854,6 +854,7 @@ model SNSPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, week, postType], name: "userId_week_postType")
   @@index([userId, week])
   @@index([userId, postedAt])
 }
