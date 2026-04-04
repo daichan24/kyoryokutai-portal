@@ -161,7 +161,7 @@ router.get('/weekly-status', async (req: AuthRequest, res) => {
 /**
  * POST /api/sns-posts
  * SNS投稿を作成（詳細入力対応）
- * 同じ週・同じ種別が既にある場合はupsertで更新する
+ * 同じ週・同じ種別が既にある場合はupdateする
  */
 router.post('/', async (req: AuthRequest, res) => {
   try {
@@ -175,34 +175,51 @@ router.post('/', async (req: AuthRequest, res) => {
 
       console.log('[API] weekKey:', weekKey, 'postType:', data.postType, 'userId:', req.user!.id);
 
-      // upsert: userId+week+postTypeのユニーク制約を使ってアトミックに処理
-      const post = await prisma.sNSPost.upsert({
+      // まず既存レコードを検索（findFirst = DB制約に依存しない）
+      const existing = await prisma.sNSPost.findFirst({
         where: {
-          userId_week_postType: {
-            userId: req.user!.id,
-            week: weekKey,
-            postType: data.postType,
-          },
-        },
-        create: {
           userId: req.user!.id,
           week: weekKey,
-          postedAt,
           postType: data.postType,
-          url: data.url && data.url.trim() !== '' ? data.url : null,
-          note: data.note && data.note.trim() !== '' ? data.note : null,
-          followerCount: data.followerCount !== undefined && data.followerCount !== null ? data.followerCount : null,
         },
-        update: {
-          postedAt,
-          url: data.url !== undefined ? (data.url && data.url.trim() !== '' ? data.url : null) : undefined,
-          note: data.note !== undefined ? (data.note && data.note.trim() !== '' ? data.note : null) : undefined,
-          followerCount: data.followerCount !== undefined ? (data.followerCount === null ? null : data.followerCount) : undefined,
-        },
-        include: { user: true },
       });
 
-      console.log('[API] SNS post upserted:', post.id, post.postType);
+      let post;
+      if (existing) {
+        // 既存レコードをIDで更新（確実にupdate）
+        console.log('[API] Updating existing SNS post id:', existing.id);
+        post = await prisma.sNSPost.update({
+          where: { id: existing.id },
+          data: {
+            postedAt,
+            url: data.url !== undefined ? (data.url && data.url.trim() !== '' ? data.url : null) : undefined,
+            note: data.note !== undefined ? (data.note && data.note.trim() !== '' ? data.note : null) : undefined,
+            followerCount: data.followerCount !== undefined
+              ? (data.followerCount === null ? null : data.followerCount)
+              : undefined,
+          },
+          include: { user: true },
+        });
+      } else {
+        // 新規作成
+        console.log('[API] Creating new SNS post:', data.postType);
+        post = await prisma.sNSPost.create({
+          data: {
+            userId: req.user!.id,
+            week: weekKey,
+            postedAt,
+            postType: data.postType,
+            url: data.url && data.url.trim() !== '' ? data.url : null,
+            note: data.note && data.note.trim() !== '' ? data.note : null,
+            followerCount: data.followerCount !== undefined && data.followerCount !== null
+              ? data.followerCount
+              : null,
+          },
+          include: { user: true },
+        });
+      }
+
+      console.log('[API] SNS post saved:', post.id, post.postType);
       return res.json(post);
 
     } catch (zodError) {
@@ -214,30 +231,36 @@ router.post('/', async (req: AuthRequest, res) => {
           legacyData.postType === 'BOTH' || !legacyData.postType ? 'STORY' : (legacyData.postType as PostType);
         const postedAtLegacy = legacyData.postDate ? new Date(legacyData.postDate) : new Date();
         const { weekKey: legacyWeekKey } = getWeekBoundaryForDate(postedAtLegacy);
+        const weekToUse = legacyData.week || legacyWeekKey;
 
-        const post = await prisma.sNSPost.upsert({
-          where: {
-            userId_week_postType: {
-              userId: req.user!.id,
-              week: legacyData.week || legacyWeekKey,
-              postType: legacyPostType,
-            },
-          },
-          create: {
-            userId: req.user!.id,
-            week: legacyData.week || legacyWeekKey,
-            postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-            postType: legacyPostType,
-            isPosted: legacyData.isPosted,
-            postedAt: postedAtLegacy,
-          },
-          update: {
-            postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-            isPosted: legacyData.isPosted,
-            postedAt: postedAtLegacy,
-          },
-          include: { user: true },
+        const legacyExisting = await prisma.sNSPost.findFirst({
+          where: { userId: req.user!.id, week: weekToUse, postType: legacyPostType },
         });
+
+        let post;
+        if (legacyExisting) {
+          post = await prisma.sNSPost.update({
+            where: { id: legacyExisting.id },
+            data: {
+              postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
+              isPosted: legacyData.isPosted,
+              postedAt: postedAtLegacy,
+            },
+            include: { user: true },
+          });
+        } else {
+          post = await prisma.sNSPost.create({
+            data: {
+              userId: req.user!.id,
+              week: weekToUse,
+              postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
+              postType: legacyPostType,
+              isPosted: legacyData.isPosted,
+              postedAt: postedAtLegacy,
+            },
+            include: { user: true },
+          });
+        }
         return res.json(post);
       }
       throw zodError;
@@ -247,10 +270,15 @@ router.post('/', async (req: AuthRequest, res) => {
       console.error('[API] Validation error:', error.errors);
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
-    // ユニーク制約違反（P2002）は409で返す
+    // P2002（ユニーク制約違反）の場合は詳細をログに出す
     if (error?.code === 'P2002') {
-      console.error('[API] Unique constraint violation:', error.message);
-      return res.status(409).json({ error: 'この週・種別の投稿は既に存在します', code: 'P2002' });
+      console.error('[API] P2002 unique constraint violation:', error.message);
+      console.error('[API] meta:', JSON.stringify(error?.meta));
+      return res.status(500).json({
+        error: 'DB unique constraint violation - please contact admin',
+        details: error?.message,
+        meta: error?.meta,
+      });
     }
     console.error('[API] Create SNS post error:', error?.name, error?.message, error?.code);
     res.status(500).json({
