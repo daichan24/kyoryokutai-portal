@@ -490,16 +490,30 @@ export const SNSPosts: React.FC = () => {
                         <td className="py-2 px-2 text-center">
                           <div className="flex flex-col gap-1 items-center">
                             {sPosts.map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                className="w-full min-h-[32px] rounded-md border border-green-200 dark:border-green-900/50 bg-green-50/50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-xs px-2 transition-colors"
-                                onClick={() => setEditingPost(p)}
-                              >
-                                <span className="text-green-600 dark:text-green-400 font-medium">
-                                  ✓ {format(new Date(p.postedAt), 'M/d', { locale: ja })}
-                                </span>
-                              </button>
+                              <div key={p.id} className="w-full flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  className="flex-1 min-h-[32px] rounded-md border border-green-200 dark:border-green-900/50 bg-green-50/50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-xs px-2 transition-colors text-left"
+                                  onClick={() => setEditingPost(p)}
+                                >
+                                  <span className="text-green-600 dark:text-green-400 font-medium">
+                                    ✓ {format(new Date(p.postedAt), 'M/d', { locale: ja })}
+                                  </span>
+                                  {p.followerCount != null && (
+                                    <span className="ml-1 text-gray-500 dark:text-gray-400">
+                                      {p.followerCount.toLocaleString()}人
+                                    </span>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                                  className="p-1 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0"
+                                  title="削除"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             ))}
                             <button
                               type="button"
@@ -526,16 +540,30 @@ export const SNSPosts: React.FC = () => {
                         <td className="py-2 px-2 text-center">
                           <div className="flex flex-col gap-1 items-center">
                             {fPosts.map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                className="w-full min-h-[32px] rounded-md border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-xs px-2 transition-colors"
-                                onClick={() => setEditingPost(p)}
-                              >
-                                <span className="text-blue-600 dark:text-blue-400 font-medium">
-                                  ✓ {format(new Date(p.postedAt), 'M/d', { locale: ja })}
-                                </span>
-                              </button>
+                              <div key={p.id} className="w-full flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  className="flex-1 min-h-[32px] rounded-md border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-xs px-2 transition-colors text-left"
+                                  onClick={() => setEditingPost(p)}
+                                >
+                                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                    ✓ {format(new Date(p.postedAt), 'M/d', { locale: ja })}
+                                  </span>
+                                  {p.followerCount != null && (
+                                    <span className="ml-1 text-gray-500 dark:text-gray-400">
+                                      {p.followerCount.toLocaleString()}人
+                                    </span>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                                  className="p-1 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0"
+                                  title="削除"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             ))}
                             <button
                               type="button"
