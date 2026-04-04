@@ -146,6 +146,7 @@ model Schedule {
   activityDescription String   @db.Text // 活動内容（詳細）
   participants        String[] // User IDの配列（後方互換性のため残す）
   freeNote            String?  @db.Text
+  customColor         String?  @db.VarChar(20) // スケジュール個別の色（HEX形式、未設定時はプロジェクト色→ユーザー色）
 
   /// 個人主催イベントへの応援出勤などで紐づけ
   supportEventId String?

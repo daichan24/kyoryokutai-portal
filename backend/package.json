@@ -9,7 +9,7 @@
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
     "start:prod": "echo 'RUN MIGRATE' && npx prisma migrate deploy && echo 'MIGRATE DONE' && if [ \"$RUN_SEED\" = \"true\" ]; then echo '=== RUN SEED ===' && npm run seed && echo 'SEED DONE'; fi && node dist/index.js",
-    "start:prod:baseline": "echo 'BASELINE MIGRATE' && npx prisma migrate resolve --applied 20260403000000_add_government_attendance && npx prisma migrate resolve --applied 20260403000001_gov_attendance_add_time_enddate && npx prisma migrate resolve --applied 20260404000000_announcement_confirm_target && npx prisma migrate deploy && echo 'MIGRATE DONE' && node dist/index.js",
+    "start:prod:baseline": "echo 'BASELINE MIGRATE' && npx prisma migrate resolve --applied 20260403000000_add_government_attendance && npx prisma migrate resolve --applied 20260403000001_gov_attendance_add_time_enddate && npx prisma migrate resolve --applied 20260404000000_announcement_confirm_target && npx prisma migrate resolve --applied 20260405000000_schedule_custom_color && npx prisma migrate deploy && echo 'MIGRATE DONE' && node dist/index.js",
     "start:prod:recover-p3009": "echo 'RUN MIGRATE (recover: resolve failed email migration, then deploy)' && npx prisma migrate resolve --rolled-back 20260329000000_update_member_emails && npx prisma migrate deploy && echo 'MIGRATE DONE' && if [ \"$RUN_SEED\" = \"true\" ]; then echo '=== RUN SEED ===' && npm run seed && echo 'SEED DONE'; fi && node dist/index.js",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",

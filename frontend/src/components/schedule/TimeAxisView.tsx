@@ -175,10 +175,10 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                     {daySchedules.map((schedule) => {
                       const position = calculateSchedulePosition(schedule.startTime, schedule.endTime);
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
-                      // 全体表示の場合はユーザー色を使用、それ以外はプロジェクトのテーマカラーがあればそれを使用、なければユーザーのアバターカラーを使用
+                      // 全体表示の場合はユーザー色を使用、それ以外はカスタム色→プロジェクトのテーマカラー→ユーザーのアバターカラーを使用
                       const scheduleColor = calendarViewMode === 'all'
                         ? schedule.user?.avatarColor || '#6B7280'
-                        : schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+                        : (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
                       
                       return (
                         <button

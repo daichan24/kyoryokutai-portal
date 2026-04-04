@@ -600,12 +600,13 @@ export const Schedule: React.FC = () => {
                 ? daySchedules.length - MAX_VISIBLE_SCHEDULES
                 : 0;
 
-              // 色の取得：個人モードはスケジュール色、全体モードはユーザー色
+              // 色の取得：個人モードはカスタム色→プロジェクト色→ユーザー色、全体モードはユーザー色
               const getScheduleColor = (schedule: ScheduleType) => {
                 if (calendarViewMode === 'all') {
                   return schedule.user?.avatarColor || '#6B7280';
                 }
-                return schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+                // 個人表示: customColor > project.themeColor > user.avatarColor
+                return (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
               };
 
               // 行政出勤ドットは削除（行政カレンダーモーダルのみで確認）

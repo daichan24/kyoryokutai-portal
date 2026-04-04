@@ -49,6 +49,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const [customColor, setCustomColor] = useState<string>(''); // カスタムカラー（空=プロジェクト色/ユーザー色）
 
   const { user: currentUser } = useAuthStore();
 
@@ -70,6 +71,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setFreeNote(schedule.freeNote || '');
       setSelectedProjectId(schedule.projectId || null);
       setSupportEventId(schedule.supportEventId || null);
+      setCustomColor((schedule as any).customColor || '');
       // 編集時も参加者を追加・変更できるようにする
       setIsCollaborative(true);
       // 既存の参加者を選択状態にする
@@ -98,6 +100,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         setActivityDescription(defaultActivityDescription);
       }
       setSupportEventId(null);
+      setCustomColor('');
     }
   }, [schedule, defaultDate, defaultStartTime, defaultEndTime, defaultProjectId, defaultActivityDescription]);
 
@@ -200,6 +203,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       }
       if (freeNote && freeNote.trim()) {
         data.freeNote = freeNote.trim();
+      }
+      if (customColor) {
+        data.customColor = customColor;
+      } else {
+        data.customColor = null; // 明示的にnullを送信してリセット可能に
       }
 
       console.log('Sending schedule data:', JSON.stringify(data, null, 2));
@@ -525,6 +533,49 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               readOnly={readOnly}
             />
           </div>
+
+          {/* カラー設定（個人表示用） */}
+          {!readOnly && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                表示色（任意・個人表示のみ）
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={customColor || (selectedProjectId ? projects.find(p => p.id === selectedProjectId)?.themeColor || currentUser?.avatarColor || '#3B82F6' : currentUser?.avatarColor || '#3B82F6')}
+                  onChange={(e) => setCustomColor(e.target.value)}
+                  className="h-9 w-14 rounded border border-border cursor-pointer"
+                  disabled={readOnly}
+                />
+                <div className="flex gap-2">
+                  {/* プリセットカラー */}
+                  {['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16'].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCustomColor(c)}
+                      className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${customColor === c ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent'}`}
+                      style={{ backgroundColor: c }}
+                      title={c}
+                    />
+                  ))}
+                </div>
+                {customColor && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomColor('')}
+                    className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline"
+                  >
+                    リセット
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                全体表示ではユーザーカラーが使われます
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

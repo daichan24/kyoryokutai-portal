@@ -273,18 +273,19 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
 
 const createScheduleSchema = z.object({
   date: z.string(),
-  endDate: z.string().optional(), // 終了日（開始日と異なる場合）
+  endDate: z.string().optional(),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   locationText: z.string().optional(),
-  title: z.string().max(200).min(1), // タイトル（必須）
-  activityDescription: z.string().optional(), // 活動内容（任意）
+  title: z.string().max(200).min(1),
+  activityDescription: z.string().optional(),
   freeNote: z.string().optional(),
   isPending: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),
   projectId: z.string().optional(),
   taskId: z.string().optional(),
   supportEventId: z.string().uuid().optional().nullable(),
+  customColor: z.string().max(20).optional().nullable(),
 });
 
 const updateScheduleSchema = createScheduleSchema.partial();
@@ -471,19 +472,20 @@ router.post('/', async (req: AuthRequest, res) => {
     const schedule = await prisma.schedule.create({
       data: {
         userId: creatorId,
-        date: startDate, // 後方互換性のため
+        date: startDate,
         startDate: startDate,
         endDate: endDate,
         startTime: data.startTime,
         endTime: data.endTime,
-        locationText: data.locationText || null, // 空文字列の場合はnullに変換
-        title: data.title, // タイトル（必須）
-        activityDescription: data.activityDescription || '', // 活動内容（任意、空文字列の場合は空文字列）
-        freeNote: data.freeNote || null, // 空文字列の場合はnullに変換
+        locationText: data.locationText || null,
+        title: data.title,
+        activityDescription: data.activityDescription || '',
+        freeNote: data.freeNote || null,
         isPending: data.isPending || false,
         projectId: data.projectId || null,
         taskId: data.taskId || null,
         supportEventId: data.supportEventId || null,
+        customColor: (data as any).customColor || null,
         scheduleParticipants: participantIds.length > 0 ? {
           create: participantIds.map((userId) => ({
             userId,
@@ -628,6 +630,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
     if (data.supportEventId !== undefined) {
       updateData.supportEventId = data.supportEventId || null;
+    }
+    if ((data as any).customColor !== undefined) {
+      updateData.customColor = (data as any).customColor || null;
     }
     delete updateData.participantsUserIds;
 
