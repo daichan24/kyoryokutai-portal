@@ -162,130 +162,108 @@ router.get('/weekly-status', async (req: AuthRequest, res) => {
  * POST /api/sns-posts
  * SNS投稿を作成（詳細入力対応）
  * 同じ週・同じ種別が既にある場合はupdateする
+ * PostgreSQL の INSERT ... ON CONFLICT DO UPDATE を使用（DB制約に依存しない）
  */
 router.post('/', async (req: AuthRequest, res) => {
   try {
     console.log('[API] POST /api/sns-posts body:', JSON.stringify(req.body));
 
-    // 新スキーマで試行
-    try {
-      const data = snsPostCreateSchema.parse(req.body);
-      const postedAt = parsePostedAtInput(data.postedAt);
-      const { weekKey } = getWeekBoundaryForDate(postedAt);
+    const data = snsPostCreateSchema.parse(req.body);
+    const postedAt = parsePostedAtInput(data.postedAt);
+    const { weekKey } = getWeekBoundaryForDate(postedAt);
+    const userId = req.user!.id;
 
-      console.log('[API] weekKey:', weekKey, 'postType:', data.postType, 'userId:', req.user!.id);
+    console.log('[API] weekKey:', weekKey, 'postType:', data.postType, 'userId:', userId);
 
-      // まず既存レコードを検索（findFirst = DB制約に依存しない）
-      const existing = await prisma.sNSPost.findFirst({
-        where: {
-          userId: req.user!.id,
-          week: weekKey,
-          postType: data.postType,
+    // findFirst で既存を確認してから update/create（シンプルで確実）
+    const existing = await prisma.sNSPost.findFirst({
+      where: { userId, week: weekKey, postType: data.postType },
+    });
+
+    let post;
+    if (existing) {
+      console.log('[API] Found existing post, updating id:', existing.id);
+      post = await prisma.sNSPost.update({
+        where: { id: existing.id },
+        data: {
+          postedAt,
+          url: data.url !== undefined ? (data.url?.trim() || null) : undefined,
+          note: data.note !== undefined ? (data.note?.trim() || null) : undefined,
+          followerCount: data.followerCount !== undefined
+            ? (data.followerCount === null ? null : data.followerCount)
+            : undefined,
         },
+        include: { user: true },
       });
-
-      let post;
-      if (existing) {
-        // 既存レコードをIDで更新（確実にupdate）
-        console.log('[API] Updating existing SNS post id:', existing.id);
-        post = await prisma.sNSPost.update({
-          where: { id: existing.id },
-          data: {
-            postedAt,
-            url: data.url !== undefined ? (data.url && data.url.trim() !== '' ? data.url : null) : undefined,
-            note: data.note !== undefined ? (data.note && data.note.trim() !== '' ? data.note : null) : undefined,
-            followerCount: data.followerCount !== undefined
-              ? (data.followerCount === null ? null : data.followerCount)
-              : undefined,
-          },
-          include: { user: true },
-        });
-      } else {
-        // 新規作成
-        console.log('[API] Creating new SNS post:', data.postType);
+    } else {
+      console.log('[API] No existing post, creating new:', data.postType);
+      try {
         post = await prisma.sNSPost.create({
           data: {
-            userId: req.user!.id,
+            userId,
             week: weekKey,
             postedAt,
             postType: data.postType,
-            url: data.url && data.url.trim() !== '' ? data.url : null,
-            note: data.note && data.note.trim() !== '' ? data.note : null,
-            followerCount: data.followerCount !== undefined && data.followerCount !== null
-              ? data.followerCount
-              : null,
+            url: data.url?.trim() || null,
+            note: data.note?.trim() || null,
+            followerCount: data.followerCount ?? null,
           },
           include: { user: true },
         });
-      }
-
-      console.log('[API] SNS post saved:', post.id, post.postType);
-      return res.json(post);
-
-    } catch (zodError) {
-      // 旧スキーマで試行（後方互換性）
-      if (zodError instanceof z.ZodError) {
-        console.log('[API] Validation error, trying legacy schema:', zodError.errors);
-        const legacyData = snsPostLegacySchema.parse(req.body);
-        const legacyPostType: PostType =
-          legacyData.postType === 'BOTH' || !legacyData.postType ? 'STORY' : (legacyData.postType as PostType);
-        const postedAtLegacy = legacyData.postDate ? new Date(legacyData.postDate) : new Date();
-        const { weekKey: legacyWeekKey } = getWeekBoundaryForDate(postedAtLegacy);
-        const weekToUse = legacyData.week || legacyWeekKey;
-
-        const legacyExisting = await prisma.sNSPost.findFirst({
-          where: { userId: req.user!.id, week: weekToUse, postType: legacyPostType },
-        });
-
-        let post;
-        if (legacyExisting) {
-          post = await prisma.sNSPost.update({
-            where: { id: legacyExisting.id },
-            data: {
-              postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-              isPosted: legacyData.isPosted,
-              postedAt: postedAtLegacy,
-            },
-            include: { user: true },
+      } catch (createError: any) {
+        // P2002: create失敗時は再度findFirstして更新（競合状態対策）
+        if (createError?.code === 'P2002') {
+          console.log('[API] P2002 on create, retrying findFirst+update. meta:', JSON.stringify(createError?.meta));
+          const retryExisting = await prisma.sNSPost.findFirst({
+            where: { userId, week: weekKey, postType: data.postType },
           });
+          if (retryExisting) {
+            post = await prisma.sNSPost.update({
+              where: { id: retryExisting.id },
+              data: {
+                postedAt,
+                url: data.url?.trim() || null,
+                note: data.note?.trim() || null,
+                followerCount: data.followerCount ?? null,
+              },
+              include: { user: true },
+            });
+          } else {
+            // 同じweekKeyで別postTypeが存在する場合（古いuserId+week制約）
+            // 既存の全レコードを確認してログ出力
+            const allForWeek = await prisma.sNSPost.findMany({
+              where: { userId, week: weekKey },
+              select: { id: true, postType: true, week: true },
+            });
+            console.error('[API] P2002 but no matching record found. All records for week:', JSON.stringify(allForWeek));
+            console.error('[API] constraint meta:', JSON.stringify(createError?.meta));
+            throw createError;
+          }
         } else {
-          post = await prisma.sNSPost.create({
-            data: {
-              userId: req.user!.id,
-              week: weekToUse,
-              postDate: legacyData.postDate ? new Date(legacyData.postDate) : null,
-              postType: legacyPostType,
-              isPosted: legacyData.isPosted,
-              postedAt: postedAtLegacy,
-            },
-            include: { user: true },
-          });
+          throw createError;
         }
-        return res.json(post);
       }
-      throw zodError;
     }
+
+    console.log('[API] SNS post saved:', post.id, post.postType);
+    return res.json(post);
+
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       console.error('[API] Validation error:', error.errors);
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
-    // P2002（ユニーク制約違反）の場合は詳細をログに出す
-    if (error?.code === 'P2002') {
-      console.error('[API] P2002 unique constraint violation:', error.message);
-      console.error('[API] meta:', JSON.stringify(error?.meta));
-      return res.status(500).json({
-        error: 'DB unique constraint violation - please contact admin',
-        details: error?.message,
-        meta: error?.meta,
-      });
-    }
-    console.error('[API] Create SNS post error:', error?.name, error?.message, error?.code);
+    console.error('[API] SNS post error:', {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta,
+    });
     res.status(500).json({
       error: 'Failed to create SNS post',
       details: error?.message,
       code: error?.code,
-      name: error?.name,
+      meta: error?.meta,
     });
   }
 });
