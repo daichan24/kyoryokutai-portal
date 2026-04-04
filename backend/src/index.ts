@@ -91,6 +91,30 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// DB診断エンドポイント（一時的）
+app.get('/api/debug/sns-test', async (req, res) => {
+  try {
+    const prisma = (await import('./lib/prisma')).default;
+    // SNSPostテーブルの件数を確認
+    const count = await prisma.sNSPost.count();
+    // テーブルのカラム一覧を確認
+    const columns = await prisma.$queryRaw`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'SNSPost'
+      ORDER BY ordinal_position;
+    `;
+    res.json({ 
+      status: 'ok', 
+      snsPostCount: count,
+      columns,
+      prismaVersion: process.env.npm_package_dependencies__prisma_client || 'unknown'
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message, stack: e.stack });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

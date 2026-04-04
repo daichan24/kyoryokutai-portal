@@ -249,7 +249,13 @@ router.post('/', async (req: AuthRequest, res) => {
     console.error('[API] Error name:', error?.name);
     console.error('[API] Error message:', error?.message);
     console.error('[API] Error code:', error?.code);
-    res.status(500).json({ error: 'Failed to create SNS post', details: error?.message });
+    console.error('[API] Error stack:', error?.stack);
+    res.status(500).json({ 
+      error: 'Failed to create SNS post', 
+      details: error?.message,
+      code: error?.code,
+      name: error?.name,
+    });
   }
 });
 
