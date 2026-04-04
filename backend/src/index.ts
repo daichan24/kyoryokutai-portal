@@ -97,18 +97,19 @@ app.get('/api/debug/sns-test', async (req, res) => {
     const prismaModule = await import('./lib/prisma');
     const prisma = prismaModule.default;
     const count = await prisma.sNSPost.count();
-    const columns = await prisma.$queryRaw`
-      SELECT column_name, data_type 
-      FROM information_schema.columns 
-      WHERE table_name = 'SNSPost'
-      ORDER BY ordinal_position;
+    // SNSPostのインデックス一覧
+    const indexes = await prisma.$queryRaw`
+      SELECT indexname, indexdef 
+      FROM pg_indexes 
+      WHERE tablename = 'SNSPost'
+      ORDER BY indexname;
     `;
     // 最新の投稿1件も確認
     const latest = await prisma.sNSPost.findFirst({ orderBy: { createdAt: 'desc' } });
     res.json({ 
       status: 'ok', 
       snsPostCount: count,
-      columns,
+      indexes,
       latestPost: latest ? { id: latest.id, postType: latest.postType, week: latest.week } : null,
     });
   } catch (e: any) {

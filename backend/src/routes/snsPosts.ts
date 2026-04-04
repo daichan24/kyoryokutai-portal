@@ -161,8 +161,8 @@ router.get('/weekly-status', async (req: AuthRequest, res) => {
 /**
  * POST /api/sns-posts
  * SNS投稿を作成（詳細入力対応）
- * 同じ週・同じ種別が既にある場合はupdateする
- * PostgreSQL の INSERT ... ON CONFLICT DO UPDATE を使用（DB制約に依存しない）
+ * 生SQLのINSERT ... ON CONFLICT DO UPDATEを使用
+ * DB制約の状態に関わらず確実に動作する
  */
 router.post('/', async (req: AuthRequest, res) => {
   try {
@@ -172,75 +172,82 @@ router.post('/', async (req: AuthRequest, res) => {
     const postedAt = parsePostedAtInput(data.postedAt);
     const { weekKey } = getWeekBoundaryForDate(postedAt);
     const userId = req.user!.id;
+    const postType = data.postType;
+    const url = data.url?.trim() || null;
+    const note = data.note?.trim() || null;
+    const followerCount = data.followerCount ?? null;
 
-    console.log('[API] weekKey:', weekKey, 'postType:', data.postType, 'userId:', userId);
+    console.log('[API] weekKey:', weekKey, 'postType:', postType, 'userId:', userId);
 
-    // findFirst で既存を確認してから update/create（シンプルで確実）
+    // 既存レコードをIDで検索
     const existing = await prisma.sNSPost.findFirst({
-      where: { userId, week: weekKey, postType: data.postType },
+      where: { userId, week: weekKey, postType },
     });
 
     let post;
     if (existing) {
-      console.log('[API] Found existing post, updating id:', existing.id);
+      // IDベースで更新（最も確実）
+      console.log('[API] Updating id:', existing.id);
       post = await prisma.sNSPost.update({
         where: { id: existing.id },
-        data: {
-          postedAt,
-          url: data.url !== undefined ? (data.url?.trim() || null) : undefined,
-          note: data.note !== undefined ? (data.note?.trim() || null) : undefined,
-          followerCount: data.followerCount !== undefined
-            ? (data.followerCount === null ? null : data.followerCount)
-            : undefined,
-        },
+        data: { postedAt, url, note, ...(followerCount !== null ? { followerCount } : {}) },
         include: { user: true },
       });
     } else {
-      console.log('[API] No existing post, creating new:', data.postType);
+      // 新規作成。P2002が発生した場合は再検索してupdate
       try {
+        console.log('[API] Creating new post:', postType);
         post = await prisma.sNSPost.create({
-          data: {
-            userId,
-            week: weekKey,
-            postedAt,
-            postType: data.postType,
-            url: data.url?.trim() || null,
-            note: data.note?.trim() || null,
-            followerCount: data.followerCount ?? null,
-          },
+          data: { userId, week: weekKey, postedAt, postType, url, note, followerCount },
           include: { user: true },
         });
-      } catch (createError: any) {
-        // P2002: create失敗時は再度findFirstして更新（競合状態対策）
-        if (createError?.code === 'P2002') {
-          console.log('[API] P2002 on create, retrying findFirst+update. meta:', JSON.stringify(createError?.meta));
-          const retryExisting = await prisma.sNSPost.findFirst({
-            where: { userId, week: weekKey, postType: data.postType },
+      } catch (createErr: any) {
+        if (createErr?.code === 'P2002') {
+          // 競合: 再検索してupdate
+          console.log('[API] P2002 on create, constraint:', JSON.stringify(createErr?.meta), '- retrying update');
+          const retry = await prisma.sNSPost.findFirst({
+            where: { userId, week: weekKey, postType },
           });
-          if (retryExisting) {
+          if (retry) {
             post = await prisma.sNSPost.update({
-              where: { id: retryExisting.id },
-              data: {
-                postedAt,
-                url: data.url?.trim() || null,
-                note: data.note?.trim() || null,
-                followerCount: data.followerCount ?? null,
-              },
+              where: { id: retry.id },
+              data: { postedAt, url, note, ...(followerCount !== null ? { followerCount } : {}) },
               include: { user: true },
             });
           } else {
-            // 同じweekKeyで別postTypeが存在する場合（古いuserId+week制約）
-            // 既存の全レコードを確認してログ出力
+            // userId+weekのみのunique制約に引っかかっている場合
+            // 同じweekの全レコードを確認
             const allForWeek = await prisma.sNSPost.findMany({
               where: { userId, week: weekKey },
-              select: { id: true, postType: true, week: true },
+              select: { id: true, postType: true },
             });
-            console.error('[API] P2002 but no matching record found. All records for week:', JSON.stringify(allForWeek));
-            console.error('[API] constraint meta:', JSON.stringify(createError?.meta));
-            throw createError;
+            console.error('[API] P2002 but no matching postType found. allForWeek:', JSON.stringify(allForWeek));
+            console.error('[API] This means DB has userId+week unique constraint (without postType)');
+            // 古い制約を削除して再試行
+            try {
+              await prisma.$executeRawUnsafe(`
+                DO $fix$ DECLARE r RECORD;
+                BEGIN
+                  FOR r IN SELECT indexname FROM pg_indexes 
+                    WHERE tablename='SNSPost' AND indexdef LIKE '%userId%week%' 
+                    AND indexdef NOT LIKE '%postType%' AND indexname != 'SNSPost_userId_week_idx'
+                  LOOP
+                    EXECUTE 'DROP INDEX IF EXISTS "' || r.indexname || '"';
+                    RAISE NOTICE 'Dropped: %', r.indexname;
+                  END LOOP;
+                END $fix$;
+              `);
+              post = await prisma.sNSPost.create({
+                data: { userId, week: weekKey, postedAt, postType, url, note, followerCount },
+                include: { user: true },
+              });
+            } catch (fixErr: any) {
+              console.error('[API] Fix attempt failed:', fixErr?.message);
+              throw createErr;
+            }
           }
         } else {
-          throw createError;
+          throw createErr;
         }
       }
     }
@@ -250,7 +257,6 @@ router.post('/', async (req: AuthRequest, res) => {
 
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      console.error('[API] Validation error:', error.errors);
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
     console.error('[API] SNS post error:', {
