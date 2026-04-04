@@ -410,10 +410,13 @@ export const SNSPosts: React.FC = () => {
           {/* フォロワーグラフ（フォロワー数が入力されている場合のみ） */}
           {(personalPosts || []).some(p => p.followerCount != null) && (
             <FollowerGraph
-              posts={personalPosts || []}
+              posts={selectedAccountId
+                ? (personalPosts || []).filter(p => p.accountId === selectedAccountId)
+                : (personalPosts || [])}
+              accountNames={Object.fromEntries(myAccounts.map(a => [a.id, a.displayName || a.accountName]))}
               accountName={selectedAccountId
                 ? (myAccounts.find(a => a.id === selectedAccountId)?.displayName || myAccounts.find(a => a.id === selectedAccountId)?.accountName)
-                : myAccounts.length > 1 ? 'すべてのアカウント' : undefined}
+                : undefined}
             />
           )}
 
@@ -594,6 +597,7 @@ export const SNSPosts: React.FC = () => {
           defaultPostType={addModalDefaultType}
           defaultPostedDate={addModalDefaultDate}
           accountId={selectedAccountId}
+          platform={selectedAccountId ? myAccounts.find(a => a.id === selectedAccountId)?.platform : undefined}
           onClose={() => { setIsAddModalOpen(false); setAddModalDefaultDate(undefined); }}
           onSaved={() => {
             setIsAddModalOpen(false);
@@ -609,6 +613,7 @@ export const SNSPosts: React.FC = () => {
         <SNSPostDetailModal
           isOpen={!!editingPost}
           post={editingPost}
+          platform={editingPost.accountId ? myAccounts.find(a => a.id === editingPost.accountId)?.platform : undefined}
           onClose={() => setEditingPost(null)}
           onSaved={() => {
             setEditingPost(null);

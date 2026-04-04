@@ -16,14 +16,30 @@ interface SNSPost {
 interface SNSPostDetailModalProps {
   isOpen: boolean;
   post?: SNSPost | null;
-  /** 新規時に週を固定したい場合（週次表から開いたとき） */
   defaultPostType?: 'STORY' | 'FEED';
-  /** 新規時の初期日付 YYYY-MM-DD（週次表の週の代表日など） */
   defaultPostedDate?: string;
   /** 新規投稿時に紐付けるアカウントID */
   accountId?: string | null;
+  /** アカウントのプラットフォーム（種別ラベルの切り替えに使用） */
+  platform?: string;
   onClose: () => void;
   onSaved: () => void;
+}
+
+/** プラットフォームごとの投稿種別ラベル */
+const PLATFORM_POST_TYPES: Record<string, { story: string; feed: string }> = {
+  instagram: { story: 'ストーリーズ', feed: 'フィード' },
+  twitter:   { story: 'リポスト', feed: 'ポスト' },
+  x:         { story: 'リポスト', feed: 'ポスト' },
+  tiktok:    { story: 'ライブ', feed: '動画' },
+  youtube:   { story: 'ショート', feed: '動画' },
+  facebook:  { story: 'ストーリーズ', feed: '投稿' },
+  other:     { story: 'その他A', feed: 'その他B' },
+};
+
+function getPostTypeLabels(platform?: string): { story: string; feed: string } {
+  if (!platform) return { story: 'ストーリーズ', feed: 'フィード' };
+  return PLATFORM_POST_TYPES[platform.toLowerCase()] ?? { story: 'ストーリーズ', feed: 'フィード' };
 }
 
 export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
@@ -32,6 +48,7 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   defaultPostType = 'STORY',
   defaultPostedDate,
   accountId,
+  platform,
   onClose,
   onSaved,
 }) => {
@@ -42,6 +59,8 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   const [followerCount, setFollowerCount] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
+  const labels = getPostTypeLabels(platform);
+
   useEffect(() => {
     if (post) {
       const date = new Date(post.postedAt);
@@ -49,9 +68,7 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       setPostType(post.postType);
       setUrl(post.url || '');
       setNote(post.note || '');
-      setFollowerCount(
-        post.followerCount !== undefined && post.followerCount !== null ? String(post.followerCount) : '',
-      );
+      setFollowerCount(post.followerCount != null ? String(post.followerCount) : '');
     } else {
       const now = new Date();
       setPostedAt(defaultPostedDate || now.toISOString().split('T')[0]);
@@ -65,12 +82,8 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const data: Record<string, unknown> = {
-        postedAt,
-        postType,
-      };
+      const data: Record<string, unknown> = { postedAt, postType };
       if (url.trim()) data.url = url.trim();
       if (note.trim()) data.note = note.trim();
       const fc = followerCount.trim();
@@ -84,11 +97,9 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       if (post) {
         await api.put(`/api/sns-posts/${post.id}`, data);
       } else {
-        // 新規作成時: 選択中のアカウントIDを紐付ける
         if (accountId) data.accountId = accountId;
         await api.post('/api/sns-posts', data);
       }
-
       onSaved();
     } catch (error: any) {
       console.error('Failed to save SNS post:', error);
@@ -105,9 +116,7 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full m-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
-          <h2 className="text-2xl font-bold dark:text-gray-100">
-            {post ? '投稿を編集' : '投稿を記録'}
-          </h2>
+          <h2 className="text-2xl font-bold dark:text-gray-100">{post ? '投稿を編集' : '投稿を記録'}</h2>
           <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
@@ -115,7 +124,7 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            その週にストーリーズ／フィードを投稿した日付を選んでください（時刻は不要です）。
+            投稿した日付を選んでください（時刻は不要です）。
           </p>
 
           <Input
@@ -136,8 +145,8 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               required
             >
-              <option value="STORY">ストーリーズ</option>
-              <option value="FEED">フィード</option>
+              <option value="STORY">{labels.story}</option>
+              <option value="FEED">{labels.feed}</option>
             </select>
           </div>
 
@@ -170,12 +179,8 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
-            <Button type="button" variant="outline" onClick={onClose}>
-              キャンセル
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? '保存中...' : '保存'}
-            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>キャンセル</Button>
+            <Button type="submit" disabled={loading}>{loading ? '保存中...' : '保存'}</Button>
           </div>
         </form>
       </div>
