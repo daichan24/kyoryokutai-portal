@@ -20,6 +20,8 @@ interface SNSPostDetailModalProps {
   defaultPostType?: 'STORY' | 'FEED';
   /** 新規時の初期日付 YYYY-MM-DD（週次表の週の代表日など） */
   defaultPostedDate?: string;
+  /** 新規投稿時に紐付けるアカウントID */
+  accountId?: string | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -29,6 +31,7 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   post,
   defaultPostType = 'STORY',
   defaultPostedDate,
+  accountId,
   onClose,
   onSaved,
 }) => {
@@ -81,6 +84,8 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       if (post) {
         await api.put(`/api/sns-posts/${post.id}`, data);
       } else {
+        // 新規作成時: 選択中のアカウントIDを紐付ける
+        if (accountId) data.accountId = accountId;
         await api.post('/api/sns-posts', data);
       }
 

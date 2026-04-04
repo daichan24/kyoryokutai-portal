@@ -95,7 +95,7 @@ export const FollowerGraph: React.FC<FollowerGraphProps> = ({ posts, accountName
                 cx={toX(i)}
                 cy={toY(d.count)}
                 r="4"
-                fill={d.postType === 'FEED' ? '#3b82f6' : '#8b5cf6'}
+                fill={d.postType === 'FEED' ? '#22c55e' : '#3b82f6'}
                 stroke="white"
                 strokeWidth="1.5"
               />
@@ -119,10 +119,10 @@ export const FollowerGraph: React.FC<FollowerGraphProps> = ({ posts, accountName
       </div>
       <div className="flex gap-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
         <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />フィード
+          <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />フィード
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />ストーリーズ
+          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />ストーリーズ
         </span>
         <span className="ml-auto">最新: {dataPoints[dataPoints.length - 1]?.count.toLocaleString()}人</span>
       </div>
