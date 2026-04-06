@@ -183,8 +183,16 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                       />
                     ))}
 
-                    {/* スケジュール */}
-                    {daySchedules.map((schedule) => {
+                    {/* スケジュール（複数日を先に、単日を後に描画） */}
+                    {[...daySchedules]
+                      .sort((a, b) => {
+                        const aMulti = (new Date((a as any).startDate || a.date).toDateString()) !== (new Date((a as any).endDate || a.date).toDateString());
+                        const bMulti = (new Date((b as any).startDate || b.date).toDateString()) !== (new Date((b as any).endDate || b.date).toDateString());
+                        if (aMulti && !bMulti) return -1;
+                        if (!aMulti && bMulti) return 1;
+                        return 0;
+                      })
+                      .map((schedule) => {
                       const scheduleStartDate = new Date((schedule as any).startDate || schedule.date);
                       const scheduleEndDate = new Date((schedule as any).endDate || schedule.date);
                       scheduleStartDate.setHours(0, 0, 0, 0);
@@ -195,10 +203,12 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                       const isLastDay = currentDay.getTime() === scheduleEndDate.getTime();
                       const isMultiDay = scheduleStartDate.getTime() !== scheduleEndDate.getTime();
 
-                      // 複数日の場合: 最初の日は開始時刻〜24:00、最終日は0:00〜終了時刻、中間日は終日
-                      const displayStartTime = isFirstDay ? schedule.startTime : '00:00';
-                      const displayEndTime = isLastDay ? schedule.endTime : '24:00';
-                      const position = calculateSchedulePosition(displayStartTime, displayEndTime === '24:00' ? '23:59' : displayEndTime);
+                      // 複数日の場合は一番上に固定表示
+                      const displayStartTime = isMultiDay ? '00:00' : schedule.startTime;
+                      const displayEndTime = isMultiDay ? '02:00' : schedule.endTime; // 複数日は上部に2時間分の帯として表示
+                      const position = isMultiDay
+                        ? { top: '0rem', height: '2rem' }
+                        : calculateSchedulePosition(displayStartTime, displayEndTime);
 
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
                       const scheduleColor = calendarViewMode === 'all'
@@ -209,11 +219,11 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                         <button
                           key={schedule.id}
                           onClick={() => onScheduleClick(schedule)}
-                          className={`absolute left-1 right-1 text-xs p-1 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden ${
+                          className={`absolute left-0 right-0 text-xs p-1 text-white hover:opacity-90 transition-opacity overflow-hidden ${
                             isMultiDay
-                              ? isFirstDay ? 'rounded-t' : isLastDay ? 'rounded-b' : ''
-                              : 'rounded'
-                          }`}
+                              ? 'z-20 rounded-none border-b-2 border-white/30'
+                              : 'z-10 left-1 right-1 rounded'
+                          } ${isMultiDay && isFirstDay ? 'rounded-tl rounded-tr' : ''} ${isMultiDay && isLastDay ? 'rounded-bl rounded-br' : ''}`}
                           style={{
                             top: position.top,
                             height: position.height,
@@ -229,7 +239,10 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                                 {isMultiDay && !isFirstDay ? '↳ ' : ''}{(schedule as any).title || schedule.activityDescription}
                               </p>
                               <p className="text-xs text-white/80 truncate">
-                                {isFirstDay ? formatTime(schedule.startTime) : '0:00'}-{isLastDay ? formatTime(schedule.endTime) : '翌日'}
+                                {isMultiDay
+                                  ? `${formatTime(schedule.startTime)} 〜 ${formatTime(schedule.endTime)}（${isFirstDay ? '開始' : isLastDay ? '終了' : '継続'}）`
+                                  : `${formatTime(schedule.startTime)}-${formatTime(schedule.endTime)}`
+                                }
                               </p>
                               {calendarViewMode === 'all' && schedule.user && (
                                 <p className="text-xs text-white/70 truncate mt-0.5">

@@ -13,10 +13,16 @@ const taskSchema = z.object({
   projectId: z.string().optional().nullable(),
   order: z.number().int().optional(),
   dueDate: z.string().optional().nullable(),
-  endDate: z.string().optional().nullable(), // 終了日（複数日タスク用、YYYY-MM-DD形式）
+  endDate: z.string().optional().nullable(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK', 'TRIAGE_PENDING']).optional(),
+  // スケジュール連携フィールド
+  locationText: z.string().optional(),
+  freeNote: z.string().optional(),
+  customColor: z.string().max(20).optional().nullable(),
+  supportEventId: z.string().uuid().optional().nullable(),
+  participantsUserIds: z.array(z.string()).optional(),
 });
 
 function resolveTaskLinkKind(
@@ -177,7 +183,7 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
       try {
         const startDate = new Date(data.dueDate);
         const endDate = data.endDate ? new Date(data.endDate) : startDate;
-        await prisma.schedule.create({
+        const schedule = await prisma.schedule.create({
           data: {
             userId: mission.userId,
             date: startDate,
@@ -185,13 +191,27 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
             endDate: endDate,
             startTime: data.startTime || '09:00',
             endTime: data.endTime || '17:00',
-            activityDescription: data.title,
-            freeNote: data.description || null,
+            title: data.title,
+            activityDescription: data.description || data.title,
+            locationText: data.locationText || null,
+            freeNote: data.freeNote || null,
+            customColor: data.customColor || null,
+            supportEventId: data.supportEventId || null,
             isPending: false,
             taskId: task.id,
             projectId: data.projectId || null,
           },
         });
+        // 参加者を追加
+        if (data.participantsUserIds && data.participantsUserIds.length > 0) {
+          await prisma.scheduleParticipant.createMany({
+            data: data.participantsUserIds.map((uid: string) => ({
+              scheduleId: schedule.id,
+              userId: uid,
+              status: 'PENDING',
+            })),
+          });
+        }
       } catch (scheduleError) {
         console.error('Failed to create schedule for task:', scheduleError);
       }
@@ -318,7 +338,7 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
         try {
           const startDate = new Date(data.dueDate);
           const endDate = data.endDate ? new Date(data.endDate) : startDate;
-          await prisma.schedule.create({
+          const schedule = await prisma.schedule.create({
             data: {
               userId: updated.mission.userId,
               date: startDate,
@@ -326,15 +346,52 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
               endDate: endDate,
               startTime: data.startTime || '09:00',
               endTime: data.endTime || '17:00',
-              activityDescription: updated.title,
-              freeNote: updated.description || null,
+              title: updated.title,
+              activityDescription: data.description || updated.description || updated.title,
+              locationText: data.locationText || null,
+              freeNote: data.freeNote || null,
+              customColor: data.customColor || null,
+              supportEventId: data.supportEventId || null,
               isPending: false,
               taskId: updated.id,
               projectId: updated.projectId || null,
             },
           });
+          if (data.participantsUserIds && data.participantsUserIds.length > 0) {
+            await prisma.scheduleParticipant.createMany({
+              data: data.participantsUserIds.map((uid: string) => ({
+                scheduleId: schedule.id,
+                userId: uid,
+                status: 'PENDING',
+              })),
+            });
+          }
         } catch (scheduleError) {
           console.error('Failed to create schedule for task:', scheduleError);
+        }
+      } else {
+        // 既存スケジュールを更新
+        try {
+          const updateData: any = {
+            title: updated.title,
+            activityDescription: data.description || updated.description || updated.title,
+          };
+          if (data.dueDate) {
+            const startDate = new Date(data.dueDate);
+            const endDate = data.endDate ? new Date(data.endDate) : startDate;
+            updateData.date = startDate;
+            updateData.startDate = startDate;
+            updateData.endDate = endDate;
+          }
+          if (data.startTime) updateData.startTime = data.startTime;
+          if (data.endTime) updateData.endTime = data.endTime;
+          if (data.locationText !== undefined) updateData.locationText = data.locationText || null;
+          if (data.freeNote !== undefined) updateData.freeNote = data.freeNote || null;
+          if (data.customColor !== undefined) updateData.customColor = data.customColor || null;
+          if (data.supportEventId !== undefined) updateData.supportEventId = data.supportEventId || null;
+          await prisma.schedule.update({ where: { id: existingSchedule.id }, data: updateData });
+        } catch (scheduleError) {
+          console.error('Failed to update schedule for task:', scheduleError);
         }
       }
     }

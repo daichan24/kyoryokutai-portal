@@ -7,6 +7,7 @@ import { formatDate, getWeekDates, getMonthDates, isSameDay, isHolidayDate, isSu
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
+import { TaskModal } from '../components/project/TaskModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { GovernmentAttendanceCalendar } from '../components/schedule/GovernmentAttendanceCalendar';
 import { GovernmentAttendanceModal } from '../components/schedule/GovernmentAttendanceModal';
@@ -909,7 +910,19 @@ export const Schedule: React.FC = () => {
         </div>
       </div>
 
-      {isModalOpen && (
+      {/* 新規タスク追加（TaskModal） */}
+      {isModalOpen && !selectedSchedule && (
+        <TaskModal
+          defaultDate={selectedDate}
+          defaultStartTime={defaultStartTime || undefined}
+          defaultEndTime={defaultEndTime || undefined}
+          onClose={handleCloseModal}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {/* 既存スケジュール編集（ScheduleModal） */}
+      {isModalOpen && selectedSchedule && (
         <ScheduleModal
           schedule={selectedSchedule}
           defaultDate={selectedDate}
