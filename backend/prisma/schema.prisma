@@ -355,6 +355,13 @@ model Project {
 
   tags String[]
 
+  /// プロジェクト達成フラグ（ミッション進捗計算に使用）
+  isAchieved Boolean @default(false)
+  achievedAt DateTime?
+
+  /// 関わった町民のContact ID配列
+  relatedContactIds String[] @default([])
+
   members          ProjectMember[]
   tasks            ProjectTask[]
   relatedTasks     Task[] // このプロジェクトに関連するタスク（小目標、任意）

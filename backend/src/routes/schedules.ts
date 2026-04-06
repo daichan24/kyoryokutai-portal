@@ -711,6 +711,94 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// 繰り返しスケジュール一括作成
+router.post('/recurring', async (req: AuthRequest, res) => {
+  try {
+    const schema = z.object({
+      title: z.string().min(1),
+      startTime: z.string().regex(/^\d{2}:\d{2}$/),
+      endTime: z.string().regex(/^\d{2}:\d{2}$/),
+      activityDescription: z.string().optional(),
+      locationText: z.string().optional(),
+      projectId: z.string().optional().nullable(),
+      customColor: z.string().optional().nullable(),
+      // 繰り返し設定
+      recurrenceType: z.enum(['weekly', 'daily']),
+      weekdays: z.array(z.number().min(0).max(6)).optional(), // 0=日, 1=月, ..., 6=土
+      startDate: z.string(), // 開始日 YYYY-MM-DD
+      recurrenceEndDate: z.string(), // 繰り返し終了日 YYYY-MM-DD
+    });
+
+    const data = schema.parse(req.body);
+    const creatorId = req.user!.id;
+
+    const start = new Date(data.startDate);
+    const end = new Date(data.recurrenceEndDate);
+
+    if (end < start) {
+      return res.status(400).json({ error: '終了日は開始日以降にしてください' });
+    }
+
+    // 対象日付を生成
+    const targetDates: Date[] = [];
+    const current = new Date(start);
+    current.setHours(12, 0, 0, 0);
+    const endNorm = new Date(end);
+    endNorm.setHours(12, 0, 0, 0);
+
+    while (current <= endNorm) {
+      if (data.recurrenceType === 'daily') {
+        targetDates.push(new Date(current));
+      } else if (data.recurrenceType === 'weekly') {
+        const dow = current.getDay(); // 0=日
+        if (!data.weekdays || data.weekdays.includes(dow)) {
+          targetDates.push(new Date(current));
+        }
+      }
+      current.setDate(current.getDate() + 1);
+    }
+
+    if (targetDates.length === 0) {
+      return res.status(400).json({ error: '指定した条件に一致する日付がありません' });
+    }
+
+    if (targetDates.length > 365) {
+      return res.status(400).json({ error: '一度に作成できるスケジュールは365件までです' });
+    }
+
+    // 一括作成
+    const created = await prisma.$transaction(
+      targetDates.map((d) =>
+        prisma.schedule.create({
+          data: {
+            userId: creatorId,
+            date: d,
+            startDate: d,
+            endDate: d,
+            startTime: data.startTime,
+            endTime: data.endTime,
+            title: data.title,
+            activityDescription: data.activityDescription || data.title,
+            locationText: data.locationText || null,
+            projectId: data.projectId || null,
+            customColor: data.customColor || null,
+            isPending: false,
+            createdBy: 'RECURRENCE',
+          },
+        })
+      )
+    );
+
+    res.status(201).json({ count: created.length, schedules: created });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error('Create recurring schedules error:', error);
+    res.status(500).json({ error: 'Failed to create recurring schedules' });
+  }
+});
+
 // スケジュール招待への承認/却下
 router.post('/:id/respond', async (req: AuthRequest, res) => {
   try {

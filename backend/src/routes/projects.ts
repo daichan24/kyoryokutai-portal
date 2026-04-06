@@ -15,6 +15,7 @@ const projectSchema = z.object({
   missionId: z.string().optional(),
   themeColor: z.string().optional(), // HEX形式のカラーコード（例: #FF5733）
   tags: z.array(z.string()).default([]),
+  relatedContactIds: z.array(z.string()).optional(),
 });
 
 // プロジェクト一覧取得
@@ -140,6 +141,7 @@ router.post('/', async (req: AuthRequest, res) => {
         missionId: missionId,
         themeColor: data.themeColor || null,
         tags: data.tags || [],
+        relatedContactIds: data.relatedContactIds || [],
       },
       include: { user: true, mission: true },
     });
@@ -233,6 +235,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         missionId: missionId,
         themeColor: data.themeColor !== undefined ? data.themeColor : undefined,
         tags: data.tags || [],
+        relatedContactIds: data.relatedContactIds !== undefined ? data.relatedContactIds : undefined,
       },
       include: { user: true, mission: true },
     });
@@ -308,6 +311,58 @@ router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequ
   } catch (error) {
     console.error('Approve project error:', error);
     res.status(500).json({ error: 'Failed to approve project' });
+  }
+});
+
+// プロジェクト達成切り替え
+router.post('/:id/toggle-achieved', async (req: AuthRequest, res) => {
+  try {
+    const existing = await prisma.project.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Project not found' });
+    if (existing.userId !== req.user!.id && req.user!.role !== 'MASTER' && req.user!.role !== 'SUPPORT') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const newAchieved = !existing.isAchieved;
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data: {
+        isAchieved: newAchieved,
+        achievedAt: newAchieved ? new Date() : null,
+      },
+    });
+
+    res.json(project);
+  } catch (error) {
+    console.error('Toggle achieved error:', error);
+    res.status(500).json({ error: 'Failed to toggle achieved' });
+  }
+});
+
+// プロジェクトのスケジュール履歴取得（振り返り用）
+router.get('/:id/schedule-history', async (req: AuthRequest, res) => {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, userId: true, missionId: true },
+    });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const schedules = await prisma.schedule.findMany({
+      where: { projectId: req.params.id, isTemplate: false },
+      include: {
+        user: { select: { id: true, name: true, avatarColor: true } },
+        scheduleParticipants: {
+          include: { user: { select: { id: true, name: true, avatarColor: true } } },
+        },
+      },
+      orderBy: [{ startDate: 'asc' }, { startTime: 'asc' }],
+    });
+
+    res.json(schedules);
+  } catch (error) {
+    console.error('Get schedule history error:', error);
+    res.status(500).json({ error: 'Failed to get schedule history' });
   }
 });
 

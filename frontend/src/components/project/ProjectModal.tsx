@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, History, Users } from 'lucide-react';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
@@ -19,6 +19,7 @@ interface Project {
   themeColor?: string;
   tags?: string[];
   projectTasks?: Task[];
+  relatedContactIds?: string[];
 }
 
 interface Mission {
@@ -26,13 +27,31 @@ interface Mission {
   missionName: string;
 }
 
+interface Contact {
+  id: string;
+  name: string;
+  organization?: string;
+  category?: string;
+}
+
+interface ScheduleHistory {
+  id: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  title?: string;
+  activityDescription: string;
+  locationText?: string;
+  user?: { id: string; name: string; avatarColor: string };
+}
+
 interface ProjectModalProps {
   project?: Project | null;
-  /** ミッション詳細から新規作成するとき、関連ミッションを自動選択 */
   defaultMissionId?: string | null;
   onClose: () => void;
   onSaved: () => void;
-  readOnly?: boolean; // 閲覧専用モード
+  readOnly?: boolean;
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
@@ -43,8 +62,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   readOnly = false,
 }) => {
   const { user } = useAuthStore();
-  // readOnlyのデフォルト値を確実に設定
   const isReadOnly = readOnly ?? false;
+  const [activeTab, setActiveTab] = useState<'info' | 'history' | 'contacts'>('info');
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -54,7 +73,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [themeColor, setThemeColor] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [relatedContactIds, setRelatedContactIds] = useState<string[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
+  const [scheduleHistory, setScheduleHistory] = useState<ScheduleHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [colorConflictError, setColorConflictError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -63,6 +86,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   useEffect(() => {
     fetchMissions();
+    fetchContacts();
 
     if (project) {
       setProjectName(project.projectName);
@@ -74,6 +98,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setThemeColor(project.themeColor || '');
       setTags(project.tags || []);
       setTasks(project.projectTasks || []);
+      setRelatedContactIds(project.relatedContactIds || []);
     } else {
       setProjectName('');
       setDescription('');
@@ -84,6 +109,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setThemeColor('');
       setTags([]);
       setTasks([]);
+      setRelatedContactIds([]);
     }
   }, [project, defaultMissionId]);
 
@@ -91,10 +117,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     if (project?.id && missionId) {
       fetchTasks();
     } else if (!project && missionId) {
-      // 新規作成時でmissionIdが設定されている場合、そのミッションのタスクを取得
       fetchTasksForMission();
     }
   }, [project?.id, missionId]);
+
+  // 振り返りタブを開いたときにスケジュール履歴を取得
+  useEffect(() => {
+    if (activeTab === 'history' && project?.id) {
+      fetchScheduleHistory();
+    }
+  }, [activeTab, project?.id]);
 
   const fetchTasksForMission = async () => {
     if (!missionId) return;
@@ -113,12 +145,35 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   const fetchMissions = async () => {
     try {
-      // 自分のミッションのみを取得
       const response = await api.get<Mission[]>(`/api/missions?userId=${user?.id}`);
       setMissions(response.data || []);
     } catch (error) {
       console.error('Failed to fetch missions:', error);
       setMissions([]);
+    }
+  };
+
+  const fetchContacts = async () => {
+    try {
+      const response = await api.get<Contact[]>('/api/contacts');
+      setAllContacts(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch contacts:', error);
+      setAllContacts([]);
+    }
+  };
+
+  const fetchScheduleHistory = async () => {
+    if (!project?.id) return;
+    setHistoryLoading(true);
+    try {
+      const response = await api.get<ScheduleHistory[]>(`/api/projects/${project.id}/schedule-history`);
+      setScheduleHistory(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch schedule history:', error);
+      setScheduleHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -159,6 +214,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         missionId: missionId || undefined,
         themeColor: themeColor || undefined,
         tags,
+        relatedContactIds,
       };
 
       if (project) {
@@ -244,34 +300,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-      case 'IN_PROGRESS':
-        return <PlayCircle className="h-4 w-4 text-blue-600" />;
-      default:
-        return <Circle className="h-4 w-4 text-gray-400" />;
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels = {
-      NOT_STARTED: '未着手',
-      IN_PROGRESS: '進行中',
-      COMPLETED: '完了',
-    };
-    return labels[status as keyof typeof labels] || status;
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors = {
-      NOT_STARTED: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
-      IN_PROGRESS: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
-      COMPLETED: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-    };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 dark:bg-gray-700';
-  };
+  const getStatusIcon = (_status: string) => null;
+  const getStatusLabel = (_status: string) => '';
+  const getStatusColor = (_status: string) => '';
 
   // 権限チェック: MEMBERは自分のプロジェクトのみ編集可、GOVERNMENTは閲覧のみ
   const canEditTasks = !isReadOnly && project && (
@@ -339,7 +370,135 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </button>
         </div>
 
+        {/* タブ（既存プロジェクトのみ） */}
+        {project && (
+          <div className="flex border-b dark:border-gray-700 px-6 flex-shrink-0">
+            {[
+              { key: 'info', label: 'プロジェクト情報', icon: null },
+              { key: 'history', label: '振り返り', icon: <History className="h-4 w-4" /> },
+              { key: 'contacts', label: '関わった人', icon: <Users className="h-4 w-4" /> },
+            ].map(tab => (
+              <button key={tab.key} type="button"
+                onClick={() => setActiveTab(tab.key as any)}
+                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.key
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}>
+                {tab.icon}{tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4 flex-1 overflow-y-auto">
+          {/* 振り返りタブ */}
+          {activeTab === 'history' && project && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                このプロジェクトに紐づくスケジュールの履歴です。どの期間に何をしたかを振り返ることができます。
+              </p>
+              {historyLoading ? (
+                <div className="text-center py-8 text-gray-500">読み込み中...</div>
+              ) : scheduleHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">スケジュール履歴がありません</div>
+              ) : (
+                <div className="relative">
+                  {/* タイムライン */}
+                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
+                  <div className="space-y-4 pl-10">
+                    {scheduleHistory.map((s) => {
+                      const dateStr = s.startDate ? s.startDate.slice(0, 10) : '';
+                      const endStr = s.endDate && s.endDate !== s.startDate ? ` 〜 ${s.endDate.slice(0, 10)}` : '';
+                      return (
+                        <div key={s.id} className="relative">
+                          <div className="absolute -left-6 top-2 w-3 h-3 rounded-full bg-blue-500 border-2 border-white dark:border-gray-800" />
+                          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                  {dateStr}{endStr} {s.startTime}〜{s.endTime}
+                                </p>
+                                <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                                  {s.title || s.activityDescription}
+                                </p>
+                                {s.locationText && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">📍 {s.locationText}</p>
+                                )}
+                              </div>
+                              {s.user && (
+                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs flex-shrink-0"
+                                  style={{ backgroundColor: s.user.avatarColor }}>
+                                  {s.user.name.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 関わった人タブ */}
+          {activeTab === 'contacts' && project && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                このプロジェクトで関わった町民データベースの人を選択してください。
+              </p>
+              <div className="max-h-80 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+                {allContacts.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">町民データベースにデータがありません</p>
+                ) : (
+                  allContacts.map(contact => (
+                    <label key={contact.id}
+                      className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer">
+                      <input type="checkbox"
+                        checked={relatedContactIds.includes(contact.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setRelatedContactIds([...relatedContactIds, contact.id]);
+                          else setRelatedContactIds(relatedContactIds.filter(id => id !== contact.id));
+                        }}
+                        disabled={isReadOnly}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{contact.name}</p>
+                        {(contact.organization || contact.category) && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {[contact.organization, contact.category].filter(Boolean).join(' / ')}
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+              {relatedContactIds.length > 0 && !isReadOnly && (
+                <div className="flex justify-end">
+                  <Button type="button" onClick={async () => {
+                    try {
+                      await api.put(`/api/projects/${project.id}`, {
+                        projectName, description: description || undefined,
+                        startDate: startDate || undefined, endDate: endDate || undefined,
+                        phase, missionId: missionId || undefined,
+                        themeColor: themeColor || undefined, tags, relatedContactIds,
+                      });
+                      alert('保存しました');
+                    } catch { alert('保存に失敗しました'); }
+                  }}>
+                    関わった人を保存
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* プロジェクト情報タブ（デフォルト） */}
+          {(activeTab === 'info' || !project) && (
+          <>
           <Input
             label="プロジェクト名"
             type="text"
@@ -515,13 +674,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                       key={task.id}
                       className="flex items-start gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     >
-                      <div className="mt-0.5">{getStatusIcon(task.status)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-medium text-gray-900 dark:text-gray-100">{task.title}</h4>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(task.status)}`}>
-                            {getStatusLabel(task.status)}
-                          </span>
                         </div>
                         {task.description && (
                           <p className="text-sm text-gray-600 dark:text-gray-400">{task.description}</p>
@@ -553,11 +708,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               )}
             </div>
           )}
+          </>
+          )}
         </form>
 
         <div className="flex justify-between p-6 border-t dark:border-gray-700 flex-shrink-0">
           <div>
-            {project && !isReadOnly && (
+            {project && !isReadOnly && activeTab === 'info' && (
               <Button type="button" variant="danger" onClick={handleDelete}>
                 削除
               </Button>
@@ -567,7 +724,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             <Button type="button" variant="outline" onClick={onClose}>
               {isReadOnly ? '閉じる' : 'キャンセル'}
             </Button>
-            {!isReadOnly && (
+            {!isReadOnly && (activeTab === 'info' || !project) && (
               <Button type="button" onClick={handleSubmit} disabled={loading}>
                 {loading ? '保存中...' : '保存'}
               </Button>

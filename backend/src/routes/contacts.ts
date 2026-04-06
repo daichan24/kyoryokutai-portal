@@ -202,3 +202,24 @@ router.post('/:id/histories', async (req: AuthRequest, res) => {
 });
 
 export default router;
+
+// 町民に紐づくプロジェクト一覧取得（relatedContactIdsに含まれるプロジェクト）
+router.get('/:id/related-projects', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const projects = await prisma.project.findMany({
+      where: {
+        relatedContactIds: { has: id },
+      },
+      include: {
+        user: { select: { id: true, name: true, avatarColor: true } },
+        mission: { select: { id: true, missionName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(projects);
+  } catch (error) {
+    console.error('Get related projects error:', error);
+    res.status(500).json({ error: 'Failed to get related projects' });
+  }
+});

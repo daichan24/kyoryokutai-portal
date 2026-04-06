@@ -469,7 +469,6 @@ export const Tasks: React.FC = () => {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2 flex-1">
-                  {getStatusIcon(task.status)}
                   <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex-1">
                     {task.title}
                   </h3>
@@ -555,9 +554,6 @@ export const Tasks: React.FC = () => {
               )}
 
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                  {getStatusLabel(task.status)}
-                </span>
                 <div className="flex items-center gap-2">
                   {task.status !== 'COMPLETED' && canCreate && (
                     <Button
@@ -598,7 +594,6 @@ export const Tasks: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ステータス</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク名</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向性</th>
@@ -618,9 +613,6 @@ export const Tasks: React.FC = () => {
                         className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
                         onClick={() => handleEditTask(task)}
                       >
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          {getStatusIcon(task.status)}
-                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{task.title}</div>
                           {task.description && (

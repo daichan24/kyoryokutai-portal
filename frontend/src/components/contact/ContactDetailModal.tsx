@@ -48,9 +48,9 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [contactData, setContactData] = useState<Contact>(contact);
   const [users, setUsers] = useState<any[]>([]);
+  const [relatedProjects, setRelatedProjects] = useState<any[]>([]);
 
   useEffect(() => {
-    // 最新のデータを取得
     const fetchContact = async () => {
       try {
         const response = await api.get(`/api/citizens/${contact.id}`);
@@ -61,7 +61,6 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
     };
     fetchContact();
 
-    // ユーザー一覧を取得（名前解決用）
     const fetchUsers = async () => {
       try {
         const response = await api.get('/api/users');
@@ -71,6 +70,16 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
       }
     };
     fetchUsers();
+
+    const fetchRelatedProjects = async () => {
+      try {
+        const response = await api.get(`/api/contacts/${contact.id}/related-projects`);
+        setRelatedProjects(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch related projects:', error);
+      }
+    };
+    fetchRelatedProjects();
   }, [contact.id]);
 
   const handleAddHistory = () => {
@@ -271,6 +280,38 @@ export const ContactDetailModal: React.FC<ContactDetailModalProps> = ({
                 <p className="text-gray-500 dark:text-gray-400">接触履歴がありません</p>
               )}
             </div>
+
+            {/* 関わったプロジェクト */}
+            {relatedProjects.length > 0 && (
+              <div>
+                <h3 className="text-lg font-bold mb-4 dark:text-gray-100">関わったプロジェクト</h3>
+                <div className="space-y-2">
+                  {relatedProjects.map((project: any) => (
+                    <div key={project.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{project.projectName}</p>
+                          {project.mission && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              方向性: {project.mission.missionName}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {project.user && (
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs"
+                              style={{ backgroundColor: project.user.avatarColor }}>
+                              {project.user.name.charAt(0)}
+                            </div>
+                          )}
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{project.user?.name}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
