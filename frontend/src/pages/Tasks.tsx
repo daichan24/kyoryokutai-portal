@@ -104,40 +104,54 @@ export const Tasks: React.FC = () => {
     },
   });
 
-  // タスク一覧を取得（各Projectから取得）
+  // タスク一覧を直接ミッションAPIから取得
   const { data: allTasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ['tasks', 'all', selectedUserId, user?.id, user?.role, viewMode, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
-      // 各ProjectからTaskを取得
-      const tasks: Task[] = [];
-      for (const project of projects) {
+      // 対象ユーザーのミッション一覧を取得してから、各ミッションのタスクを取得
+      let targetUserIds: string[] = [];
+
+      if (user?.role === 'MEMBER') {
+        targetUserIds = [user.id];
+      } else if (viewMode === 'view' && selectedUserId) {
+        targetUserIds = [selectedUserId];
+      } else if (viewMode === 'create' && user?.id) {
+        targetUserIds = [user.id];
+      } else if (viewMode === 'view') {
+        // 全メンバーのタスクを取得
+        const membersResponse = await api.get('/api/users');
+        const members = (membersResponse.data || []).filter((u: any) =>
+          u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
+        );
+        targetUserIds = members.map((u: any) => u.id);
+      }
+
+      if (targetUserIds.length === 0) return [];
+
+      const allTasksList: Task[] = [];
+      for (const uid of targetUserIds) {
         try {
-          // 現在のAPI構造では、TaskはMission配下にあるため、Project経由で取得できない
-          // 暫定的に、ProjectのrelatedTasksを使用
-          if (project.relatedTasks) {
-            tasks.push(...project.relatedTasks);
+          // そのユーザーのミッション一覧を取得
+          const missionsRes = await api.get(`/api/missions?userId=${uid}`);
+          const userMissions = missionsRes.data || [];
+          // 各ミッションのタスクを取得
+          for (const mission of userMissions) {
+            try {
+              const tasksRes = await api.get(`/api/missions/${mission.id}/tasks`);
+              allTasksList.push(...(tasksRes.data || []));
+            } catch (e) {
+              console.error(`Failed to fetch tasks for mission ${mission.id}:`, e);
+            }
           }
-        } catch (error) {
-          console.error(`Failed to fetch tasks for project ${project.id}:`, error);
+        } catch (e) {
+          console.error(`Failed to fetch missions for user ${uid}:`, e);
         }
       }
-      // ロールとフィルタに応じてタスクを絞り込む
-      if (user?.role === 'MEMBER') {
-        return tasks.filter((task) => task.userId === user.id);
-      }
-      // 閲覧モード: 選択したユーザーのタスクのみ表示
-      if (viewMode === 'view' && selectedUserId) {
-        return tasks.filter((task) => task.userId === selectedUserId);
-      }
-      // 作成モード: 自分のタスクのみ表示
-      if (viewMode === 'create' && user?.id) {
-        return tasks.filter((task) => task.userId === user.id);
-      }
-      return tasks;
+      return allTasksList;
     },
-    enabled: projects.length > 0 && !!user?.id, // user?.idが存在する場合のみ有効化（作成モードと閲覧モードの両方で）
-    refetchOnMount: true, // マウント時に再取得
-    refetchOnWindowFocus: false, // ウィンドウフォーカス時は再取得しない
+    enabled: !!user?.id,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
 
   // フィルタリング・ソート
@@ -301,6 +315,9 @@ export const Tasks: React.FC = () => {
   };
 
   const getMissionName = (task: Task): string | null => {
+    // タスクに mission が含まれている場合はそれを使用
+    if ((task as any).mission?.missionName) return (task as any).mission.missionName;
+    // フォールバック: プロジェクト経由
     if (!task.projectId) return null;
     const project = projects.find(p => p.id === task.projectId);
     if (!project?.missionId) return null;

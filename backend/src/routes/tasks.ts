@@ -88,13 +88,23 @@ router.get('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
           select: {
             id: true,
             projectName: true,
+            user: { select: { id: true, name: true, avatarColor: true } },
           },
+        },
+        mission: {
+          select: { id: true, missionName: true, userId: true },
         },
       },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
     });
 
-    res.json(tasks);
+    // userId をミッションから付与して返す
+    const tasksWithUserId = tasks.map((t) => ({
+      ...t,
+      userId: t.mission.userId,
+    }));
+
+    res.json(tasksWithUserId);
   } catch (error) {
     console.error('Get tasks error:', error);
     res.status(500).json({ error: 'タスクの取得に失敗しました' });

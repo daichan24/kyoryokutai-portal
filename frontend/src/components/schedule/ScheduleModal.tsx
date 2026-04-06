@@ -62,7 +62,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     if (schedule) {
       const scheduleDateStr = formatDate(schedule.date);
       setDate(scheduleDateStr);
-      setEndDate(scheduleDateStr); // 終了日は開始日と同じ（後でスキーマ変更時に対応）
+      // endDateが存在する場合はそれを使用、なければstartDateと同じ
+      const scheduleEndDateStr = (schedule as any).endDate
+        ? formatDate(new Date((schedule as any).endDate))
+        : scheduleDateStr;
+      setEndDate(scheduleEndDateStr);
       setStartTime(schedule.startTime);
       setEndTime(schedule.endTime);
       setLocationText(schedule.locationText || '');

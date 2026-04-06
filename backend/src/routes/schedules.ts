@@ -346,12 +346,13 @@ router.get('/', async (req: AuthRequest, res) => {
 
     if (date) {
       const targetDate = new Date(date as string);
-      where.date = targetDate;
+      // startDate〜endDateの範囲に指定日が含まれるスケジュールを取得
+      where.startDate = { lte: targetDate };
+      where.endDate = { gte: targetDate };
     } else if (startDate && endDate) {
-      where.date = {
-        gte: new Date(startDate as string),
-        lte: new Date(endDate as string),
-      };
+      // 指定期間と重なるスケジュールを取得（startDate〜endDateが期間と重なる）
+      where.startDate = { lte: new Date(endDate as string) };
+      where.endDate = { gte: new Date(startDate as string) };
     } else if (view === 'week' || view === 'month') {
       const now = new Date();
       const start = new Date(now);
@@ -361,18 +362,17 @@ router.get('/', async (req: AuthRequest, res) => {
         const day = start.getDay();
         const diff = start.getDate() - day + (day === 0 ? -6 : 1);
         start.setDate(diff);
-
         const end = new Date(start);
         end.setDate(end.getDate() + 6);
-
-        where.date = { gte: start, lte: end };
+        where.startDate = { lte: end };
+        where.endDate = { gte: start };
       } else if (view === 'month') {
         start.setDate(1);
         const end = new Date(start);
         end.setMonth(end.getMonth() + 1);
         end.setDate(0);
-
-        where.date = { gte: start, lte: end };
+        where.startDate = { lte: end };
+        where.endDate = { gte: start };
       }
     }
 
