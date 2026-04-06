@@ -540,18 +540,15 @@ export const Schedule: React.FC = () => {
           </>
         ) : (
           <div className="w-full min-w-0 overflow-x-hidden">
-            {/* Header row for days of the week */}
+            {/* 曜日ヘッダー */}
             <div className="grid grid-cols-7 gap-0 w-full min-w-0 mb-1 px-0">
               {weekDates.slice(0, 7).map((date, index) => {
                 const isHoliday = isHolidayDate(date);
                 const isSun = isSunday(date);
                 const isSat = isSaturday(date);
                 let dayLabelColor = 'text-gray-500 dark:text-gray-400';
-                if (isHoliday || isSun) {
-                  dayLabelColor = 'text-red-500 dark:text-red-400';
-                } else if (isSat) {
-                  dayLabelColor = 'text-blue-500 dark:text-blue-400';
-                }
+                if (isHoliday || isSun) dayLabelColor = 'text-red-500 dark:text-red-400';
+                else if (isSat) dayLabelColor = 'text-blue-500 dark:text-blue-400';
                 return (
                   <div key={`header-${index}`} className={`text-center text-[10px] sm:text-xs font-semibold py-1 ${dayLabelColor}`}>
                     {formatDate(date, 'E')}
@@ -559,225 +556,198 @@ export const Schedule: React.FC = () => {
                 );
               })}
             </div>
-            <div
-              className="grid gap-0 w-full min-w-0 border-t border-l border-border dark:border-gray-700 sm:border-0"
-              style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}
-            >
-            {weekDates.map((date, index) => {
-              const daySchedules = getSchedulesForDate(date);
-              const isToday = formatDate(date) === formatDate(new Date());
-              const isHoliday = isHolidayDate(date);
-              const isSun = isSunday(date);
-              const isSat = isSaturday(date);
 
-              // 色分け: 祝日 > 日曜 > 土曜
-              let dayBgColor = 'bg-white dark:bg-gray-800';
-              let dayTextColor = 'text-gray-900 dark:text-gray-100';
-              let dayLabelColor = 'text-gray-500 dark:text-gray-400';
-
-              if (isHoliday) {
-                dayBgColor = 'bg-red-50 dark:bg-red-900/20';
-                dayTextColor = 'text-red-700 dark:text-red-300';
-                dayLabelColor = 'text-red-600 dark:text-red-400';
-              } else if (isSun) {
-                dayBgColor = 'bg-red-50 dark:bg-red-900/20';
-                dayTextColor = 'text-red-600 dark:text-red-400';
-                dayLabelColor = 'text-red-500 dark:text-red-400';
-              } else if (isSat) {
-                dayBgColor = 'bg-blue-50 dark:bg-blue-900/20';
-                dayTextColor = 'text-blue-600 dark:text-blue-400';
-                dayLabelColor = 'text-blue-500 dark:text-blue-400';
+            {/* 週行ごとに描画（複数日バーのオーバーレイ付き） */}
+            {(() => {
+              // weekDates を7日ずつの週に分割
+              const weeks: Date[][] = [];
+              for (let i = 0; i < weekDates.length; i += 7) {
+                weeks.push(weekDates.slice(i, i + 7));
               }
 
-              // 今日の場合は強調
-              if (isToday) {
-                dayBgColor = 'bg-primary/10 dark:bg-primary/20 border-primary border-2';
-                dayTextColor = 'text-primary dark:text-blue-400 font-bold';
-              }
+              // 複数日スケジュールを抽出
+              const multiDaySchedules = schedules.filter((s) => {
+                const sd = new Date((s as any).startDate || s.date);
+                const ed = new Date((s as any).endDate || s.date);
+                sd.setHours(0, 0, 0, 0);
+                ed.setHours(0, 0, 0, 0);
+                return sd.getTime() !== ed.getTime();
+              });
 
-              const isHighlightedByTask =
-                hoveredTaskId != null &&
-                daySchedules.some((s) => s.taskId && s.taskId === hoveredTaskId);
-
-              // 5件まで表示、それ以降は「他◯件」表示
-              const MAX_VISIBLE_SCHEDULES = 5;
-              const visibleSchedules = daySchedules.slice(0, MAX_VISIBLE_SCHEDULES);
-              const remainingCount = daySchedules.length > MAX_VISIBLE_SCHEDULES
-                ? daySchedules.length - MAX_VISIBLE_SCHEDULES
-                : 0;
-
-              // 色の取得：個人モードはカスタム色→プロジェクト色→ユーザー色、全体モードはユーザー色
               const getScheduleColor = (schedule: ScheduleType) => {
-                if (calendarViewMode === 'all') {
-                  return schedule.user?.avatarColor || '#6B7280';
-                }
-                // 個人表示: customColor > project.themeColor > user.avatarColor
+                if (calendarViewMode === 'all') return schedule.user?.avatarColor || '#6B7280';
                 return (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
               };
 
-              // 行政出勤ドットは削除（行政カレンダーモーダルのみで確認）
-              const dateStr = format(date, 'yyyy-MM-dd');
-
-              const getTextColor = (backgroundColor: string) => {
-                // HEXカラーをRGBに変換
-                const hex = backgroundColor.replace('#', '');
+              const getTextColor = (bg: string) => {
+                const hex = bg.replace('#', '');
                 const r = parseInt(hex.substr(0, 2), 16);
                 const g = parseInt(hex.substr(2, 2), 16);
                 const b = parseInt(hex.substr(4, 2), 16);
-                // 輝度を計算（0.299*R + 0.587*G + 0.114*B）
-                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                // 輝度が128より大きい場合は黒、小さい場合は白
-                return brightness > 128 ? 'text-gray-900' : 'text-white';
+                return (r * 299 + g * 587 + b * 114) / 1000 > 128 ? '#111827' : '#ffffff';
               };
 
-              // 他の人のスケジュールかどうかを判定
-              const isOtherUserSchedule = (schedule: ScheduleType) => {
-                return schedule.userId !== user?.id;
-              };
+              return weeks.map((weekDays, weekIndex) => {
+                const weekStart = new Date(weekDays[0]); weekStart.setHours(0, 0, 0, 0);
+                const weekEnd = new Date(weekDays[6]); weekEnd.setHours(0, 0, 0, 0);
 
-              return (
-                <div
-                  key={index}
-                  className={`bg-white dark:bg-gray-800 border-r border-b sm:border rounded-none min-w-0 w-full flex flex-col p-1 sm:p-2 ${
-                    isHighlightedByTask ? 'ring-2 ring-blue-400 dark:ring-blue-300 relative z-10' : 'border-border dark:border-gray-700'
-                  } ${calendarViewMode !== 'all' ? 'cursor-pointer' : 'cursor-default'}`}
-                  style={{ minHeight: '5.5rem', height: 'clamp(5.5rem, 22vw, 10rem)' }}
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).closest('button')) return;
-                    if (calendarViewMode === 'all') {
-                      // 閲覧モード: スケジュールがあれば詳細表示のみ、新規作成はしない
-                      if (daySchedules.length > 0) setSelectedDateForDetail(date);
-                      return;
-                    }
-                    handleCreateSchedule(date);
-                  }}
-                >
-                  <div className="text-center mb-1 sm:mb-2 flex-shrink-0 min-w-0">
-                    <p className={`text-sm sm:text-lg font-bold ${dayTextColor} ${
-                      formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'opacity-40' : ''
-                    }`}>
-                      {formatDate(date, 'd')}
-                    </p>
-                  </div>
+                // この週に重なる複数日スケジュール
+                const weekMultiDay = multiDaySchedules.filter((s) => {
+                  const sd = new Date((s as any).startDate || s.date); sd.setHours(0, 0, 0, 0);
+                  const ed = new Date((s as any).endDate || s.date); ed.setHours(0, 0, 0, 0);
+                  return sd <= weekEnd && ed >= weekStart;
+                });
 
-                  <div className="space-y-1 flex-1 overflow-hidden">
-                    {/* スケジュール表示 */}
-                    {visibleSchedules.map((schedule) => {
-                      const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
-                      const scheduleColor = getScheduleColor(schedule);
-                      const isOtherUser = isOtherUserSchedule(schedule);
-                      const isReadOnly = calendarViewMode === 'all' && isOtherUser;
-                      const textColor = getTextColor(scheduleColor);
+                // バーの行割り当て（重なりを避けるためレーン管理）
+                const lanes: Array<{ schedule: ScheduleType; startCol: number; endCol: number }[]> = [];
+                const barInfos = weekMultiDay.map((s) => {
+                  const sd = new Date((s as any).startDate || s.date); sd.setHours(0, 0, 0, 0);
+                  const ed = new Date((s as any).endDate || s.date); ed.setHours(0, 0, 0, 0);
+                  const startCol = Math.max(0, Math.round((Math.max(sd.getTime(), weekStart.getTime()) - weekStart.getTime()) / 86400000));
+                  const endCol = Math.min(6, Math.round((Math.min(ed.getTime(), weekEnd.getTime()) - weekStart.getTime()) / 86400000));
+                  return { schedule: s, startCol, endCol, isActualStart: sd >= weekStart, isActualEnd: ed <= weekEnd };
+                });
 
-                      // 複数日またぎの判定
-                      const schedStartDate = (schedule as any).startDate
-                        ? (schedule as any).startDate.slice(0, 10)
-                        : formatDate(schedule.date);
-                      const schedEndDate = (schedule as any).endDate
-                        ? (schedule as any).endDate.slice(0, 10)
-                        : schedStartDate;
-                      const isMultiDay = schedStartDate !== schedEndDate;
-                      const isStartDay = formatDate(date) === schedStartDate;
-                      const isEndDay = formatDate(date) === schedEndDate;
-                      
-                      return (
-                        <button
-                          key={schedule.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isReadOnly) {
-                              setSelectedSchedule(schedule);
-                              setIsModalOpen(true);
-                            } else {
-                              handleEditSchedule(schedule);
-                            }
-                          }}
-                          className={`w-full text-left px-2 py-1 text-xs hover:opacity-90 transition-opacity ${
-                            isMultiDay
-                              ? isStartDay ? 'rounded-l' : isEndDay ? 'rounded-r' : 'rounded-none'
-                              : 'rounded'
-                          }`}
-                          style={{
-                            backgroundColor: scheduleColor,
-                            color: textColor === 'text-white' ? '#ffffff' : '#111827',
-                            marginLeft: isMultiDay && !isStartDay ? '-4px' : undefined,
-                            marginRight: isMultiDay && !isEndDay ? '-4px' : undefined,
-                          }}
-                        >
-                          <div className="flex items-center gap-1.5 truncate">
-                            {(!isMultiDay || isStartDay) && (
-                              <span className="font-medium whitespace-nowrap">{formatTime(schedule.startTime)}-{formatTime(schedule.endTime)}</span>
-                            )}
-                            {isStartDay && (
-                              <span className="truncate">{(schedule as any).title || schedule.activityDescription}</span>
-                            )}
-                            {calendarViewMode === 'all' && schedule.user && isStartDay && (
-                              <span className="whitespace-nowrap">（{schedule.user.name}）</span>
-                            )}
-                            {participantCount > 0 && isStartDay && (
-                              <span className="ml-auto text-xs px-1 rounded whitespace-nowrap" style={{
-                                backgroundColor: textColor === 'text-white' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.1)',
-                              }}>
-                                +{participantCount}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                    
-                    {/* 残りのスケジュール数表示 */}
-                    {remainingCount > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedDateForDetail(date);
-                        }}
-                        className="w-full text-center px-2 py-1 rounded text-xs border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium"
-                      >
-                        他{remainingCount}件
-                      </button>
-                    )}
-                    
-                    {/* イベント表示（read-only） */}
-                    {getEventsForDate(date).map((event) => {
-                      const eventTypeColors = {
-                        TOWN_OFFICIAL: 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-300',
-                        TEAM: 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-800 dark:text-green-300',
-                        OTHER: 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200',
-                      };
-                      const colorClass = eventTypeColors[event.eventType] || eventTypeColors.OTHER;
-                      
-                      return (
-                        <button
-                          key={event.id}
-                          onClick={() => handleEventClick(event.id)}
-                          className={`w-full text-left p-2 rounded text-xs border-2 hover:opacity-80 transition-opacity ${colorClass} ${
-                            event.isCompleted ? 'opacity-60' : ''
-                          }`}
-                        >
-                          <div className="flex items-center gap-1">
-                            <CalendarDays className="h-3 w-3 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">
-                                {event.eventName}
-                              </p>
-                              {event.startTime && (
-                                <p className="text-xs opacity-75">
-                                  {event.startTime}
-                                  {event.endTime && `-${event.endTime}`}
-                                </p>
+                barInfos.forEach((bar) => {
+                  let placed = false;
+                  for (const lane of lanes) {
+                    const overlap = lane.some((b) => b.startCol <= bar.endCol && b.endCol >= bar.startCol);
+                    if (!overlap) { lane.push(bar); placed = true; break; }
+                  }
+                  if (!placed) lanes.push([bar]);
+                });
+
+                const BAR_HEIGHT = 20; // px
+                const BAR_GAP = 2;
+                const HEADER_HEIGHT = 28; // 日付数字の高さ
+                const overlayHeight = HEADER_HEIGHT + lanes.length * (BAR_HEIGHT + BAR_GAP);
+
+                return (
+                  <div key={weekIndex} className="relative w-full" style={{ marginBottom: 0 }}>
+                    {/* 日セルグリッド */}
+                    <div className="grid gap-0 w-full border-t border-l border-border dark:border-gray-700 sm:border-0"
+                      style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+                      {weekDays.map((date, dayIndex) => {
+                        const singleDaySchedules = getSchedulesForDate(date).filter((s) => {
+                          const sd = new Date((s as any).startDate || s.date); sd.setHours(0, 0, 0, 0);
+                          const ed = new Date((s as any).endDate || s.date); ed.setHours(0, 0, 0, 0);
+                          return sd.getTime() === ed.getTime();
+                        });
+                        const isToday = formatDate(date) === formatDate(new Date());
+                        const isHoliday = isHolidayDate(date);
+                        const isSun = isSunday(date);
+                        const isSat = isSaturday(date);
+                        let dayTextColor = 'text-gray-900 dark:text-gray-100';
+                        if (isHoliday || isSun) dayTextColor = 'text-red-600 dark:text-red-400';
+                        else if (isSat) dayTextColor = 'text-blue-600 dark:text-blue-400';
+                        if (isToday) dayTextColor = 'text-primary dark:text-blue-400 font-bold';
+
+                        const isHighlightedByTask = hoveredTaskId != null && getSchedulesForDate(date).some((s) => s.taskId === hoveredTaskId);
+
+                        const MAX_SINGLE = 3;
+                        const visibleSingle = singleDaySchedules.slice(0, MAX_SINGLE);
+                        const remainingSingle = singleDaySchedules.length > MAX_SINGLE ? singleDaySchedules.length - MAX_SINGLE : 0;
+
+                        return (
+                          <div key={dayIndex}
+                            className={`border-r border-b border-border dark:border-gray-700 min-w-0 w-full flex flex-col p-1 ${
+                              isHighlightedByTask ? 'ring-2 ring-blue-400 relative z-10' : ''
+                            } ${isToday ? 'bg-primary/10 dark:bg-primary/20' : 'bg-white dark:bg-gray-800'} ${
+                              calendarViewMode !== 'all' ? 'cursor-pointer' : 'cursor-default'
+                            }`}
+                            style={{ minHeight: `${overlayHeight + 40}px` }}
+                            onClick={(e) => {
+                              if ((e.target as HTMLElement).closest('button')) return;
+                              if (calendarViewMode === 'all') { if (getSchedulesForDate(date).length > 0) setSelectedDateForDetail(date); return; }
+                              handleCreateSchedule(date);
+                            }}>
+                            {/* 日付数字 */}
+                            <div className="flex-shrink-0" style={{ height: `${HEADER_HEIGHT}px` }}>
+                              <p className={`text-sm sm:text-base font-bold text-center ${dayTextColor} ${
+                                formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'opacity-40' : ''
+                              }`}>{formatDate(date, 'd')}</p>
+                            </div>
+                            {/* 複数日バーの高さ分スペース確保 */}
+                            <div style={{ height: `${lanes.length * (BAR_HEIGHT + BAR_GAP)}px`, flexShrink: 0 }} />
+                            {/* 単日スケジュール */}
+                            <div className="space-y-0.5 flex-1 overflow-hidden mt-0.5">
+                              {visibleSingle.map((schedule) => {
+                                const color = getScheduleColor(schedule);
+                                const tc = getTextColor(color);
+                                const isOtherUser = schedule.userId !== user?.id;
+                                const isReadOnly = calendarViewMode === 'all' && isOtherUser;
+                                return (
+                                  <button key={schedule.id}
+                                    onClick={(e) => { e.stopPropagation(); if (isReadOnly) { setSelectedSchedule(schedule); setIsModalOpen(true); } else handleEditSchedule(schedule); }}
+                                    className="w-full text-left px-1.5 py-0.5 rounded text-xs hover:opacity-90 transition-opacity truncate"
+                                    style={{ backgroundColor: color, color: tc }}>
+                                    <span className="font-medium">{formatTime(schedule.startTime)}</span>
+                                    <span className="ml-1 truncate">{(schedule as any).title || schedule.activityDescription}</span>
+                                  </button>
+                                );
+                              })}
+                              {remainingSingle > 0 && (
+                                <button onClick={(e) => { e.stopPropagation(); setSelectedDateForDetail(date); }}
+                                  className="w-full text-center px-1 py-0.5 rounded text-xs border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400">
+                                  他{remainingSingle}件
+                                </button>
                               )}
+                              {getEventsForDate(date).map((event) => (
+                                <button key={event.id} onClick={() => handleEventClick(event.id)}
+                                  className={`w-full text-left px-1.5 py-0.5 rounded text-xs border hover:opacity-80 ${
+                                    event.eventType === 'TOWN_OFFICIAL' ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300'
+                                    : event.eventType === 'TEAM' ? 'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300'
+                                    : 'bg-gray-100 border-gray-300 text-gray-800 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200'
+                                  } ${event.isCompleted ? 'opacity-60' : ''}`}>
+                                  <CalendarDays className="h-3 w-3 inline mr-1" />{event.eventName}
+                                </button>
+                              ))}
                             </div>
                           </div>
-                        </button>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+
+                    {/* 複数日バーのオーバーレイ（週行の上に絶対配置） */}
+                    {weekMultiDay.length > 0 && (
+                      <div className="absolute inset-0 pointer-events-none" style={{ top: 0, left: 0, right: 0 }}>
+                        {barInfos.map((bar, barIdx) => {
+                          const laneIndex = lanes.findIndex((lane) => lane.some((b) => b.schedule.id === bar.schedule.id));
+                          const color = getScheduleColor(bar.schedule);
+                          const tc = getTextColor(color);
+                          const colWidth = 100 / 7;
+                          const left = `calc(${bar.startCol * colWidth}% + 3px)`;
+                          const width = `calc(${(bar.endCol - bar.startCol + 1) * colWidth}% - 6px)`;
+                          const top = HEADER_HEIGHT + laneIndex * (BAR_HEIGHT + BAR_GAP);
+                          const borderRadius = bar.isActualStart && bar.isActualEnd ? '4px'
+                            : bar.isActualStart ? '4px 0 0 4px'
+                            : bar.isActualEnd ? '0 4px 4px 0'
+                            : '0';
+                          return (
+                            <button key={`${bar.schedule.id}-${weekIndex}`}
+                              className="absolute pointer-events-auto hover:opacity-90 transition-opacity overflow-hidden"
+                              style={{
+                                left, width, top: `${top}px`, height: `${BAR_HEIGHT}px`,
+                                backgroundColor: color, color: tc, borderRadius,
+                                fontSize: '11px', padding: '2px 6px', lineHeight: '16px',
+                                whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                              }}
+                              onClick={(e) => { e.stopPropagation(); handleEditSchedule(bar.schedule); }}
+                              title={`${(bar.schedule as any).title || bar.schedule.activityDescription} (${formatTime(bar.schedule.startTime)}-${formatTime(bar.schedule.endTime)})`}>
+                              {bar.isActualStart && (
+                                <span className="font-medium truncate">
+                                  {(bar.schedule as any).title || bar.schedule.activityDescription}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              );
-            })}
-            </div>
+                );
+              });
+            })()}
           </div>
         )}
 
