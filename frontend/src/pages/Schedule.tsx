@@ -921,18 +921,11 @@ export const Schedule: React.FC = () => {
         />
       )}
 
-      {/* 既存スケジュール編集（ScheduleModal） */}
+      {/* スケジュール編集（TaskModal で統一） */}
       {isModalOpen && selectedSchedule && (
-        <ScheduleModal
+        <TaskModal
           schedule={selectedSchedule}
-          defaultDate={selectedDate}
-          defaultStartTime={defaultStartTime}
-          defaultEndTime={defaultEndTime}
-          readOnly={
-            selectedSchedule
-              ? calendarViewMode === 'all' && selectedSchedule.userId !== user?.id
-              : false
-          }
+          readOnly={calendarViewMode === 'all' && selectedSchedule.userId !== user?.id}
           onClose={handleCloseModal}
           onSaved={handleSaved}
         />

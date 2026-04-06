@@ -137,6 +137,58 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         })}
       </div>
 
+      {/* 複数日スケジュールのバナー行（Googleカレンダー風） */}
+      {(() => {
+        const multiDaySchedules = schedules.filter((s) => {
+          const sd = new Date((s as any).startDate || s.date);
+          const ed = new Date((s as any).endDate || s.date);
+          sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
+          return sd.getTime() !== ed.getTime();
+        });
+        if (multiDaySchedules.length === 0) return null;
+        return (
+          <div className="grid w-full min-w-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800"
+            style={{ gridTemplateColumns: weekGridTemplate }}>
+            <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0 flex items-center justify-end pr-1">
+              <span className="text-[8px] text-gray-400">終日</span>
+            </div>
+            {dates.map((date, dateIndex) => {
+              const d = new Date(date); d.setHours(0,0,0,0);
+              const dayMulti = multiDaySchedules.filter((s) => {
+                const sd = new Date((s as any).startDate || s.date);
+                const ed = new Date((s as any).endDate || s.date);
+                sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
+                return d >= sd && d <= ed;
+              });
+              return (
+                <div key={dateIndex} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 min-h-[1.75rem] py-0.5 space-y-0.5">
+                  {dayMulti.map((s) => {
+                    const sd = new Date((s as any).startDate || s.date); sd.setHours(0,0,0,0);
+                    const ed = new Date((s as any).endDate || s.date); ed.setHours(0,0,0,0);
+                    const isFirst = d.getTime() === sd.getTime();
+                    const isLast = d.getTime() === ed.getTime();
+                    const color = (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
+                    return (
+                      <button key={s.id} onClick={() => onScheduleClick(s)}
+                        className={`w-full text-left text-xs text-white px-1 py-0.5 truncate hover:opacity-90 transition-opacity ${isFirst ? 'rounded-l ml-0.5' : ''} ${isLast ? 'rounded-r mr-0.5' : ''}`}
+                        style={{
+                          backgroundColor: color,
+                          marginLeft: isFirst ? '2px' : 0,
+                          marginRight: isLast ? '2px' : 0,
+                          borderRadius: isFirst && isLast ? '4px' : isFirst ? '4px 0 0 4px' : isLast ? '0 4px 4px 0' : '0',
+                        }}
+                        title={`${(s as any).title || s.activityDescription} (${formatTime(s.startTime)}-${formatTime(s.endTime)})`}>
+                        {isFirst ? ((s as any).title || s.activityDescription) : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* 縦スクロールのみ（横はグリッドで収める） */}
       <div ref={scrollContainerRef} className="w-full min-w-0 max-h-[min(75vh,52rem)] overflow-y-auto overflow-x-hidden">
         <div className="grid w-full min-w-0" style={{ gridTemplateColumns: weekGridTemplate }}>
@@ -183,77 +235,47 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                       />
                     ))}
 
-                    {/* スケジュール（複数日を先に、単日を後に描画） */}
-                    {[...daySchedules]
-                      .sort((a, b) => {
-                        const aMulti = (new Date((a as any).startDate || a.date).toDateString()) !== (new Date((a as any).endDate || a.date).toDateString());
-                        const bMulti = (new Date((b as any).startDate || b.date).toDateString()) !== (new Date((b as any).endDate || b.date).toDateString());
-                        if (aMulti && !bMulti) return -1;
-                        if (!aMulti && bMulti) return 1;
-                        return 0;
+                    {/* スケジュール（単日のみ時間軸に表示、複数日はヘッダーバナーで表示済み） */}
+                    {daySchedules
+                      .filter((schedule) => {
+                        const sd = new Date((schedule as any).startDate || schedule.date);
+                        const ed = new Date((schedule as any).endDate || schedule.date);
+                        sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
+                        return sd.getTime() === ed.getTime(); // 単日のみ
                       })
                       .map((schedule) => {
-                      const scheduleStartDate = new Date((schedule as any).startDate || schedule.date);
-                      const scheduleEndDate = new Date((schedule as any).endDate || schedule.date);
-                      scheduleStartDate.setHours(0, 0, 0, 0);
-                      scheduleEndDate.setHours(0, 0, 0, 0);
-                      const currentDay = new Date(date);
-                      currentDay.setHours(0, 0, 0, 0);
-                      const isFirstDay = currentDay.getTime() === scheduleStartDate.getTime();
-                      const isLastDay = currentDay.getTime() === scheduleEndDate.getTime();
-                      const isMultiDay = scheduleStartDate.getTime() !== scheduleEndDate.getTime();
-
-                      // 複数日の場合は一番上に固定表示
-                      const displayStartTime = isMultiDay ? '00:00' : schedule.startTime;
-                      const displayEndTime = isMultiDay ? '02:00' : schedule.endTime; // 複数日は上部に2時間分の帯として表示
-                      const position = isMultiDay
-                        ? { top: '0rem', height: '2rem' }
-                        : calculateSchedulePosition(displayStartTime, displayEndTime);
-
+                      const position = calculateSchedulePosition(schedule.startTime, schedule.endTime);
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
                       const scheduleColor = calendarViewMode === 'all'
                         ? schedule.user?.avatarColor || '#6B7280'
                         : (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
-                      
                       return (
                         <button
                           key={schedule.id}
                           onClick={() => onScheduleClick(schedule)}
-                          className={`absolute left-0 right-0 text-xs p-1 text-white hover:opacity-90 transition-opacity overflow-hidden ${
-                            isMultiDay
-                              ? 'z-20 rounded-none border-b-2 border-white/30'
-                              : 'z-10 left-1 right-1 rounded'
-                          } ${isMultiDay && isFirstDay ? 'rounded-tl rounded-tr' : ''} ${isMultiDay && isLastDay ? 'rounded-bl rounded-br' : ''}`}
+                          className="absolute left-1 right-1 rounded text-xs p-1 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden"
                           style={{
                             top: position.top,
                             height: position.height,
                             backgroundColor: scheduleColor,
                             minHeight: '1.5rem',
-                            borderLeft: isMultiDay && !isFirstDay ? '3px solid rgba(255,255,255,0.5)' : undefined,
                           }}
                           title={`${(schedule as any).title || schedule.activityDescription} (${formatTime(schedule.startTime)}-${formatTime(schedule.endTime)})${calendarViewMode === 'all' && schedule.user ? ` - ${schedule.user.name}` : ''}`}
                         >
                           <div className="flex items-start justify-between h-full">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate text-white">
-                                {isMultiDay && !isFirstDay ? '↳ ' : ''}{(schedule as any).title || schedule.activityDescription}
+                                {(schedule as any).title || schedule.activityDescription}
                               </p>
                               <p className="text-xs text-white/80 truncate">
-                                {isMultiDay
-                                  ? `${formatTime(schedule.startTime)} 〜 ${formatTime(schedule.endTime)}（${isFirstDay ? '開始' : isLastDay ? '終了' : '継続'}）`
-                                  : `${formatTime(schedule.startTime)}-${formatTime(schedule.endTime)}`
-                                }
+                                {formatTime(schedule.startTime)}-{formatTime(schedule.endTime)}
                               </p>
                               {calendarViewMode === 'all' && schedule.user && (
-                                <p className="text-xs text-white/70 truncate mt-0.5">
-                                  {schedule.user.name}
-                                </p>
+                                <p className="text-xs text-white/70 truncate mt-0.5">{schedule.user.name}</p>
                               )}
                             </div>
                             {participantCount > 0 && (
-                              <span className="ml-1 text-xs bg-white/20 text-white px-1 rounded whitespace-nowrap">
-                                +{participantCount}
-                              </span>
+                              <span className="ml-1 text-xs bg-white/20 text-white px-1 rounded whitespace-nowrap">+{participantCount}</span>
                             )}
                           </div>
                         </button>
