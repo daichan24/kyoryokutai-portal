@@ -10,7 +10,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { WeeklyStatusAlert } from '../components/sns/WeeklyStatusAlert';
 import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
-import { SNSAccountModal } from '../components/sns/SNSAccountModal';
+import { SNSAccountModal, getPostTypeLabels } from '../components/sns/SNSAccountModal';
 import { FollowerGraph } from '../components/sns/FollowerGraph';
 import { getWeekMetaForDate, getRecentWeekRows } from '../utils/snsWeek';
 
@@ -404,7 +404,7 @@ export const SNSPosts: React.FC = () => {
                                 </div>
                                 <div className="space-y-1">
                                   <div className="flex items-center justify-between text-xs">
-                                    <span className="text-blue-600 dark:text-blue-400">ストーリーズ</span>
+                                    <span className="text-blue-600 dark:text-blue-400">{getPostTypeLabels(acc.platform).story}</span>
                                     {hasStory ? (
                                       <span className="text-green-600 dark:text-green-400 font-medium">
                                         ✓ {storyPosts.map(p => format(new Date(p.postedAt), 'M/d', { locale: ja })).join(', ')}
@@ -414,7 +414,7 @@ export const SNSPosts: React.FC = () => {
                                     )}
                                   </div>
                                   <div className="flex items-center justify-between text-xs">
-                                    <span className="text-green-600 dark:text-green-400">フィード</span>
+                                    <span className="text-green-600 dark:text-green-400">{getPostTypeLabels(acc.platform).feed}</span>
                                     {hasFeed ? (
                                       <span className="text-green-600 dark:text-green-400 font-medium">
                                         ✓ {feedPosts.map(p => format(new Date(p.postedAt), 'M/d', { locale: ja })).join(', ')}
@@ -497,8 +497,12 @@ export const SNSPosts: React.FC = () => {
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
                     <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-gray-100">週（月曜起算）</th>
-                    <th className="text-center py-3 px-2 font-semibold text-blue-700 dark:text-blue-300">ストーリーズ</th>
-                    <th className="text-center py-3 px-2 font-semibold text-green-700 dark:text-green-300">フィード</th>
+                    <th className="text-center py-3 px-2 font-semibold text-blue-700 dark:text-blue-300">
+                      {getPostTypeLabels(selectedAccountId ? myAccounts.find(a => a.id === selectedAccountId)?.platform : myAccounts[0]?.platform).story}
+                    </th>
+                    <th className="text-center py-3 px-2 font-semibold text-green-700 dark:text-green-300">
+                      {getPostTypeLabels(selectedAccountId ? myAccounts.find(a => a.id === selectedAccountId)?.platform : myAccounts[0]?.platform).feed}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
