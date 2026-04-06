@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, CheckCircle2, PlayCircle, Circle } from 'lucide-react';
+import { X, CheckCircle2, PlayCircle, Circle, Copy } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Task, Project } from '../../types';
@@ -11,6 +11,7 @@ interface TaskModalProps {
   task?: Task | null;
   onClose: () => void;
   onSaved: () => void;
+  onDuplicate?: (task: Task) => void;
   readOnly?: boolean; // 閲覧専用モード
   /** 上位で別モーダル（例: プロジェクト作成）が開いている間は外側クリックで閉じない */
   suspendOutsidePointerClose?: boolean;
@@ -24,6 +25,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   task,
   onClose,
   onSaved,
+  onDuplicate,
   readOnly = false,
   suspendOutsidePointerClose = false,
   onCreateProjectRequest,
@@ -34,6 +36,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [projectId, setProjectId] = useState<string | null>(initialProjectId || null);
   const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'TRIAGE'>('PROJECT');
   const [dueDate, setDueDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [startTime, setStartTime] = useState<string>('09:00');
   const [endTime, setEndTime] = useState<string>('17:00');
   const [projects, setProjects] = useState<Project[]>([]);
@@ -121,6 +124,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         setAttachMode('UNSET');
       }
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
+      setEndDate((task as any).endDate ? (task as any).endDate.split('T')[0] : (task.dueDate ? task.dueDate.split('T')[0] : ''));
       setStartTime((task as any).startTime || '09:00');
       setEndTime((task as any).endTime || '17:00');
     } else {
@@ -130,6 +134,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setProjectId(initialProjectId || null);
       setAttachMode(initialProjectId ? 'PROJECT' : 'UNSET');
       setDueDate('');
+      setEndDate('');
       setStartTime('09:00');
       setEndTime('17:00');
     }
@@ -166,8 +171,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         projectId: effectiveProjectId,
         linkKind,
         dueDate: dueDate && dueDate.trim() ? dueDate.trim() : null,
-        startTime: dueDate ? startTime : undefined,
-        endTime: dueDate ? endTime : undefined,
+        endDate: endDate && endDate.trim() ? endDate.trim() : (dueDate && dueDate.trim() ? dueDate.trim() : null),
+        startTime,
+        endTime,
       };
 
       if (task) {
@@ -194,9 +200,22 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           <h2 className="text-xl font-bold dark:text-gray-100">
             {task ? 'タスク編集' : 'タスク追加'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-            <X className="h-6 w-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            {task && !readOnly && onDuplicate && (
+              <button
+                type="button"
+                onClick={() => onDuplicate(task)}
+                className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="このタスクを複製"
+              >
+                <Copy className="h-4 w-4" />
+                複製
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -276,49 +295,66 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               期日（任意・スケジュール自動生成用）
             </label>
-            <Input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              placeholder="期日を選択"
-              disabled={readOnly}
-            />
-            {dueDate && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻</label>
-                  <select
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-                    disabled={readOnly}
-                  >
-                    {Array.from({ length: 24 * 4 }, (_, i) => {
-                      const h = Math.floor(i / 4);
-                      const m = (i % 4) * 15;
-                      const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                      return <option key={v} value={v}>{v}</option>;
-                    })}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻</label>
-                  <select
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-                    disabled={readOnly}
-                  >
-                    {Array.from({ length: 24 * 4 }, (_, i) => {
-                      const h = Math.floor(i / 4);
-                      const m = (i % 4) * 15;
-                      const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                      return <option key={v} value={v}>{v}</option>;
-                    })}
-                  </select>
-                </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始日</label>
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => {
+                    setDueDate(e.target.value);
+                    if (!endDate || endDate < e.target.value) setEndDate(e.target.value);
+                  }}
+                  placeholder="開始日を選択"
+                  disabled={readOnly}
+                />
               </div>
-            )}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了日</label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={dueDate}
+                  placeholder="終了日を選択"
+                  disabled={readOnly}
+                />
+              </div>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻</label>
+                <select
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
+                  disabled={readOnly}
+                >
+                  {Array.from({ length: 24 * 4 }, (_, i) => {
+                    const h = Math.floor(i / 4);
+                    const m = (i % 4) * 15;
+                    const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    return <option key={v} value={v}>{`${h}:${String(m).padStart(2, '0')}`}</option>;
+                  })}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻</label>
+                <select
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
+                  disabled={readOnly}
+                >
+                  {Array.from({ length: 24 * 4 }, (_, i) => {
+                    const h = Math.floor(i / 4);
+                    const m = (i % 4) * 15;
+                    const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    return <option key={v} value={v}>{`${h}:${String(m).padStart(2, '0')}`}</option>;
+                  })}
+                </select>
+              </div>
+            </div>
             {dueDate && (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 期日と時刻を設定すると、その日にスケジュールが自動で作成されます

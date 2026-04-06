@@ -10,9 +10,12 @@ const taskSchema = z.object({
   title: z.string().min(1, 'タイトルは必須です'),
   description: z.string().optional(),
   status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']).optional(),
-  projectId: z.string().optional().nullable(), // プロジェクトへの紐付けは任意
+  projectId: z.string().optional().nullable(),
   order: z.number().int().optional(),
-  dueDate: z.string().optional().nullable(), // タスクの期日（YYYY-MM-DD形式）
+  dueDate: z.string().optional().nullable(),
+  endDate: z.string().optional().nullable(), // 終了日（複数日タスク用、YYYY-MM-DD形式）
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK', 'TRIAGE_PENDING']).optional(),
 });
 
@@ -172,15 +175,16 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
     // dueDateが指定されている場合、スケジュールを自動生成
     if (data.dueDate) {
       try {
-        const dueDate = new Date(data.dueDate);
+        const startDate = new Date(data.dueDate);
+        const endDate = data.endDate ? new Date(data.endDate) : startDate;
         await prisma.schedule.create({
           data: {
             userId: mission.userId,
-            date: dueDate,
-            startDate: dueDate,
-            endDate: dueDate,
-            startTime: '09:00',
-            endTime: '17:00',
+            date: startDate,
+            startDate: startDate,
+            endDate: endDate,
+            startTime: data.startTime || '09:00',
+            endTime: data.endTime || '17:00',
             activityDescription: data.title,
             freeNote: data.description || null,
             isPending: false,
@@ -190,7 +194,6 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
         });
       } catch (scheduleError) {
         console.error('Failed to create schedule for task:', scheduleError);
-        // スケジュール作成に失敗してもタスクは作成済みなので続行
       }
     }
 
@@ -313,15 +316,16 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
 
       if (!existingSchedule) {
         try {
-          const dueDate = new Date(data.dueDate);
+          const startDate = new Date(data.dueDate);
+          const endDate = data.endDate ? new Date(data.endDate) : startDate;
           await prisma.schedule.create({
             data: {
               userId: updated.mission.userId,
-              date: dueDate,
-              startDate: dueDate,
-              endDate: dueDate,
-              startTime: '09:00',
-              endTime: '17:00',
+              date: startDate,
+              startDate: startDate,
+              endDate: endDate,
+              startTime: data.startTime || '09:00',
+              endTime: data.endTime || '17:00',
               activityDescription: updated.title,
               freeNote: updated.description || null,
               isPending: false,
@@ -331,7 +335,6 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
           });
         } catch (scheduleError) {
           console.error('Failed to create schedule for task:', scheduleError);
-          // スケジュール作成に失敗してもタスクは更新済みなので続行
         }
       }
     }

@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, ChevronRight as C
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType, Project, Task, User } from '../types';
-import { formatDate, getWeekDates, getMonthDates, isSameDay, isHolidayDate, isSunday, isSaturday } from '../utils/date';
+import { formatDate, getWeekDates, getMonthDates, isSameDay, isHolidayDate, isSunday, isSaturday, formatTime } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ScheduleModal } from '../components/schedule/ScheduleModal';
@@ -705,7 +705,7 @@ export const Schedule: React.FC = () => {
                         >
                           <div className="flex items-center gap-1.5 truncate">
                             {(!isMultiDay || isStartDay) && (
-                              <span className="font-medium whitespace-nowrap">{schedule.startTime}-{schedule.endTime}</span>
+                              <span className="font-medium whitespace-nowrap">{formatTime(schedule.startTime)}-{formatTime(schedule.endTime)}</span>
                             )}
                             {isStartDay && (
                               <span className="truncate">{(schedule as any).title || schedule.activityDescription}</span>
@@ -1008,7 +1008,7 @@ export const Schedule: React.FC = () => {
                               >
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                    {schedule.startTime}–{schedule.endTime}
+                                    {formatTime(schedule.startTime)}–{formatTime(schedule.endTime)}
                                   </span>
                                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                     {(schedule as any).title || schedule.activityDescription}

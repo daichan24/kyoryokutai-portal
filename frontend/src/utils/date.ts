@@ -8,7 +8,9 @@ export const formatDate = (date: Date | string, formatStr: string = 'yyyy-MM-dd'
 };
 
 export const formatTime = (time: string): string => {
-  return time;
+  if (!time) return time;
+  const [h, m] = time.split(':');
+  return `${parseInt(h, 10)}:${m}`;
 };
 
 export const getWeekRange = (date: Date = new Date()): { start: Date; end: Date } => {

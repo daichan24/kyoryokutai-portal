@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Schedule as ScheduleType } from '../../types';
-import { formatDate, isSameDay } from '../../utils/date';
+import { formatDate, isSameDay, formatTime } from '../../utils/date';
 import { CalendarDays } from 'lucide-react';
 
 interface TimeAxisViewProps {
@@ -39,11 +39,11 @@ const timeToMinutes = (time: string): number => {
   return hours * 60 + minutes;
 };
 
-// 分を時間文字列に変換
+// 分を時間文字列に変換（表示用: 先頭ゼロなし）
 const minutesToTime = (minutes: number): string => {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  return `${hours}:${String(mins).padStart(2, '0')}`;
 };
 
 // スケジュールの位置と高さを計算
@@ -55,6 +55,9 @@ const calculateSchedulePosition = (startTime: string, endTime: string) => {
   const height = ((endMinutes - startMinutes) / 60) * 4;
   return { top: `${top}rem`, height: `${Math.max(height, 0.5)}rem` };
 };
+
+// 時間文字列（HH:mm）を表示用（H:mm、先頭ゼロなし）に変換
+// ※ utils/date の formatTime を使用するため、ここでは削除
 
 export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   dates,
@@ -72,7 +75,16 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const getSchedulesForDate = (date: Date) => {
-    return schedules.filter((schedule) => isSameDay(new Date(schedule.date), date));
+    return schedules.filter((schedule) => {
+      const startDate = new Date((schedule as any).startDate || schedule.date);
+      const endDate = new Date((schedule as any).endDate || schedule.date);
+      const d = new Date(date);
+      // 日付部分のみ比較
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      d.setHours(0, 0, 0, 0);
+      return d >= startDate && d <= endDate;
+    });
   };
 
   const getEventsForDate = (date: Date) => {
@@ -173,9 +185,22 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
 
                     {/* スケジュール */}
                     {daySchedules.map((schedule) => {
-                      const position = calculateSchedulePosition(schedule.startTime, schedule.endTime);
+                      const scheduleStartDate = new Date((schedule as any).startDate || schedule.date);
+                      const scheduleEndDate = new Date((schedule as any).endDate || schedule.date);
+                      scheduleStartDate.setHours(0, 0, 0, 0);
+                      scheduleEndDate.setHours(0, 0, 0, 0);
+                      const currentDay = new Date(date);
+                      currentDay.setHours(0, 0, 0, 0);
+                      const isFirstDay = currentDay.getTime() === scheduleStartDate.getTime();
+                      const isLastDay = currentDay.getTime() === scheduleEndDate.getTime();
+                      const isMultiDay = scheduleStartDate.getTime() !== scheduleEndDate.getTime();
+
+                      // 複数日の場合: 最初の日は開始時刻〜24:00、最終日は0:00〜終了時刻、中間日は終日
+                      const displayStartTime = isFirstDay ? schedule.startTime : '00:00';
+                      const displayEndTime = isLastDay ? schedule.endTime : '24:00';
+                      const position = calculateSchedulePosition(displayStartTime, displayEndTime === '24:00' ? '23:59' : displayEndTime);
+
                       const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
-                      // 全体表示の場合はユーザー色を使用、それ以外はカスタム色→プロジェクトのテーマカラー→ユーザーのアバターカラーを使用
                       const scheduleColor = calendarViewMode === 'all'
                         ? schedule.user?.avatarColor || '#6B7280'
                         : (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
@@ -184,22 +209,27 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                         <button
                           key={schedule.id}
                           onClick={() => onScheduleClick(schedule)}
-                          className="absolute left-1 right-1 rounded text-xs p-1 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden"
+                          className={`absolute left-1 right-1 text-xs p-1 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden ${
+                            isMultiDay
+                              ? isFirstDay ? 'rounded-t' : isLastDay ? 'rounded-b' : ''
+                              : 'rounded'
+                          }`}
                           style={{
                             top: position.top,
                             height: position.height,
                             backgroundColor: scheduleColor,
                             minHeight: '1.5rem',
+                            borderLeft: isMultiDay && !isFirstDay ? '3px solid rgba(255,255,255,0.5)' : undefined,
                           }}
-                          title={`${(schedule as any).title || schedule.activityDescription} (${schedule.startTime}-${schedule.endTime})${calendarViewMode === 'all' && schedule.user ? ` - ${schedule.user.name}` : ''}`}
+                          title={`${(schedule as any).title || schedule.activityDescription} (${formatTime(schedule.startTime)}-${formatTime(schedule.endTime)})${calendarViewMode === 'all' && schedule.user ? ` - ${schedule.user.name}` : ''}`}
                         >
                           <div className="flex items-start justify-between h-full">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate text-white">
-                                {(schedule as any).title || schedule.activityDescription}
+                                {isMultiDay && !isFirstDay ? '↳ ' : ''}{(schedule as any).title || schedule.activityDescription}
                               </p>
                               <p className="text-xs text-white/80 truncate">
-                                {schedule.startTime}-{schedule.endTime}
+                                {isFirstDay ? formatTime(schedule.startTime) : '0:00'}-{isLastDay ? formatTime(schedule.endTime) : '翌日'}
                               </p>
                               {calendarViewMode === 'all' && schedule.user && (
                                 <p className="text-xs text-white/70 truncate mt-0.5">

@@ -404,9 +404,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                   const hour = Math.floor(i / 4);
                   const minute = (i % 4) * 15;
                   const timeValue = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                  const timeLabel = `${hour}:${String(minute).padStart(2, '0')}`;
                   return (
                     <option key={timeValue} value={timeValue}>
-                      {timeValue}
+                      {timeLabel}
                     </option>
                   );
                 })}
@@ -427,9 +428,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                   const hour = Math.floor(i / 4);
                   const minute = (i % 4) * 15;
                   const timeValue = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                  const timeLabel = `${hour}:${String(minute).padStart(2, '0')}`;
                   return (
                     <option key={timeValue} value={timeValue}>
-                      {timeValue}
+                      {timeLabel}
                     </option>
                   );
                 })}

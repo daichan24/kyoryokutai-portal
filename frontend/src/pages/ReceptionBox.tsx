@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { formatTime } from '../utils/date';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -95,7 +96,7 @@ const ItemPopup: React.FC<{
             </p>
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-1 text-sm">
               <p><span className="text-gray-500">内容:</span> {item.data.schedule.activityDescription}</p>
-              <p><span className="text-gray-500">日時:</span> {format(new Date(item.data.schedule.date), 'yyyy年M月d日', { locale: ja })} {item.data.schedule.startTime}〜{item.data.schedule.endTime}</p>
+              <p><span className="text-gray-500">日時:</span> {format(new Date(item.data.schedule.date), 'yyyy年M月d日', { locale: ja })} {formatTime(item.data.schedule.startTime)}〜{formatTime(item.data.schedule.endTime)}</p>
             </div>
             <div className="flex gap-2 pt-2">
               <Button size="sm" onClick={() => onAction?.('APPROVED')} disabled={actionLoading}>
@@ -293,7 +294,7 @@ export const ReceptionBox: React.FC = () => {
             <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
               {s.schedule.user.name}さんから: {s.schedule.activityDescription}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">{format(new Date(s.schedule.date), 'M月d日', { locale: ja })} {s.schedule.startTime}〜{s.schedule.endTime}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{format(new Date(s.schedule.date), 'M月d日', { locale: ja })} {formatTime(s.schedule.startTime)}〜{formatTime(s.schedule.endTime)}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'scheduleInvite', data: s })}>
             確認・承認

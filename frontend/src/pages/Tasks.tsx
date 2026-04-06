@@ -207,6 +207,31 @@ export const Tasks: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleDuplicateTask = async (task: Task) => {
+    if (!task.missionId) {
+      alert('ミッション情報が見つかりません');
+      return;
+    }
+    if (!confirm(`「${task.title}」を複製しますか？`)) return;
+    try {
+      await api.post(`/api/missions/${task.missionId}/tasks`, {
+        title: `${task.title}（コピー）`,
+        description: task.description,
+        status: 'NOT_STARTED',
+        projectId: task.projectId || null,
+        linkKind: task.linkKind,
+        dueDate: task.dueDate ? task.dueDate.split('T')[0] : null,
+      });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setIsModalOpen(false);
+      setSelectedTask(null);
+    } catch (error) {
+      console.error('Failed to duplicate task:', error);
+      alert('複製に失敗しました');
+    }
+  };
+
   const handleDeleteTask = async (task: Task) => {
     if (!confirm('このタスクを削除しますか？')) return;
     if (!task.projectId) {
@@ -335,12 +360,12 @@ export const Tasks: React.FC = () => {
         </div>
       </div>
 
-      {viewMode === 'view' && (
-        <>
+      {/* フィルタ・ソート＆タスク一覧（全モード共通） */}
+      <>
           {/* フィルタ・ソート */}
           <div className="flex gap-4 flex-wrap items-center justify-between">
             <div className="flex gap-4 flex-wrap items-center">
-              {isNonMember && (
+              {isNonMember && viewMode === 'view' && (
                 <UserFilter
                   selectedUserId={selectedUserId}
                   onUserChange={setSelectedUserId}
@@ -646,13 +671,6 @@ export const Tasks: React.FC = () => {
         </div>
       )}
         </>
-      )}
-
-      {viewMode === 'create' && (
-        <div className="text-center py-12 text-gray-500">
-          新規タスクを作成するには、右上の「新規タスク」ボタンをクリックしてください。
-        </div>
-      )}
 
       {/* タスクモーダル */}
       {isModalOpen && selectedProjectId && (
@@ -665,6 +683,7 @@ export const Tasks: React.FC = () => {
             setSelectedProjectId(null);
           }}
           onSaved={handleTaskSaved}
+          onDuplicate={handleDuplicateTask}
           readOnly={selectedTask ? (viewMode === 'view' && isNonMember) : false}
         />
       )}

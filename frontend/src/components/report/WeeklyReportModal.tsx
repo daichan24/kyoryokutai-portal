@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, FileDown } from 'lucide-react';
 import { api } from '../../utils/api';
 import { WeeklyReport, Schedule } from '../../types';
-import { getWeekString, parseWeekString, formatDate } from '../../utils/date';
+import { getWeekString, parseWeekString, formatDate, formatTime } from '../../utils/date';
 import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
 import { ja } from 'date-fns/locale/ja';
 import { useAuthStore } from '../../stores/authStore';
@@ -155,8 +155,8 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
         const formattedPlan = nextWeekSchedules.map(schedule => {
           const date = formatDate(new Date(schedule.date), 'M月d日');
           const time = schedule.startTime && schedule.endTime 
-            ? `${schedule.startTime}〜${schedule.endTime}`
-            : schedule.startTime || '';
+            ? `${formatTime(schedule.startTime)}〜${formatTime(schedule.endTime)}`
+            : schedule.startTime ? formatTime(schedule.startTime) : '';
           const location = schedule.location?.name || schedule.locationText || '';
           const activity = schedule.activityDescription;
           

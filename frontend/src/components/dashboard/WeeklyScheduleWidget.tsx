@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Schedule } from '../../types';
-import { formatDate } from '../../utils/date';
+import { formatDate, formatTime } from '../../utils/date';
 import { Button } from '../common/Button';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
@@ -67,7 +67,7 @@ export const WeeklyScheduleWidget: React.FC<WeeklyScheduleWidgetProps> = ({
                         {formatDate(schedule.date, 'M/d')}
                       </p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {schedule.startTime} - {schedule.endTime}
+                        {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
                       </p>
                       {schedule.locationText && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
