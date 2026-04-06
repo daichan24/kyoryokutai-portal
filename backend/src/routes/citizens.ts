@@ -20,7 +20,7 @@ const citizenSchema = z.object({
   startYear: z.number().int().min(2000).max(2100).optional(),
   endYear: z.number().int().min(2000).max(2100).optional(),
   tags: z.array(z.string()).default([]),
-  instagramUrl: z.string().url().or(z.literal('')).optional(),
+  instagramUrl: z.string().optional(),
 });
 
 /**

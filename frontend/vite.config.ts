@@ -5,8 +5,8 @@ import { execSync } from 'child_process';
 
 function getBuildId(): string {
   try {
-    const hash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
-    return hash;
+    const count = execSync('git rev-list --count HEAD', { encoding: 'utf-8' }).trim();
+    return `#${count}`;
   } catch {
     return 'dev-local';
   }

@@ -141,7 +141,6 @@ router.post('/', async (req: AuthRequest, res) => {
         missionId: missionId,
         themeColor: data.themeColor || null,
         tags: data.tags || [],
-        relatedContactIds: data.relatedContactIds || [],
       },
       include: { user: true, mission: true },
     });
@@ -235,7 +234,6 @@ router.put('/:id', async (req: AuthRequest, res) => {
         missionId: missionId,
         themeColor: data.themeColor !== undefined ? data.themeColor : undefined,
         tags: data.tags || [],
-        relatedContactIds: data.relatedContactIds !== undefined ? data.relatedContactIds : undefined,
       },
       include: { user: true, mission: true },
     });
@@ -323,19 +321,39 @@ router.post('/:id/toggle-achieved', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const newAchieved = !existing.isAchieved;
+    const newAchieved = !(existing as any).isAchieved;
     const project = await prisma.project.update({
       where: { id: req.params.id },
       data: {
         isAchieved: newAchieved,
         achievedAt: newAchieved ? new Date() : null,
-      },
+      } as any,
     });
 
     res.json(project);
   } catch (error) {
     console.error('Toggle achieved error:', error);
     res.status(500).json({ error: 'Failed to toggle achieved' });
+  }
+});
+
+// 関わった町民の更新
+router.put('/:id/related-contacts', async (req: AuthRequest, res) => {
+  try {
+    const existing = await prisma.project.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Project not found' });
+    if (existing.userId !== req.user!.id && req.user!.role !== 'MASTER' && req.user!.role !== 'SUPPORT') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { relatedContactIds } = req.body;
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data: { relatedContactIds: relatedContactIds || [] } as any,
+    });
+    res.json(project);
+  } catch (error) {
+    console.error('Update related contacts error:', error);
+    res.status(500).json({ error: 'Failed to update related contacts' });
   }
 });
 

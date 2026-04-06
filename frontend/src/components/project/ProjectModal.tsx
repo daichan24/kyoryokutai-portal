@@ -214,7 +214,6 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         missionId: missionId || undefined,
         themeColor: themeColor || undefined,
         tags,
-        relatedContactIds,
       };
 
       if (project) {
@@ -476,16 +475,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   ))
                 )}
               </div>
-              {relatedContactIds.length > 0 && !isReadOnly && (
-                <div className="flex justify-end">
+              {!isReadOnly && (
+                <div className="flex justify-end mt-3">
                   <Button type="button" onClick={async () => {
                     try {
-                      await api.put(`/api/projects/${project.id}`, {
-                        projectName, description: description || undefined,
-                        startDate: startDate || undefined, endDate: endDate || undefined,
-                        phase, missionId: missionId || undefined,
-                        themeColor: themeColor || undefined, tags, relatedContactIds,
-                      });
+                      await api.put(`/api/projects/${project.id}/related-contacts`, { relatedContactIds });
                       alert('保存しました');
                     } catch { alert('保存に失敗しました'); }
                   }}>

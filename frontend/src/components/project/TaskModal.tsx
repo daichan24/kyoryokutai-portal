@@ -61,9 +61,10 @@ const RecurringScheduleModal: React.FC<RecurringModalProps> = ({
     }).catch(console.error);
   }, []);
 
-  const timeOptions = Array.from({ length: 24 * 4 }, (_, i) => {
-    const h = Math.floor(i / 4);
-    const m = (i % 4) * 15;
+  // 30分刻み（ドロップダウンを短くするため）
+  const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
+    const h = Math.floor(i / 2);
+    const m = (i % 2) * 30;
     const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     return { value: v, label: `${h}:${String(m).padStart(2, '0')}` };
   });
@@ -334,6 +335,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   useEffect(() => {
     if (readOnly || suspendOutsidePointerClose) return;
     const handler = (e: MouseEvent) => {
+      // 繰り返しモーダルが開いている場合は外側クリック確認を無効化
+      if (showRecurringModal) return;
       if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
         if (title || memo || dueDate) setShowCloseConfirm(true);
         else onClose();
@@ -341,7 +344,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [title, memo, dueDate, readOnly, suspendOutsidePointerClose]);
+  }, [title, memo, dueDate, readOnly, suspendOutsidePointerClose, showRecurringModal]);
 
   const effectiveMissionId = missionId || selectedMissionId || task?.missionId || '';
 
@@ -411,9 +414,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     } catch { alert('削除に失敗しました'); }
   };
 
-  const timeOptions = Array.from({ length: 24 * 4 }, (_, i) => {
-    const h = Math.floor(i / 4);
-    const m = (i % 4) * 15;
+  // 30分刻み（ドロップダウンを短くするため）
+  const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
+    const h = Math.floor(i / 2);
+    const m = (i % 2) * 30;
     const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     return { value: v, label: `${h}:${String(m).padStart(2, '0')}` };
   });
@@ -434,7 +438,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       />
     )}
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]"
-      onClick={readOnly ? onClose : () => { if (title || memo || dueDate) setShowCloseConfirm(true); else onClose(); }}>
+      onClick={readOnly ? onClose : () => {
+        if (showRecurringModal) return;
+        if (title || memo || dueDate) setShowCloseConfirm(true); else onClose();
+      }}>
       <div ref={modalRef}
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}>
