@@ -83,37 +83,32 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔵 [UI] フォーム送信ボタンがクリックされました');
-    
+    if (!name.trim()) { alert('名前を入力してください'); return; }
     setLoading(true);
-
     try {
       const data = {
-        name,
-        organization: organization || undefined,
-        category: category || undefined,
-        relatedMembers: relatedMembers,
-        memo: memo || undefined,
-        instagramUrl: instagramUrl || undefined,
+        name: name.trim(),
+        organization: organization.trim() || undefined,
+        category: category.trim() || undefined,
+        relatedMembers,
+        memo: memo.trim() || undefined,
+        instagramUrl: instagramUrl.trim() || undefined,
+        tags: [],
       };
-
-      console.log('🔵 [UI] APIに送信するデータ:', data);
-
       if (contact) {
-        console.log('🔵 [UI] 編集モード: PUT /api/citizens/' + contact.id);
         await api.put(`/api/citizens/${contact.id}`, data);
       } else {
-        console.log('🔵 [UI] 新規作成モード: POST /api/citizens');
         await api.post('/api/citizens', data);
       }
-
-      console.log('✅ [UI] API呼び出し成功');
       onSaved();
     } catch (error: any) {
       console.error('❌ [UI] API呼び出し失敗:', error);
-      const errorMessage = error?.response?.data?.error || error?.response?.data?.details || error?.message || '保存に失敗しました';
-      console.error('❌ [UI] エラー詳細:', error?.response?.data);
-      alert(`保存に失敗しました: ${typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage)}`);
+      const raw = error?.response?.data;
+      let msg = '保存に失敗しました';
+      if (raw?.error) msg = raw.error;
+      else if (raw?.details) msg = Array.isArray(raw.details) ? raw.details.map((d: any) => d.message || JSON.stringify(d)).join(', ') : String(raw.details);
+      else if (error?.message) msg = error.message;
+      alert(msg);
     } finally {
       setLoading(false);
     }

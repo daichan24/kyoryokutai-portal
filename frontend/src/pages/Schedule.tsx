@@ -15,7 +15,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { format } from 'date-fns';
 
-type ViewMode = 'week' | 'month';
+type ViewMode = 'week' | 'month' | 'day';
 
 interface Event {
   id: string;
@@ -83,6 +83,8 @@ export const Schedule: React.FC = () => {
       setWeekDates(getWeekDates(currentDate));
     } else if (viewMode === 'month') {
       setWeekDates(getMonthDates(currentDate));
+    } else if (viewMode === 'day') {
+      setWeekDates([currentDate]);
     }
   }, [currentDate, viewMode]);
 
@@ -137,15 +139,16 @@ export const Schedule: React.FC = () => {
         endDate: formatDate(weekDates[weekDates.length - 1]),
         view: viewMode,
       });
-      
-      if (viewMode === 'month') {
+
+      if (viewMode === 'day') {
+        // 日表示: 全メンバーのスケジュールを取得
+        params.append('allMembers', 'true');
+      } else if (viewMode === 'month') {
         if (selectedMemberId) {
-          // 特定メンバーを選択している場合
           params.append('userId', selectedMemberId);
         } else if (calendarViewMode === 'all') {
           params.append('allMembers', 'true');
         }
-        // individual の場合は自分のスケジュール（デフォルト）
       } else {
         // 週表示
         if (selectedMemberId) {
@@ -154,7 +157,7 @@ export const Schedule: React.FC = () => {
           params.append('allMembers', 'true');
         }
       }
-      
+
       const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
       const data = response.data;
       setSchedules(Array.isArray(data) ? data : []);
@@ -288,6 +291,8 @@ export const Schedule: React.FC = () => {
       newDate.setDate(newDate.getDate() - 7);
     } else if (viewMode === 'month') {
       newDate.setMonth(newDate.getMonth() - 1);
+    } else if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() - 1);
     }
     setCurrentDate(newDate);
   };
@@ -298,6 +303,8 @@ export const Schedule: React.FC = () => {
       newDate.setDate(newDate.getDate() + 7);
     } else if (viewMode === 'month') {
       newDate.setMonth(newDate.getMonth() + 1);
+    } else if (viewMode === 'day') {
+      newDate.setDate(newDate.getDate() + 1);
     }
     setCurrentDate(newDate);
   };
@@ -479,6 +486,13 @@ export const Schedule: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="flex gap-2">
               <Button
+                variant={viewMode === 'day' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('day')}
+              >
+                日
+              </Button>
+              <Button
                 variant={viewMode === 'week' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('week')}
@@ -494,6 +508,7 @@ export const Schedule: React.FC = () => {
               </Button>
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              {viewMode === 'day' && formatDate(currentDate, 'yyyy年M月d日')}
               {viewMode === 'week' && weekDates[0] && weekDates[6] && (
                 <>
                   {formatDate(weekDates[0], 'yyyy年M月d日')} -{' '}
@@ -511,10 +526,10 @@ export const Schedule: React.FC = () => {
 
         {loading ? (
           <LoadingSpinner />
-        ) : viewMode === 'week' ? (
+        ) : viewMode === 'week' || viewMode === 'day' ? (
           <>
             <TimeAxisView
-              dates={weekDates}
+              dates={viewMode === 'day' ? [currentDate] : weekDates}
               schedules={schedules}
               events={events}
               onScheduleClick={(schedule) => {
@@ -528,9 +543,10 @@ export const Schedule: React.FC = () => {
               }}
               onEventClick={handleEventClick}
               onCreateSchedule={handleCreateSchedule}
-              viewMode={viewMode}
+              viewMode={viewMode === 'day' ? 'day' : 'week'}
               calendarViewMode={calendarViewMode}
               currentUserId={user?.id}
+              members={viewMode === 'day' ? availableMembers.filter(m => (m.displayOrder ?? 0) !== 0).sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)) : undefined}
             />
             {/* 行政出勤カレンダー（週表示） */}
             <GovernmentAttendanceCalendar

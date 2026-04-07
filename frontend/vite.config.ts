@@ -4,11 +4,13 @@ import path from 'path';
 import { execSync } from 'child_process';
 
 function getBuildId(): string {
+  // 環境変数が設定されていればそれを使う（CI/CD環境）
+  if (process.env.VITE_BUILD_ID) return process.env.VITE_BUILD_ID;
   try {
     const count = execSync('git rev-list --count HEAD', { encoding: 'utf-8' }).trim();
     return `#${count}`;
   } catch {
-    return 'dev-local';
+    return '#dev';
   }
 }
 

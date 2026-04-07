@@ -23,7 +23,7 @@ services:
   - type: static_site
     name: kyoryokutai-frontend
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && VITE_BUILD_ID="#$(git rev-list --count HEAD)" npm run build
     publishPath: dist
     envVars:
       - key: VITE_API_URL

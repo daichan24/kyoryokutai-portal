@@ -1,7 +1,7 @@
-import React, { useRef, useEffect } from 'react';
-import { Schedule as ScheduleType } from '../../types';
+import React, { useRef, useEffect, useState } from 'react';
+import { Schedule as ScheduleType, User } from '../../types';
 import { formatDate, isSameDay, formatTime } from '../../utils/date';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, RefreshCw } from 'lucide-react';
 
 interface TimeAxisViewProps {
   dates: Date[];
@@ -21,410 +21,261 @@ interface TimeAxisViewProps {
   viewMode: 'week' | 'day';
   calendarViewMode?: 'individual' | 'all';
   currentUserId?: string;
+  members?: User[];
 }
 
-// 時間帯を生成（0時から24時まで30分刻み）
-const generateTimeSlots = () => {
-  const slots = [];
-  for (let hour = 0; hour < 24; hour++) {
-    slots.push(`${String(hour).padStart(2, '0')}:00`);
-    slots.push(`${String(hour).padStart(2, '0')}:30`);
-  }
-  return slots;
-};
-
-// 時間文字列（HH:mm）を分に変換
 const timeToMinutes = (time: string): number => {
-  const [hours, minutes] = time.split(':').map(Number);
-  return hours * 60 + minutes;
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
 };
 
-// 分を時間文字列に変換（表示用: 先頭ゼロなし）
 const minutesToTime = (minutes: number): string => {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours}:${String(mins).padStart(2, '0')}`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}:${String(m).padStart(2, '0')}`;
 };
 
-// スケジュールの位置と高さを計算
-const calculateSchedulePosition = (startTime: string, endTime: string) => {
-  const startMinutes = timeToMinutes(startTime);
-  const endMinutes = timeToMinutes(endTime);
-  // 1時間 = 4rem（48rem / 24時間）、30分 = 2rem
-  const top = (startMinutes / 60) * 4; // 分を時間に変換してremに変換
-  const height = ((endMinutes - startMinutes) / 60) * 4;
-  return { top: `${top}rem`, height: `${Math.max(height, 0.5)}rem` };
+const calcPos = (startTime: string, endTime: string) => {
+  const s = timeToMinutes(startTime);
+  const e = timeToMinutes(endTime);
+  return { top: `${(s / 60) * 4}rem`, height: `${Math.max((e - s) / 60 * 4, 0.5)}rem` };
 };
 
-// 時間文字列（HH:mm）を表示用（H:mm、先頭ゼロなし）に変換
-// ※ utils/date の formatTime を使用するため、ここでは削除
+const getNowMinutes = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); };
 
 export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
-  dates,
-  schedules,
-  events,
-  onScheduleClick,
-  onEventClick,
-  onCreateSchedule,
-  viewMode,
-  calendarViewMode = 'individual',
-  currentUserId,
+  dates, schedules, events, onScheduleClick, onEventClick, onCreateSchedule,
+  viewMode, calendarViewMode = 'individual', currentUserId, members = [],
 }) => {
-  const timeSlots = generateTimeSlots();
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [nowMin, setNowMin] = useState(getNowMinutes());
+  const isToday = (d: Date) => formatDate(d) === formatDate(new Date());
 
-  const getSchedulesForDate = (date: Date) => {
-    return schedules.filter((schedule) => {
-      const startDate = new Date((schedule as any).startDate || schedule.date);
-      const endDate = new Date((schedule as any).endDate || schedule.date);
-      const d = new Date(date);
-      // 日付部分のみ比較
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(0, 0, 0, 0);
-      d.setHours(0, 0, 0, 0);
-      return d >= startDate && d <= endDate;
-    });
-  };
-
-  const getEventsForDate = (date: Date) => {
-    return events.filter((event) => isSameDay(new Date(event.date), date));
-  };
-
-  // 初期表示を7時からにする（7時 = 7 * 4rem = 28rem = 448px）
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    
-    if (!scrollContainer) return;
+    const t = setInterval(() => setNowMin(getNowMinutes()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
-    // 7時の位置にスクロール（7 * 4rem = 28rem、1rem = 16pxなので448px）
-    const scrollTo7am = 7 * 4 * 16; // 448px
-    scrollContainer.scrollTop = scrollTo7am;
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTop = Math.max(0, Math.floor(nowMin / 60) - 1) * 4 * 16;
   }, [dates]);
 
-  /** 時間列 + 7日を画面幅内で均等配分（Googleカレンダー風・はみ出し防止） */
-  const weekGridTemplate = 'minmax(2rem, 3.5rem) repeat(7, minmax(0, 1fr))' as const;
+  const getSchedulesForDate = (date: Date) =>
+    schedules.filter((s) => {
+      const sd = new Date((s as any).startDate || s.date);
+      const ed = new Date((s as any).endDate || s.date);
+      const d = new Date(date);
+      sd.setHours(0,0,0,0); ed.setHours(0,0,0,0); d.setHours(0,0,0,0);
+      return d >= sd && d <= ed;
+    });
+
+  const getEventsForDate = (d: Date) => events.filter((e) => isSameDay(new Date(e.date), d));
+
+  const getColor = (s: ScheduleType) =>
+    calendarViewMode === 'all'
+      ? s.user?.avatarColor || '#6B7280'
+      : (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
+
+  const isDayView = viewMode === 'day';
+  const dayDate = isDayView ? dates[0] : null;
+  const memberCount = Math.max(members.length, 1);
+  const gridTemplate = isDayView
+    ? `minmax(2rem, 3.5rem) repeat(${memberCount}, minmax(0, 1fr))`
+    : 'minmax(2rem, 3.5rem) repeat(7, minmax(0, 1fr))';
+
+  const multiDaySchedules = !isDayView ? schedules.filter((s) => {
+    const sd = new Date((s as any).startDate || s.date);
+    const ed = new Date((s as any).endDate || s.date);
+    sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
+    return sd.getTime() !== ed.getTime();
+  }) : [];
+
+  const showNowLine = dates.some(d => isToday(d));
+  const nowTop = `${(nowMin / 60) * 4}rem`;
+
+  const renderDayCol = (date: Date, colIdx: number, memberId?: string) => {
+    const singleDay = memberId
+      ? getSchedulesForDate(date).filter(s => s.userId === memberId)
+      : getSchedulesForDate(date).filter((s) => {
+          const sd = new Date((s as any).startDate || s.date);
+          const ed = new Date((s as any).endDate || s.date);
+          sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
+          return sd.getTime() === ed.getTime();
+        });
+    const dayEvents = getEventsForDate(date);
+    const todayCol = isToday(date);
+
+    return (
+      <div key={colIdx}
+        className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${todayCol ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'}`}>
+        <div className="relative" style={{ height: '96rem' }}>
+          {hours.map(h => (
+            <div key={h} className="absolute w-full border-b border-gray-100 dark:border-gray-700" style={{ top: `${h * 4}rem`, height: '4rem' }} />
+          ))}
+          {hours.map(h => (
+            <div key={`hh-${h}`} className="absolute w-full border-b border-gray-50 dark:border-gray-800/50" style={{ top: `${h * 4 + 2}rem` }} />
+          ))}
+          {todayCol && showNowLine && (
+            <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: nowTop }}>
+              <div className="flex items-center">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0 -ml-1.5" />
+                <div className="flex-1 h-0.5 bg-red-500" />
+              </div>
+            </div>
+          )}
+          {singleDay.map((s) => {
+            const pos = calcPos(s.startTime, s.endTime);
+            const color = getColor(s);
+            const isRecurring = (s as any).createdBy === 'RECURRENCE';
+            const pCount = s.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
+            return (
+              <button key={s.id} onClick={() => onScheduleClick(s)}
+                className="absolute left-0.5 right-0.5 rounded text-xs p-1 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden"
+                style={{ top: pos.top, height: pos.height, backgroundColor: color, minHeight: '1.5rem' }}
+                title={`${(s as any).title || s.activityDescription} (${formatTime(s.startTime)}-${formatTime(s.endTime)})`}>
+                <div className="flex items-start justify-between h-full">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate text-white leading-tight text-[11px]">{(s as any).title || s.activityDescription}</p>
+                    <p className="text-[10px] text-white/80 truncate">{formatTime(s.startTime)}-{formatTime(s.endTime)}</p>
+                    {calendarViewMode === 'all' && s.user && <p className="text-[10px] text-white/70 truncate">{s.user.name}</p>}
+                  </div>
+                  <div className="flex items-center gap-0.5 flex-shrink-0 ml-0.5">
+                    {pCount > 0 && <span className="text-[10px] bg-white/20 px-0.5 rounded">+{pCount}</span>}
+                    {isRecurring && <span title="繰り返し"><RefreshCw className="h-2.5 w-2.5 text-white/80" /></span>}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+          {!isDayView && dayEvents.map((ev) => {
+            if (!ev.startTime) return null;
+            const pos = calcPos(ev.startTime, ev.endTime || ev.startTime);
+            const cls = ev.eventType === 'TOWN_OFFICIAL' ? 'bg-blue-500' : ev.eventType === 'TEAM' ? 'bg-green-500' : 'bg-gray-500';
+            return (
+              <button key={ev.id} onClick={() => onEventClick(ev.id)}
+                className={`absolute left-0.5 right-0.5 rounded text-xs p-1 text-white hover:opacity-90 z-10 ${cls} ${ev.isCompleted ? 'opacity-60' : ''}`}
+                style={{ top: pos.top, height: pos.height, minHeight: '1.5rem' }}>
+                <div className="flex items-center gap-1 h-full">
+                  <CalendarDays className="h-3 w-3 flex-shrink-0" />
+                  <p className="font-medium truncate">{ev.eventName}</p>
+                </div>
+              </button>
+            );
+          })}
+          {hours.map(h => Array.from({ length: 4 }, (_, bi) => {
+            const bm = h * 60 + bi * 15;
+            const bt = (bm / 60) * 4;
+            return (
+              <div key={`${h}-${bi}`}
+                className="absolute w-full opacity-0 hover:opacity-100 transition-opacity border-dashed border border-gray-300 dark:border-gray-600 hover:border-blue-400 rounded cursor-pointer"
+                style={{ top: `${bt}rem`, height: '1rem' }}
+                onMouseDown={(e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  const area = e.currentTarget.parentElement as HTMLElement;
+                  if (!area) return;
+                  const rect = area.getBoundingClientRect();
+                  const startY = e.clientY - rect.top + area.scrollTop;
+                  let curMin = bm;
+                  const hl = document.createElement('div');
+                  hl.className = 'absolute left-0 right-0 bg-blue-200 dark:bg-blue-800/50 border-2 border-blue-400 rounded z-20';
+                  hl.style.top = `${bt}rem`; hl.style.height = '1rem';
+                  area.appendChild(hl);
+                  const onMove = (mv: MouseEvent) => {
+                    const dy = mv.clientY - rect.top + area.scrollTop - startY;
+                    curMin = Math.round(Math.max(0, Math.min(1439, bm + (dy / 16) * 15)) / 15) * 15;
+                    const s2 = Math.min(bm, curMin); const dur = Math.abs(curMin - bm);
+                    hl.style.top = `${(s2 / 60) * 4}rem`; hl.style.height = `${Math.max(0.25, (dur / 60) * 4)}rem`;
+                  };
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp);
+                    hl.remove();
+                    const s2 = Math.min(bm, curMin); const e2 = Math.max(bm, curMin);
+                    onCreateSchedule(date, minutesToTime(Math.round(s2 / 15) * 15), minutesToTime(Math.max(Math.round(e2 / 15) * 15, s2 + 15)));
+                  };
+                  document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+                }} />
+            );
+          }))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 w-full min-w-0">
-      {/* 上部の日付ヘッダー */}
-      <div
-        className="grid w-full min-w-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
-        style={{ gridTemplateColumns: weekGridTemplate }}
-      >
-        <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" aria-hidden />
-        {dates.map((date, dateIndex) => {
-          const isToday = formatDate(date) === formatDate(new Date());
+      <div className="grid w-full min-w-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ gridTemplateColumns: gridTemplate }}>
+        <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" />
+        {isDayView ? members.map((m, i) => (
+          <div key={i} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-12 flex flex-col items-center justify-center px-1 bg-gray-50 dark:bg-gray-900">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium mb-0.5" style={{ backgroundColor: m.avatarColor }}>
+              {(m.avatarLetter || m.name || '').charAt(0)}
+            </div>
+            <p className="text-[10px] text-gray-700 dark:text-gray-300 truncate max-w-full text-center">{m.name}</p>
+          </div>
+        )) : dates.map((d, i) => {
+          const todayH = isToday(d);
           return (
-            <div
-              key={dateIndex}
-              className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-11 sm:h-12 flex flex-col items-center justify-center px-0.5 ${
-                isToday ? 'bg-blue-100 dark:bg-blue-900/30 font-bold' : 'bg-gray-50 dark:bg-gray-900'
-              }`}
-            >
-              <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 leading-none truncate max-w-full text-center">
-                {formatDate(date, 'E')}
-              </div>
-              <div
-                className={`text-sm sm:text-lg leading-tight mt-0.5 ${
-                  isToday ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'
-                }`}
-              >
-                {formatDate(date, 'd')}
-              </div>
+            <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-11 sm:h-12 flex flex-col items-center justify-center px-0.5 ${todayH ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50 dark:bg-gray-900'}`}>
+              <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 leading-none truncate text-center">{formatDate(d, 'E')}</div>
+              <div className={`text-sm sm:text-lg leading-tight mt-0.5 ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-900 dark:text-gray-100'}`}>{formatDate(d, 'd')}</div>
             </div>
           );
         })}
       </div>
-
-      {/* 複数日スケジュールのバナー行（Googleカレンダー風） */}
-      {(() => {
-        const multiDaySchedules = schedules.filter((s) => {
-          const sd = new Date((s as any).startDate || s.date);
-          const ed = new Date((s as any).endDate || s.date);
-          sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
-          return sd.getTime() !== ed.getTime();
-        });
-        if (multiDaySchedules.length === 0) return null;
-        return (
-          <div className="grid w-full min-w-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800"
-            style={{ gridTemplateColumns: weekGridTemplate }}>
-            <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0 flex items-center justify-end pr-1">
-              <span className="text-[8px] text-gray-400">終日</span>
-            </div>
-            {dates.map((date, dateIndex) => {
-              const d = new Date(date); d.setHours(0,0,0,0);
-              const dayMulti = multiDaySchedules.filter((s) => {
-                const sd = new Date((s as any).startDate || s.date);
-                const ed = new Date((s as any).endDate || s.date);
-                sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
-                return d >= sd && d <= ed;
-              });
-              return (
-                <div key={dateIndex} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 min-h-[1.75rem] py-0.5 space-y-0.5">
-                  {dayMulti.map((s) => {
-                    const sd = new Date((s as any).startDate || s.date); sd.setHours(0,0,0,0);
-                    const ed = new Date((s as any).endDate || s.date); ed.setHours(0,0,0,0);
-                    const isFirst = d.getTime() === sd.getTime();
-                    const isLast = d.getTime() === ed.getTime();
-                    const color = (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
-                    return (
-                      <button key={s.id} onClick={() => onScheduleClick(s)}
-                        className={`w-full text-left text-xs text-white px-1 py-0.5 truncate hover:opacity-90 transition-opacity ${isFirst ? 'rounded-l ml-0.5' : ''} ${isLast ? 'rounded-r mr-0.5' : ''}`}
-                        style={{
-                          backgroundColor: color,
-                          marginLeft: isFirst ? '2px' : 0,
-                          marginRight: isLast ? '2px' : 0,
-                          borderRadius: isFirst && isLast ? '4px' : isFirst ? '4px 0 0 4px' : isLast ? '0 4px 4px 0' : '0',
-                        }}
-                        title={`${(s as any).title || s.activityDescription} (${formatTime(s.startTime)}-${formatTime(s.endTime)})`}>
-                        {isFirst ? ((s as any).title || s.activityDescription) : ''}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
+      {!isDayView && multiDaySchedules.length > 0 && (
+        <div className="grid w-full min-w-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ gridTemplateColumns: gridTemplate }}>
+          <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0 flex items-center justify-end pr-1">
+            <span className="text-[8px] text-gray-400">終日</span>
           </div>
-        );
-      })()}
-
-      {/* 縦スクロールのみ（横はグリッドで収める） */}
-      <div ref={scrollContainerRef} className="w-full min-w-0 max-h-[min(75vh,52rem)] overflow-y-auto overflow-x-hidden">
-        <div className="grid w-full min-w-0" style={{ gridTemplateColumns: weekGridTemplate }}>
+          {dates.map((date, di) => {
+            const d = new Date(date); d.setHours(0,0,0,0);
+            const dayMulti = multiDaySchedules.filter((s) => {
+              const sd = new Date((s as any).startDate || s.date); sd.setHours(0,0,0,0);
+              const ed = new Date((s as any).endDate || s.date); ed.setHours(0,0,0,0);
+              return d >= sd && d <= ed;
+            });
+            return (
+              <div key={di} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 min-h-[1.75rem] py-0.5 space-y-0.5">
+                {dayMulti.map((s) => {
+                  const sd = new Date((s as any).startDate || s.date); sd.setHours(0,0,0,0);
+                  const ed = new Date((s as any).endDate || s.date); ed.setHours(0,0,0,0);
+                  const isFirst = d.getTime() === sd.getTime(); const isLast = d.getTime() === ed.getTime();
+                  const color = (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
+                  const isRecurring = (s as any).createdBy === 'RECURRENCE';
+                  return (
+                    <button key={s.id} onClick={() => onScheduleClick(s)}
+                      className="w-full text-left text-xs text-white px-1 py-0.5 hover:opacity-90 flex items-center gap-0.5"
+                      style={{ backgroundColor: color, marginLeft: isFirst ? '2px' : 0, marginRight: isLast ? '2px' : 0, borderRadius: isFirst && isLast ? '4px' : isFirst ? '4px 0 0 4px' : isLast ? '0 4px 4px 0' : '0' }}>
+                      <span className="flex-1 truncate">{isFirst ? ((s as any).title || s.activityDescription) : ''}</span>
+                      {isRecurring && isLast && <RefreshCw className="h-2.5 w-2.5 text-white/80 flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div ref={scrollRef} className="w-full min-w-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: '60vh' }}>
+        <div className="grid w-full min-w-0" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0">
-            <div className="relative" style={{ height: '48rem' }}>
-              {hours.map((hour) => (
-                <div
-                  key={hour}
-                  className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-0.5 sm:pr-2"
-                  style={{
-                    top: `${hour * 4}rem`,
-                    height: '4rem',
-                    width: '100%',
-                  }}
-                >
-                  <span className="text-[8px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium tabular-nums whitespace-nowrap">
-                    {hour}:00
-                  </span>
+            <div className="relative" style={{ height: '96rem' }}>
+              {hours.map(h => (
+                <div key={h} className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-0.5 sm:pr-2"
+                  style={{ top: `${h * 4}rem`, height: '4rem', width: '100%' }}>
+                  <span className="text-[8px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium tabular-nums whitespace-nowrap">{h}:00</span>
                 </div>
               ))}
             </div>
           </div>
-
-          {dates.map((date, dateIndex) => {
-              const daySchedules = getSchedulesForDate(date);
-              const dayEvents = getEventsForDate(date);
-              const isToday = formatDate(date) === formatDate(new Date());
-
-            return (
-                <div
-                  key={dateIndex}
-                  className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${
-                    isToday ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
-                  }`}
-                >
-                  {/* 時間軸エリア */}
-                  <div className="relative" style={{ height: '48rem' }}>
-                    {/* 時間帯の背景 */}
-                    {hours.map((hour) => (
-                      <div
-                        key={hour}
-                        className="absolute w-full border-b border-gray-100 dark:border-gray-700"
-                        style={{ top: `${hour * 4}rem`, height: '4rem' }}
-                      />
-                    ))}
-
-                    {/* スケジュール（単日のみ時間軸に表示、複数日はヘッダーバナーで表示済み） */}
-                    {daySchedules
-                      .filter((schedule) => {
-                        const sd = new Date((schedule as any).startDate || schedule.date);
-                        const ed = new Date((schedule as any).endDate || schedule.date);
-                        sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
-                        return sd.getTime() === ed.getTime(); // 単日のみ
-                      })
-                      .map((schedule) => {
-                      const position = calculateSchedulePosition(schedule.startTime, schedule.endTime);
-                      const participantCount = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
-                      const scheduleColor = calendarViewMode === 'all'
-                        ? schedule.user?.avatarColor || '#6B7280'
-                        : (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
-                      return (
-                        <button
-                          key={schedule.id}
-                          onClick={() => onScheduleClick(schedule)}
-                          className="absolute left-1 right-1 rounded text-xs p-1 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden"
-                          style={{
-                            top: position.top,
-                            height: position.height,
-                            backgroundColor: scheduleColor,
-                            minHeight: '1.5rem',
-                          }}
-                          title={`${(schedule as any).title || schedule.activityDescription} (${formatTime(schedule.startTime)}-${formatTime(schedule.endTime)})${calendarViewMode === 'all' && schedule.user ? ` - ${schedule.user.name}` : ''}`}
-                        >
-                          <div className="flex items-start justify-between h-full">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate text-white">
-                                {(schedule as any).title || schedule.activityDescription}
-                              </p>
-                              <p className="text-xs text-white/80 truncate">
-                                {formatTime(schedule.startTime)}-{formatTime(schedule.endTime)}
-                              </p>
-                              {calendarViewMode === 'all' && schedule.user && (
-                                <p className="text-xs text-white/70 truncate mt-0.5">{schedule.user.name}</p>
-                              )}
-                            </div>
-                            {participantCount > 0 && (
-                              <span className="ml-1 text-xs bg-white/20 text-white px-1 rounded whitespace-nowrap">+{participantCount}</span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                    {/* イベント */}
-                    {dayEvents.map((event) => {
-                      if (!event.startTime) return null;
-                      
-                      const position = calculateSchedulePosition(
-                        event.startTime,
-                        event.endTime || event.startTime
-                      );
-                      const eventTypeColors = {
-                        TOWN_OFFICIAL: 'bg-blue-500',
-                        TEAM: 'bg-green-500',
-                        OTHER: 'bg-gray-500',
-                      };
-                      const colorClass = eventTypeColors[event.eventType] || eventTypeColors.OTHER;
-                      
-                      return (
-                        <button
-                          key={event.id}
-                          onClick={() => onEventClick(event.id)}
-                          className={`absolute left-1 right-1 rounded text-xs p-1 text-white hover:opacity-90 transition-opacity z-10 ${colorClass} ${
-                            event.isCompleted ? 'opacity-60' : ''
-                          }`}
-                          style={{
-                            top: position.top,
-                            height: position.height,
-                            minHeight: '1.5rem',
-                          }}
-                          title={event.eventName}
-                        >
-                          <div className="flex items-center gap-1 h-full">
-                            <CalendarDays className="h-3 w-3 flex-shrink-0" />
-                            <p className="font-medium truncate text-white">
-                              {event.eventName}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                    {/* 時間ブロック（ドラッグ可能） */}
-                    {hours.map((hour) => {
-                      // 15分単位のブロック（1時間 = 4ブロック）
-                      return Array.from({ length: 4 }, (_, blockIndex) => {
-                        const blockMinutes = hour * 60 + blockIndex * 15;
-                        const blockTop = (blockMinutes / 60) * 4; // rem単位
-                        const blockHeight = 1; // 15分 = 1rem
-                        
-                        return (
-                          <div
-                            key={`${hour}-${blockIndex}`}
-                            className="absolute w-full opacity-0 hover:opacity-100 transition-opacity border-dashed border border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 rounded cursor-pointer"
-                            style={{
-                              top: `${blockTop}rem`,
-                              height: `${blockHeight}rem`,
-                            }}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              
-                              // ドラッグ開始
-                              const timeAxisArea = e.currentTarget.parentElement as HTMLElement;
-                              if (!timeAxisArea) return;
-                              
-                              const rect = timeAxisArea.getBoundingClientRect();
-                              const startY = e.clientY - rect.top + timeAxisArea.scrollTop;
-                              const startMinutes = blockMinutes;
-                              let currentMinutes = startMinutes;
-                              
-                              // ハイライト要素を作成
-                              const highlightEl = document.createElement('div');
-                              highlightEl.id = `time-block-highlight-${dateIndex}-${hour}-${blockIndex}`;
-                              highlightEl.className = 'absolute left-0 right-0 bg-blue-200 dark:bg-blue-800/50 border-2 border-blue-400 dark:border-blue-500 rounded z-20';
-                              highlightEl.style.top = `${blockTop}rem`;
-                              highlightEl.style.height = `${blockHeight}rem`;
-                              timeAxisArea.appendChild(highlightEl);
-                              
-                              const handleMouseMove = (moveEvent: MouseEvent) => {
-                                const currentRect = timeAxisArea.getBoundingClientRect();
-                                const currentY = moveEvent.clientY - currentRect.top + timeAxisArea.scrollTop;
-                                const deltaY = currentY - startY;
-                                
-                                // 1rem = 16px（デフォルト）、4rem = 1時間 = 64px
-                                // 1時間 = 60分、1rem = 15分
-                                const deltaMinutes = Math.round((deltaY / 16) * 15); // 16px = 1rem = 15分
-                                currentMinutes = Math.max(0, Math.min(1439, startMinutes + deltaMinutes)); // 0-23:59の範囲
-                                
-                                // 15分単位に丸める
-                                currentMinutes = Math.round(currentMinutes / 15) * 15;
-                                
-                                // 視覚的フィードバック（ハイライト）
-                                const actualStartMinutes = Math.min(startMinutes, currentMinutes);
-                                const actualEndMinutes = Math.max(startMinutes, currentMinutes);
-                                const duration = actualEndMinutes - actualStartMinutes;
-                                
-                                highlightEl.style.top = `${(actualStartMinutes / 60) * 4}rem`;
-                                highlightEl.style.height = `${Math.max(0.25, (duration / 60) * 4)}rem`;
-                              };
-                              
-                              const handleMouseUp = () => {
-                                document.removeEventListener('mousemove', handleMouseMove);
-                                document.removeEventListener('mouseup', handleMouseUp);
-                                
-                                // ドラッグ終了時にスケジュール作成
-                                // 開始時間と終了時間を正しく計算（終了時間は開始時間より後である必要がある）
-                                const actualStartMinutes = Math.min(startMinutes, currentMinutes);
-                                const actualEndMinutes = Math.max(startMinutes, currentMinutes);
-                                
-                                // 最低15分の時間を確保
-                                const finalEndMinutes = Math.max(actualEndMinutes, actualStartMinutes + 15);
-                                
-                                // 15分単位に丸める
-                                const roundedStartMinutes = Math.round(actualStartMinutes / 15) * 15;
-                                const roundedEndMinutes = Math.round(finalEndMinutes / 15) * 15;
-                                
-                                const startTime = minutesToTime(roundedStartMinutes);
-                                const endTime = minutesToTime(roundedEndMinutes);
-                                
-                                // ハイライトを削除
-                                if (highlightEl.parentElement) {
-                                  highlightEl.remove();
-                                }
-                                
-                                // スケジュール作成（日時と時間を渡す）
-                                onCreateSchedule(date, startTime, endTime);
-                              };
-                              
-                              document.addEventListener('mousemove', handleMouseMove);
-                              document.addEventListener('mouseup', handleMouseUp);
-                            }}
-                            title="ドラッグしてスケジュールを追加"
-                          >
-                            <span className="text-xs text-gray-400 dark:text-gray-500">+</span>
-                          </div>
-                        );
-                      });
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+          {isDayView
+            ? members.map((m, i) => renderDayCol(dayDate!, i, m.id))
+            : dates.map((d, i) => renderDayCol(d, i))
+          }
         </div>
       </div>
     </div>
   );
 };
-

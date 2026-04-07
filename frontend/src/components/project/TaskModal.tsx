@@ -414,13 +414,26 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     } catch { alert('削除に失敗しました'); }
   };
 
-  // 30分刻み（ドロップダウンを短くするため）
-  const timeOptions = Array.from({ length: 24 * 2 }, (_, i) => {
-    const h = Math.floor(i / 2);
-    const m = (i % 2) * 30;
+  // 15分刻み
+  const timeOptions = Array.from({ length: 24 * 4 }, (_, i) => {
+    const h = Math.floor(i / 4);
+    const m = (i % 4) * 15;
     const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     return { value: v, label: `${h}:${String(m).padStart(2, '0')}` };
   });
+
+  // 開始時刻から1時間後を計算
+  const addOneHour = (time: string): string => {
+    const [h, m] = time.split(':').map(Number);
+    const total = Math.min(h * 60 + m + 60, 23 * 60 + 45);
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  };
+  // 終了時刻から1時間前を計算
+  const subOneHour = (time: string): string => {
+    const [h, m] = time.split(':').map(Number);
+    const total = Math.max(h * 60 + m - 60, 0);
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  };
 
   const modalTitle = isDuplicateMode ? '複製（新規作成）' : schedule ? 'タスク編集' : task ? 'タスク編集' : 'タスク追加';
 
@@ -495,21 +508,39 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               </div>
             </div>
 
-            {/* 時刻選択（幅を制限） */}
+            {/* 時刻選択（15分刻み、スクロール制限） */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻</label>
-                <select value={startTime} onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full max-w-[140px] px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
-                  disabled={readOnly} size={1}>
+                <select value={startTime}
+                  onChange={(e) => {
+                    const newStart = e.target.value;
+                    setStartTime(newStart);
+                    // 終了時刻がデフォルト値（17:00）または開始時刻以前の場合は1時間後に自動設定
+                    if (endTime === '17:00' || endTime <= newStart) {
+                      setEndTime(addOneHour(newStart));
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  style={{ maxHeight: '50vh' }}
+                  disabled={readOnly}>
                   {timeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻</label>
-                <select value={endTime} onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full max-w-[140px] px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
-                  disabled={readOnly} size={1}>
+                <select value={endTime}
+                  onChange={(e) => {
+                    const newEnd = e.target.value;
+                    setEndTime(newEnd);
+                    // 開始時刻がデフォルト値（09:00）または終了時刻以降の場合は1時間前に自動設定
+                    if (startTime === '09:00' || startTime >= newEnd) {
+                      setStartTime(subOneHour(newEnd));
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  style={{ maxHeight: '50vh' }}
+                  disabled={readOnly}>
                   {timeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
