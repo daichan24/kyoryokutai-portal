@@ -47,6 +47,7 @@ function matchesSupportPath(pathname: string) {
   return (
     pathname.startsWith('/activity-expenses') ||
     pathname.startsWith('/consultations') ||
+    pathname.startsWith('/reception-box') ||
     pathname.startsWith('/support-records') ||
     pathname.startsWith('/interview')
   );
@@ -189,10 +190,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       { to: '/activity-expenses', icon: Banknote, label: '活動経費' },
     ];
     if (user?.role === 'MEMBER') {
-      items.push({ to: '/consultations', icon: MessageCircle, label: '相談' });
+      items.push({ to: '/reception-box', icon: MessageCircle, label: '受付ボックス・相談' });
     }
     if (user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') {
-      items.push({ to: '/consultations', icon: MessageCircle, label: '相談（対応）' });
+      items.push({ to: '/reception-box', icon: MessageCircle, label: '受付ボックス・相談' });
     }
     if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
       items.push({ to: '/support-records', icon: UserCheck, label: '支援内容' });

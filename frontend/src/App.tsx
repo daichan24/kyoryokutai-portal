@@ -39,6 +39,7 @@ const ActivityExpenses = lazy(() => import('./pages/ActivityExpenses').then((m) 
 const Announcements = lazy(() => import('./pages/Announcements').then((m) => ({ default: m.Announcements })));
 const Wishes = lazy(() => import('./pages/Wishes').then((m) => ({ default: m.Wishes })));
 const ReceptionBox = lazy(() => import('./pages/ReceptionBox').then((m) => ({ default: m.ReceptionBox })));
+const InboxPage = lazy(() => import('./pages/InboxPage').then((m) => ({ default: m.InboxPage })));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -310,7 +311,7 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Layout>
-                <Consultations />
+                <InboxPage />
               </Layout>
             </PrivateRoute>
           }
@@ -354,7 +355,7 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <Layout>
-                <ReceptionBox />
+                <InboxPage />
               </Layout>
             </PrivateRoute>
           }
