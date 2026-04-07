@@ -592,6 +592,7 @@ router.post('/', async (req: AuthRequest, res) => {
 router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    console.log('Schedule update request:', { id, body: req.body });
     const data = updateScheduleSchema.parse(req.body);
 
     const existingSchedule = await prisma.schedule.findUnique({
@@ -724,10 +725,28 @@ router.put('/:id', async (req: AuthRequest, res) => {
     res.json(schedule);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      console.error('Schedule update validation error:', error.errors);
+      return res.status(400).json({ 
+        error: 'バリデーションエラー', 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+      });
     }
     console.error('Update schedule error:', error);
-    res.status(500).json({ error: 'Failed to update schedule' });
+    
+    // Prismaエラーの詳細を返す
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as any;
+      return res.status(500).json({ 
+        error: 'データベースエラー',
+        message: prismaError.message || 'データベース操作に失敗しました',
+        code: prismaError.code
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'スケジュールの更新に失敗しました', 
+      message: error instanceof Error ? error.message : String(error) 
+    });
   }
 });
 

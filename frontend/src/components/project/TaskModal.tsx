@@ -382,7 +382,27 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       onSaved();
     } catch (err: any) {
       console.error('Failed to save:', err);
-      alert(`保存に失敗しました: ${err.response?.data?.error || err.message || ''}`);
+      let errorMessage = 'エラーが発生しました';
+      
+      if (err.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else {
+          try {
+            errorMessage = JSON.stringify(err.response.data);
+          } catch {
+            errorMessage = 'サーバーエラーが発生しました';
+          }
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      alert(`保存に失敗しました: ${errorMessage}`);
     } finally { setLoading(false); }
   };
 
