@@ -17,7 +17,7 @@ try {
 
 const version = `#${count}`;
 const outPath = path.join(__dirname, '../src/buildVersion.ts');
-const content = `// このファイルはビルド時に自動生成されます（scripts/gen-version.js）
+const content = `// このファイルはビルド時に自動生成されます（scripts/gen-version.cjs）
 // 手動で編集しないでください
 export const BUILD_VERSION = '${version}';
 `;
