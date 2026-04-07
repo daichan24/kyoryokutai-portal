@@ -533,11 +533,11 @@ export const Tasks: React.FC = () => {
                 </div>
               )}
 
-              {/* 方向性（Mission、薄く表示） */}
+              {/* ミッション（薄く表示） */}
               {missionName && (
                 <div className="mb-3">
                   <span className="text-xs text-gray-400 dark:text-gray-500">
-                    方向性: {missionName}
+                    ミッション: {missionName}
                   </span>
                 </div>
               )}
@@ -584,7 +584,7 @@ export const Tasks: React.FC = () => {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク名</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向性</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ミッション</th>
                     {viewMode === 'view' && isNonMember && (
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">担当者</th>
                     )}
@@ -643,16 +643,10 @@ export const Tasks: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${previewTask.status === 'COMPLETED' ? 'bg-green-500' : previewTask.status === 'IN_PROGRESS' ? 'bg-yellow-500' : 'bg-gray-400'}`} />
                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">{previewTask.title}</h3>
               </div>
               <button onClick={() => setPreviewTask(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0"><X className="h-5 w-5" /></button>
             </div>
-
-            {/* ステータス */}
-            <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${previewTask.status === 'COMPLETED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : previewTask.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
-              {previewTask.status === 'COMPLETED' ? '完了' : previewTask.status === 'IN_PROGRESS' ? '進行中' : '未着手'}
-            </span>
 
             {/* メモ */}
             {previewTask.description && (
