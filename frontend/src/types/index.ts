@@ -20,6 +20,7 @@ export interface User {
   darkMode?: boolean;
   displayOrder?: number;
   wishesEnabled?: boolean;
+  notepadEnabled?: boolean;
   /** MASTER のユーザー一覧 API のみ */
   passwordPlainForMaster?: string | null;
   passwordUpdatedAt?: string | null;

@@ -6,6 +6,7 @@ import { Menu, Box } from 'lucide-react';
 import { Button } from '../common/Button';
 import { api } from '../../utils/api';
 import { BUILD_VERSION } from '../../buildVersion';
+import { NotepadDropdown } from '../notepad/NotepadDropdown';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -82,6 +83,8 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     </span>
                   )}
                 </Link>
+                {/* メモ帳（notepadEnabled がtrue の場合のみ表示） */}
+                {user.notepadEnabled !== false && <NotepadDropdown />}
                 {(unreadAnnounce?.count ?? 0) > 0 && (
                   <Link
                     to="/announcements"

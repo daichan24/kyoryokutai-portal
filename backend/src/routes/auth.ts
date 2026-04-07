@@ -235,6 +235,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
           darkMode: true,
           displayOrder: true,
           wishesEnabled: true,
+          notepadEnabled: true,
           snsLinks: true,
           createdAt: true,
           updatedAt: true,
@@ -275,6 +276,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
       darkMode: user.darkMode,
       displayOrder: user.displayOrder ?? 0,
       wishesEnabled: user.wishesEnabled ?? false,
+      notepadEnabled: user.notepadEnabled !== false, // デフォルトtrue
       snsLinks: user.snsLinks,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

@@ -24,6 +24,7 @@ export const ProfileSettings: React.FC = () => {
   const [department, setDepartment] = useState('');
   const [missionType, setMissionType] = useState<'FREE' | 'MISSION' | ''>('');
   const [wishesEnabled, setWishesEnabled] = useState(false);
+  const [notepadEnabled, setNotepadEnabled] = useState(true);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,6 +37,7 @@ export const ProfileSettings: React.FC = () => {
       setDepartment(user.department || '');
       setMissionType(user.missionType || '');
       setWishesEnabled(user.wishesEnabled === true);
+      setNotepadEnabled(user.notepadEnabled !== false);
     }
   }, [user]);
 
@@ -54,7 +56,7 @@ export const ProfileSettings: React.FC = () => {
   }, [currentLinks]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean }) => {
+    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean }) => {
       const response = await api.put('/api/me/profile', data);
       return response.data;
     },
@@ -131,6 +133,7 @@ export const ProfileSettings: React.FC = () => {
       department: department === '' ? null : department,
       missionType: missionType === '' ? null : missionType as 'FREE' | 'MISSION',
       wishesEnabled: wishesEnabled,
+      notepadEnabled: notepadEnabled,
     });
   };
 
@@ -290,6 +293,23 @@ export const ProfileSettings: React.FC = () => {
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
               <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{wishesEnabled ? 'ON' : 'OFF'}</span>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">メモ帳</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">ヘッダーにメモ帳ボタンを表示する</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notepadEnabled}
+                onChange={(e) => setNotepadEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{notepadEnabled ? 'ON' : 'OFF'}</span>
             </label>
           </div>
         </div>

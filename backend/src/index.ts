@@ -37,6 +37,7 @@ import announcementsRoutes from './routes/announcements';
 import mandatedTeamEventsRoutes from './routes/mandatedTeamEvents';
 import governmentAttendanceRoutes from './routes/governmentAttendance';
 import receptionBoxRoutes from './routes/receptionBox';
+import notepadRoutes from './routes/notepad';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -154,6 +155,7 @@ app.use('/api/announcements', announcementsRoutes);
 app.use('/api/mandated-team-events', mandatedTeamEventsRoutes);
 app.use('/api/government-attendance', governmentAttendanceRoutes);
 app.use('/api/reception-box', receptionBoxRoutes);
+app.use('/api/me/notepad', notepadRoutes);
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');

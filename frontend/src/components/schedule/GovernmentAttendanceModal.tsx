@@ -41,10 +41,10 @@ interface GovernmentAttendanceModalProps {
 }
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
-  PRESENT: '◯ (出勤)',
+  PRESENT: '出勤',
   REMOTE: '出張',
-  ABSENT: '✕ (休み)',
-  HALF_DAY: '△ (半休・短時間)',
+  ABSENT: '休み',
+  HALF_DAY: '半休・時短',
 };
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
@@ -73,6 +73,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [viewPopupDate, setViewPopupDate] = useState<string | null>(null); // 閲覧用ポップアップ
   const [editStatus, setEditStatus] = useState<AttendanceStatus>('PRESENT');
   const [editEndDate, setEditEndDate] = useState('');
   const [editStartTime, setEditStartTime] = useState('');
@@ -205,7 +206,16 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
     for (let day = 1; day <= days; day++) {
       const date = new Date(year, month, day);
       const dateStr = format(date, 'yyyy-MM-dd');
-      newDrafts[dateStr] = date.getDay() === 0 || date.getDay() === 6 ? null : { status: 'PRESENT' };
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      if (isWeekend) continue; // 土日はスキップ
+      // 既にサーバーデータがある日はスキップ（上書きしない）
+      const hasServerData = attendances.some(
+        (a) => a.userId === user?.id && isDateInRange(dateStr, a.date.slice(0, 10), a.endDate?.slice(0, 10))
+      );
+      if (hasServerData) continue;
+      // 既にドラフトがある日もスキップ
+      if (newDrafts[dateStr] !== undefined) continue;
+      newDrafts[dateStr] = { status: 'PRESENT' };
     }
     setDraftAttendances(newDrafts);
   };
@@ -294,7 +304,13 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                     } ${isToday ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-800'} ${
                       hasDraft ? 'ring-2 ring-inset ring-yellow-400' : ''
                     }`}
-                    onClick={() => openEdit(dateStr)}
+                    onClick={() => {
+                      if (isEditable) {
+                        openEdit(dateStr);
+                      } else if (dayAttendances.length > 0) {
+                        setViewPopupDate(viewPopupDate === dateStr ? null : dateStr);
+                      }
+                    }}
                   >
                     <div className="flex justify-between items-start">
                       <span className={`text-xs font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
@@ -325,17 +341,30 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                         );
                       })}
                       {myAttendance && (() => {
-                        const endStr = myAttendance.endDate || dateStr;
-                        const isMultiDay = myAttendance.endDate && myAttendance.endDate !== dateStr;
+                        // 自分のサーバーデータから開始日・終了日を取得
+                        const serverRecord = attendances.find(
+                          (a) => a.userId === user?.id && isDateInRange(dateStr, a.date.slice(0, 10), a.endDate?.slice(0, 10))
+                        );
+                        const myStartStr = serverRecord ? serverRecord.date.slice(0, 10) : dateStr;
+                        const myEndStr = myAttendance.endDate || serverRecord?.endDate?.slice(0, 10) || dateStr;
+                        const myIsStart = dateStr === myStartStr;
+                        const myIsEnd = dateStr === myEndStr;
+                        const myIsMultiDay = myStartStr !== myEndStr;
                         return (
                           <div
                             className={`text-[10px] px-1 py-0.5 flex items-center gap-1 truncate border ${STATUS_COLORS[myAttendance.status]} ${
-                              isMultiDay ? 'rounded-l border-r-0' : 'rounded'
+                              myIsMultiDay
+                                ? myIsStart ? 'rounded-l border-r-0' : myIsEnd ? 'rounded-r border-l-0' : 'rounded-none border-x-0'
+                                : 'rounded'
                             }`}
                             title={`${user?.name}: ${STATUS_LABELS[myAttendance.status]}${myAttendance.startTime ? ` ${myAttendance.startTime}〜${myAttendance.endTime || ''}` : ''}${myAttendance.note ? ` (${myAttendance.note})` : ''}`}
                           >
-                            <span className="truncate font-medium">{(user?.name || '').split(/[\s　]/)[0]}</span>
-                            {myAttendance.startTime && <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{myAttendance.startTime}</span>}
+                            {(myIsStart || !myIsMultiDay) && (
+                              <span className="truncate font-medium">{(user?.name || '').split(/[\s　]/)[0]}</span>
+                            )}
+                            {myAttendance.startTime && myIsStart && (
+                              <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{myAttendance.startTime}</span>
+                            )}
                           </div>
                         );
                       })()}
@@ -357,6 +386,28 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                   <X className="h-4 w-4 text-gray-500" />
                 </button>
               </div>
+
+              {/* 他メンバーの出勤状況（参考表示） */}
+              {getAttendancesForDate(selectedDate).filter((a) => a.userId !== user?.id).length > 0 && (
+                <div className="mb-3 p-2 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">他のメンバーの状況</p>
+                  <div className="space-y-1">
+                    {getAttendancesForDate(selectedDate).filter((a) => a.userId !== user?.id).map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 text-xs">
+                        <span className={`px-1.5 py-0.5 rounded text-white text-[10px] ${STATUS_COLORS[a.status].split(' ')[0]}`}>
+                          {STATUS_LABELS[a.status]}
+                        </span>
+                        <span className="text-gray-700 dark:text-gray-300">{a.user.name}</span>
+                        {(a.status === 'HALF_DAY' || a.startTime) && a.startTime && (
+                          <span className="text-gray-500 dark:text-gray-400">{a.startTime}〜{a.endTime || ''}</span>
+                        )}
+                        {a.note && <span className="text-gray-400 dark:text-gray-500">{a.note}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">状況</label>
@@ -372,21 +423,25 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">終了日（複数日の場合）</label>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">終了日（出張など複数日）</label>
                     <input type="date" value={editEndDate} min={selectedDate}
                       onChange={(e) => setEditEndDate(e.target.value)}
                       className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">連絡可能 開始時刻</label>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {editStatus === 'HALF_DAY' ? '時短 開始時刻' : '連絡可能 開始時刻'}
+                    </label>
                     <input type="time" value={editStartTime}
                       onChange={(e) => setEditStartTime(e.target.value)}
                       className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">連絡可能 終了時刻</label>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {editStatus === 'HALF_DAY' ? '時短 終了時刻' : '連絡可能 終了時刻'}
+                    </label>
                     <input type="time" value={editEndTime}
                       onChange={(e) => setEditEndTime(e.target.value)}
                       className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
@@ -410,6 +465,52 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
             </div>
           )}
 
+          {/* 閲覧用ポップアップ（非行政ユーザー向け） */}
+          {viewPopupDate && !canEdit && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                  {format(parseISO(viewPopupDate), 'M月d日（EEE）', { locale: ja })} の出勤状況
+                </h3>
+                <button onClick={() => setViewPopupDate(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <X className="h-4 w-4 text-gray-500" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {getAttendancesForDate(viewPopupDate).map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 py-1.5 border-b dark:border-gray-700 last:border-0">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                      style={{ backgroundColor: a.user.avatarColor }}>
+                      {(a.user.avatarLetter || a.user.name || '').charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{a.user.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_COLORS[a.status]}`}>
+                          {STATUS_LABELS[a.status]}
+                        </span>
+                        {(a.status === 'HALF_DAY' || a.startTime) && a.startTime && (
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                            {a.startTime}〜{a.endTime || ''}
+                          </span>
+                        )}
+                        {a.endDate && a.endDate.slice(0, 10) !== a.date.slice(0, 10) && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            〜{format(parseISO(a.endDate.slice(0, 10)), 'M月d日')}
+                          </span>
+                        )}
+                        {a.note && <span className="text-xs text-gray-500 dark:text-gray-400">{a.note}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {getAttendancesForDate(viewPopupDate).length === 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">この日の出勤記録はありません</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* 凡例 */}
           <div className="flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400">
             {(Object.entries(STATUS_LABELS) as [AttendanceStatus, string][]).map(([status, label]) => (
@@ -418,7 +519,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                 {label}
               </span>
             ))}
-            <span className="text-gray-400 dark:text-gray-500">※ 時刻はメンバーへの連絡可能時間</span>
+            <span className="text-gray-400 dark:text-gray-500">※ 時刻は出勤時間（半休・時短）または連絡可能時間</span>
           </div>
         </div>
       </div>

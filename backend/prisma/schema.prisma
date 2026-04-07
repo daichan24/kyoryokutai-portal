@@ -30,6 +30,7 @@ model User {
   darkMode      Boolean @default(false)
   displayOrder  Int     @default(0) // 表示順（メンバー以外が設定可能）
   wishesEnabled Boolean @default(false) // やりたいこと100（プロフィールでON、Wishが1件以上あるユーザーは移行でON）
+  notepadEnabled Boolean @default(true) // メモ帳機能の表示（デフォルトON）
 
   // Phase 1 Relations
   schedules     Schedule[]
@@ -100,6 +101,7 @@ model User {
   mandatedAttendanceAuditAsStaff  MandatedAttendanceAuditLog[] @relation("MandatedAttendanceChangedBy")
 
   governmentAttendances GovernmentAttendance[]
+  notepads              Notepad[]
   snsAccounts           SNSAccount[]
 
   createdAt DateTime @default(now())
@@ -1408,4 +1410,23 @@ enum GovernmentAttendanceStatus {
   REMOTE     // 出張
   ABSENT     // 不在
   HALF_DAY   // 半日
+}
+
+// ========================================
+// メモ帳
+// ========================================
+
+model Notepad {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title     String   @db.VarChar(200)
+  content   String   @db.Text
+  order     Int      @default(0) // 表示順
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, order])
 }

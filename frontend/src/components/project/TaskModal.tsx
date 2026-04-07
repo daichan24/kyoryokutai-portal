@@ -367,6 +367,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         };
         if (isCollaborative && selectedParticipantIds.length > 0) data.participantsUserIds = selectedParticipantIds;
         if (isDuplicateMode) {
+          // 複製時は taskId を引き継がない（新規スケジュールとして作成）
           await api.post('/api/schedules', data);
         } else {
           await api.put(`/api/schedules/${schedule.id}`, data);
@@ -462,8 +463,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         <div className="flex justify-between items-center px-6 py-4 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-xl font-bold dark:text-gray-100">{modalTitle}</h2>
           <div className="flex items-center gap-2">
-            {/* 繰り返しボタン（新規作成時のみ） */}
-            {!task && !schedule && !readOnly && (
+            {/* 繰り返しボタン（新規作成時・編集時、readOnly以外） */}
+            {!readOnly && !isDuplicateMode && (
               <button type="button" onClick={() => setShowRecurringModal(true)}
                 className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <RefreshCw className="h-4 w-4" />繰り返し

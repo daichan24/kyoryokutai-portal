@@ -40,6 +40,7 @@ const Announcements = lazy(() => import('./pages/Announcements').then((m) => ({ 
 const Wishes = lazy(() => import('./pages/Wishes').then((m) => ({ default: m.Wishes })));
 const ReceptionBox = lazy(() => import('./pages/ReceptionBox').then((m) => ({ default: m.ReceptionBox })));
 const InboxPage = lazy(() => import('./pages/InboxPage').then((m) => ({ default: m.InboxPage })));
+const NotepadPage = lazy(() => import('./pages/NotepadPage').then((m) => ({ default: m.NotepadPage })));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -367,6 +368,28 @@ const App: React.FC = () => {
             <PrivateRoute>
               <Layout>
                 <Nudges />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/notepad"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <NotepadPage />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/notepad/:id"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <NotepadPage />
               </Layout>
             </PrivateRoute>
           }

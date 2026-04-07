@@ -607,34 +607,49 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Only the creator can edit this schedule' });
     }
 
-    const updateData: any = { ...data };
-    const dataWithEndDate = data as any;
+    // 安全に updateData を構築（スプレッドではなく明示的にフィールドを設定）
+    const updateData: any = {};
+
+    // 日付フィールドの処理
     if (data.date) {
       const startDate = new Date(data.date);
+      if (isNaN(startDate.getTime())) {
+        return res.status(400).json({ error: '無効な開始日です' });
+      }
+      const dataWithEndDate = data as any;
       const endDate = dataWithEndDate.endDate ? new Date(dataWithEndDate.endDate) : startDate;
+      if (isNaN(endDate.getTime())) {
+        return res.status(400).json({ error: '無効な終了日です' });
+      }
       updateData.date = startDate; // 後方互換性のため
       updateData.startDate = startDate;
       updateData.endDate = endDate;
-    } else if (dataWithEndDate.endDate) {
-      // dateが指定されていないがendDateが指定されている場合
-      const existingStartDate = existingSchedule.startDate || existingSchedule.date;
-      updateData.endDate = new Date(dataWithEndDate.endDate);
-      updateData.startDate = existingStartDate;
+    } else {
+      const dataWithEndDate = data as any;
+      if (dataWithEndDate.endDate) {
+        const existingStartDate = existingSchedule.startDate || existingSchedule.date;
+        const endDate = new Date(dataWithEndDate.endDate);
+        if (!isNaN(endDate.getTime())) {
+          updateData.endDate = endDate;
+          updateData.startDate = existingStartDate;
+        }
+      }
     }
-    // projectIdとtaskIdを明示的に設定（nullも許可）
-    if (data.projectId !== undefined) {
-      updateData.projectId = data.projectId || null;
-    }
-    if (data.taskId !== undefined) {
-      updateData.taskId = data.taskId || null;
-    }
-    if (data.supportEventId !== undefined) {
-      updateData.supportEventId = data.supportEventId || null;
-    }
-    if ((data as any).customColor !== undefined) {
-      updateData.customColor = (data as any).customColor || null;
-    }
-    delete updateData.participantsUserIds;
+
+    // テキストフィールド
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.startTime !== undefined) updateData.startTime = data.startTime;
+    if (data.endTime !== undefined) updateData.endTime = data.endTime;
+    if (data.locationText !== undefined) updateData.locationText = data.locationText || null;
+    if (data.activityDescription !== undefined) updateData.activityDescription = data.activityDescription;
+    if (data.freeNote !== undefined) updateData.freeNote = data.freeNote || null;
+    if (data.isPending !== undefined) updateData.isPending = data.isPending;
+
+    // 関連フィールド（nullも許可）
+    if (data.projectId !== undefined) updateData.projectId = data.projectId || null;
+    if (data.taskId !== undefined) updateData.taskId = data.taskId || null;
+    if (data.supportEventId !== undefined) updateData.supportEventId = data.supportEventId || null;
+    if ((data as any).customColor !== undefined) updateData.customColor = (data as any).customColor || null;
 
     const schedule = await prisma.schedule.update({
       where: { id },
@@ -672,6 +687,25 @@ router.put('/:id', async (req: AuthRequest, res) => {
         },
       },
     });
+
+    // 参加者の更新（participantsUserIdsが指定された場合）
+    const participantsUserIds = (data as any).participantsUserIds as string[] | undefined;
+    if (participantsUserIds !== undefined) {
+      const creatorId = req.user!.id;
+      const newParticipantIds = participantsUserIds.filter((uid) => uid !== creatorId);
+      // 既存の参加者を削除して再作成
+      await prisma.scheduleParticipant.deleteMany({ where: { scheduleId: id } });
+      if (newParticipantIds.length > 0) {
+        await prisma.scheduleParticipant.createMany({
+          data: newParticipantIds.map((userId) => ({
+            scheduleId: id,
+            userId,
+            status: 'PENDING',
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
 
     res.json(schedule);
   } catch (error) {

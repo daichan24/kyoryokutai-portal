@@ -13,6 +13,7 @@ const updateProfileSchema = z.object({
   department: z.string().optional().nullable(),
   missionType: z.enum(['FREE', 'MISSION']).optional().nullable(),
   wishesEnabled: z.boolean().optional(),
+  notepadEnabled: z.boolean().optional(),
 });
 
 /**
@@ -30,16 +31,16 @@ router.put('/', async (req: AuthRequest, res) => {
     }
     const data = raw.data;
 
-    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean } = {};
+    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean } = {};
     if (data.avatarColor !== undefined) updateData.avatarColor = data.avatarColor;
     if (data.avatarLetter !== undefined) {
-      // 空文字列、null、undefinedの場合はnullに変換
       updateData.avatarLetter = (data.avatarLetter === '' || data.avatarLetter === null || data.avatarLetter === undefined) ? null : String(data.avatarLetter).slice(0, 1);
     }
     if (data.darkMode !== undefined) updateData.darkMode = data.darkMode;
     if (data.department !== undefined) updateData.department = data.department === '' ? null : data.department;
     if (data.missionType !== undefined) updateData.missionType = data.missionType;
     if (data.wishesEnabled !== undefined) updateData.wishesEnabled = data.wishesEnabled;
+    if (data.notepadEnabled !== undefined) updateData.notepadEnabled = data.notepadEnabled;
 
     console.log('[API] Update data:', updateData);
 
@@ -53,6 +54,7 @@ router.put('/', async (req: AuthRequest, res) => {
         department: true,
         missionType: true,
         wishesEnabled: true,
+        notepadEnabled: true,
       },
     });
 
