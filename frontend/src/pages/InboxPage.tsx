@@ -7,7 +7,8 @@ import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
-import { X, CheckCircle, Clock, MessageSquare, ShieldAlert, Inbox, Send } from 'lucide-react';
+import { X, CheckCircle, Clock, MessageSquare, ShieldAlert, Inbox, Send, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { User } from '../types';
 
 // ============================================================
@@ -221,6 +222,7 @@ const ConsultationDetailModal: React.FC<{
 export const InboxPage: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const isMember = user?.role === 'MEMBER';
   const isStaff = !isMember;
 
@@ -475,7 +477,17 @@ export const InboxPage: React.FC = () => {
                   </Button>
                 )}
                 {(item.type === 'weeklyReport' || item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'expense') && (
-                  <Button size="sm" variant="outline" onClick={() => alert('各ページで確認・承認してください')}>確認</Button>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    const routes: Record<string, string> = {
+                      weeklyReport: '/reports/weekly',
+                      inspection: '/inspections',
+                      monthlyReport: '/reports/monthly',
+                      expense: '/activity-expenses',
+                    };
+                    navigate(routes[item.type]);
+                  }}>
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />確認
+                  </Button>
                 )}
               </div>
             </div>

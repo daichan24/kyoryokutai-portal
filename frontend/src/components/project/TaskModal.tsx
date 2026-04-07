@@ -354,9 +354,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     setLoading(true);
     try {
       if (isScheduleMode && schedule) {
+        if (!dueDate) { alert('開始日を入力してください'); setLoading(false); return; }
         const data: any = {
           date: dueDate,
-          endDate: endDate !== dueDate ? endDate : undefined,
+          endDate: endDate && endDate !== dueDate ? endDate : undefined,
           startTime, endTime,
           title: title.trim(),
           activityDescription: memo.trim() || title.trim(),
