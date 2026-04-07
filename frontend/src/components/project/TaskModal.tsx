@@ -392,7 +392,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     catch { alert('削除に失敗しました'); }
   };
 
-  const modalTitle = isDuplicateMode ? '複製（新規作成）' : schedule ? 'スケジュール編集' : task ? 'タスク編集' : 'タスク追加';
+  const modalTitle = isDuplicateMode ? '複製（新規作成）' : schedule ? 'タスク編集' : task ? 'タスク編集' : 'タスク追加';
 
   return (
     <>
