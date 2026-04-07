@@ -621,18 +621,32 @@ router.put('/:id', async (req: AuthRequest, res) => {
       if (isNaN(endDate.getTime())) {
         return res.status(400).json({ error: '無効な終了日です' });
       }
+      // 終了日が開始日より前の場合はエラー
+      if (endDate < startDate) {
+        return res.status(400).json({ error: '終了日は開始日以降の日付を指定してください' });
+      }
       updateData.date = startDate; // 後方互換性のため
       updateData.startDate = startDate;
       updateData.endDate = endDate;
     } else {
       const dataWithEndDate = data as any;
       if (dataWithEndDate.endDate) {
+        // 既存のstartDateを取得（優先順位: startDate > date）
         const existingStartDate = existingSchedule.startDate || existingSchedule.date;
-        const endDate = new Date(dataWithEndDate.endDate);
-        if (!isNaN(endDate.getTime())) {
-          updateData.endDate = endDate;
-          updateData.startDate = existingStartDate;
+        if (!existingStartDate) {
+          return res.status(400).json({ error: '開始日が設定されていません' });
         }
+        const endDate = new Date(dataWithEndDate.endDate);
+        if (isNaN(endDate.getTime())) {
+          return res.status(400).json({ error: '無効な終了日です' });
+        }
+        // 終了日が開始日より前の場合はエラー
+        if (endDate < existingStartDate) {
+          return res.status(400).json({ error: '終了日は開始日以降の日付を指定してください' });
+        }
+        updateData.endDate = endDate;
+        updateData.startDate = existingStartDate;
+        updateData.date = existingStartDate; // 後方互換性のため
       }
     }
 

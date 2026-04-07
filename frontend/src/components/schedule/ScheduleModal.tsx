@@ -62,9 +62,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     if (schedule) {
       const scheduleDateStr = formatDate(schedule.date);
       setDate(scheduleDateStr);
-      // endDateが存在する場合はそれを使用、なければstartDateと同じ
+      // endDateが存在する場合はそれを使用、なければstartDateまたはdateと同じ
       const scheduleEndDateStr = (schedule as any).endDate
         ? formatDate(new Date((schedule as any).endDate))
+        : (schedule as any).startDate
+        ? formatDate(new Date((schedule as any).startDate))
         : scheduleDateStr;
       setEndDate(scheduleEndDateStr);
       setStartTime(schedule.startTime);
@@ -90,6 +92,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         const dateStr = formatDate(defaultDate);
         setDate(dateStr);
         setEndDate(dateStr); // デフォルトは開始日と同じ
+      } else {
+        // defaultDateが指定されていない場合は今日の日付を設定
+        const todayStr = formatDate(new Date());
+        setDate(todayStr);
+        setEndDate(todayStr);
       }
       if (defaultStartTime) {
         setStartTime(defaultStartTime);
@@ -190,6 +197,18 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       }
       if (!title || title.trim() === '') {
         alert('タイトルを入力してください');
+        setLoading(false);
+        return;
+      }
+
+      // 終了日のバリデーション
+      if (!endDate) {
+        alert('終了日を入力してください');
+        setLoading(false);
+        return;
+      }
+      if (endDate < date) {
+        alert('終了日は開始日以降の日付を指定してください');
         setLoading(false);
         return;
       }
