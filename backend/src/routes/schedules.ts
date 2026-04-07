@@ -276,14 +276,14 @@ const createScheduleSchema = z.object({
   endDate: z.string().optional(),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
-  locationText: z.string().optional(),
-  title: z.string().max(200).min(1),
+  locationText: z.string().min(1, '場所を入力してください'),
+  title: z.string().max(200).min(1, 'タイトルを入力してください'),
   activityDescription: z.string().optional(),
   freeNote: z.string().optional(),
   isPending: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),
-  projectId: z.string().optional(),
-  taskId: z.string().optional(),
+  projectId: z.string().optional().nullable(),
+  taskId: z.string().optional().nullable(),
   supportEventId: z.string().uuid().optional().nullable(),
   customColor: z.string().max(20).optional().nullable(),
 });
@@ -593,6 +593,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     console.log('Schedule update request:', { id, body: req.body });
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Request body values:', JSON.stringify(req.body, null, 2));
     const data = updateScheduleSchema.parse(req.body);
 
     const existingSchedule = await prisma.schedule.findUnique({
