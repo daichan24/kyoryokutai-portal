@@ -589,7 +589,6 @@ export const Tasks: React.FC = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">担当者</th>
                     )}
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">期日</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -621,24 +620,6 @@ export const Tasks: React.FC = () => {
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ja-JP') : '-'}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {viewMode === 'create' && (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setScheduleTask(task);
-                                  setIsScheduleModalOpen(true);
-                                }}
-                              >
-                                <Calendar className="h-3 w-3 mr-1" />
-                                スケジュール
-                              </Button>
-                            )}
-                          </div>
-                        </td>
                       </tr>
                     );
                   })}
@@ -659,27 +640,69 @@ export const Tasks: React.FC = () => {
       {/* タスクプレビューモーダル */}
       {previewTask && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setPreviewTask(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 space-y-3" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">{previewTask.title}</h3>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${previewTask.status === 'COMPLETED' ? 'bg-green-500' : previewTask.status === 'IN_PROGRESS' ? 'bg-yellow-500' : 'bg-gray-400'}`} />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">{previewTask.title}</h3>
+              </div>
               <button onClick={() => setPreviewTask(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0"><X className="h-5 w-5" /></button>
             </div>
-            {previewTask.description && <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{previewTask.description}</p>}
-            <div className="flex flex-wrap gap-2 text-xs">
+
+            {/* ステータス */}
+            <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${previewTask.status === 'COMPLETED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : previewTask.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+              {previewTask.status === 'COMPLETED' ? '完了' : previewTask.status === 'IN_PROGRESS' ? '進行中' : '未着手'}
+            </span>
+
+            {/* メモ */}
+            {previewTask.description && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">{previewTask.description}</p>
+            )}
+
+            {/* 詳細情報 */}
+            <div className="space-y-2 text-sm">
               {previewTask.dueDate && (
-                <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded">
-                  期日: {new Date(previewTask.dueDate).toLocaleDateString('ja-JP')}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-16 flex-shrink-0">期日</span>
+                  <span className="text-gray-900 dark:text-gray-100">{new Date(previewTask.dueDate).toLocaleDateString('ja-JP')}</span>
+                  {(previewTask as any).startTime && (
+                    <span className="text-gray-500 dark:text-gray-400 text-xs">
+                      {(previewTask as any).startTime}〜{(previewTask as any).endTime || ''}
+                    </span>
+                  )}
+                </div>
+              )}
+              {(previewTask as any).locationText && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-16 flex-shrink-0">場所</span>
+                  <span className="text-gray-900 dark:text-gray-100">{(previewTask as any).locationText}</span>
+                </div>
               )}
               {previewTask.project && (
-                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">
-                  {previewTask.project.projectName}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-16 flex-shrink-0">プロジェクト</span>
+                  <span className="text-gray-900 dark:text-gray-100">{previewTask.project.projectName}</span>
+                </div>
               )}
-              <span className={`px-2 py-1 rounded ${previewTask.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : previewTask.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
-                {previewTask.status === 'COMPLETED' ? '完了' : previewTask.status === 'IN_PROGRESS' ? '進行中' : '未着手'}
-              </span>
+              {(() => {
+                const mName = getMissionName(previewTask);
+                return mName ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-16 flex-shrink-0">ミッション</span>
+                    <span className="text-gray-900 dark:text-gray-100">{mName}</span>
+                  </div>
+                ) : null;
+              })()}
+              {!previewTask.projectId && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-16 flex-shrink-0">連携</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    {previewTask.linkKind === 'KYORYOKUTAI_WORK' ? '協力隊業務' : previewTask.linkKind === 'TRIAGE_PENDING' ? 'あとで振り分け' : '未設定'}
+                  </span>
+                </div>
+              )}
             </div>
+
             {canCreate && (
               <div className="flex justify-end gap-2 pt-2 border-t dark:border-gray-700">
                 <Button variant="outline" size="sm" onClick={() => { setPreviewTask(null); handleEditTask(previewTask); }}>
