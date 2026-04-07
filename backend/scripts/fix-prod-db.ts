@@ -166,6 +166,51 @@ async function main() {
     console.log('Schedule.customColor:', e.message);
   }
 
+  // 13. Project.isAchieved / achievedAt / relatedContactIds カラム追加
+  for (const sql of [
+    `ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "isAchieved" BOOLEAN NOT NULL DEFAULT false;`,
+    `ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "achievedAt" TIMESTAMP(3);`,
+    `ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "relatedContactIds" TEXT[] DEFAULT ARRAY[]::TEXT[];`,
+  ]) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (e: any) {
+      console.log('Project column:', e.message);
+    }
+  }
+  console.log('✓ Project.isAchieved / achievedAt / relatedContactIds OK');
+
+  // 14. SNSAccount テーブルの確認・作成
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "SNSAccount" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "platform" VARCHAR(50) NOT NULL,
+        "accountName" VARCHAR(200) NOT NULL,
+        "displayName" VARCHAR(200),
+        "url" TEXT,
+        "isDefault" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "SNSAccount_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    console.log('✓ SNSAccount table OK');
+  } catch (e: any) {
+    console.log('SNSAccount table:', e.message);
+  }
+
+  // 15. SNSPost.accountId カラム追加
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE "SNSPost" ADD COLUMN IF NOT EXISTS "accountId" TEXT;`
+    );
+    console.log('✓ SNSPost.accountId OK');
+  } catch (e: any) {
+    console.log('SNSPost.accountId:', e.message);
+  }
+
   // 11. 修正後のSNSPostインデックスを再表示
   try {
     const indexes = await prisma.$queryRaw<Array<{indexname: string; indexdef: string}>>`

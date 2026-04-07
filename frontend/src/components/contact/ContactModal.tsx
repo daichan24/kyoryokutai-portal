@@ -225,8 +225,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
           {/* Instagram URL */}
           <Input
-            label="Instagram URL"
-            type="url"
+            label="Instagram URL（任意）"
+            type="text"
             value={instagramUrl}
             onChange={(e) => setInstagramUrl(e.target.value)}
             placeholder="https://www.instagram.com/username/"

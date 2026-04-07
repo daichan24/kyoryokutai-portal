@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Menu, Box } from 'lucide-react';
 import { Button } from '../common/Button';
 import { api } from '../../utils/api';
+import { BUILD_VERSION } from '../../buildVersion';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -12,7 +13,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user } = useAuthStore();
-  const version = import.meta.env.VITE_BUILD_ID || 'dev-local';
+  const version = BUILD_VERSION;
 
   // 受付ボックスの未読数
   const { data: unreadReception } = useQuery({

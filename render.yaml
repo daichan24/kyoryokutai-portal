@@ -6,7 +6,7 @@ services:
     plan: starter
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    dockerCommand: npm run start:prod
+    dockerCommand: npm run start:prod:push
     envVars:
       - key: NODE_ENV
         value: production
@@ -23,7 +23,7 @@ services:
   - type: static_site
     name: kyoryokutai-frontend
     rootDir: frontend
-    buildCommand: npm install && VITE_BUILD_ID="#$(git rev-list --count HEAD)" npm run build
+    buildCommand: npm install && npm run build
     publishPath: dist
     envVars:
       - key: VITE_API_URL
