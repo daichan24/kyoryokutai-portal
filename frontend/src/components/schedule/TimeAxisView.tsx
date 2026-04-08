@@ -237,7 +237,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
               return d >= sd && d <= ed;
             });
             return (
-              <div key={di} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 py-0.5 space-y-0.5 flex flex-col justify-center" style={{ minHeight: '1.75rem' }}">
+              <div key={di} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 py-0.5 space-y-0.5 flex flex-col justify-center" style={{ minHeight: '1.75rem' }}>
                 {dayMulti.map((s) => {
                   const sd = new Date((s as any).startDate || s.date); sd.setHours(0,0,0,0);
                   const ed = new Date((s as any).endDate || s.date); ed.setHours(0,0,0,0);
