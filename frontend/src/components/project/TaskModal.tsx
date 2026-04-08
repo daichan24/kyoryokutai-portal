@@ -29,7 +29,7 @@ const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 });
 const ITEM_H = 36;
-const VISIBLE = 5;
+const VISIBLE = 7;
 
 const TimePicker: React.FC<{ value: string; onChange: (v: string) => void; disabled?: boolean }> = ({ value, onChange, disabled }) => {
   const [open, setOpen] = useState(false);
@@ -251,6 +251,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [isDuplicateMode, setIsDuplicateMode] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const [hasEditedTime, setHasEditedTime] = useState(false);
 
   const toDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const effectiveLoc = locationText === '__OTHER__' ? locationOther : locationText;
@@ -273,6 +274,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       if (schedule.scheduleParticipants) {
         setSelectedParticipantIds(schedule.scheduleParticipants.filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId).map(p => p.userId));
       }
+      // スケジュールのミッションIDを設定
+      if ((schedule as any).task?.missionId) {
+        setSelectedMissionId((schedule as any).task.missionId);
+      }
     } else if (task) {
       setTitle(task.title);
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
@@ -293,6 +298,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setProjectId(defaultProjectId || null); setAttachMode(defaultProjectId ? 'PROJECT' : 'UNSET');
       setMemo(''); setCustomColor(''); setSupportEventId(null); setShowSupportEvents(false);
       setIsCollaborative(false); setSelectedParticipantIds([]);
+      setHasEditedTime(false);
     }
   }, [task, schedule, missionId, defaultDate, defaultStartTime, defaultEndTime, defaultProjectId]);
 
@@ -460,11 +466,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻</label>
-                <TimePicker value={startTime} onChange={v => { setStartTime(v); if (endTime <= v) setEndTime(addHour(v, 60)); }} disabled={readOnly} />
+                <TimePicker value={startTime} onChange={v => { setStartTime(v); if (!task && !schedule && !hasEditedTime) { setEndTime(addHour(v, 60)); } setHasEditedTime(true); }} disabled={readOnly} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻</label>
-                <TimePicker value={endTime} onChange={v => { setEndTime(v); if (startTime >= v) setStartTime(addHour(v, -60)); }} disabled={readOnly} />
+                <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly} />
               </div>
             </div>
             <div>
@@ -556,7 +562,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               </label>
               {isCollaborative && (
                 <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg max-h-40 overflow-y-auto space-y-1">
-                  {availableUsers.map(u => (
+                  {(() => {
+                    const selectedUsers = availableUsers.filter(u => selectedParticipantIds.includes(u.id));
+                    const unselectedUsers = availableUsers.filter(u => !selectedParticipantIds.includes(u.id));
+                    const sortedUsers = [...selectedUsers, ...unselectedUsers];
+                    return sortedUsers.map(u => (
                     <label key={u.id} className="flex items-center gap-2 p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded cursor-pointer">
                       <input type="checkbox" checked={selectedParticipantIds.includes(u.id)}
                         onChange={e => { if (e.target.checked) setSelectedParticipantIds([...selectedParticipantIds, u.id]); else setSelectedParticipantIds(selectedParticipantIds.filter(id => id !== u.id)); }}
@@ -567,6 +577,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                       <span className="text-sm text-gray-700 dark:text-gray-300">{u.name}</span>
                     </label>
                   ))}
+                  })()}
                   {availableUsers.length === 0 && <p className="text-xs text-gray-400">選択可能なメンバーがいません</p>}
                 </div>
               )}
