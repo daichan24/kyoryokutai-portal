@@ -567,19 +567,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     const unselectedUsers = availableUsers.filter(u => !selectedParticipantIds.includes(u.id));
                     const sortedUsers = [...selectedUsers, ...unselectedUsers];
                     return sortedUsers.map(u => (
-                    <label key={u.id} className="flex items-center gap-2 p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded cursor-pointer">
-                      <input type="checkbox" checked={selectedParticipantIds.includes(u.id)}
-                        onChange={e => { if (e.target.checked) setSelectedParticipantIds([...selectedParticipantIds, u.id]); else setSelectedParticipantIds(selectedParticipantIds.filter(id => id !== u.id)); }}
-                        className="h-4 w-4 text-primary border-gray-300 rounded" />
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0" style={{ backgroundColor: u.avatarColor }}>
-                        {(u.avatarLetter || u.name || '').charAt(0)}
-                      </div>
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{u.name}</span>
-                    </label>
-                  ))}
+                      <label key={u.id} className="flex items-center gap-2 p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded cursor-pointer">
+                        <input type="checkbox" checked={selectedParticipantIds.includes(u.id)}
+                          onChange={e => { if (e.target.checked) setSelectedParticipantIds([...selectedParticipantIds, u.id]); else setSelectedParticipantIds(selectedParticipantIds.filter(id => id !== u.id)); }}
+                          className="h-4 w-4 text-primary border-gray-300 rounded" />
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0" style={{ backgroundColor: u.avatarColor }}>
+                          {(u.avatarLetter || u.name || '').charAt(0)}
+                        </div>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{u.name}</span>
+                      </label>
+                    ));
                   })()}
                   {availableUsers.length === 0 && <p className="text-xs text-gray-400">選択可能なメンバーがいません</p>}
-                </div>
               )}
             </div>
             {schedule?.scheduleParticipants && schedule.scheduleParticipants.length > 0 && readOnly && (
