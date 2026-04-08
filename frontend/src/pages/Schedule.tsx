@@ -636,6 +636,17 @@ export const Schedule: React.FC = () => {
                 const BAR_HEIGHT = 20; // px
                 const BAR_GAP = 2;
                 const HEADER_HEIGHT = 28; // 日付数字の高さ
+
+                // 各日ごとに必要なレーン数を計算
+                const getLanesForDay = (dayCol: number): number => {
+                  let maxLane = 0;
+                  lanes.forEach((lane, laneIndex) => {
+                    const hasBarOnDay = lane.some((bar) => bar.startCol <= dayCol && bar.endCol >= dayCol);
+                    if (hasBarOnDay) maxLane = Math.max(maxLane, laneIndex + 1);
+                  });
+                  return maxLane;
+                };
+
                 const overlayHeight = HEADER_HEIGHT + lanes.length * (BAR_HEIGHT + BAR_GAP);
 
                 return (
@@ -664,6 +675,10 @@ export const Schedule: React.FC = () => {
                         const visibleSingle = singleDaySchedules.slice(0, MAX_SINGLE);
                         const remainingSingle = singleDaySchedules.length > MAX_SINGLE ? singleDaySchedules.length - MAX_SINGLE : 0;
 
+                        // この日に表示される複数日バーの数を計算
+                        const lanesForThisDay = getLanesForDay(dayIndex);
+                        const multiDayBarHeight = lanesForThisDay * (BAR_HEIGHT + BAR_GAP);
+
                         return (
                           <div key={dayIndex}
                             className={`border-r border-b border-border dark:border-gray-700 min-w-0 w-full flex flex-col p-1 ${
@@ -671,7 +686,7 @@ export const Schedule: React.FC = () => {
                             } ${isToday ? 'bg-primary/10 dark:bg-primary/20' : 'bg-white dark:bg-gray-800'} ${
                               calendarViewMode !== 'all' ? 'cursor-pointer' : 'cursor-default'
                             }`}
-                            style={{ minHeight: `${overlayHeight + 40}px` }}
+                            style={{ minHeight: `${HEADER_HEIGHT + multiDayBarHeight + 40}px` }}
                             onClick={(e) => {
                               if ((e.target as HTMLElement).closest('button')) return;
                               if (calendarViewMode === 'all') { if (getSchedulesForDate(date).length > 0) setSelectedDateForDetail(date); return; }
@@ -683,8 +698,8 @@ export const Schedule: React.FC = () => {
                                 formatDate(date, 'M') !== formatDate(currentDate, 'M') ? 'opacity-40' : ''
                               }`}>{formatDate(date, 'd')}</p>
                             </div>
-                            {/* 複数日バーの高さ分スペース確保 */}
-                            <div style={{ height: `${lanes.length * (BAR_HEIGHT + BAR_GAP)}px`, flexShrink: 0 }} />
+                            {/* 複数日バーの高さ分スペース確保（この日に必要な分だけ） */}
+                            <div style={{ height: `${multiDayBarHeight}px`, flexShrink: 0 }} />
                             {/* 単日スケジュール */}
                             <div className="space-y-0.5 flex-1 overflow-hidden mt-0.5">
                               {visibleSingle.map((schedule) => {
@@ -917,8 +932,8 @@ export const Schedule: React.FC = () => {
         />
       )}
 
-      {/* 日詳細表示モーダル（全体表示時） */}
-      {selectedDateForDetail && calendarViewMode === 'all' && (() => {
+      {/* 日詳細表示モーダル */}
+      {selectedDateForDetail && (() => {
         const allDaySchedules = getSchedulesForDate(selectedDateForDetail);
         // ユーザーごとにグループ化
         const userMap = new Map<string, { user: ScheduleType['user']; schedules: ScheduleType[] }>();
