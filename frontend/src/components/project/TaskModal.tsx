@@ -350,6 +350,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { alert('タイトルを入力してください'); return; }
+    if (!locationText) { alert('場所を選択してください'); return; }
+    if (locationText === '__OTHER__' && !locationOther.trim()) { alert('場所を入力してください'); return; }
     setLoading(true);
     try {
       if (isScheduleMode && schedule) {
@@ -496,7 +498,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   <select value={attachMode === 'KYORYOKUTAI' ? '__KYORYOKUTAI__' : selectedMissionId}
                     onChange={e => handleMissionChange(e.target.value)}
                     className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
-                    disabled={readOnly || isScheduleMode}>
+                    disabled={readOnly}>
                     <option value="">未選択</option>
                     <option value="__KYORYOKUTAI__">協力隊業務</option>
                     {missions.map(m => <option key={m.id} value={m.id}>{m.missionName}</option>)}

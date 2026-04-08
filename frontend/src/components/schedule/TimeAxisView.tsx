@@ -237,7 +237,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
               return d >= sd && d <= ed;
             });
             return (
-              <div key={di} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 min-h-[1.75rem] py-0.5 space-y-0.5">
+              <div key={di} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 py-0.5 space-y-0.5 flex flex-col justify-center" style={{ minHeight: '1.75rem' }}">
                 {dayMulti.map((s) => {
                   const sd = new Date((s as any).startDate || s.date); sd.setHours(0,0,0,0);
                   const ed = new Date((s as any).endDate || s.date); ed.setHours(0,0,0,0);
@@ -246,8 +246,8 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                   const isRecurring = (s as any).createdBy === 'RECURRENCE';
                   return (
                     <button key={s.id} onClick={() => onScheduleClick(s)}
-                      className="w-full text-left text-xs text-white px-1 py-0.5 hover:opacity-90 flex items-center gap-0.5"
-                      style={{ backgroundColor: color, marginLeft: isFirst ? '2px' : 0, marginRight: isLast ? '2px' : 0, borderRadius: isFirst && isLast ? '4px' : isFirst ? '4px 0 0 4px' : isLast ? '0 4px 4px 0' : '0' }}>
+                      className="w-full text-left text-xs text-white px-1 truncate hover:opacity-90 flex items-center gap-0.5"
+                      style={{ backgroundColor: color, marginLeft: isFirst ? '2px' : 0, marginRight: isLast ? '2px' : 0, height: '1.25rem', lineHeight: '1.25rem', borderRadius: isFirst && isLast ? '4px' : isFirst ? '4px 0 0 4px' : isLast ? '0 4px 4px 0' : '0' }}>
                       <span className="flex-1 truncate">{isFirst ? ((s as any).title || s.activityDescription) : ''}</span>
                       {isRecurring && isLast && <RefreshCw className="h-2.5 w-2.5 text-white/80 flex-shrink-0" />}
                     </button>
