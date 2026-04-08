@@ -579,6 +579,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     ));
                   })()}
                   {availableUsers.length === 0 && <p className="text-xs text-gray-400">選択可能なメンバーがいません</p>}
+                </div>
               )}
             </div>
             {schedule?.scheduleParticipants && schedule.scheduleParticipants.length > 0 && readOnly && (
