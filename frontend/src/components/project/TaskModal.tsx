@@ -241,6 +241,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [showSupportEvents, setShowSupportEvents] = useState(false);
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const [isHolidayWork, setIsHolidayWork] = useState(false);
+  const [compensatoryLeaveRequired, setCompensatoryLeaveRequired] = useState(false);
+  const [compensatoryLeaveType, setCompensatoryLeaveType] = useState<'FULL_DAY' | 'TIME_ADJUST'>('FULL_DAY');
+  const [isDayOff, setIsDayOff] = useState(false);
+  const [dayOffType, setDayOffType] = useState<'PAID' | 'UNPAID' | 'COMPENSATORY' | 'TIME_ADJUST'>('PAID');
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [missions, setMissions] = useState<Array<{ id: string; missionName: string }>>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -274,6 +279,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       if (schedule.scheduleParticipants) {
         setSelectedParticipantIds(schedule.scheduleParticipants.filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId).map(p => p.userId));
       }
+      setIsHolidayWork((schedule as any).isHolidayWork ?? false);
+      setCompensatoryLeaveRequired((schedule as any).compensatoryLeaveRequired ?? false);
+      setCompensatoryLeaveType((schedule as any).compensatoryLeaveType ?? 'FULL_DAY');
+      setIsDayOff((schedule as any).isDayOff ?? false);
+      setDayOffType((schedule as any).dayOffType ?? 'PAID');
       // スケジュールのミッションIDを設定
       if ((schedule as any).task?.missionId) {
         setSelectedMissionId((schedule as any).task.missionId);
@@ -298,6 +308,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setProjectId(defaultProjectId || null); setAttachMode(defaultProjectId ? 'PROJECT' : 'UNSET');
       setMemo(''); setCustomColor(''); setSupportEventId(null); setShowSupportEvents(false);
       setIsCollaborative(false); setSelectedParticipantIds([]);
+      setIsHolidayWork(false); setCompensatoryLeaveRequired(false); setCompensatoryLeaveType('FULL_DAY');
+      setIsDayOff(false); setDayOffType('PAID');
       setHasEditedTime(false);
     }
   }, [task, schedule, missionId, defaultDate, defaultStartTime, defaultEndTime, defaultProjectId]);
@@ -366,6 +378,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           customColor: customColor || null,
           supportEventId: supportEventId || null,
           projectId: attachMode === 'PROJECT' ? projectId : null,
+          isHolidayWork,
+          compensatoryLeaveRequired,
+          compensatoryLeaveType: compensatoryLeaveRequired ? compensatoryLeaveType : null,
+          isDayOff,
+          dayOffType: isDayOff ? dayOffType : null,
         };
         if (isCollaborative && selectedParticipantIds.length > 0) data.participantsUserIds = selectedParticipantIds;
         if (isDuplicateMode) { await api.post('/api/schedules', data); }
@@ -557,9 +574,73 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </select>
               )}
             </div>
-            <div className="border-t dark:border-gray-700 pt-3">
-              <label className="flex items-center gap-2 cursor-pointer mb-2">
-                <input type="checkbox" checked={isCollaborative} onChange={e => setIsCollaborative(e.target.checked)} className="h-4 w-4 text-primary border-gray-300 rounded" />
+            <div className="border-t dark:border-gray-700 pt-3 space-y-3">
+              {/* 休日出勤 */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={isHolidayWork}
+                    onChange={e => { setIsHolidayWork(e.target.checked); if (!e.target.checked) setCompensatoryLeaveRequired(false); }}
+                    className="h-4 w-4 text-orange-500 border-gray-300 rounded" disabled={readOnly} />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">休日出勤</span>
+                </label>
+                {isHolidayWork && (
+                  <div className="mt-2 ml-6 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={compensatoryLeaveRequired}
+                        onChange={e => setCompensatoryLeaveRequired(e.target.checked)}
+                        className="h-4 w-4 text-orange-500 border-gray-300 rounded" disabled={readOnly} />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">代休・時間調整が必要</span>
+                    </label>
+                    {compensatoryLeaveRequired && (
+                      <div className="ml-6 space-y-1">
+                        <div className="flex gap-4">
+                          {(['FULL_DAY', 'TIME_ADJUST'] as const).map(t => (
+                            <label key={t} className="flex items-center gap-1.5 cursor-pointer">
+                              <input type="radio" checked={compensatoryLeaveType === t}
+                                onChange={() => setCompensatoryLeaveType(t)}
+                                className="h-4 w-4 text-orange-500" disabled={readOnly} />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {t === 'FULL_DAY' ? '代休（1日）' : '時間調整'}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-orange-600 dark:text-orange-400">
+                          このタスクはまだ代休を取っていません。「有給・代休」ページで確認できます。
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* 休日（有給・無休・代休） */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={isDayOff}
+                    onChange={e => setIsDayOff(e.target.checked)}
+                    className="h-4 w-4 text-blue-500 border-gray-300 rounded" disabled={readOnly} />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">休日</span>
+                  <span className="text-xs text-gray-400">（本来出勤日に休む場合）</span>
+                </label>
+                {isDayOff && (
+                  <div className="mt-2 ml-6 flex gap-3 flex-wrap">
+                    {(['PAID', 'UNPAID', 'COMPENSATORY', 'TIME_ADJUST'] as const).map(t => (
+                      <label key={t} className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" checked={dayOffType === t}
+                          onChange={() => setDayOffType(t)}
+                          className="h-4 w-4 text-blue-500" disabled={readOnly} />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {t === 'PAID' ? '有給' : t === 'UNPAID' ? '無休' : t === 'COMPENSATORY' ? '代休' : '時間調整'}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* 共同作業 */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <input type="checkbox" checked={isCollaborative} onChange={e => setIsCollaborative(e.target.checked)} className="h-4 w-4 text-primary border-gray-300 rounded" />
                 <span className="text-sm text-gray-700 dark:text-gray-300">共同作業（他メンバーを巻き込む）</span>
               </label>
               {isCollaborative && (
@@ -583,6 +664,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   {availableUsers.length === 0 && <p className="text-xs text-gray-400">選択可能なメンバーがいません</p>}
                 </div>
               )}
+              </div>
             </div>
             {schedule?.scheduleParticipants && schedule.scheduleParticipants.length > 0 && readOnly && (
               <div className="border-t dark:border-gray-700 pt-3">
@@ -609,8 +691,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       </div>
     </div>
     {showCloseConfirm && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[90]">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[90]"
+        onClick={() => { setShowCloseConfirm(false); onClose(); }}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6" onClick={e => e.stopPropagation()}>
           <h3 className="text-xl font-bold dark:text-gray-100 mb-4">編集内容が保存されていません</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6">編集内容は保存されませんが、よろしいですか？</p>
           <div className="flex justify-end gap-3">
