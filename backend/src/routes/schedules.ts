@@ -286,6 +286,8 @@ const createScheduleSchema = z.object({
   taskId: z.string().optional().nullable(),
   supportEventId: z.string().uuid().optional().nullable(),
   customColor: z.string().max(20).optional().nullable(),
+  compensatoryLeaveRequired: z.boolean().optional(),
+  compensatoryLeaveType: z.enum(['FULL_DAY', 'TIME_ADJUST']).optional().nullable(),
 });
 
 const updateScheduleSchema = createScheduleSchema.partial();
@@ -486,6 +488,8 @@ router.post('/', async (req: AuthRequest, res) => {
         taskId: data.taskId || null,
         supportEventId: data.supportEventId || null,
         customColor: (data as any).customColor || null,
+        compensatoryLeaveRequired: (data as any).compensatoryLeaveRequired ?? false,
+        compensatoryLeaveType: (data as any).compensatoryLeaveType ?? null,
         scheduleParticipants: participantIds.length > 0 ? {
           create: participantIds.map((userId) => ({
             userId,
@@ -667,6 +671,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.taskId !== undefined) updateData.taskId = data.taskId || null;
     if (data.supportEventId !== undefined) updateData.supportEventId = data.supportEventId || null;
     if ((data as any).customColor !== undefined) updateData.customColor = (data as any).customColor || null;
+    if ((data as any).compensatoryLeaveRequired !== undefined) updateData.compensatoryLeaveRequired = (data as any).compensatoryLeaveRequired;
+    if ((data as any).compensatoryLeaveType !== undefined) updateData.compensatoryLeaveType = (data as any).compensatoryLeaveType ?? null;
 
     const schedule = await prisma.schedule.update({
       where: { id },

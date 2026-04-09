@@ -41,6 +41,7 @@ const Wishes = lazy(() => import('./pages/Wishes').then((m) => ({ default: m.Wis
 const ReceptionBox = lazy(() => import('./pages/ReceptionBox').then((m) => ({ default: m.ReceptionBox })));
 const InboxPage = lazy(() => import('./pages/InboxPage').then((m) => ({ default: m.InboxPage })));
 const NotepadPage = lazy(() => import('./pages/NotepadPage').then((m) => ({ default: m.NotepadPage })));
+const LeaveManagement = lazy(() => import('./pages/LeaveManagement').then((m) => ({ default: m.LeaveManagement })));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -390,6 +391,17 @@ const App: React.FC = () => {
             <PrivateRoute>
               <Layout>
                 <NotepadPage />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/leave-management"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <LeaveManagement />
               </Layout>
             </PrivateRoute>
           }

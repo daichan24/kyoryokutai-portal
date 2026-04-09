@@ -95,6 +95,19 @@ model User {
   announcementsCreated Announcement[]       @relation("AnnouncementAuthor")
   announcementReads    AnnouncementRead[]
 
+  // 有給・代休管理
+  paidLeaveAllocations        PaidLeaveAllocation[]  @relation("PaidLeaveAllocationMember")
+  paidLeaveAllocationsUpdated PaidLeaveAllocation[]  @relation("PaidLeaveAllocationUpdater")
+  paidLeaveEntries            PaidLeaveEntry[]       @relation("PaidLeaveEntryMember")
+  paidLeaveEntriesCreated     PaidLeaveEntry[]       @relation("PaidLeaveEntryCreator")
+  unpaidLeaveEntries          UnpaidLeaveEntry[]     @relation("UnpaidLeaveEntryMember")
+  unpaidLeaveEntriesCreated   UnpaidLeaveEntry[]     @relation("UnpaidLeaveEntryCreator")
+  compensatoryLeaves          CompensatoryLeave[]    @relation("CompensatoryLeaveMember")
+  compensatoryLeavesConfirmed CompensatoryLeave[]    @relation("CompensatoryLeaveConfirmer")
+  compensatoryLeaveUsagesCreated CompensatoryLeaveUsage[] @relation("CompensatoryLeaveUsageCreator")
+  timeAdjustments             TimeAdjustment[]       @relation("TimeAdjustmentMember")
+  timeAdjustmentsConfirmed    TimeAdjustment[]       @relation("TimeAdjustmentConfirmer")
+
   mandatedTeamEventsCreated     MandatedTeamEvent[]            @relation("MandatedTeamEventCreator")
   mandatedTeamEventAttendances  MandatedTeamEventAttendance[]
   mandatedAttendanceAuditAsMember MandatedAttendanceAuditLog[] @relation("MandatedAttendanceMember")
@@ -160,11 +173,17 @@ model Schedule {
   isPending       Boolean @default(false)
   isAutoExtracted Boolean @default(false) // 月次報告自動抽出フラグ
 
+  // 代休・時間調整
+  compensatoryLeaveRequired Boolean               @default(false) // 代休が必要か
+  compensatoryLeaveType     CompensatoryLeaveType? // FULL_DAY=代休 / TIME_ADJUST=時間調整
+
   createdBy CreatedBy @default(MANUAL)
 
   scheduleProgress     ScheduleProgress[]
   suggestions          ScheduleSuggestion[]
   scheduleParticipants ScheduleParticipant[]
+  compensatoryLeaves   CompensatoryLeave[]   @relation("CompensatoryLeaveSchedule")
+  timeAdjustmentsAsSource TimeAdjustment[]   @relation("TimeAdjustmentSourceSchedule")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1429,4 +1448,134 @@ model Notepad {
   updatedAt DateTime @updatedAt
 
   @@index([userId, order])
+}
+
+// ========================================
+// 有給・代休管理
+// ========================================
+
+/// 有給付与設定（管理側が隊員ごとに設定）
+model PaidLeaveAllocation {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("PaidLeaveAllocationMember", fields: [userId], references: [id], onDelete: Cascade)
+  fiscalYear  Int      // 年度（例: 2025 = 2025年4月〜2026年3月）
+  totalDays   Float    // 付与日数
+  expiresAt   DateTime @db.Date // 有効期限（その年度の3月31日）
+  memo        String?  @db.Text
+  updatedById String?
+  updatedBy   User?    @relation("PaidLeaveAllocationUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, fiscalYear])
+  @@index([userId])
+}
+
+/// 有給使用記録
+model PaidLeaveEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("PaidLeaveEntryMember", fields: [userId], references: [id], onDelete: Cascade)
+  usedAt      DateTime @db.Date
+  days        Float    // 使用日数（0.5日単位）
+  note        String?  @db.VarChar(500)
+  createdById String?
+  createdBy   User?    @relation("PaidLeaveEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, usedAt])
+}
+
+/// 無休使用記録（メンバーも追加可）
+model UnpaidLeaveEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("UnpaidLeaveEntryMember", fields: [userId], references: [id], onDelete: Cascade)
+  usedAt      DateTime @db.Date
+  days        Float    // 使用日数
+  note        String?  @db.VarChar(500)
+  createdById String?
+  createdBy   User?    @relation("UnpaidLeaveEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, usedAt])
+}
+
+/// 代休（休日出勤タスクから発生）
+model CompensatoryLeave {
+  id          String                @id @default(uuid())
+  userId      String
+  user        User                  @relation("CompensatoryLeaveMember", fields: [userId], references: [id], onDelete: Cascade)
+  grantedAt   DateTime              @db.Date // 代休が付与された日（休日出勤した日）
+  expiresAt   DateTime              @db.Date // 期限（grantedAt + 56日）
+  scheduleId  String?               // 紐づくスケジュール
+  schedule    Schedule?             @relation("CompensatoryLeaveSchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
+  totalHours  Float?                // 発生した時間（タスクから自動入力、変更可）
+  leaveType   CompensatoryLeaveType @default(FULL_DAY) // 代休 or 時間調整
+  status      CompensatoryLeaveStatus @default(PENDING)
+  note        String?               @db.VarChar(500)
+  confirmedById String?
+  confirmedBy   User?               @relation("CompensatoryLeaveConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  confirmedAt   DateTime?
+
+  usages         CompensatoryLeaveUsage[]
+  timeAdjustments TimeAdjustment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, expiresAt])
+  @@index([scheduleId])
+}
+
+enum CompensatoryLeaveType {
+  FULL_DAY      // 代休（1日単位）
+  TIME_ADJUST   // 時間調整
+}
+
+enum CompensatoryLeaveStatus {
+  PENDING   // 未使用
+  USED      // 使用済み
+  EXPIRED   // 期限切れ
+}
+
+/// 代休使用記録
+model CompensatoryLeaveUsage {
+  id                  String            @id @default(uuid())
+  compensatoryLeaveId String
+  compensatoryLeave   CompensatoryLeave @relation(fields: [compensatoryLeaveId], references: [id], onDelete: Cascade)
+  usedAt              DateTime          @db.Date
+  days                Float             // 使用日数（1日単位）
+  note                String?           @db.VarChar(500)
+  createdById         String?
+  createdBy           User?             @relation("CompensatoryLeaveUsageCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt           DateTime          @default(now())
+
+  @@index([compensatoryLeaveId])
+}
+
+/// 時間調整（代休の時間版）
+model TimeAdjustment {
+  id                  String             @id @default(uuid())
+  userId              String
+  user                User               @relation("TimeAdjustmentMember", fields: [userId], references: [id], onDelete: Cascade)
+  compensatoryLeaveId String?
+  compensatoryLeave   CompensatoryLeave? @relation(fields: [compensatoryLeaveId], references: [id], onDelete: SetNull)
+  adjustedAt          DateTime           @db.Date // 早上がりした日
+  hours               Float              // 調整時間（タスクから自動入力、変更可）
+  sourceScheduleId    String?            // 元になったスケジュール（休日出勤）
+  sourceSchedule      Schedule?          @relation("TimeAdjustmentSourceSchedule", fields: [sourceScheduleId], references: [id], onDelete: SetNull)
+  note                String?            @db.VarChar(500)
+  confirmedById       String?
+  confirmedBy         User?              @relation("TimeAdjustmentConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  confirmedAt         DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([userId, adjustedAt])
+  @@index([compensatoryLeaveId])
 }

@@ -24,6 +24,7 @@ import {
   Banknote,
   ChevronDown,
   ChevronRight,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -46,6 +47,7 @@ function matchesDocPath(pathname: string) {
 function matchesSupportPath(pathname: string) {
   return (
     pathname.startsWith('/activity-expenses') ||
+    pathname.startsWith('/leave-management') ||
     pathname.startsWith('/consultations') ||
     pathname.startsWith('/reception-box') ||
     pathname.startsWith('/support-records') ||
@@ -188,6 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const getSupportWorkflowItems = (): Array<{ to: string; icon: NavIcon; label: string }> => {
     const items: Array<{ to: string; icon: NavIcon; label: string }> = [
       { to: '/activity-expenses', icon: Banknote, label: '活動経費' },
+      { to: '/leave-management', icon: CalendarClock, label: '有給・代休' },
     ];
     if (user?.role === 'MEMBER') {
       items.push({ to: '/reception-box', icon: MessageCircle, label: '受付ボックス・相談' });
