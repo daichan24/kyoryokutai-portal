@@ -288,6 +288,9 @@ const createScheduleSchema = z.object({
   customColor: z.string().max(20).optional().nullable(),
   compensatoryLeaveRequired: z.boolean().optional(),
   compensatoryLeaveType: z.enum(['FULL_DAY', 'TIME_ADJUST']).optional().nullable(),
+  isHolidayWork: z.boolean().optional(),
+  isDayOff: z.boolean().optional(),
+  dayOffType: z.enum(['PAID', 'UNPAID', 'COMPENSATORY', 'TIME_ADJUST']).optional().nullable(),
 });
 
 const updateScheduleSchema = createScheduleSchema.partial();
@@ -490,6 +493,9 @@ router.post('/', async (req: AuthRequest, res) => {
         customColor: (data as any).customColor || null,
         compensatoryLeaveRequired: (data as any).compensatoryLeaveRequired ?? false,
         compensatoryLeaveType: (data as any).compensatoryLeaveType ?? null,
+        isHolidayWork: (data as any).isHolidayWork ?? false,
+        isDayOff: (data as any).isDayOff ?? false,
+        dayOffType: (data as any).dayOffType ?? null,
         scheduleParticipants: participantIds.length > 0 ? {
           create: participantIds.map((userId) => ({
             userId,
@@ -673,6 +679,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if ((data as any).customColor !== undefined) updateData.customColor = (data as any).customColor || null;
     if ((data as any).compensatoryLeaveRequired !== undefined) updateData.compensatoryLeaveRequired = (data as any).compensatoryLeaveRequired;
     if ((data as any).compensatoryLeaveType !== undefined) updateData.compensatoryLeaveType = (data as any).compensatoryLeaveType ?? null;
+    if ((data as any).isHolidayWork !== undefined) updateData.isHolidayWork = (data as any).isHolidayWork;
+    if ((data as any).isDayOff !== undefined) updateData.isDayOff = (data as any).isDayOff;
+    if ((data as any).dayOffType !== undefined) updateData.dayOffType = (data as any).dayOffType ?? null;
 
     const schedule = await prisma.schedule.update({
       where: { id },

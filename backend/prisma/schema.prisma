@@ -177,6 +177,11 @@ model Schedule {
   compensatoryLeaveRequired Boolean               @default(false) // 代休が必要か
   compensatoryLeaveType     CompensatoryLeaveType? // FULL_DAY=代休 / TIME_ADJUST=時間調整
 
+  // 休日出勤・休日区分
+  isHolidayWork Boolean  @default(false) // 休日出勤フラグ
+  isDayOff      Boolean  @default(false) // 休日（有給・無休・代休など）フラグ
+  dayOffType    DayOffType? // 休日の種別
+
   createdBy CreatedBy @default(MANUAL)
 
   scheduleProgress     ScheduleProgress[]
@@ -1534,6 +1539,13 @@ model CompensatoryLeave {
 
 enum CompensatoryLeaveType {
   FULL_DAY      // 代休（1日単位）
+  TIME_ADJUST   // 時間調整
+}
+
+enum DayOffType {
+  PAID          // 有給
+  UNPAID        // 無休
+  COMPENSATORY  // 代休
   TIME_ADJUST   // 時間調整
 }
 
