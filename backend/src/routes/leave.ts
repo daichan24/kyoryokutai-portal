@@ -56,7 +56,7 @@ router.get('/summary', async (req: AuthRequest, res) => {
         prisma.timeAdjustment.findMany({
           where: { userId: targetId },
           include: {
-            compensatoryLeave: { select: { id: true, grantedAt: true } },
+            compensatoryLeave: { select: { id: true, grantedAt: true, expiresAt: true } },
             sourceSchedule: { select: { id: true, title: true, activityDescription: true, startDate: true } },
             confirmedBy: { select: { id: true, name: true } },
           },

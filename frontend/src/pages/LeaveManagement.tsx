@@ -137,6 +137,11 @@ export const LeaveManagement: React.FC = () => {
   const [taHours, setTaHours] = useState('');
   const [taCompId, setTaCompId] = useState('');
   const [taNote, setTaNote] = useState('');
+  // 時間調整使用記録フォーム
+  const [taUseId, setTaUseId] = useState('');
+  const [taUseDate, setTaUseDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [taUseStart, setTaUseStart] = useState('');
+  const [taUseEnd, setTaUseEnd] = useState('');
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
   const invalidate = () => qc.invalidateQueries({ queryKey: ['leave'] });
@@ -196,7 +201,7 @@ export const LeaveManagement: React.FC = () => {
   const taUseMut = useMutation({
     mutationFn: ({ id, usedAt, usedStartTime, usedEndTime }: { id: string; usedAt: string; usedStartTime: string; usedEndTime: string }) =>
       api.put(`/api/leave/time-adjustments/${id}`, { usedAt, usedStartTime, usedEndTime }),
-    onSuccess: () => { invalidate(); setTaCompId(''); setTaDate(format(new Date(), 'yyyy-MM-dd')); setTaHours(''); setTaNote(''); },
+    onSuccess: () => { invalidate(); setTaUseId(''); setTaUseDate(format(new Date(), 'yyyy-MM-dd')); setTaUseStart(''); setTaUseEnd(''); },
   });
 
   if (!user) return null;
@@ -570,11 +575,15 @@ export const LeaveManagement: React.FC = () => {
                               {ta.usedAt ? (
                                 <span className="text-xs text-gray-600 dark:text-gray-400">
                                   {fmt(ta.usedAt)}{ta.usedStartTime && ta.usedEndTime && ` ${ta.usedStartTime}〜${ta.usedEndTime}`}
-                                  <span className="ml-1 text-rose-500 font-medium">
-                                    -{ta.usedStartTime && ta.usedEndTime
-                                      ? `${Math.round((parseInt(ta.usedEndTime.split(':')[0])*60+parseInt(ta.usedEndTime.split(':')[1]) - parseInt(ta.usedStartTime.split(':')[0])*60-parseInt(ta.usedStartTime.split(':')[1]))/60*10)/10}h`
-                                      : '使用済み'}
-                                  </span>
+                                  {ta.usedStartTime && ta.usedEndTime && (
+                                    <span className="ml-1 text-rose-500 font-medium">
+                                      -{(() => {
+                                        const [eh, em] = ta.usedEndTime!.split(':').map(Number);
+                                        const [sh, sm] = ta.usedStartTime!.split(':').map(Number);
+                                        return Math.round((eh * 60 + em - sh * 60 - sm) / 60 * 10) / 10;
+                                      })()}h
+                                    </span>
+                                  )}
                                 </span>
                               ) : (
                                 <span className="text-xs text-gray-400">未使用</span>
@@ -585,10 +594,10 @@ export const LeaveManagement: React.FC = () => {
                             </td>
                             <td className="py-2 text-xs">
                               {ta.compensatoryLeave?.expiresAt ? (
-                                <span className={urgencyText(Math.ceil((new Date(ta.compensatoryLeave.expiresAt).getTime() - new Date().getTime()) / 86400000))}>
+                                <span className={urgencyText(Math.ceil((new Date(ta.compensatoryLeave.expiresAt).getTime() - Date.now()) / 86400000))}>
                                   {fmtFull(ta.compensatoryLeave.expiresAt)}まで
                                 </span>
-                              ) : '-'}
+                              ) : <span className="text-gray-400">-</span>}
                             </td>
                             <td className="py-2">
                               <div className="flex gap-1 justify-end">
@@ -616,21 +625,21 @@ export const LeaveManagement: React.FC = () => {
                   <div className="flex flex-wrap gap-2 items-end">
                     <div>
                       <label className="block text-xs mb-1">対象の時間調整</label>
-                      <select value={taCompId} onChange={e => setTaCompId(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm">
+                      <select value={taUseId} onChange={e => setTaUseId(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm">
                         <option value="">選択</option>
                         {summary.timeAdjustment.entries.filter(t => !t.usedAt).map(ta => (
                           <option key={ta.id} value={ta.id}>{fmt(ta.adjustedAt)}付与 {ta.hours}h</option>
                         ))}
                       </select>
                     </div>
-                    <div><label className="block text-xs mb-1">使用日</label><input type="date" value={taDate} onChange={e => setTaDate(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
-                    <div><label className="block text-xs mb-1">開始時刻</label><input type="time" value={taHours} onChange={e => setTaHours(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
-                    <div><label className="block text-xs mb-1">終了時刻</label><input type="time" value={taNote} onChange={e => setTaNote(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
+                    <div><label className="block text-xs mb-1">使用日</label><input type="date" value={taUseDate} onChange={e => setTaUseDate(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
+                    <div><label className="block text-xs mb-1">開始時刻</label><input type="time" value={taUseStart} onChange={e => setTaUseStart(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
+                    <div><label className="block text-xs mb-1">終了時刻</label><input type="time" value={taUseEnd} onChange={e => setTaUseEnd(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
                     <Button size="sm" type="button" onClick={() => {
-                      if (!taCompId) { alert('対象を選択してください'); return; }
-                      if (!taDate || !taHours || !taNote) { alert('日付・開始・終了時刻を入力してください'); return; }
-                      taUseMut.mutate({ id: taCompId, usedAt: taDate, usedStartTime: taHours, usedEndTime: taNote });
-                    }} disabled={taUseMut?.isPending}>記録</Button>
+                      if (!taUseId) { alert('対象を選択してください'); return; }
+                      if (!taUseDate || !taUseStart || !taUseEnd) { alert('日付・開始・終了時刻を入力してください'); return; }
+                      taUseMut.mutate({ id: taUseId, usedAt: taUseDate, usedStartTime: taUseStart, usedEndTime: taUseEnd });
+                    }} disabled={taUseMut.isPending}>記録</Button>
                   </div>
                 </div>
               )}
