@@ -385,8 +385,28 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           dayOffType: isDayOff ? dayOffType : null,
         };
         if (isCollaborative && selectedParticipantIds.length > 0) data.participantsUserIds = selectedParticipantIds;
-        if (isDuplicateMode) { await api.post('/api/schedules', data); }
-        else { await api.put(`/api/schedules/${schedule.id}`, data); }
+        let savedScheduleId = schedule.id;
+        if (isDuplicateMode) {
+          const res = await api.post('/api/schedules', data);
+          savedScheduleId = res.data?.id ?? schedule.id;
+        } else {
+          await api.put(`/api/schedules/${schedule.id}`, data);
+        }
+        // 休日出勤かつ代休/時間調整が必要な場合、自動でレコード作成
+        if (isHolidayWork && compensatoryLeaveRequired && savedScheduleId) {
+          try {
+            await api.post('/api/leave/compensatory/from-schedule', {
+              scheduleId: savedScheduleId,
+              grantedAt: dueDate,
+              startTime,
+              endTime,
+              leaveType: compensatoryLeaveType,
+              note: null,
+            });
+          } catch (e) {
+            console.warn('代休自動作成に失敗しました', e);
+          }
+        }
       } else {
         if (!effectiveMissionId && attachMode !== 'KYORYOKUTAI') { alert('ミッションを選択してください'); setLoading(false); return; }
         if (attachMode === 'PROJECT' && !projectId) { alert('プロジェクトを選んでください'); setLoading(false); return; }

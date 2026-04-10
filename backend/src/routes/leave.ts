@@ -101,6 +101,13 @@ router.get('/summary', async (req: AuthRequest, res) => {
     }).sort((a, b) => a.daysLeft - b.daysLeft);
 
     const timeAdjTotal = timeAdjustments.reduce((s, t) => s + t.hours, 0);
+    const timeAdjUsed = timeAdjustments.filter(t => t.usedAt).reduce((s, t) => {
+      if (!t.usedStartTime || !t.usedEndTime) return s;
+      const [sh, sm] = t.usedStartTime.split(':').map(Number);
+      const [eh, em] = t.usedEndTime.split(':').map(Number);
+      return s + Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
+    }, 0);
+    const timeAdjRemaining = Math.max(0, timeAdjTotal - timeAdjUsed);
 
     res.json({
       fiscalYear,
@@ -125,7 +132,9 @@ router.get('/summary', async (req: AuthRequest, res) => {
         allLeaves: updatedLeaves,
       },
       timeAdjustment: {
-        totalHours: timeAdjTotal,
+        totalGrantedHours: timeAdjTotal,
+        totalUsedHours: timeAdjUsed,
+        remainingHours: timeAdjRemaining,
         entries: timeAdjustments,
       },
     });
@@ -400,6 +409,11 @@ const timeAdjSchema = z.object({
   hours: z.number().min(0.5).max(24),
   sourceScheduleId: z.string().uuid().optional().nullable(),
   note: z.string().max(500).optional().nullable(),
+  // 使用記録
+  usedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  usedStartTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  usedEndTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  usedScheduleId: z.string().uuid().optional().nullable(),
 });
 
 router.get('/time-adjustments', async (req: AuthRequest, res) => {
@@ -432,6 +446,10 @@ router.post('/time-adjustments', async (req: AuthRequest, res) => {
         hours: body.hours,
         sourceScheduleId: body.sourceScheduleId ?? null,
         note: body.note ?? null,
+        usedAt: body.usedAt ? new Date(`${body.usedAt}T12:00:00.000Z`) : null,
+        usedStartTime: body.usedStartTime ?? null,
+        usedEndTime: body.usedEndTime ?? null,
+        usedScheduleId: body.usedScheduleId ?? null,
       },
       include: {
         compensatoryLeave: { select: { id: true, grantedAt: true } },
@@ -457,6 +475,10 @@ router.put('/time-adjustments/:id', async (req: AuthRequest, res) => {
     if (body.hours !== undefined) updateData.hours = body.hours;
     if (body.note !== undefined) updateData.note = body.note;
     if (body.compensatoryLeaveId !== undefined) updateData.compensatoryLeaveId = body.compensatoryLeaveId;
+    if (body.usedAt !== undefined) updateData.usedAt = body.usedAt ? new Date(`${body.usedAt}T12:00:00.000Z`) : null;
+    if (body.usedStartTime !== undefined) updateData.usedStartTime = body.usedStartTime;
+    if (body.usedEndTime !== undefined) updateData.usedEndTime = body.usedEndTime;
+    if (body.usedScheduleId !== undefined) updateData.usedScheduleId = body.usedScheduleId;
     const updated = await prisma.timeAdjustment.update({ where: { id: req.params.id }, data: updateData });
     res.json(updated);
   } catch (err: any) {
@@ -487,6 +509,88 @@ router.post('/time-adjustments/:id/confirm', async (req: AuthRequest, res) => {
     });
     res.json(updated);
   } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// スケジュール保存時の自動代休/時間調整作成
+// ============================================================
+
+/** 拘束時間（分）から実勤務時間（分）を計算するルール
+ * 5h30m以下 → そのまま
+ * 6h00m → 5h00m（-1h）
+ * 6h30m → 5h30m（-1h）
+ * 6h以上 → 拘束 - 1h
+ */
+function calcWorkMinutes(constraintMinutes: number): number {
+  if (constraintMinutes <= 330) return constraintMinutes; // 5h30m以下
+  return constraintMinutes - 60; // 6h以上は1時間引く
+}
+
+const autoCreateSchema = z.object({
+  scheduleId: z.string().uuid(),
+  userId: z.string().uuid().optional(),
+  grantedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  leaveType: z.enum(['FULL_DAY', 'TIME_ADJUST']),
+  note: z.string().max(500).optional().nullable(),
+});
+
+router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
+  try {
+    const body = autoCreateSchema.parse(req.body);
+    const targetId = req.user!.role === 'MEMBER' ? req.user!.id : (body.userId ?? req.user!.id);
+    const grantedDate = new Date(`${body.grantedAt}T12:00:00.000Z`);
+    const expiresAt = new Date(grantedDate.getTime() + 56 * 86400000);
+
+    // 拘束時間を計算
+    const [sh, sm] = body.startTime.split(':').map(Number);
+    const [eh, em] = body.endTime.split(':').map(Number);
+    const constraintMinutes = (eh * 60 + em) - (sh * 60 + sm);
+    const workMinutes = calcWorkMinutes(constraintMinutes);
+    const workHours = Math.round(workMinutes / 60 * 10) / 10; // 小数点1桁
+
+    // 既存チェック（同じスケジュールIDで既に作成済みなら更新）
+    const existing = await prisma.compensatoryLeave.findFirst({
+      where: { scheduleId: body.scheduleId, userId: targetId },
+    });
+
+    let leave;
+    if (existing) {
+      leave = await prisma.compensatoryLeave.update({
+        where: { id: existing.id },
+        data: { grantedAt: grantedDate, expiresAt, totalHours: workHours, leaveType: body.leaveType, note: body.note ?? null },
+        include: { schedule: { select: { id: true, title: true, activityDescription: true, startDate: true } }, usages: true, confirmedBy: { select: { id: true, name: true } } },
+      });
+    } else {
+      leave = await prisma.compensatoryLeave.create({
+        data: { userId: targetId, grantedAt: grantedDate, expiresAt, scheduleId: body.scheduleId, totalHours: workHours, leaveType: body.leaveType, note: body.note ?? null },
+        include: { schedule: { select: { id: true, title: true, activityDescription: true, startDate: true } }, usages: true, confirmedBy: { select: { id: true, name: true } } },
+      });
+    }
+
+    // TIME_ADJUSTの場合は時間調整レコードも作成
+    if (body.leaveType === 'TIME_ADJUST') {
+      const existingTA = await prisma.timeAdjustment.findFirst({
+        where: { sourceScheduleId: body.scheduleId, userId: targetId },
+      });
+      if (existingTA) {
+        await prisma.timeAdjustment.update({
+          where: { id: existingTA.id },
+          data: { compensatoryLeaveId: leave.id, adjustedAt: grantedDate, hours: workHours },
+        });
+      } else {
+        await prisma.timeAdjustment.create({
+          data: { userId: targetId, compensatoryLeaveId: leave.id, adjustedAt: grantedDate, hours: workHours, sourceScheduleId: body.scheduleId },
+        });
+      }
+    }
+
+    res.json({ leave, workHours, constraintMinutes, workMinutes });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     res.status(500).json({ error: err.message });
   }
 });

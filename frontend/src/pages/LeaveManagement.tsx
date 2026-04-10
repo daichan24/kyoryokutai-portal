@@ -30,13 +30,21 @@ interface CompLeaveItem {
 interface CompData { totalAvailableDays: number; activeLeaves: CompLeaveItem[]; allLeaves: CompLeaveItem[] }
 interface TimeAdjItem {
   id: string; adjustedAt: string; hours: number; note: string | null;
-  compensatoryLeave: { id: string; grantedAt: string } | null;
+  compensatoryLeave: { id: string; grantedAt: string; expiresAt: string } | null;
   sourceSchedule: { id: string; title: string | null; activityDescription: string; startDate: string } | null;
   confirmedBy: { id: string; name: string } | null; confirmedAt: string | null;
+  // 使用記録
+  usedAt: string | null; usedStartTime: string | null; usedEndTime: string | null;
 }
 interface LeaveSummary {
   fiscalYear: number; paid: PaidLeaveData; unpaid: UnpaidLeaveData;
-  compensatory: CompData; timeAdjustment: { totalHours: number; entries: TimeAdjItem[] };
+  compensatory: CompData;
+  timeAdjustment: {
+    totalGrantedHours: number;
+    totalUsedHours: number;
+    remainingHours: number;
+    entries: TimeAdjItem[];
+  };
 }
 
 // ─── カラーテーマ（モダン・落ち着いた色） ────────────────────────────────────
@@ -185,6 +193,11 @@ export const LeaveManagement: React.FC = () => {
   });
   const taDeleteMut = useMutation({ mutationFn: (id: string) => api.delete(`/api/leave/time-adjustments/${id}`), onSuccess: invalidate });
   const taConfirmMut = useMutation({ mutationFn: (id: string) => api.post(`/api/leave/time-adjustments/${id}/confirm`), onSuccess: invalidate });
+  const taUseMut = useMutation({
+    mutationFn: ({ id, usedAt, usedStartTime, usedEndTime }: { id: string; usedAt: string; usedStartTime: string; usedEndTime: string }) =>
+      api.put(`/api/leave/time-adjustments/${id}`, { usedAt, usedStartTime, usedEndTime }),
+    onSuccess: () => { invalidate(); setTaCompId(''); setTaDate(format(new Date(), 'yyyy-MM-dd')); setTaHours(''); setTaNote(''); },
+  });
 
   if (!user) return null;
 
@@ -284,8 +297,8 @@ export const LeaveManagement: React.FC = () => {
                   <span className={`w-2.5 h-2.5 rounded-full ${THEME.ta.dot}`} />
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">時間調整</span>
                 </div>
-                <p className={`text-2xl font-bold ${THEME.ta.text}`}>{summary.timeAdjustment.totalHours}<span className="text-sm font-normal ml-1">時間</span></p>
-                <p className="text-xs text-gray-400 mt-1">調整済み累計</p>
+                <p className={`text-2xl font-bold ${THEME.ta.text}`}>{summary.timeAdjustment.remainingHours}<span className="text-sm font-normal ml-1">時間残</span></p>
+                <p className="text-xs text-gray-400 mt-1">付与 {summary.timeAdjustment.totalGrantedHours}h / 使用 {summary.timeAdjustment.totalUsedHours}h</p>
               </div>
             </div>
           </div>
@@ -514,46 +527,119 @@ export const LeaveManagement: React.FC = () => {
               <h2 className={`font-semibold ${THEME.ta.text}`}>時間調整</h2>
             </div>
             <div className="bg-white dark:bg-gray-800 p-4 space-y-4">
-              <div className={`rounded-lg p-3 inline-block ${THEME.ta.light}`}>
-                <p className="text-xs text-gray-500">調整済み累計</p>
-                <p className={`text-xl font-bold mt-0.5 ${THEME.ta.text}`}>{summary.timeAdjustment.totalHours}時間</p>
+              {/* 貸借対照表サマリー */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className={`rounded-lg p-3 ${THEME.ta.light}`}>
+                  <p className="text-xs text-gray-500">付与（累計）</p>
+                  <p className={`text-xl font-bold mt-0.5 ${THEME.ta.text}`}>{summary.timeAdjustment.totalGrantedHours}<span className="text-sm font-normal ml-1">時間</span></p>
+                </div>
+                <div className="rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30">
+                  <p className="text-xs text-gray-500">使用（累計）</p>
+                  <p className="text-xl font-bold mt-0.5 text-gray-700 dark:text-gray-300">{summary.timeAdjustment.totalUsedHours}<span className="text-sm font-normal ml-1">時間</span></p>
+                </div>
+                <div className={`rounded-lg p-3 ${summary.timeAdjustment.remainingHours > 0 ? THEME.ta.light : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+                  <p className="text-xs text-gray-500">残り</p>
+                  <p className={`text-xl font-bold mt-0.5 ${summary.timeAdjustment.remainingHours > 0 ? THEME.ta.text : 'text-gray-400'}`}>{summary.timeAdjustment.remainingHours}<span className="text-sm font-normal ml-1">時間</span></p>
+                </div>
               </div>
+
+              {/* 付与履歴（貸方） */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">時間調整の履歴</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">付与履歴（休日出勤タスクから発生）</p>
                 {summary.timeAdjustment.entries.length === 0 ? (
                   <p className="text-sm text-gray-400">まだ記録がありません。</p>
                 ) : (
-                  <div className="space-y-2">
-                    {summary.timeAdjustment.entries.map(ta => (
-                      <div key={ta.id} className="flex items-start justify-between gap-2 py-2 border-b border-gray-100 dark:border-gray-700">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-sm font-medium w-32 ${THEME.ta.text}`}>{fmt(ta.adjustedAt)}</span>
-                            <span className="text-sm text-gray-700 dark:text-gray-300">{ta.hours}時間早上がり</span>
-                            {ta.confirmedBy && <span className="flex items-center gap-0.5 text-xs text-emerald-600 dark:text-emerald-400"><CheckCircle className="h-3 w-3" />{ta.confirmedBy.name}確認済み</span>}
-                          </div>
-                          {ta.compensatoryLeave && <p className="text-xs text-gray-400 mt-0.5 ml-32">代休：{fmtFull(ta.compensatoryLeave.grantedAt)}付与分</p>}
-                          {ta.sourceSchedule && <p className={`text-xs mt-0.5 ml-32 ${THEME.ta.text}`}>元タスク：{ta.sourceSchedule.title || ta.sourceSchedule.activityDescription}（{fmtFull(ta.sourceSchedule.startDate)}）</p>}
-                          {ta.note && <p className="text-xs text-gray-400 mt-0.5 ml-32">{ta.note}</p>}
-                        </div>
-                        <div className="flex gap-1 flex-shrink-0">
-                          {isStaff && !ta.confirmedBy && (
-                            <button type="button" onClick={() => taConfirmMut.mutate(ta.id)}
-                              className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200">
-                              <Check className="h-3 w-3" />確認
-                            </button>
-                          )}
-                          <button type="button" onClick={() => { if (confirm('削除しますか？')) taDeleteMut.mutate(ta.id); }} className="text-rose-400 hover:text-rose-600 p-1"><Trash2 className="h-3.5 w-3.5" /></button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 dark:border-gray-700">
+                          <th className="text-left py-1.5 text-xs font-medium text-gray-400 w-28">付与日</th>
+                          <th className="text-right py-1.5 text-xs font-medium text-gray-400 w-16">付与時間</th>
+                          <th className="text-left py-1.5 text-xs font-medium text-gray-400 pl-3">使用記録</th>
+                          <th className="text-left py-1.5 text-xs font-medium text-gray-400">紐づくタスク</th>
+                          <th className="text-left py-1.5 text-xs font-medium text-gray-400">期限</th>
+                          <th className="w-16"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {summary.timeAdjustment.entries.map(ta => (
+                          <tr key={ta.id} className="border-b border-gray-50 dark:border-gray-700/50">
+                            <td className={`py-2 text-sm font-medium ${THEME.ta.text}`}>{fmt(ta.adjustedAt)}</td>
+                            <td className="py-2 text-right font-bold text-gray-800 dark:text-gray-200">+{ta.hours}h</td>
+                            <td className="py-2 pl-3">
+                              {ta.usedAt ? (
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  {fmt(ta.usedAt)}{ta.usedStartTime && ta.usedEndTime && ` ${ta.usedStartTime}〜${ta.usedEndTime}`}
+                                  <span className="ml-1 text-rose-500 font-medium">
+                                    -{ta.usedStartTime && ta.usedEndTime
+                                      ? `${Math.round((parseInt(ta.usedEndTime.split(':')[0])*60+parseInt(ta.usedEndTime.split(':')[1]) - parseInt(ta.usedStartTime.split(':')[0])*60-parseInt(ta.usedStartTime.split(':')[1]))/60*10)/10}h`
+                                      : '使用済み'}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-400">未使用</span>
+                              )}
+                            </td>
+                            <td className="py-2 text-xs text-gray-500 max-w-[140px] truncate">
+                              {ta.sourceSchedule ? `${ta.sourceSchedule.title || ta.sourceSchedule.activityDescription}（${fmtFull(ta.sourceSchedule.startDate)}）` : '-'}
+                            </td>
+                            <td className="py-2 text-xs">
+                              {ta.compensatoryLeave?.expiresAt ? (
+                                <span className={urgencyText(Math.ceil((new Date(ta.compensatoryLeave.expiresAt).getTime() - new Date().getTime()) / 86400000))}>
+                                  {fmtFull(ta.compensatoryLeave.expiresAt)}まで
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td className="py-2">
+                              <div className="flex gap-1 justify-end">
+                                {isStaff && !ta.confirmedBy && (
+                                  <button type="button" onClick={() => taConfirmMut.mutate(ta.id)}
+                                    className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200">
+                                    <Check className="h-3 w-3" />
+                                  </button>
+                                )}
+                                <button type="button" onClick={() => { if (confirm('削除しますか？')) taDeleteMut.mutate(ta.id); }} className="text-rose-400 hover:text-rose-600 p-0.5"><Trash2 className="h-3.5 w-3.5" /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
+
+              {/* 時間調整を使用する */}
+              {summary.timeAdjustment.entries.filter(t => !t.usedAt).length > 0 && (
+                <div className={`border-t ${THEME.ta.border} pt-3 space-y-2`}>
+                  <p className={`text-xs font-semibold ${THEME.ta.text}`}>時間調整を使用する（早上がり記録）</p>
+                  <div className="flex flex-wrap gap-2 items-end">
+                    <div>
+                      <label className="block text-xs mb-1">対象の時間調整</label>
+                      <select value={taCompId} onChange={e => setTaCompId(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm">
+                        <option value="">選択</option>
+                        {summary.timeAdjustment.entries.filter(t => !t.usedAt).map(ta => (
+                          <option key={ta.id} value={ta.id}>{fmt(ta.adjustedAt)}付与 {ta.hours}h</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div><label className="block text-xs mb-1">使用日</label><input type="date" value={taDate} onChange={e => setTaDate(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
+                    <div><label className="block text-xs mb-1">開始時刻</label><input type="time" value={taHours} onChange={e => setTaHours(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
+                    <div><label className="block text-xs mb-1">終了時刻</label><input type="time" value={taNote} onChange={e => setTaNote(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
+                    <Button size="sm" type="button" onClick={() => {
+                      if (!taCompId) { alert('対象を選択してください'); return; }
+                      if (!taDate || !taHours || !taNote) { alert('日付・開始・終了時刻を入力してください'); return; }
+                      taUseMut.mutate({ id: taCompId, usedAt: taDate, usedStartTime: taHours, usedEndTime: taNote });
+                    }} disabled={taUseMut?.isPending}>記録</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* 手動追加 */}
               <div className={`border-t ${THEME.ta.border} pt-3 space-y-2`}>
-                <p className={`text-xs font-semibold ${THEME.ta.text}`}>時間調整を記録</p>
+                <p className={`text-xs font-semibold ${THEME.ta.text}`}>時間調整を手動追加</p>
                 <div className="flex flex-wrap gap-2 items-end">
-                  <div><label className="block text-xs mb-1">早上がりした日</label><input type="date" value={taDate} onChange={e => setTaDate(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
+                  <div><label className="block text-xs mb-1">付与日（休日出勤日）</label><input type="date" value={taDate} onChange={e => setTaDate(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
                   <div><label className="block text-xs mb-1">時間数</label><input type="number" step="0.5" min="0.5" value={taHours} onChange={e => setTaHours(e.target.value)} className="w-20 px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" placeholder="例: 2" /></div>
                   {activeLeaves.length > 0 && (
                     <div><label className="block text-xs mb-1">紐づく代休（任意）</label>

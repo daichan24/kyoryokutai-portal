@@ -24,7 +24,6 @@ export const Tasks: React.FC = () => {
   const [previewTask, setPreviewTask] = useState<Task | null>(null); // プレビュー表示用
   
   // フィルタ・ソート状態
-  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterProject, setFilterProject] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>('deadline');
@@ -158,17 +157,13 @@ export const Tasks: React.FC = () => {
   // フィルタリング・ソート
   const filteredAndSortedTasks = React.useMemo(() => {
     let filtered = allTasks.filter(task => {
-      const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
       const matchesProject = filterProject === 'all' || task.projectId === filterProject;
-      return matchesStatus && matchesProject;
+      return matchesProject;
     });
 
     // ソート
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'status':
-          const statusOrder = { 'NOT_STARTED': 0, 'IN_PROGRESS': 1, 'COMPLETED': 2 };
-          return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
         case 'project':
           return (a.project?.projectName || '').localeCompare(b.project?.projectName || '');
         case 'created':
@@ -184,7 +179,7 @@ export const Tasks: React.FC = () => {
     });
 
     return filtered;
-  }, [allTasks, filterStatus, filterProject, sortBy]);
+  }, [allTasks, filterProject, sortBy]);
 
   const handleCreateTask = (projectId?: string) => {
     setSelectedTask(null);
@@ -390,20 +385,6 @@ export const Tasks: React.FC = () => {
                   label="担当者"
                 />
               )}
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">全ての状態</option>
-                  <option value="NOT_STARTED">未着手</option>
-                  <option value="IN_PROGRESS">進行中</option>
-                  <option value="COMPLETED">完了</option>
-                </select>
-              </div>
-
               <select
                 value={filterProject}
                 onChange={(e) => setFilterProject(e.target.value)}
@@ -629,9 +610,7 @@ export const Tasks: React.FC = () => {
 
           {filteredAndSortedTasks.length === 0 && (
         <div className="text-center py-12 text-gray-500">
-          {filterStatus !== 'all' || filterProject !== 'all'
-            ? '条件に一致するタスクがありません'
-            : 'タスクがありません'}
+          {filterProject !== 'all' ? '条件に一致するタスクがありません' : 'タスクがありません'}
         </div>
       )}
         </>

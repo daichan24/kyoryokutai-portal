@@ -1581,6 +1581,11 @@ model TimeAdjustment {
   hours               Float              // 調整時間（タスクから自動入力、変更可）
   sourceScheduleId    String?            // 元になったスケジュール（休日出勤）
   sourceSchedule      Schedule?          @relation("TimeAdjustmentSourceSchedule", fields: [sourceScheduleId], references: [id], onDelete: SetNull)
+  // 使用記録（何日の何時から何時で使ったか）
+  usedAt              DateTime?          @db.Date // 実際に使用した日
+  usedStartTime       String?            @db.VarChar(5) // HH:mm
+  usedEndTime         String?            @db.VarChar(5) // HH:mm
+  usedScheduleId      String?            // 使用時のスケジュールID
   note                String?            @db.VarChar(500)
   confirmedById       String?
   confirmedBy         User?              @relation("TimeAdjustmentConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
