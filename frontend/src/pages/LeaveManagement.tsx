@@ -40,9 +40,12 @@ interface LeaveSummary {
   fiscalYear: number; paid: PaidLeaveData; unpaid: UnpaidLeaveData;
   compensatory: CompData;
   timeAdjustment: {
-    totalGrantedHours: number;
-    totalUsedHours: number;
-    remainingHours: number;
+    // 新形式
+    totalGrantedHours?: number;
+    totalUsedHours?: number;
+    remainingHours?: number;
+    // 旧形式（後方互換）
+    totalHours?: number;
     entries: TimeAdjItem[];
   };
 }
@@ -152,7 +155,7 @@ export const LeaveManagement: React.FC = () => {
     enabled: isStaff,
   });
 
-  const { data: summary, isLoading } = useQuery<LeaveSummary>({
+  const { data: summary, isLoading, error: summaryError } = useQuery<LeaveSummary>({
     queryKey: ['leave', 'summary', effectiveUserId],
     queryFn: async () => {
       const params = isStaff ? { userId: effectiveUserId } : {};
@@ -233,6 +236,12 @@ export const LeaveManagement: React.FC = () => {
 
       {!effectiveUserId && isStaff && <p className="text-center text-gray-500 py-12">隊員を選ぶと表示されます。</p>}
       {effectiveUserId && isLoading && <div className="flex justify-center py-16"><LoadingSpinner /></div>}
+      {effectiveUserId && summaryError && !isLoading && (
+        <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl p-4 text-sm text-rose-700 dark:text-rose-300">
+          データの取得に失敗しました。バックエンドサーバーを再起動してください。
+          <br /><span className="text-xs opacity-70">{String(summaryError)}</span>
+        </div>
+      )}
 
       {effectiveUserId && summary && !isLoading && (
         <>
@@ -302,8 +311,8 @@ export const LeaveManagement: React.FC = () => {
                   <span className={`w-2.5 h-2.5 rounded-full ${THEME.ta.dot}`} />
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">時間調整</span>
                 </div>
-                <p className={`text-2xl font-bold ${THEME.ta.text}`}>{summary.timeAdjustment.remainingHours}<span className="text-sm font-normal ml-1">時間残</span></p>
-                <p className="text-xs text-gray-400 mt-1">付与 {summary.timeAdjustment.totalGrantedHours}h / 使用 {summary.timeAdjustment.totalUsedHours}h</p>
+                <p className={`text-2xl font-bold ${THEME.ta.text}`}>{summary.timeAdjustment.remainingHours ?? summary.timeAdjustment.totalHours ?? 0}<span className="text-sm font-normal ml-1">時間</span></p>
+                <p className="text-xs text-gray-400 mt-1">付与 {summary.timeAdjustment.totalGrantedHours ?? summary.timeAdjustment.totalHours ?? 0}h / 使用 {summary.timeAdjustment.totalUsedHours ?? 0}h</p>
               </div>
             </div>
           </div>
@@ -533,20 +542,27 @@ export const LeaveManagement: React.FC = () => {
             </div>
             <div className="bg-white dark:bg-gray-800 p-4 space-y-4">
               {/* 貸借対照表サマリー */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className={`rounded-lg p-3 ${THEME.ta.light}`}>
-                  <p className="text-xs text-gray-500">付与（累計）</p>
-                  <p className={`text-xl font-bold mt-0.5 ${THEME.ta.text}`}>{summary.timeAdjustment.totalGrantedHours}<span className="text-sm font-normal ml-1">時間</span></p>
-                </div>
-                <div className="rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30">
-                  <p className="text-xs text-gray-500">使用（累計）</p>
-                  <p className="text-xl font-bold mt-0.5 text-gray-700 dark:text-gray-300">{summary.timeAdjustment.totalUsedHours}<span className="text-sm font-normal ml-1">時間</span></p>
-                </div>
-                <div className={`rounded-lg p-3 ${summary.timeAdjustment.remainingHours > 0 ? THEME.ta.light : 'bg-gray-50 dark:bg-gray-700/30'}`}>
-                  <p className="text-xs text-gray-500">残り</p>
-                  <p className={`text-xl font-bold mt-0.5 ${summary.timeAdjustment.remainingHours > 0 ? THEME.ta.text : 'text-gray-400'}`}>{summary.timeAdjustment.remainingHours}<span className="text-sm font-normal ml-1">時間</span></p>
-                </div>
-              </div>
+              {(() => {
+                const granted = summary.timeAdjustment.totalGrantedHours ?? summary.timeAdjustment.totalHours ?? 0;
+                const used = summary.timeAdjustment.totalUsedHours ?? 0;
+                const remaining = summary.timeAdjustment.remainingHours ?? granted;
+                return (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className={`rounded-lg p-3 ${THEME.ta.light}`}>
+                      <p className="text-xs text-gray-500">付与（累計）</p>
+                      <p className={`text-xl font-bold mt-0.5 ${THEME.ta.text}`}>{granted}<span className="text-sm font-normal ml-1">時間</span></p>
+                    </div>
+                    <div className="rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30">
+                      <p className="text-xs text-gray-500">使用（累計）</p>
+                      <p className="text-xl font-bold mt-0.5 text-gray-700 dark:text-gray-300">{used}<span className="text-sm font-normal ml-1">時間</span></p>
+                    </div>
+                    <div className={`rounded-lg p-3 ${remaining > 0 ? THEME.ta.light : 'bg-gray-50 dark:bg-gray-700/30'}`}>
+                      <p className="text-xs text-gray-500">残り</p>
+                      <p className={`text-xl font-bold mt-0.5 ${remaining > 0 ? THEME.ta.text : 'text-gray-400'}`}>{remaining}<span className="text-sm font-normal ml-1">時間</span></p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* 付与履歴（貸方） */}
               <div>
