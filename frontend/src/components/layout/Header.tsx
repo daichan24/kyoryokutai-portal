@@ -7,6 +7,8 @@ import { Button } from '../common/Button';
 import { api } from '../../utils/api';
 import { BUILD_VERSION } from '../../buildVersion';
 import { NotepadDropdown } from '../notepad/NotepadDropdown';
+import { useStaffWorkspace } from '../../stores/workspaceStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -15,6 +17,13 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user } = useAuthStore();
   const version = BUILD_VERSION;
+  const { isStaff, workspaceMode, setWorkspaceMode } = useStaffWorkspace();
+  const queryClient = useQueryClient();
+
+  const applyWorkspaceMode = (mode: 'personal' | 'browse') => {
+    setWorkspaceMode(mode);
+    queryClient.invalidateQueries();
+  };
 
   // 受付ボックスの未読数
   const { data: unreadReception } = useQuery({
@@ -92,6 +101,33 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                   >
                     未確認 {unreadAnnounce?.count} 件
                   </Link>
+                )}
+                {/* 個人/閲覧モード切替（スタッフのみ） */}
+                {isStaff && (
+                  <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 p-0.5 bg-gray-50 dark:bg-gray-900/60 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => applyWorkspaceMode('personal')}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                        workspaceMode === 'personal'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/80 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      個人
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyWorkspaceMode('browse')}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                        workspaceMode === 'browse'
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/80 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      閲覧
+                    </button>
+                  </div>
                 )}
                 <div className="flex items-center space-x-2">
                   <div
