@@ -1,8 +1,12 @@
--- CreateEnum
-CREATE TYPE "HandoverCategoryType" AS ENUM ('EVENT', 'MEETING');
+-- CreateEnum (skip if exists)
+DO $$ BEGIN
+    CREATE TYPE "HandoverCategoryType" AS ENUM ('EVENT', 'MEETING');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateTable
-CREATE TABLE "HandoverCategory" (
+CREATE TABLE IF NOT EXISTS "HandoverCategory" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "type" "HandoverCategoryType" NOT NULL DEFAULT 'EVENT',
@@ -15,7 +19,7 @@ CREATE TABLE "HandoverCategory" (
 );
 
 -- CreateTable
-CREATE TABLE "HandoverFolder" (
+CREATE TABLE IF NOT EXISTS "HandoverFolder" (
     "id" TEXT NOT NULL,
     "categoryId" TEXT NOT NULL,
     "fiscalYear" INTEGER NOT NULL,
@@ -29,7 +33,7 @@ CREATE TABLE "HandoverFolder" (
 );
 
 -- CreateTable
-CREATE TABLE "HandoverDocument" (
+CREATE TABLE IF NOT EXISTS "HandoverDocument" (
     "id" TEXT NOT NULL,
     "folderId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -48,40 +52,72 @@ CREATE TABLE "HandoverDocument" (
 );
 
 -- CreateIndex
-CREATE INDEX "HandoverCategory_sortOrder_idx" ON "HandoverCategory"("sortOrder");
+CREATE INDEX IF NOT EXISTS "HandoverCategory_sortOrder_idx" ON "HandoverCategory"("sortOrder");
 
 -- CreateIndex
-CREATE INDEX "HandoverCategory_type_idx" ON "HandoverCategory"("type");
+CREATE INDEX IF NOT EXISTS "HandoverCategory_type_idx" ON "HandoverCategory"("type");
 
 -- CreateIndex
-CREATE INDEX "HandoverFolder_categoryId_idx" ON "HandoverFolder"("categoryId");
+CREATE INDEX IF NOT EXISTS "HandoverFolder_categoryId_idx" ON "HandoverFolder"("categoryId");
 
 -- CreateIndex
-CREATE INDEX "HandoverFolder_fiscalYear_idx" ON "HandoverFolder"("fiscalYear");
+CREATE INDEX IF NOT EXISTS "HandoverFolder_fiscalYear_idx" ON "HandoverFolder"("fiscalYear");
 
 -- CreateIndex
-CREATE INDEX "HandoverDocument_folderId_idx" ON "HandoverDocument"("folderId");
+CREATE INDEX IF NOT EXISTS "HandoverDocument_folderId_idx" ON "HandoverDocument"("folderId");
 
 -- CreateIndex
-CREATE INDEX "HandoverDocument_createdById_idx" ON "HandoverDocument"("createdById");
+CREATE INDEX IF NOT EXISTS "HandoverDocument_createdById_idx" ON "HandoverDocument"("createdById");
 
 -- AddForeignKey
-ALTER TABLE "HandoverFolder" ADD CONSTRAINT "HandoverFolder_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "HandoverCategory"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "HandoverFolder" ADD CONSTRAINT "HandoverFolder_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "HandoverCategory"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "HandoverDocument" ADD CONSTRAINT "HandoverDocument_folderId_fkey" FOREIGN KEY ("folderId") REFERENCES "HandoverFolder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "HandoverDocument" ADD CONSTRAINT "HandoverDocument_folderId_fkey" FOREIGN KEY ("folderId") REFERENCES "HandoverFolder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "HandoverDocument" ADD CONSTRAINT "HandoverDocument_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "HandoverDocument" ADD CONSTRAINT "HandoverDocument_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "HandoverDocument" ADD CONSTRAINT "HandoverDocument_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+    ALTER TABLE "HandoverDocument" ADD CONSTRAINT "HandoverDocument_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- Insert default categories
-INSERT INTO "HandoverCategory" ("id", "name", "type", "description", "sortOrder") VALUES
-  ('cat-activity-report', '活動報告会', 'EVENT', '年度ごとの活動報告会の準備・実施記録', 1),
-  ('cat-trial-tour', '協力隊お試しツアー', 'EVENT', '協力隊体験ツアーの企画・運営記録', 2),
-  ('cat-yuuyake-market', '夕やけ市', 'EVENT', '夕やけ市の出店・運営記録', 3),
-  ('cat-maoi-festival', 'ながぬまマオイ夢祭り', 'EVENT', 'マオイ夢祭りの参加・協力記録', 4),
-  ('cat-internship', 'インターンシップ', 'EVENT', 'インターンシップの受け入れ記録', 5),
-  ('cat-team-meeting', '協力隊MTG', 'MEETING', '協力隊ミーティングの議事録', 100);
+-- Insert default categories (only if not exists)
+INSERT INTO "HandoverCategory" ("id", "name", "type", "description", "sortOrder")
+SELECT 'cat-activity-report', '活動報告会', 'EVENT', '年度ごとの活動報告会の準備・実施記録', 1
+WHERE NOT EXISTS (SELECT 1 FROM "HandoverCategory" WHERE "id" = 'cat-activity-report');
+
+INSERT INTO "HandoverCategory" ("id", "name", "type", "description", "sortOrder")
+SELECT 'cat-trial-tour', '協力隊お試しツアー', 'EVENT', '協力隊体験ツアーの企画・運営記録', 2
+WHERE NOT EXISTS (SELECT 1 FROM "HandoverCategory" WHERE "id" = 'cat-trial-tour');
+
+INSERT INTO "HandoverCategory" ("id", "name", "type", "description", "sortOrder")
+SELECT 'cat-yuuyake-market', '夕やけ市', 'EVENT', '夕やけ市の出店・運営記録', 3
+WHERE NOT EXISTS (SELECT 1 FROM "HandoverCategory" WHERE "id" = 'cat-yuuyake-market');
+
+INSERT INTO "HandoverCategory" ("id", "name", "type", "description", "sortOrder")
+SELECT 'cat-maoi-festival', 'ながぬまマオイ夢祭り', 'EVENT', 'マオイ夢祭りの参加・協力記録', 4
+WHERE NOT EXISTS (SELECT 1 FROM "HandoverCategory" WHERE "id" = 'cat-maoi-festival');
+
+INSERT INTO "HandoverCategory" ("id", "name", "type", "description", "sortOrder")
+SELECT 'cat-internship', 'インターンシップ', 'EVENT', 'インターンシップの受け入れ記録', 5
+WHERE NOT EXISTS (SELECT 1 FROM "HandoverCategory" WHERE "id" = 'cat-internship');
+
+INSERT INTO "HandoverCategory" ("id", "name", "type", "description", "sortOrder")
+SELECT 'cat-team-meeting', '協力隊MTG', 'MEETING', '協力隊ミーティングの議事録', 100
+WHERE NOT EXISTS (SELECT 1 FROM "HandoverCategory" WHERE "id" = 'cat-team-meeting');
