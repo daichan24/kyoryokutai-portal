@@ -1,38 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Card,
-  CardContent,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  IconButton,
-  Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Tabs,
-  Tab,
-  Autocomplete,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  ExpandMore as ExpandMoreIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Folder as FolderIcon,
-  Description as DescriptionIcon,
-  Person as PersonIcon,
-} from '@mui/icons-material';
+import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Folder, FileText, Users } from 'lucide-react';
 import axios from 'axios';
+import { Button } from '../components/common/Button';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -80,16 +50,20 @@ interface HandoverDocument {
   updatedAt: string;
 }
 
-const Handover: React.FC = () => {
+export const Handover: React.FC = () => {
   const [categories, setCategories] = useState<HandoverCategory[]>([]);
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTab, setSelectedTab] = useState<'EVENT' | 'MEETING'>('EVENT');
   const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
+  const [loading, setLoading] = useState(true);
   
   // ダイアログ状態
   const [categoryDialog, setCategoryDialog] = useState(false);
   const [folderDialog, setFolderDialog] = useState(false);
   const [documentDialog, setDocumentDialog] = useState(false);
   const [documentViewDialog, setDocumentViewDialog] = useState(false);
+  
+  // 展開状態
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   
   // フォーム状態
   const [categoryForm, setCategoryForm] = useState({ name: '', type: 'EVENT' as 'EVENT' | 'MEETING', description: '' });
@@ -111,10 +85,17 @@ const Handover: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    fetchCategories();
-    fetchContacts();
-    fetchUsers();
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([fetchCategories(), fetchContacts(), fetchUsers()]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -259,367 +240,417 @@ const Handover: React.FC = () => {
     }
   };
 
-  const eventCategories = categories.filter(c => c.type === 'EVENT');
-  const meetingCategories = categories.filter(c => c.type === 'MEETING');
-  const displayCategories = selectedTab === 0 ? eventCategories : meetingCategories;
+  const toggleCategory = (categoryId: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoryId)) {
+      newExpanded.delete(categoryId);
+    } else {
+      newExpanded.add(categoryId);
+    }
+    setExpandedCategories(newExpanded);
+  };
+
+  const displayCategories = categories.filter(c => c.type === selectedTab);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">引き継ぎ</Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">引き継ぎ</h1>
+        <div className="flex gap-2">
           <Button
-            variant={viewMode === 'view' ? 'contained' : 'outlined'}
+            variant={viewMode === 'view' ? 'primary' : 'outline'}
             onClick={() => setViewMode('view')}
           >
             閲覧モード
           </Button>
           <Button
-            variant={viewMode === 'edit' ? 'contained' : 'outlined'}
+            variant={viewMode === 'edit' ? 'primary' : 'outline'}
             onClick={() => setViewMode('edit')}
           >
             編集モード
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
-      <Tabs value={selectedTab} onChange={(_, v) => setSelectedTab(v)} sx={{ mb: 3 }}>
-        <Tab label="イベント" />
-        <Tab label="協力隊MTG" />
-      </Tabs>
+      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+        <button
+          className={`px-4 py-2 font-medium ${
+            selectedTab === 'EVENT'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          }`}
+          onClick={() => setSelectedTab('EVENT')}
+        >
+          イベント
+        </button>
+        <button
+          className={`px-4 py-2 font-medium ${
+            selectedTab === 'MEETING'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          }`}
+          onClick={() => setSelectedTab('MEETING')}
+        >
+          協力隊MTG
+        </button>
+      </div>
 
       {viewMode === 'edit' && (
-        <Box sx={{ mb: 3 }}>
+        <div className="mb-4">
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
             onClick={() => {
-              setCategoryForm({ ...categoryForm, type: selectedTab === 0 ? 'EVENT' : 'MEETING' });
+              setCategoryForm({ ...categoryForm, type: selectedTab });
               setCategoryDialog(true);
             }}
           >
+            <Plus className="w-4 h-4 mr-2" />
             カテゴリ追加
           </Button>
-        </Box>
+        </div>
       )}
 
-      {displayCategories.map((category) => (
-        <Accordion key={category.id} sx={{ mb: 2 }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">{category.name}</Typography>
-            {category.description && (
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                {category.description}
-              </Typography>
-            )}
-          </AccordionSummary>
-          <AccordionDetails>
-            {viewMode === 'edit' && (
-              <Button
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => {
-                  setFolderForm({ ...folderForm, categoryId: category.id });
-                  setFolderDialog(true);
-                }}
-                sx={{ mb: 2 }}
-              >
-                年度フォルダ追加
-              </Button>
-            )}
-            
-            {category.folders.map((folder) => (
-              <Card key={folder.id} sx={{ mb: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <FolderIcon sx={{ mr: 1 }} />
-                    <Typography variant="h6">
-                      {folder.fiscalYear}年度 - {folder.title}
-                    </Typography>
-                  </Box>
-                  
-                  {viewMode === 'edit' && (
-                    <Button
-                      size="small"
-                      startIcon={<AddIcon />}
-                      onClick={() => {
-                        resetDocumentForm();
-                        setDocumentForm({ ...documentForm, folderId: folder.id });
-                        setDocumentDialog(true);
-                      }}
-                      sx={{ mb: 2 }}
-                    >
-                      文書追加
-                    </Button>
-                  )}
+      <div className="space-y-4">
+        {displayCategories.map((category) => (
+          <div key={category.id} className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <button
+              onClick={() => toggleCategory(category.id)}
+              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                {expandedCategories.has(category.id) ? (
+                  <ChevronDown className="w-5 h-5" />
+                ) : (
+                  <ChevronRight className="w-5 h-5" />
+                )}
+                <h2 className="text-xl font-semibold">{category.name}</h2>
+                {category.description && (
+                  <span className="text-sm text-gray-500">{category.description}</span>
+                )}
+              </div>
+            </button>
 
-                  {folder.documents.map((doc) => (
-                    <Box
-                      key={doc.id}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        p: 1,
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 1,
-                        mb: 1,
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: '#f5f5f5' },
-                      }}
-                      onClick={() => handleViewDocument(doc.id)}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                        <DescriptionIcon sx={{ mr: 1 }} />
-                        <Typography>{doc.title}</Typography>
-                        {doc.budget && (
-                          <Chip label={`¥${doc.budget.toLocaleString()}`} size="small" color="primary" />
-                        )}
-                        {doc.venue && (
-                          <Chip label={doc.venue} size="small" color="secondary" />
-                        )}
-                        {doc.relatedContactIds && doc.relatedContactIds.length > 0 && (
-                          <Chip 
-                            icon={<PersonIcon />}
-                            label={`町民${doc.relatedContactIds.length}名`} 
-                            size="small" 
-                            variant="outlined"
-                          />
-                        )}
-                        {doc.relatedMemberIds && doc.relatedMemberIds.length > 0 && (
-                          <Chip 
-                            icon={<PersonIcon />}
-                            label={`協力隊${doc.relatedMemberIds.length}名`} 
-                            size="small" 
-                            variant="outlined"
-                            color="info"
-                          />
-                        )}
-                      </Box>
+            {expandedCategories.has(category.id) && (
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                {viewMode === 'edit' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setFolderForm({ ...folderForm, categoryId: category.id });
+                      setFolderDialog(true);
+                    }}
+                    className="mb-4"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    年度フォルダ追加
+                  </Button>
+                )}
+
+                <div className="space-y-4">
+                  {category.folders.map((folder) => (
+                    <div key={folder.id} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Folder className="w-5 h-5 text-primary" />
+                        <h3 className="text-lg font-semibold">
+                          {folder.fiscalYear}年度 - {folder.title}
+                        </h3>
+                      </div>
+
                       {viewMode === 'edit' && (
-                        <Box onClick={(e) => e.stopPropagation()}>
-                          <IconButton size="small" onClick={() => handleEditDocument(doc)}>
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton size="small" onClick={() => handleDeleteDocument(doc.id)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            resetDocumentForm();
+                            setDocumentForm({ ...documentForm, folderId: folder.id });
+                            setDocumentDialog(true);
+                          }}
+                          className="mb-3"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          文書追加
+                        </Button>
                       )}
-                    </Box>
+
+                      <div className="space-y-2">
+                        {folder.documents.map((doc) => (
+                          <div
+                            key={doc.id}
+                            className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                            onClick={() => handleViewDocument(doc.id)}
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <FileText className="w-4 h-4 text-gray-500" />
+                              <span className="font-medium">{doc.title}</span>
+                              {doc.budget && (
+                                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded">
+                                  ¥{doc.budget.toLocaleString()}
+                                </span>
+                              )}
+                              {doc.venue && (
+                                <span className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded">
+                                  {doc.venue}
+                                </span>
+                              )}
+                              {doc.relatedContactIds && doc.relatedContactIds.length > 0 && (
+                                <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded flex items-center gap-1">
+                                  <Users className="w-3 h-3" />
+                                  町民{doc.relatedContactIds.length}名
+                                </span>
+                              )}
+                              {doc.relatedMemberIds && doc.relatedMemberIds.length > 0 && (
+                                <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded flex items-center gap-1">
+                                  <Users className="w-3 h-3" />
+                                  協力隊{doc.relatedMemberIds.length}名
+                                </span>
+                              )}
+                            </div>
+                            {viewMode === 'edit' && (
+                              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => handleEditDocument(doc)}
+                                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                  className="p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ))}
-                </CardContent>
-              </Card>
-            ))}
-          </AccordionDetails>
-        </Accordion>
-      ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* カテゴリ作成ダイアログ */}
-      <Dialog open={categoryDialog} onClose={() => setCategoryDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>カテゴリ追加</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="カテゴリ名"
-            value={categoryForm.name}
-            onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-            sx={{ mt: 2, mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="説明"
-            multiline
-            rows={3}
-            value={categoryForm.description}
-            onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCategoryDialog(false)}>キャンセル</Button>
-          <Button onClick={handleCreateCategory} variant="contained">作成</Button>
-        </DialogActions>
-      </Dialog>
+      {categoryDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">カテゴリ追加</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">カテゴリ名</label>
+                <input
+                  type="text"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">説明</label>
+                <textarea
+                  value={categoryForm.description}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-6">
+              <Button variant="outline" onClick={() => setCategoryDialog(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleCreateCategory}>作成</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* フォルダ作成ダイアログ */}
-      <Dialog open={folderDialog} onClose={() => setFolderDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>年度フォルダ追加</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="年度"
-            type="number"
-            value={folderForm.fiscalYear}
-            onChange={(e) => setFolderForm({ ...folderForm, fiscalYear: parseInt(e.target.value) })}
-            sx={{ mt: 2, mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="フォルダ名"
-            value={folderForm.title}
-            onChange={(e) => setFolderForm({ ...folderForm, title: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="説明"
-            multiline
-            rows={3}
-            value={folderForm.description}
-            onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFolderDialog(false)}>キャンセル</Button>
-          <Button onClick={handleCreateFolder} variant="contained">作成</Button>
-        </DialogActions>
-      </Dialog>
+      {folderDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">年度フォルダ追加</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">年度</label>
+                <input
+                  type="number"
+                  value={folderForm.fiscalYear}
+                  onChange={(e) => setFolderForm({ ...folderForm, fiscalYear: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">フォルダ名</label>
+                <input
+                  type="text"
+                  value={folderForm.title}
+                  onChange={(e) => setFolderForm({ ...folderForm, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">説明</label>
+                <textarea
+                  value={folderForm.description}
+                  onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-6">
+              <Button variant="outline" onClick={() => setFolderDialog(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleCreateFolder}>作成</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 文書作成/編集ダイアログ */}
-      <Dialog open={documentDialog} onClose={() => setDocumentDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{editingId ? '文書編集' : '文書作成'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="タイトル"
-            value={documentForm.title}
-            onChange={(e) => setDocumentForm({ ...documentForm, title: e.target.value })}
-            sx={{ mt: 2, mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="内容"
-            multiline
-            rows={10}
-            value={documentForm.content}
-            onChange={(e) => setDocumentForm({ ...documentForm, content: e.target.value })}
-            sx={{ mb: 2 }}
-            placeholder="準備段階のメモ、議事録、振り返りなどを記入してください"
-          />
-          <TextField
-            fullWidth
-            label="予算（円）"
-            type="number"
-            value={documentForm.budget}
-            onChange={(e) => setDocumentForm({ ...documentForm, budget: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="場所"
-            value={documentForm.venue}
-            onChange={(e) => setDocumentForm({ ...documentForm, venue: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <Autocomplete
-            multiple
-            options={contacts}
-            getOptionLabel={(option) => `${option.name}${option.organization ? ` (${option.organization})` : ''}`}
-            value={contacts.filter(c => documentForm.relatedContactIds.includes(c.id))}
-            onChange={(_, newValue) => {
-              setDocumentForm({ ...documentForm, relatedContactIds: newValue.map(v => v.id) });
-            }}
-            renderInput={(params) => (
-              <TextField {...params} label="関わった町民" placeholder="町民を選択" />
-            )}
-            sx={{ mb: 2 }}
-          />
-          <Autocomplete
-            multiple
-            options={users}
-            getOptionLabel={(option) => option.name}
-            value={users.filter(u => documentForm.relatedMemberIds.includes(u.id))}
-            onChange={(_, newValue) => {
-              setDocumentForm({ ...documentForm, relatedMemberIds: newValue.map(v => v.id) });
-            }}
-            renderInput={(params) => (
-              <TextField {...params} label="関わった協力隊" placeholder="協力隊を選択" />
-            )}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setDocumentDialog(false);
-            resetDocumentForm();
-          }}>キャンセル</Button>
-          <Button onClick={handleCreateDocument} variant="contained">
-            {editingId ? '更新' : '作成'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {documentDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full m-4">
+            <h2 className="text-xl font-bold mb-4">{editingId ? '文書編集' : '文書作成'}</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">タイトル</label>
+                <input
+                  type="text"
+                  value={documentForm.title}
+                  onChange={(e) => setDocumentForm({ ...documentForm, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">内容</label>
+                <textarea
+                  value={documentForm.content}
+                  onChange={(e) => setDocumentForm({ ...documentForm, content: e.target.value })}
+                  rows={10}
+                  placeholder="準備段階のメモ、議事録、振り返りなどを記入してください"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">予算（円）</label>
+                  <input
+                    type="number"
+                    value={documentForm.budget}
+                    onChange={(e) => setDocumentForm({ ...documentForm, budget: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">場所</label>
+                  <input
+                    type="text"
+                    value={documentForm.venue}
+                    onChange={(e) => setDocumentForm({ ...documentForm, venue: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-6">
+              <Button variant="outline" onClick={() => {
+                setDocumentDialog(false);
+                resetDocumentForm();
+              }}>
+                キャンセル
+              </Button>
+              <Button onClick={handleCreateDocument}>
+                {editingId ? '更新' : '作成'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 文書閲覧ダイアログ */}
-      <Dialog open={documentViewDialog} onClose={() => setDocumentViewDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{selectedDocument?.title}</DialogTitle>
-        <DialogContent>
-          {selectedDocument && (
-            <Box>
-              <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+      {documentViewDialog && selectedDocument && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full m-4">
+            <h2 className="text-xl font-bold mb-4">{selectedDocument.title}</h2>
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
                 {selectedDocument.budget && (
-                  <Chip label={`予算: ¥${selectedDocument.budget.toLocaleString()}`} color="primary" />
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded">
+                    予算: ¥{selectedDocument.budget.toLocaleString()}
+                  </span>
                 )}
                 {selectedDocument.venue && (
-                  <Chip label={`場所: ${selectedDocument.venue}`} color="secondary" />
+                  <span className="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded">
+                    場所: {selectedDocument.venue}
+                  </span>
                 )}
-              </Box>
-              
+              </div>
+
               {selectedDocument.relatedContactIds && selectedDocument.relatedContactIds.length > 0 && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>関わった町民:</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">関わった町民:</h3>
+                  <div className="flex flex-wrap gap-2">
                     {selectedDocument.relatedContactIds.map(contactId => {
                       const contact = contacts.find(c => c.id === contactId);
                       return contact ? (
-                        <Chip 
-                          key={contactId} 
-                          label={contact.name} 
-                          size="small" 
-                          variant="outlined"
-                        />
+                        <span key={contactId} className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 rounded">
+                          {contact.name}
+                        </span>
                       ) : null;
                     })}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               )}
 
               {selectedDocument.relatedMemberIds && selectedDocument.relatedMemberIds.length > 0 && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>関わった協力隊:</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">関わった協力隊:</h3>
+                  <div className="flex flex-wrap gap-2">
                     {selectedDocument.relatedMemberIds.map(userId => {
                       const user = users.find(u => u.id === userId);
                       return user ? (
-                        <Chip 
-                          key={userId} 
-                          label={user.name} 
-                          size="small" 
-                          variant="outlined"
-                          color="info"
-                        />
+                        <span key={userId} className="px-2 py-1 text-sm bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded">
+                          {user.name}
+                        </span>
                       ) : null;
                     })}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               )}
 
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', mb: 2 }}>
-                {selectedDocument.content}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <div className="prose dark:prose-invert max-w-none">
+                <pre className="whitespace-pre-wrap font-sans">{selectedDocument.content}</pre>
+              </div>
+
+              <div className="text-sm text-gray-500 border-t border-gray-200 dark:border-gray-700 pt-4">
                 作成者: {selectedDocument.createdBy.name} | 
                 作成日: {new Date(selectedDocument.createdAt).toLocaleDateString('ja-JP')}
                 {selectedDocument.updatedBy && (
                   <> | 更新者: {selectedDocument.updatedBy.name}</>
                 )}
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDocumentViewDialog(false)}>閉じる</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <Button onClick={() => setDocumentViewDialog(false)}>閉じる</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

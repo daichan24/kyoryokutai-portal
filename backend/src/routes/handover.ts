@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import prisma from '../lib/prisma';
 
 const router = Router();
 
 // カテゴリ一覧取得
-router.get('/categories', authenticateToken, async (req, res) => {
+router.get('/categories', authenticate, async (req: AuthRequest, res) => {
   try {
     const categories = await prisma.handoverCategory.findMany({
       orderBy: { sortOrder: 'asc' },
@@ -27,7 +27,7 @@ router.get('/categories', authenticateToken, async (req, res) => {
 });
 
 // カテゴリ作成
-router.post('/categories', authenticateToken, async (req, res) => {
+router.post('/categories', authenticate, async (req: AuthRequest, res) => {
   try {
     const { name, type, description } = req.body;
     const maxOrder = await prisma.handoverCategory.findFirst({
@@ -49,7 +49,7 @@ router.post('/categories', authenticateToken, async (req, res) => {
 });
 
 // カテゴリ更新
-router.put('/categories/:id', authenticateToken, async (req, res) => {
+router.put('/categories/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { name, type, description } = req.body;
@@ -64,7 +64,7 @@ router.put('/categories/:id', authenticateToken, async (req, res) => {
 });
 
 // カテゴリ削除
-router.delete('/categories/:id', authenticateToken, async (req, res) => {
+router.delete('/categories/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     await prisma.handoverCategory.delete({ where: { id } });
@@ -75,7 +75,7 @@ router.delete('/categories/:id', authenticateToken, async (req, res) => {
 });
 
 // フォルダ作成
-router.post('/folders', authenticateToken, async (req, res) => {
+router.post('/folders', authenticate, async (req: AuthRequest, res) => {
   try {
     const { categoryId, fiscalYear, title, description } = req.body;
     const maxOrder = await prisma.handoverFolder.findFirst({
@@ -99,7 +99,7 @@ router.post('/folders', authenticateToken, async (req, res) => {
 });
 
 // フォルダ更新
-router.put('/folders/:id', authenticateToken, async (req, res) => {
+router.put('/folders/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { title, description, fiscalYear } = req.body;
@@ -114,7 +114,7 @@ router.put('/folders/:id', authenticateToken, async (req, res) => {
 });
 
 // フォルダ削除
-router.delete('/folders/:id', authenticateToken, async (req, res) => {
+router.delete('/folders/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     await prisma.handoverFolder.delete({ where: { id } });
@@ -125,7 +125,7 @@ router.delete('/folders/:id', authenticateToken, async (req, res) => {
 });
 
 // 文書一覧取得（フォルダ内）
-router.get('/folders/:folderId/documents', authenticateToken, async (req, res) => {
+router.get('/folders/:folderId/documents', authenticate, async (req: AuthRequest, res) => {
   try {
     const { folderId } = req.params;
     const documents = await prisma.handoverDocument.findMany({
@@ -143,7 +143,7 @@ router.get('/folders/:folderId/documents', authenticateToken, async (req, res) =
 });
 
 // 文書詳細取得
-router.get('/documents/:id', authenticateToken, async (req, res) => {
+router.get('/documents/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const document = await prisma.handoverDocument.findUnique({
@@ -165,9 +165,9 @@ router.get('/documents/:id', authenticateToken, async (req, res) => {
 });
 
 // 文書作成
-router.post('/documents', authenticateToken, async (req, res) => {
+router.post('/documents', authenticate, async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.user!.id;
     const { folderId, title, content, relatedContactIds, relatedMemberIds, budget, venue } = req.body;
     
     const maxOrder = await prisma.handoverDocument.findFirst({
@@ -199,9 +199,9 @@ router.post('/documents', authenticateToken, async (req, res) => {
 });
 
 // 文書更新
-router.put('/documents/:id', authenticateToken, async (req, res) => {
+router.put('/documents/:id', authenticate, async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.user!.id;
     const { id } = req.params;
     const { title, content, relatedContactIds, relatedMemberIds, budget, venue } = req.body;
     
@@ -228,7 +228,7 @@ router.put('/documents/:id', authenticateToken, async (req, res) => {
 });
 
 // 文書削除
-router.delete('/documents/:id', authenticateToken, async (req, res) => {
+router.delete('/documents/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     await prisma.handoverDocument.delete({ where: { id } });
