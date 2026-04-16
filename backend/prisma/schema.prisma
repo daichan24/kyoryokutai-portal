@@ -117,6 +117,9 @@ model User {
   notepads              Notepad[]
   snsAccounts           SNSAccount[]
 
+  handoverDocumentsCreated HandoverDocument[] @relation("HandoverDocumentCreator")
+  handoverDocumentsUpdated HandoverDocument[] @relation("HandoverDocumentUpdater")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1595,4 +1598,78 @@ model TimeAdjustment {
 
   @@index([userId, adjustedAt])
   @@index([compensatoryLeaveId])
+}
+
+// ========================================
+// 引き継ぎ管理
+// ========================================
+
+enum HandoverCategoryType {
+  EVENT   // イベント
+  MEETING // ミーティング
+}
+
+/// 引き継ぎカテゴリ（活動報告会、協力隊お試しツアー、夕やけ市など）
+model HandoverCategory {
+  id          String               @id @default(uuid())
+  name        String               // カテゴリ名
+  type        HandoverCategoryType @default(EVENT)
+  description String?              @db.Text
+  sortOrder   Int                  @default(0)
+
+  folders HandoverFolder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([type])
+}
+
+/// 引き継ぎフォルダ（年度ごと）
+model HandoverFolder {
+  id          String @id @default(uuid())
+  categoryId  String
+  category    HandoverCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  fiscalYear  Int    // 年度（例: 2025）
+  title       String // フォルダ名（例: 2025年度 活動報告会）
+  description String? @db.Text
+  sortOrder   Int    @default(0)
+
+  documents HandoverDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([fiscalYear])
+}
+
+/// 引き継ぎ文書（準備メモ、議事録、振り返りなど）
+model HandoverDocument {
+  id       String          @id @default(uuid())
+  folderId String
+  folder   HandoverFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  title   String // 文書タイトル
+  content String @db.Text // 文書内容（Markdown対応）
+
+  // 関連情報
+  relatedContactIds String[] @default([]) // 関わった町民（Contact ID配列）
+  relatedMemberIds  String[] @default([]) // 関わった協力隊（User ID配列）
+  budget            Int? // かかる経費（円）
+  venue             String? // 場所
+
+  sortOrder Int @default(0)
+
+  createdById String
+  createdBy   User   @relation("HandoverDocumentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  updatedById String?
+  updatedBy   User?  @relation("HandoverDocumentUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([folderId])
+  @@index([createdById])
 }

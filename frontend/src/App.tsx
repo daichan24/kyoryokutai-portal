@@ -42,6 +42,7 @@ const ReceptionBox = lazy(() => import('./pages/ReceptionBox').then((m) => ({ de
 const InboxPage = lazy(() => import('./pages/InboxPage').then((m) => ({ default: m.InboxPage })));
 const NotepadPage = lazy(() => import('./pages/NotepadPage').then((m) => ({ default: m.NotepadPage })));
 const LeaveManagement = lazy(() => import('./pages/LeaveManagement').then((m) => ({ default: m.LeaveManagement })));
+const Handover = lazy(() => import('./pages/Handover'));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -402,6 +403,17 @@ const App: React.FC = () => {
             <PrivateRoute>
               <Layout>
                 <LeaveManagement />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/handover"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <Handover />
               </Layout>
             </PrivateRoute>
           }

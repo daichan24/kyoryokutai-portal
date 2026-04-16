@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronRight,
   CalendarClock,
+  FolderOpen,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -261,6 +262,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     to: '/settings/drive-links',
     icon: HardDrive,
     label: 'ドライブ',
+  });
+
+  userMenuItems.push({
+    to: '/handover',
+    icon: FolderOpen,
+    label: '引き継ぎ',
   });
 
   const statusItems: Array<{ to: string; icon: NavIcon; label: string; end?: boolean }> = [
