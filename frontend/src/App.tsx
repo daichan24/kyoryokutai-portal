@@ -43,7 +43,6 @@ const InboxPage = lazy(() => import('./pages/InboxPage').then((m) => ({ default:
 const NotepadPage = lazy(() => import('./pages/NotepadPage').then((m) => ({ default: m.NotepadPage })));
 const LeaveManagement = lazy(() => import('./pages/LeaveManagement').then((m) => ({ default: m.LeaveManagement })));
 const Handover = lazy(() => import('./pages/Handover'));
-const CooperationRules = lazy(() => import('./pages/CooperationRules'));
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -415,17 +414,6 @@ const App: React.FC = () => {
             <PrivateRoute>
               <Layout>
                 <Handover />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/cooperation-rules"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <CooperationRules />
               </Layout>
             </PrivateRoute>
           }

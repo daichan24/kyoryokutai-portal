@@ -270,12 +270,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     label: '引き継ぎ',
   });
 
-  userMenuItems.push({
-    to: '/cooperation-rules',
-    icon: FileText,
-    label: '協力隊細則',
-  });
-
   const statusItems: Array<{ to: string; icon: NavIcon; label: string; end?: boolean }> = [
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/events/participation-summary', icon: CalendarDays, label: 'イベント参加状況' },

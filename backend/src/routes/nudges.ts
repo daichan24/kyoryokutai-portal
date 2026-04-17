@@ -8,18 +8,61 @@ const router = Router();
 router.use(authenticate);
 
 const nudgeDocumentSchema = z.object({
+  fiscalYear: z.number().int().min(2020).max(2100),
   title: z.string().min(1),
   content: z.string().min(1),
 });
 
 /**
  * GET /api/nudges
- * 協力隊催促文書を取得（1件のみ運用）
+ * 全年度の協力隊細則を取得
  */
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const document = await prisma.nudgeDocument.findFirst({
-      orderBy: { updatedAt: 'desc' },
+    const documents = await prisma.nudgeDocument.findMany({
+      orderBy: { fiscalYear: 'desc' },
+      include: {
+        updater: {
+          select: {
+            id: true,
+            name: true,
+            avatarColor: true,
+          },
+        },
+      },
+    });
+
+    res.json(
+      documents.map((doc) => ({
+        id: doc.id,
+        fiscalYear: doc.fiscalYear,
+        title: doc.title,
+        content: doc.content,
+        publishedAt: doc.publishedAt.toISOString(),
+        updatedAt: doc.updatedAt.toISOString(),
+        updatedBy: {
+          id: doc.updater.id,
+          name: doc.updater.name,
+          avatarColor: doc.updater.avatarColor,
+        },
+      }))
+    );
+  } catch (error) {
+    console.error('Get nudge documents error:', error);
+    res.status(500).json({ error: 'Failed to get nudge documents' });
+  }
+});
+
+/**
+ * GET /api/nudges/:fiscalYear
+ * 特定年度の協力隊細則を取得
+ */
+router.get('/:fiscalYear', async (req: AuthRequest, res) => {
+  try {
+    const fiscalYear = parseInt(req.params.fiscalYear);
+    
+    const document = await prisma.nudgeDocument.findUnique({
+      where: { fiscalYear },
       include: {
         updater: {
           select: {
@@ -32,11 +75,12 @@ router.get('/', async (req: AuthRequest, res) => {
     });
 
     if (!document) {
-      return res.json(null);
+      return res.status(404).json({ error: 'Document not found' });
     }
 
     res.json({
       id: document.id,
+      fiscalYear: document.fiscalYear,
       title: document.title,
       content: document.content,
       publishedAt: document.publishedAt.toISOString(),
@@ -54,10 +98,10 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 /**
- * PUT /api/nudges
- * 協力隊催促文書を更新（MASTER/SUPPORT/GOVERNMENTのみ）
+ * POST /api/nudges
+ * 新年度の協力隊細則を作成（MASTER/SUPPORT/GOVERNMENTのみ）
  */
-router.put('/', async (req: AuthRequest, res) => {
+router.post('/', async (req: AuthRequest, res) => {
   try {
     // 権限チェック
     if (!['MASTER', 'SUPPORT', 'GOVERNMENT'].includes(req.user!.role)) {
@@ -67,64 +111,38 @@ router.put('/', async (req: AuthRequest, res) => {
     const data = nudgeDocumentSchema.parse(req.body);
     const userId = req.user!.id;
 
-    // 既存の文書を取得
-    const existing = await prisma.nudgeDocument.findFirst({
-      orderBy: { updatedAt: 'desc' },
+    // 既存チェック
+    const existing = await prisma.nudgeDocument.findUnique({
+      where: { fiscalYear: data.fiscalYear },
     });
 
-    let document;
     if (existing) {
-      // 更新履歴を保存
-      await prisma.nudgeRevision.create({
-        data: {
-          documentId: existing.id,
-          content: existing.content,
-          updatedBy: existing.updatedBy,
-        },
-      });
-
-      // 文書を更新
-      document = await prisma.nudgeDocument.update({
-        where: { id: existing.id },
-        data: {
-          title: data.title,
-          content: data.content,
-          publishedAt: existing.publishedAt, // 発行日は変更しない
-          updatedBy: userId,
-        },
-        include: {
-          updater: {
-            select: {
-              id: true,
-              name: true,
-              avatarColor: true,
-            },
-          },
-        },
-      });
-    } else {
-      // 新規作成
-      document = await prisma.nudgeDocument.create({
-        data: {
-          title: data.title,
-          content: data.content,
-          publishedAt: new Date(),
-          updatedBy: userId,
-        },
-        include: {
-          updater: {
-            select: {
-              id: true,
-              name: true,
-              avatarColor: true,
-            },
-          },
-        },
-      });
+      return res.status(400).json({ error: 'この年度の細則は既に存在します' });
     }
 
-    res.json({
+    // 新規作成
+    const document = await prisma.nudgeDocument.create({
+      data: {
+        fiscalYear: data.fiscalYear,
+        title: data.title,
+        content: data.content,
+        publishedAt: new Date(),
+        updatedBy: userId,
+      },
+      include: {
+        updater: {
+          select: {
+            id: true,
+            name: true,
+            avatarColor: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json({
       id: document.id,
+      fiscalYear: document.fiscalYear,
       title: document.title,
       content: document.content,
       publishedAt: document.publishedAt.toISOString(),
@@ -139,19 +157,116 @@ router.put('/', async (req: AuthRequest, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error('Create nudge document error:', error);
+    res.status(500).json({ error: 'Failed to create nudge document' });
+  }
+});
+
+/**
+ * PUT /api/nudges/:fiscalYear
+ * 協力隊細則を更新（MASTER/SUPPORT/GOVERNMENTのみ）
+ */
+router.put('/:fiscalYear', async (req: AuthRequest, res) => {
+  try {
+    // 権限チェック
+    if (!['MASTER', 'SUPPORT', 'GOVERNMENT'].includes(req.user!.role)) {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    const fiscalYear = parseInt(req.params.fiscalYear);
+    const { title, content } = req.body;
+    const userId = req.user!.id;
+
+    // 既存の文書を取得
+    const existing = await prisma.nudgeDocument.findUnique({
+      where: { fiscalYear },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // 更新履歴を保存
+    await prisma.nudgeRevision.create({
+      data: {
+        documentId: existing.id,
+        content: existing.content,
+        updatedBy: existing.updatedBy,
+      },
+    });
+
+    // 文書を更新
+    const document = await prisma.nudgeDocument.update({
+      where: { fiscalYear },
+      data: {
+        title,
+        content,
+        updatedBy: userId,
+      },
+      include: {
+        updater: {
+          select: {
+            id: true,
+            name: true,
+            avatarColor: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      id: document.id,
+      fiscalYear: document.fiscalYear,
+      title: document.title,
+      content: document.content,
+      publishedAt: document.publishedAt.toISOString(),
+      updatedAt: document.updatedAt.toISOString(),
+      updatedBy: {
+        id: document.updater.id,
+        name: document.updater.name,
+        avatarColor: document.updater.avatarColor,
+      },
+    });
+  } catch (error) {
     console.error('Update nudge document error:', error);
     res.status(500).json({ error: 'Failed to update nudge document' });
   }
 });
 
 /**
- * GET /api/nudges/revisions
+ * DELETE /api/nudges/:fiscalYear
+ * 協力隊細則を削除（MASTERのみ）
+ */
+router.delete('/:fiscalYear', async (req: AuthRequest, res) => {
+  try {
+    // 権限チェック
+    if (req.user!.role !== 'MASTER') {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    const fiscalYear = parseInt(req.params.fiscalYear);
+
+    await prisma.nudgeDocument.delete({
+      where: { fiscalYear },
+    });
+
+    res.json({ message: 'Document deleted successfully' });
+  } catch (error) {
+    console.error('Delete nudge document error:', error);
+    res.status(500).json({ error: 'Failed to delete nudge document' });
+  }
+});
+
+/**
+ * GET /api/nudges/:fiscalYear/revisions
  * 更新履歴を取得
  */
-router.get('/revisions', async (req: AuthRequest, res) => {
+router.get('/:fiscalYear/revisions', async (req: AuthRequest, res) => {
   try {
-    const document = await prisma.nudgeDocument.findFirst({
-      orderBy: { updatedAt: 'desc' },
+    const fiscalYear = parseInt(req.params.fiscalYear);
+    
+    const document = await prisma.nudgeDocument.findUnique({
+      where: { fiscalYear },
     });
 
     if (!document) {
@@ -191,16 +306,17 @@ router.get('/revisions', async (req: AuthRequest, res) => {
 });
 
 /**
- * GET /api/nudges/pdf
- * 協力隊催促PDF出力
+ * GET /api/nudges/:fiscalYear/pdf
+ * 協力隊細則PDF出力
  */
-router.get('/pdf', async (req: AuthRequest, res) => {
+router.get('/:fiscalYear/pdf', async (req: AuthRequest, res) => {
   try {
+    const fiscalYear = parseInt(req.params.fiscalYear);
     const { generateNudgePDF } = await import('../services/pdfGenerator');
-    const pdf = await generateNudgePDF();
+    const pdf = await generateNudgePDF(fiscalYear);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="協力隊細則_${format(new Date(), 'yyyyMMdd')}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="協力隊細則_${fiscalYear}年度_${format(new Date(), 'yyyyMMdd')}.pdf"`);
     res.send(pdf);
   } catch (error) {
     console.error('Generate nudge PDF error:', error);
@@ -210,4 +326,3 @@ router.get('/pdf', async (req: AuthRequest, res) => {
 });
 
 export default router;
-

@@ -145,13 +145,24 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
 /**
  * 協力隊催促PDF生成
  */
-export async function generateNudgePDF(): Promise<Buffer> {
-  const document = await prisma.nudgeDocument.findFirst({
-    orderBy: { updatedAt: 'desc' },
-    include: {
-      updater: true,
-    },
-  });
+export async function generateNudgePDF(fiscalYear?: number): Promise<Buffer> {
+  let document;
+  
+  if (fiscalYear) {
+    document = await prisma.nudgeDocument.findUnique({
+      where: { fiscalYear },
+      include: {
+        updater: true,
+      },
+    });
+  } else {
+    document = await prisma.nudgeDocument.findFirst({
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        updater: true,
+      },
+    });
+  }
 
   if (!document) {
     throw new Error('Nudge document not found');
