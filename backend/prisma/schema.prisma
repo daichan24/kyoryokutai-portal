@@ -1673,3 +1673,28 @@ model HandoverDocument {
   @@index([folderId])
   @@index([createdById])
 }
+
+// ========================================
+// 協力隊細則管理
+// ========================================
+
+/// 協力隊細則（年度ごと）
+model CooperationRule {
+  id          String   @id @default(uuid())
+  fiscalYear  Int      // 年度（例: 2025）
+  title       String   @db.VarChar(200) // 細則タイトル
+  content     String   @db.Text // 細則内容（Markdown対応）
+  version     Int      @default(1) // バージョン番号
+  isActive    Boolean  @default(true) // 有効/無効
+
+  createdById String?
+  updatedById String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([fiscalYear])
+  @@index([fiscalYear])
+  @@index([isActive])
+}
+

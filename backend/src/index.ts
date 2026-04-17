@@ -40,6 +40,7 @@ import receptionBoxRoutes from './routes/receptionBox';
 import notepadRoutes from './routes/notepad';
 import leaveRoutes from './routes/leave';
 import handoverRoutes from './routes/handover';
+import cooperationRulesRoutes from './routes/cooperationRules';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -160,6 +161,7 @@ app.use('/api/reception-box', receptionBoxRoutes);
 app.use('/api/me/notepad', notepadRoutes);
 app.use('/api/leave', leaveRoutes);
 app.use('/api/handover', handoverRoutes);
+app.use('/api/cooperation-rules', cooperationRulesRoutes);
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');
