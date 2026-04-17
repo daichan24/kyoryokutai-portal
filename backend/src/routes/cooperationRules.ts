@@ -1,12 +1,12 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // 全細則取得
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const rules = await prisma.cooperationRule.findMany({
       orderBy: { fiscalYear: 'desc' },
@@ -19,7 +19,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // 特定年度の細則取得
-router.get('/:fiscalYear', authenticateToken, async (req, res) => {
+router.get('/:fiscalYear', authenticate, async (req, res) => {
   try {
     const fiscalYear = parseInt(req.params.fiscalYear);
     const rule = await prisma.cooperationRule.findUnique({
@@ -38,10 +38,10 @@ router.get('/:fiscalYear', authenticateToken, async (req, res) => {
 });
 
 // 細則作成
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const { fiscalYear, title, content, isActive } = req.body;
-    const userId = (req as any).user.userId;
+    const userId = (req as AuthRequest).user?.id;
 
     // 既存チェック
     const existing = await prisma.cooperationRule.findUnique({
@@ -71,11 +71,11 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // 細則更新
-router.put('/:fiscalYear', authenticateToken, async (req, res) => {
+router.put('/:fiscalYear', authenticate, async (req, res) => {
   try {
     const fiscalYear = parseInt(req.params.fiscalYear);
     const { title, content, isActive } = req.body;
-    const userId = (req as any).user.userId;
+    const userId = (req as AuthRequest).user?.id;
 
     const rule = await prisma.cooperationRule.update({
       where: { fiscalYear },
@@ -96,7 +96,7 @@ router.put('/:fiscalYear', authenticateToken, async (req, res) => {
 });
 
 // 細則削除
-router.delete('/:fiscalYear', authenticateToken, async (req, res) => {
+router.delete('/:fiscalYear', authenticate, async (req, res) => {
   try {
     const fiscalYear = parseInt(req.params.fiscalYear);
 

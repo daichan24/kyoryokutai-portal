@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
-import api from '../lib/api';
+import { api } from '../utils/api';
 
 interface CooperationRule {
   id: string;
