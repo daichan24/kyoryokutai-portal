@@ -48,57 +48,83 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
   // FullCalendar用のイベントデータに変換
   const calendarEvents = React.useMemo(() => {
+    console.log('Converting schedules to calendar events...');
+    console.log('Sample schedule:', schedules[0]);
+    
     const result = [
       // スケジュール
       ...schedules.map((schedule) => {
-        const startDate = schedule.startDate || schedule.date;
-        const endDate = schedule.endDate || schedule.date;
-        const color = calendarViewMode === 'all'
-          ? schedule.user?.avatarColor || '#6B7280'
-          : (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+        try {
+          // 日付を文字列形式に変換（YYYY-MM-DD）
+          const startDate = schedule.startDate 
+            ? (typeof schedule.startDate === 'string' ? schedule.startDate.split('T')[0] : new Date(schedule.startDate).toISOString().split('T')[0])
+            : (typeof schedule.date === 'string' ? schedule.date.split('T')[0] : new Date(schedule.date).toISOString().split('T')[0]);
+          
+          const endDate = schedule.endDate 
+            ? (typeof schedule.endDate === 'string' ? schedule.endDate.split('T')[0] : new Date(schedule.endDate).toISOString().split('T')[0])
+            : startDate;
 
-        // 複数日スケジュールの場合
-        const isMultiDay = startDate !== endDate;
-        
-        // 終了時刻を次の日の開始として扱う（FullCalendarの仕様）
-        const endDateTime = isMultiDay 
-          ? `${endDate}T${schedule.endTime}`
-          : `${startDate}T${schedule.endTime}`;
+          const color = calendarViewMode === 'all'
+            ? schedule.user?.avatarColor || '#6B7280'
+            : (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
 
-        return {
-          id: schedule.id,
-          title: (schedule as any).title || schedule.activityDescription || '(タイトルなし)',
-          start: `${startDate}T${schedule.startTime}`,
-          end: endDateTime,
-          backgroundColor: color,
-          borderColor: color,
-          allDay: false,
-          extendedProps: {
-            type: 'schedule',
-            schedule,
-          },
-        };
-      }),
+          // 複数日スケジュールの場合
+          const isMultiDay = startDate !== endDate;
+          
+          // 終了時刻を次の日の開始として扱う（FullCalendarの仕様）
+          const endDateTime = isMultiDay 
+            ? `${endDate}T${schedule.endTime}`
+            : `${startDate}T${schedule.endTime}`;
+
+          const event = {
+            id: schedule.id,
+            title: (schedule as any).title || schedule.activityDescription || '(タイトルなし)',
+            start: `${startDate}T${schedule.startTime}`,
+            end: endDateTime,
+            backgroundColor: color,
+            borderColor: color,
+            allDay: false,
+            extendedProps: {
+              type: 'schedule',
+              schedule,
+            },
+          };
+
+          console.log('Converted schedule:', { id: schedule.id, start: event.start, end: event.end, title: event.title });
+          return event;
+        } catch (error) {
+          console.error('Error converting schedule:', schedule, error);
+          return null;
+        }
+      }).filter(Boolean),
       // イベント
       ...events.map((event) => {
-        const colorClass = event.eventType === 'TOWN_OFFICIAL' ? '#3B82F6' : event.eventType === 'TEAM' ? '#10B981' : '#6B7280';
-        return {
-          id: `event-${event.id}`,
-          title: event.eventName,
-          start: event.startTime ? `${event.date}T${event.startTime}` : event.date,
-          end: event.endTime ? `${event.date}T${event.endTime}` : undefined,
-          backgroundColor: colorClass,
-          borderColor: colorClass,
-          allDay: !event.startTime,
-          extendedProps: {
-            type: 'event',
-            event,
-          },
-        };
-      }),
+        try {
+          const colorClass = event.eventType === 'TOWN_OFFICIAL' ? '#3B82F6' : event.eventType === 'TEAM' ? '#10B981' : '#6B7280';
+          const dateStr = typeof event.date === 'string' ? event.date.split('T')[0] : new Date(event.date).toISOString().split('T')[0];
+          
+          return {
+            id: `event-${event.id}`,
+            title: event.eventName,
+            start: event.startTime ? `${dateStr}T${event.startTime}` : dateStr,
+            end: event.endTime ? `${dateStr}T${event.endTime}` : undefined,
+            backgroundColor: colorClass,
+            borderColor: colorClass,
+            allDay: !event.startTime,
+            extendedProps: {
+              type: 'event',
+              event,
+            },
+          };
+        } catch (error) {
+          console.error('Error converting event:', event, error);
+          return null;
+        }
+      }).filter(Boolean),
     ];
 
-    console.log('FullCalendar events:', result.length);
+    console.log('Total calendar events:', result.length);
+    console.log('Sample calendar event:', result[0]);
     return result;
   }, [schedules, events, calendarViewMode]);
 
@@ -339,6 +365,16 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
   return (
     <div className="fullcalendar-wrapper">
+      {calendarEvents.length === 0 && (
+        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg mb-4">
+          <p className="text-yellow-800 dark:text-yellow-200">
+            ⚠️ カレンダーイベントが0件です。ブラウザのコンソールを確認してください。
+          </p>
+          <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+            スケジュール数: {schedules.length} / イベント数: {events.length}
+          </p>
+        </div>
+      )}
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
