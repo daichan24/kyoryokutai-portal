@@ -11,7 +11,6 @@ import { TaskModal } from '../components/project/TaskModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { GovernmentAttendanceCalendar } from '../components/schedule/GovernmentAttendanceCalendar';
 import { GovernmentAttendanceModal } from '../components/schedule/GovernmentAttendanceModal';
-import { FullCalendarView } from '../components/schedule/FullCalendarView';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { format } from 'date-fns';
@@ -39,7 +38,6 @@ export const Schedule: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
-  const [useFullCalendar, setUseFullCalendar] = useState(true); // FullCalendarを使用するかどうか
   const [weekDates, setWeekDates] = useState<Date[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -528,36 +526,6 @@ export const Schedule: React.FC = () => {
 
         {loading ? (
           <LoadingSpinner />
-        ) : useFullCalendar ? (
-          <>
-            <FullCalendarView
-              schedules={schedules}
-              events={events}
-              viewMode={viewMode}
-              currentDate={currentDate}
-              calendarViewMode={calendarViewMode}
-              onScheduleClick={(schedule) => {
-                const isOtherUser = calendarViewMode === 'all' && schedule.userId !== user?.id;
-                if (isOtherUser) {
-                  setSelectedSchedule(schedule);
-                  setIsModalOpen(true);
-                } else {
-                  handleEditSchedule(schedule);
-                }
-              }}
-              onEventClick={handleEventClick}
-              onCreateSchedule={handleCreateSchedule}
-              onDateChange={setCurrentDate}
-              onScheduleUpdate={fetchSchedules}
-            />
-            {/* 行政出勤カレンダー（週表示のみ） */}
-            {(viewMode === 'week' || viewMode === 'day') && (
-              <GovernmentAttendanceCalendar
-                dates={weekDates}
-                viewMode="week"
-              />
-            )}
-          </>
         ) : viewMode === 'week' || viewMode === 'day' ? (
           <>
             <TimeAxisView
