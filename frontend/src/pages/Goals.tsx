@@ -134,7 +134,32 @@ export const Goals: React.FC = () => {
       }
       
       const response = await api.get(url);
-      return response.data;
+      const missions = response.data || [];
+      
+      // デフォルト項目を追加（協力隊業務、役場業務）
+      const defaultMissions: Goal[] = [
+        {
+          id: '__KYORYOKUTAI__',
+          missionName: '協力隊業務',
+          missionType: 'PRIMARY',
+          targetPercentage: 100,
+          progress: 0,
+          user: user || { id: '', name: '', avatarColor: '#3B82F6' },
+          midGoals: [],
+        },
+        {
+          id: '__YAKUBA__',
+          missionName: '役場業務',
+          missionType: 'PRIMARY',
+          targetPercentage: 100,
+          progress: 0,
+          user: user || { id: '', name: '', avatarColor: '#3B82F6' },
+          midGoals: [],
+        },
+      ];
+      
+      // デフォルト項目を先頭に配置
+      return [...defaultMissions, ...missions];
     },
     enabled: !!user?.id, // user?.idが存在する場合のみ有効化（作成モードと閲覧モードの両方で）
     refetchOnMount: true, // マウント時に再取得
@@ -314,7 +339,7 @@ export const Goals: React.FC = () => {
               className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               onClick={() => toggleGoal(goal.id)}
             >
-              {(viewMode === 'create' || (viewMode === 'view' && user?.id === goal.user.id)) && (
+              {(viewMode === 'create' || (viewMode === 'view' && user?.id === goal.user.id)) && !goal.id.startsWith('__') && (
                 <div className="flex justify-end mb-2">
                   <Button
                     size="sm"
@@ -335,37 +360,57 @@ export const Goals: React.FC = () => {
                   </button>
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
-                    {viewMode === 'view' && isNonMember && !selectedUserId && (
+                    {goal.id.startsWith('__') && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                        デフォルト項目
+                      </span>
+                    )}
+                    {viewMode === 'view' && isNonMember && !selectedUserId && !goal.id.startsWith('__') && (
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         （{goal.user.name}）
                       </span>
                     )}
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    (goal.missionType || goal.goalType) === 'PRIMARY' 
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                  }`}>
-                    {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
-                  </span>
+                  {!goal.id.startsWith('__') && (
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      (goal.missionType || goal.goalType) === 'PRIMARY' 
+                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                    }`}>
+                      {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
+                    </span>
+                  )}
                 </div>
-                <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
+                {!goal.id.startsWith('__') && (
+                  <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
+                )}
               </div>
 
               {/* プログレスバー */}
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
-                  style={{ width: `${goal.progress}%` }}
-                />
-              </div>
+              {!goal.id.startsWith('__') && (
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
+                    style={{ width: `${goal.progress}%` }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* ミッション詳細 */}
             {expandedGoals.has(goal.id) && (
               <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5">
-                {/* プロジェクト（タスクはプロジェクト配下に表示） */}
-                <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
+                {goal.id.startsWith('__') ? (
+                  <div className="py-4 text-sm text-gray-600 dark:text-gray-400">
+                    <p>
+                      {goal.id === '__KYORYOKUTAI__' 
+                        ? 'スケジュール入力時に「協力隊業務」を選択すると、このミッションに紐づけられます。プロジェクトに紐づかない協力隊としての一般的な業務に使用してください。'
+                        : 'スケジュール入力時に「役場業務」を選択すると、このミッションに紐づけられます。役場の業務に使用してください。'}
+                    </p>
+                  </div>
+                ) : (
+                  <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
+                )}
               </div>
             )}
           </div>
@@ -392,18 +437,20 @@ export const Goals: React.FC = () => {
                   className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   onClick={() => toggleGoal(goal.id)}
                 >
-                  <div className="flex justify-end mb-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditGoal(goal);
-                      }}
-                    >
-                      編集
-                    </Button>
-                  </div>
+                  {!goal.id.startsWith('__') && (
+                    <div className="flex justify-end mb-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditGoal(goal);
+                        }}
+                      >
+                        編集
+                      </Button>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
@@ -411,32 +458,52 @@ export const Goals: React.FC = () => {
                       </button>
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
+                        {goal.id.startsWith('__') && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                            デフォルト項目
+                          </span>
+                        )}
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        (goal.missionType || goal.goalType) === 'PRIMARY' 
-                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                      }`}>
-                        {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
-                      </span>
+                      {!goal.id.startsWith('__') && (
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          (goal.missionType || goal.goalType) === 'PRIMARY' 
+                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                        }`}>
+                          {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
+                        </span>
+                      )}
                     </div>
-                    <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
+                    {!goal.id.startsWith('__') && (
+                      <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
+                    )}
                   </div>
 
                   {/* プログレスバー */}
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
-                      style={{ width: `${goal.progress}%` }}
-                    />
-                  </div>
+                  {!goal.id.startsWith('__') && (
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
+                        style={{ width: `${goal.progress}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* ミッション詳細 */}
                 {expandedGoals.has(goal.id) && (
                   <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5">
-                    {/* プロジェクト（タスクはプロジェクト配下に表示） */}
-                    <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
+                    {goal.id.startsWith('__') ? (
+                      <div className="py-4 text-sm text-gray-600 dark:text-gray-400">
+                        <p>
+                          {goal.id === '__KYORYOKUTAI__' 
+                            ? 'スケジュール入力時に「協力隊業務」を選択すると、このミッションに紐づけられます。プロジェクトに紐づかない協力隊としての一般的な業務に使用してください。'
+                            : 'スケジュール入力時に「役場業務」を選択すると、このミッションに紐づけられます。役場の業務に使用してください。'}
+                        </p>
+                      </div>
+                    ) : (
+                      <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
+                    )}
                   </div>
                 )}
               </div>
