@@ -39,7 +39,7 @@ export const Schedule: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
-  const [useDraggable, setUseDraggable] = useState(true); // ドラッグ可能カレンダーを使用するかどうか
+  const [useDraggable, setUseDraggable] = useState(false); // ドラッグ可能カレンダーを使用するかどうか（一旦無効化）
   const [weekDates, setWeekDates] = useState<Date[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
