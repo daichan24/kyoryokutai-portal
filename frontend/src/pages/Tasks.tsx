@@ -506,9 +506,11 @@ export const Tasks: React.FC = () => {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
                     {task.linkKind === 'KYORYOKUTAI_WORK'
                       ? '協力隊業務（プロジェクトなし）'
-                      : task.linkKind === 'TRIAGE_PENDING'
-                        ? 'あとで振り分け（当日メモ・保留）'
-                        : '未設定（プロジェクトなし）'}
+                      : task.linkKind === 'YAKUBA_WORK'
+                        ? '役場業務（プロジェクトなし）'
+                        : task.linkKind === 'TRIAGE_PENDING'
+                          ? 'あとで振り分け（当日メモ・保留）'
+                          : '未設定（プロジェクトなし）'}
                   </span>
                 </div>
               )}
@@ -669,7 +671,7 @@ export const Tasks: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-16 flex-shrink-0">連携</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                    {previewTask.linkKind === 'KYORYOKUTAI_WORK' ? '協力隊業務' : previewTask.linkKind === 'TRIAGE_PENDING' ? 'あとで振り分け' : '未設定'}
+                    {previewTask.linkKind === 'KYORYOKUTAI_WORK' ? '協力隊業務' : previewTask.linkKind === 'YAKUBA_WORK' ? '役場業務' : previewTask.linkKind === 'TRIAGE_PENDING' ? 'あとで振り分け' : '未設定'}
                   </span>
                 </div>
               )}

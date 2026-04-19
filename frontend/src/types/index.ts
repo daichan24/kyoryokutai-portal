@@ -255,7 +255,7 @@ export interface Task {
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   order: number;
   dueDate?: string | null;
-  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING';
+  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'YAKUBA_WORK' | 'TRIAGE_PENDING';
   createdAt: string;
   updatedAt: string;
 }

@@ -493,6 +493,7 @@ enum MissionTaskLinkKind {
   PROJECT
   UNSET // 未設定（プロジェクトに紐づけない）
   KYORYOKUTAI_WORK // 協力隊業務（プロジェクトに紐づけない）
+  YAKUBA_WORK // 役場業務（プロジェクトに紐づけない）
   TRIAGE_PENDING // あとで振り分け（当日メモ・プロジェクト/タスク未割当）
 }
 

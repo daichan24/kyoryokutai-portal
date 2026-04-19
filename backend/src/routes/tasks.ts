@@ -16,7 +16,7 @@ const taskSchema = z.object({
   endDate: z.string().optional().nullable(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
-  linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK', 'TRIAGE_PENDING']).optional(),
+  linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK', 'YAKUBA_WORK', 'TRIAGE_PENDING']).optional(),
   // スケジュール連携フィールド
   locationText: z.string().optional(),
   freeNote: z.string().optional(),
@@ -27,22 +27,24 @@ const taskSchema = z.object({
 
 function resolveTaskLinkKind(
   projectId: string | null | undefined,
-  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING',
-): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING' {
+  linkKind?: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'YAKUBA_WORK' | 'TRIAGE_PENDING',
+): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'YAKUBA_WORK' | 'TRIAGE_PENDING' {
   if (projectId) return 'PROJECT';
   if (linkKind === 'KYORYOKUTAI_WORK') return 'KYORYOKUTAI_WORK';
+  if (linkKind === 'YAKUBA_WORK') return 'YAKUBA_WORK';
   if (linkKind === 'TRIAGE_PENDING') return 'TRIAGE_PENDING';
   return 'UNSET';
 }
 
 function resolveTaskLinkKindOnUpdate(
   projectId: string | null,
-  linkKind: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING' | undefined,
-  previous: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING',
-): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'TRIAGE_PENDING' {
+  linkKind: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'YAKUBA_WORK' | 'TRIAGE_PENDING' | undefined,
+  previous: 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'YAKUBA_WORK' | 'TRIAGE_PENDING',
+): 'PROJECT' | 'UNSET' | 'KYORYOKUTAI_WORK' | 'YAKUBA_WORK' | 'TRIAGE_PENDING' {
   if (projectId) return 'PROJECT';
   if (linkKind !== undefined) {
     if (linkKind === 'KYORYOKUTAI_WORK') return 'KYORYOKUTAI_WORK';
+    if (linkKind === 'YAKUBA_WORK') return 'YAKUBA_WORK';
     if (linkKind === 'TRIAGE_PENDING') return 'TRIAGE_PENDING';
     return 'UNSET';
   }
