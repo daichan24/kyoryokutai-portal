@@ -265,13 +265,41 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   useEffect(() => {
     if (schedule) {
+      // タイトルと日付の設定
       setTitle(schedule.title || '');
       const sd = formatDate(schedule.date);
       setDueDate(sd);
       setEndDate((schedule as any).endDate ? formatDate(new Date((schedule as any).endDate)) : sd);
-      setStartTime(schedule.startTime); setEndTime(schedule.endTime);
-      setProjectId(schedule.projectId || null);
-      setAttachMode(schedule.projectId ? 'PROJECT' : 'UNSET');
+      setStartTime(schedule.startTime); 
+      setEndTime(schedule.endTime);
+      
+      // ミッションとプロジェクトの設定（タスク情報から取得）
+      if ((schedule as any).task) {
+        const scheduleTask = (schedule as any).task;
+        setSelectedMissionId(scheduleTask.missionId || '');
+        setProjectId(scheduleTask.projectId || null);
+        
+        // linkKindからattachModeを設定
+        const taskLinkKind = scheduleTask.linkKind;
+        if (taskLinkKind === 'KYORYOKUTAI_WORK') {
+          setAttachMode('KYORYOKUTAI');
+        } else if (taskLinkKind === 'YAKUBA_WORK') {
+          setAttachMode('YAKUBA');
+        } else if (taskLinkKind === 'TRIAGE_PENDING') {
+          setAttachMode('TRIAGE');
+        } else if (scheduleTask.projectId) {
+          setAttachMode('PROJECT');
+        } else {
+          setAttachMode('UNSET');
+        }
+      } else {
+        // タスク情報がない場合はスケジュールのprojectIdを使用
+        setProjectId(schedule.projectId || null);
+        setAttachMode(schedule.projectId ? 'PROJECT' : 'UNSET');
+        setSelectedMissionId('');
+      }
+      
+      // その他の設定
       setMemo(schedule.freeNote || '');
       setCustomColor((schedule as any).customColor || '');
       setSupportEventId(schedule.supportEventId || null);
@@ -285,10 +313,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setCompensatoryLeaveType((schedule as any).compensatoryLeaveType ?? 'FULL_DAY');
       setIsDayOff((schedule as any).isDayOff ?? false);
       setDayOffType((schedule as any).dayOffType ?? 'PAID');
-      // スケジュールのミッションIDを設定
-      if ((schedule as any).task?.missionId) {
-        setSelectedMissionId((schedule as any).task.missionId);
-      }
+    } else if (task) {
     } else if (task) {
       setTitle(task.title);
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
