@@ -520,9 +520,18 @@ export const Schedule: React.FC = () => {
               {viewMode === 'month' && formatDate(currentDate, 'yyyy年M月')}
             </h2>
           </div>
-          <Button variant="outline" onClick={handleNext}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setCurrentDate(new Date())}
+              className="px-3 py-1.5"
+            >
+              今日
+            </Button>
+            <Button variant="outline" onClick={handleNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
 

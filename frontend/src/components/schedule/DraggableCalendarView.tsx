@@ -294,9 +294,20 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         // FullCalendar の timeZone: 'Asia/Tokyo' 設定により、
         // event.start は既に JST として解釈されているため、
         // getHours() / getMinutes() で直接 JST の時刻を取得できる
+        console.log('=== ドラッグ&ドロップ デバッグ ===');
+        console.log('newStart (raw):', newStart);
+        console.log('newStart.toString():', newStart.toString());
+        console.log('newStart.toISOString():', newStart.toISOString());
+        console.log('newStart.getHours():', newStart.getHours());
+        console.log('newStart.getMinutes():', newStart.getMinutes());
+        console.log('newStart.getTimezoneOffset():', newStart.getTimezoneOffset());
+        
         const jstHours = newStart.getHours();
         const jstMinutes = newStart.getMinutes();
         const newStartTime = `${String(jstHours).padStart(2, '0')}:${String(jstMinutes).padStart(2, '0')}`;
+        
+        console.log('計算された newStartTime:', newStartTime);
+        console.log('元の schedule.startTime:', schedule.startTime);
         
         // 新しい終了時刻 = 新しい開始時刻 + 元の所要時間
         const newStartMinutes = jstHours * 60 + jstMinutes;
@@ -304,6 +315,11 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         const newEndHours = Math.floor(newEndMinutes / 60);
         const newEndMins = newEndMinutes % 60;
         const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}`;
+        
+        console.log('計算された newEndTime:', newEndTime);
+        console.log('元の schedule.endTime:', schedule.endTime);
+        console.log('所要時間 (duration):', duration, '分');
+        console.log('===================================');
 
         // 日付も JST で取得（toISOString() は使わない）
         const year = newStart.getFullYear();
@@ -403,8 +419,20 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
       if (isStartResize) {
         // 開始時刻のみ変更（終了時刻は固定）
+        console.log('=== リサイズ（開始時刻変更）デバッグ ===');
+        console.log('newStart (raw):', newStart);
+        console.log('newStart.toString():', newStart.toString());
+        console.log('newStart.toISOString():', newStart.toISOString());
+        console.log('newStart.getHours():', newStart.getHours());
+        console.log('newStart.getMinutes():', newStart.getMinutes());
+        
         startTime = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
         endTime = schedule.endTime; // 元の終了時刻を保持
+        
+        console.log('計算された startTime:', startTime);
+        console.log('元の schedule.startTime:', schedule.startTime);
+        console.log('保持される endTime:', endTime);
+        console.log('===================================');
         
         console.log('開始時刻のみリサイズ:', {
           scheduleId: schedule.id,
@@ -415,8 +443,20 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         });
       } else if (isEndResize) {
         // 終了時刻のみ変更（開始時刻は固定）
+        console.log('=== リサイズ（終了時刻変更）デバッグ ===');
+        console.log('newEnd (raw):', newEnd);
+        console.log('newEnd.toString():', newEnd.toString());
+        console.log('newEnd.toISOString():', newEnd.toISOString());
+        console.log('newEnd.getHours():', newEnd.getHours());
+        console.log('newEnd.getMinutes():', newEnd.getMinutes());
+        
         startTime = schedule.startTime; // 元の開始時刻を保持
         endTime = `${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+        
+        console.log('保持される startTime:', startTime);
+        console.log('計算された endTime:', endTime);
+        console.log('元の schedule.endTime:', schedule.endTime);
+        console.log('===================================');
         
         console.log('終了時刻のみリサイズ:', {
           scheduleId: schedule.id,

@@ -35,7 +35,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [date, setDate] = useState('');
   const [endDate, setEndDate] = useState(''); // 終了日（デフォルトは開始日と同じ）
   const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
+  const [endTime, setEndTime] = useState('17:30');
   const [locationText, setLocationText] = useState('');
   const [title, setTitle] = useState(''); // タイトル（短い説明）
   const [activityDescription, setActivityDescription] = useState(''); // 活動内容（詳細）
@@ -197,6 +197,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       }
       if (!title || title.trim() === '') {
         alert('タイトルを入力してください');
+        setLoading(false);
+        return;
+      }
+      if (!locationText || locationText.trim() === '') {
+        alert('場所を入力してください');
         setLoading(false);
         return;
       }
