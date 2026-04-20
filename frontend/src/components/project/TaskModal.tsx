@@ -265,14 +265,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   useEffect(() => {
     if (schedule) {
-      setTitle(schedule.title || schedule.activityDescription || '');
+      setTitle(schedule.title || '');
       const sd = formatDate(schedule.date);
       setDueDate(sd);
       setEndDate((schedule as any).endDate ? formatDate(new Date((schedule as any).endDate)) : sd);
       setStartTime(schedule.startTime); setEndTime(schedule.endTime);
       setProjectId(schedule.projectId || null);
       setAttachMode(schedule.projectId ? 'PROJECT' : 'UNSET');
-      setMemo([schedule.activityDescription, schedule.freeNote].filter(Boolean).join('\n'));
+      setMemo(schedule.freeNote || '');
       setCustomColor((schedule as any).customColor || '');
       setSupportEventId(schedule.supportEventId || null);
       setShowSupportEvents(!!schedule.supportEventId);
