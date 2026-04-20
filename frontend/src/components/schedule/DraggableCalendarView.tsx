@@ -20,6 +20,7 @@ interface DraggableCalendarViewProps {
   viewMode: 'week' | 'month' | 'day';
   currentDate: Date;
   calendarViewMode?: 'individual' | 'all';
+  currentUserId?: string;
   onScheduleClick: (schedule: ScheduleType) => void;
   onEventClick: (eventId: string) => void;
   onCreateSchedule: (date: Date, startTime?: string, endTime?: string) => void;
@@ -32,6 +33,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   viewMode,
   currentDate,
   calendarViewMode = 'individual',
+  currentUserId,
   onScheduleClick,
   onEventClick,
   onCreateSchedule,
@@ -113,6 +115,9 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             ? `${endDate}T${schedule.endTime}:00`
             : `${startDate}T${schedule.endTime}:00`;
 
+          // 他人のスケジュールは編集不可
+          const isEditable = !currentUserId || schedule.userId === currentUserId;
+
           const event = {
             id: schedule.id,
             title: (schedule as any).title || schedule.activityDescription || '(タイトルなし)',
@@ -121,6 +126,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             backgroundColor: color,
             borderColor: color,
             allDay: false,
+            editable: isEditable,
             extendedProps: {
               type: 'schedule',
               schedule,
@@ -134,6 +140,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             title: event.title,
             originalStartTime: schedule.startTime,
             originalEndTime: schedule.endTime,
+            editable: isEditable,
           });
           return event;
         } catch (error) {
@@ -183,7 +190,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     console.log('Total calendar events:', result.length);
     console.log('Sample calendar event:', result[0]);
     return result;
-  }, [schedules, events, calendarViewMode]);
+  }, [schedules, events, calendarViewMode, currentUserId]);
 
   // ビューモードの変換
   const getCalendarView = () => {
@@ -252,6 +259,12 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     }
 
     const schedule: ScheduleType = extendedProps.schedule;
+    
+    // 他人のスケジュールは編集不可
+    if (currentUserId && schedule.userId !== currentUserId) {
+      info.revert();
+      return;
+    }
     const oldStartDate = new Date(schedule.startDate || schedule.date);
     const oldEndDate = new Date(schedule.endDate || schedule.date);
     
@@ -422,6 +435,12 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     }
 
     const schedule: ScheduleType = extendedProps.schedule;
+    
+    // 他人のスケジュールは編集不可
+    if (currentUserId && schedule.userId !== currentUserId) {
+      info.revert();
+      return;
+    }
     const newStart = event.start;
     const newEnd = event.end || newStart;
 

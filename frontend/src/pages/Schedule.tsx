@@ -545,8 +545,10 @@ export const Schedule: React.FC = () => {
               viewMode={viewMode}
               currentDate={currentDate}
               calendarViewMode={calendarViewMode}
+              currentUserId={user?.id}
               onScheduleClick={(schedule) => {
-                const isOtherUser = calendarViewMode === 'all' && schedule.userId !== user?.id;
+                // 他人のスケジュールは読み取り専用
+                const isOtherUser = schedule.userId !== user?.id;
                 if (isOtherUser) {
                   setSelectedSchedule(schedule);
                   setIsModalOpen(true);
@@ -575,7 +577,8 @@ export const Schedule: React.FC = () => {
               schedules={schedules}
               events={events}
               onScheduleClick={(schedule) => {
-                const isOtherUser = calendarViewMode === 'all' && schedule.userId !== user?.id;
+                // 他人のスケジュールは読み取り専用
+                const isOtherUser = schedule.userId !== user?.id;
                 if (isOtherUser) {
                   setSelectedSchedule(schedule);
                   setIsModalOpen(true);
@@ -748,10 +751,17 @@ export const Schedule: React.FC = () => {
                                 const color = getScheduleColor(schedule);
                                 const tc = getTextColor(color);
                                 const isOtherUser = schedule.userId !== user?.id;
-                                const isReadOnly = calendarViewMode === 'all' && isOtherUser;
                                 return (
                                   <button key={schedule.id}
-                                    onClick={(e) => { e.stopPropagation(); if (isReadOnly) { setSelectedSchedule(schedule); setIsModalOpen(true); } else handleEditSchedule(schedule); }}
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      if (isOtherUser) { 
+                                        setSelectedSchedule(schedule); 
+                                        setIsModalOpen(true); 
+                                      } else {
+                                        handleEditSchedule(schedule); 
+                                      }
+                                    }}
                                     className="w-full text-left px-1.5 py-0.5 rounded text-xs hover:opacity-90 transition-opacity truncate"
                                     style={{ backgroundColor: color, color: tc }}>
                                     <span className="font-medium">{formatTime(schedule.startTime)}</span>
@@ -805,7 +815,16 @@ export const Schedule: React.FC = () => {
                                 fontSize: '11px', padding: '2px 6px', lineHeight: '16px',
                                 whiteSpace: 'nowrap', textOverflow: 'ellipsis',
                               }}
-                              onClick={(e) => { e.stopPropagation(); handleEditSchedule(bar.schedule); }}
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                const isOtherUser = bar.schedule.userId !== user?.id;
+                                if (isOtherUser) {
+                                  setSelectedSchedule(bar.schedule);
+                                  setIsModalOpen(true);
+                                } else {
+                                  handleEditSchedule(bar.schedule);
+                                }
+                              }}
                               title={`${(bar.schedule as any).title || bar.schedule.activityDescription} (${formatTime(bar.schedule.startTime)}-${formatTime(bar.schedule.endTime)})`}>
                               {bar.isActualStart && (
                                 <span className="font-medium truncate">
@@ -968,16 +987,7 @@ export const Schedule: React.FC = () => {
       {isModalOpen && selectedSchedule && (
         <TaskModal
           schedule={selectedSchedule}
-          readOnly={(() => {
-            const isReadOnly = calendarViewMode === 'all' && selectedSchedule.userId !== user?.id;
-            console.log('=== TaskModal readOnly 判定 ===');
-            console.log('calendarViewMode:', calendarViewMode);
-            console.log('selectedSchedule.userId:', selectedSchedule.userId);
-            console.log('user?.id:', user?.id);
-            console.log('isReadOnly:', isReadOnly);
-            console.log('===================================');
-            return isReadOnly;
-          })()}
+          readOnly={selectedSchedule.userId !== user?.id}
           onClose={handleCloseModal}
           onSaved={handleSaved}
         />
