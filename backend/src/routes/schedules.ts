@@ -430,6 +430,15 @@ router.get('/', async (req: AuthRequest, res) => {
             },
           },
         },
+        task: {
+          select: {
+            id: true,
+            missionId: true,
+            projectId: true,
+            title: true,
+            linkKind: true,
+          },
+        },
       },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });
