@@ -453,16 +453,23 @@ router.post('/', async (req: AuthRequest, res) => {
 
     // スケジュール作成
     // 日付のバリデーション
-    // YYYY-MM-DD 形式の文字列を JST の正午として解釈する
-    // これにより、タイムゾーンによる日付のずれを防ぐ
-    const startDate = new Date(`${data.date}T12:00:00+09:00`);
+    // YYYY-MM-DD 形式の文字列を Date オブジェクトに変換
+    // Prisma の @db.Date 型は日付のみを保存するため、時刻は00:00:00で統一
+    const [year, month, day] = data.date.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    
     if (isNaN(startDate.getTime())) {
       return res.status(400).json({ error: 'Invalid start date format' });
     }
     
-    const endDate = data.endDate 
-      ? new Date(`${data.endDate}T12:00:00+09:00`) 
-      : startDate; // 終了日が指定されていない場合は開始日と同じ
+    let endDate: Date;
+    if (data.endDate) {
+      const [endYear, endMonth, endDay] = data.endDate.split('-').map(Number);
+      endDate = new Date(endYear, endMonth - 1, endDay, 0, 0, 0, 0);
+    } else {
+      endDate = startDate; // 終了日が指定されていない場合は開始日と同じ
+    }
+    
     if (isNaN(endDate.getTime())) {
       return res.status(400).json({ error: 'Invalid end date format' });
     }
@@ -471,7 +478,9 @@ router.post('/', async (req: AuthRequest, res) => {
       inputDate: data.date,
       inputEndDate: data.endDate,
       startDate: startDate.toISOString(),
+      startDateLocal: startDate.toString(),
       endDate: endDate.toISOString(),
+      endDateLocal: endDate.toString(),
       startTime: data.startTime,
       endTime: data.endTime,
       title: data.title,
@@ -631,21 +640,32 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const updateData: any = {};
 
     // 日付フィールドの処理
-    // YYYY-MM-DD 形式の文字列を JST の正午として解釈する
-    // これにより、タイムゾーンによる日付のずれを防ぐ
+    // YYYY-MM-DD 形式の文字列を Date オブジェクトに変換
+    // Prisma の @db.Date 型は日付のみを保存するため、時刻は00:00:00で統一
     if (data.date) {
-      // YYYY-MM-DD 形式の文字列を JST の正午として解釈
-      const startDate = new Date(`${data.date}T12:00:00+09:00`);
+      // YYYY-MM-DD 形式の文字列から Date オブジェクトを作成
+      // new Date("2026-04-19") は UTC として解釈されるため、
+      // 明示的にローカルタイムゾーン（サーバーのタイムゾーン）で作成する
+      const [year, month, day] = data.date.split('-').map(Number);
+      const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+      
       if (isNaN(startDate.getTime())) {
         return res.status(400).json({ error: '無効な開始日です' });
       }
+      
       const dataWithEndDate = data as any;
-      const endDate = dataWithEndDate.endDate 
-        ? new Date(`${dataWithEndDate.endDate}T12:00:00+09:00`) 
-        : startDate;
+      let endDate: Date;
+      if (dataWithEndDate.endDate) {
+        const [endYear, endMonth, endDay] = dataWithEndDate.endDate.split('-').map(Number);
+        endDate = new Date(endYear, endMonth - 1, endDay, 0, 0, 0, 0);
+      } else {
+        endDate = startDate;
+      }
+      
       if (isNaN(endDate.getTime())) {
         return res.status(400).json({ error: '無効な終了日です' });
       }
+      
       // 終了日が開始日より前の場合はエラー
       if (endDate < startDate) {
         return res.status(400).json({ error: '終了日は開始日以降の日付を指定してください' });
@@ -655,7 +675,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
         inputDate: data.date,
         inputEndDate: dataWithEndDate.endDate,
         startDate: startDate.toISOString(),
+        startDateLocal: startDate.toString(),
         endDate: endDate.toISOString(),
+        endDateLocal: endDate.toString(),
         startTime: data.startTime,
         endTime: data.endTime,
       });
@@ -671,7 +693,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
         if (!existingStartDate) {
           return res.status(400).json({ error: '開始日が設定されていません' });
         }
-        const endDate = new Date(`${dataWithEndDate.endDate}T12:00:00+09:00`);
+        const [endYear, endMonth, endDay] = dataWithEndDate.endDate.split('-').map(Number);
+        const endDate = new Date(endYear, endMonth - 1, endDay, 0, 0, 0, 0);
         if (isNaN(endDate.getTime())) {
           return res.status(400).json({ error: '無効な終了日です' });
         }
