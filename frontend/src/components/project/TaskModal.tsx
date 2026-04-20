@@ -117,7 +117,9 @@ const RecurringScheduleModal: React.FC<{
 
   useEffect(() => {
     Promise.all([api.get('/api/projects'), api.get('/api/locations')]).then(([pr, lr]) => {
-      setProjects(pr.data || []); setLocations(lr.data || []);
+      setProjects(pr.data || []); 
+        const loadedLocations = lr.data || [];
+        setLocations(loadedLocations);
     }).catch(console.error);
   }, []);
 
@@ -234,7 +236,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [locationOther, setLocationOther] = useState('');
   const [selectedMissionId, setSelectedMissionId] = useState(missionId || '');
   const [projectId, setProjectId] = useState<string | null>(defaultProjectId || null);
-  const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'TRIAGE'>('UNSET');
+  const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'YAKUBA' | 'TRIAGE'>('UNSET');
   const [memo, setMemo] = useState('');
   const [customColor, setCustomColor] = useState('');
   const [supportEventId, setSupportEventId] = useState<string | null>(null);
@@ -268,7 +270,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDueDate(sd);
       setEndDate((schedule as any).endDate ? formatDate(new Date((schedule as any).endDate)) : sd);
       setStartTime(schedule.startTime); setEndTime(schedule.endTime);
-      setLocationText(schedule.locationText || ''); setLocationOther('');
+      // 場所の初期値設定 - 既存の場所リストにない場合は「その他」として扱う
+      const existingLocation = schedule.locationText;
+      if (existingLocation) {
+        // locationsが読み込まれる前に実行される可能性があるため、後で再チェック
+        setLocationText(existingLocation);
+        setLocationOther('');
+      }
       setProjectId(schedule.projectId || null);
       setAttachMode(schedule.projectId ? 'PROJECT' : 'UNSET');
       setMemo([schedule.activityDescription, schedule.freeNote].filter(Boolean).join('\n'));
@@ -293,7 +301,12 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       setEndDate((task as any).endDate ? (task as any).endDate.split('T')[0] : (task.dueDate ? task.dueDate.split('T')[0] : ''));
       setStartTime((task as any).startTime || '09:00'); setEndTime((task as any).endTime || '17:30');
-      setLocationText((task as any).locationText || ''); setLocationOther('');
+      // 場所の初期値設定 - 既存の場所リストにない場合は「その他」として扱う
+      const existingLocation = (task as any).locationText;
+      if (existingLocation) {
+        setLocationText(existingLocation);
+        setLocationOther('');
+      }
       setProjectId(task.projectId || null);
       const taskLinkKind = task.linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI' : task.linkKind === 'YAKUBA_WORK' ? 'YAKUBA' : task.linkKind === 'TRIAGE_PENDING' ? 'TRIAGE' : task.projectId ? 'PROJECT' : 'UNSET';
       setAttachMode(taskLinkKind);
@@ -331,14 +344,27 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           api.get<any[]>('/api/events?status=upcoming').catch(() => ({ data: [] })),
           api.get('/api/missions'),
         ]);
-        setProjects(pr.data || []); setLocations(lr.data || []);
+        setProjects(pr.data || []); 
+        const loadedLocations = lr.data || [];
+        setLocations(loadedLocations);
         setAvailableUsers((ur.data || []).filter((u: User) => u.role === 'MEMBER' && u.id !== currentUser?.id));
         setSupportEvents((er.data || []).map((e: any) => ({ id: e.id, eventName: e.eventName, startDate: e.startDate || e.date })));
         setMissions(mr.data || []);
+        
+        // 場所が読み込まれた後、既存の場所が「その他」かどうかを判定
+        if (schedule?.locationText || (task as any)?.locationText) {
+          const existingLoc = schedule?.locationText || (task as any)?.locationText;
+          const isInList = loadedLocations.some((l: Location) => l.name === existingLoc);
+          if (!isInList && existingLoc) {
+            // 既存の場所リストにない場合は「その他」として扱う
+            setLocationText('__OTHER__');
+            setLocationOther(existingLoc);
+          }
+        }
       } catch (err) { console.error('Failed to fetch data:', err); }
     };
     fetchAll();
-  }, [missionId, task?.missionId, currentUser?.id]);
+  }, [missionId, task?.missionId, currentUser?.id, schedule, task]);
 
   useEffect(() => {
     if (readOnly || suspendOutsidePointerClose) return;
