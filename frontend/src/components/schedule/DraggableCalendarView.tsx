@@ -56,22 +56,30 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       ...schedules.map((schedule) => {
         try {
           // 日付を文字列形式に変換（YYYY-MM-DD）
-          // toISOString() を使うと UTC に変換されてしまうため、
-          // JST の日付を直接取得する
+          // データベースから返される日付は "2026-04-20T00:00:00.000Z" (UTC) の形式
+          // これを JST として解釈すると9時間ずれるため、文字列から直接日付部分を抽出する
           let startDate: string;
           if (schedule.startDate) {
             if (typeof schedule.startDate === 'string') {
+              // "2026-04-20T00:00:00.000Z" → "2026-04-20"
               startDate = schedule.startDate.split('T')[0];
             } else {
+              // Date オブジェクトの場合は UTC の日付部分を取得
               const d = new Date(schedule.startDate);
-              startDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              const year = d.getUTCFullYear();
+              const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+              const day = String(d.getUTCDate()).padStart(2, '0');
+              startDate = `${year}-${month}-${day}`;
             }
           } else {
             if (typeof schedule.date === 'string') {
               startDate = schedule.date.split('T')[0];
             } else {
               const d = new Date(schedule.date);
-              startDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              const year = d.getUTCFullYear();
+              const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+              const day = String(d.getUTCDate()).padStart(2, '0');
+              startDate = `${year}-${month}-${day}`;
             }
           }
           
@@ -81,7 +89,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
               endDate = schedule.endDate.split('T')[0];
             } else {
               const d = new Date(schedule.endDate);
-              endDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              const year = d.getUTCFullYear();
+              const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+              const day = String(d.getUTCDate()).padStart(2, '0');
+              endDate = `${year}-${month}-${day}`;
             }
           } else {
             endDate = startDate;
@@ -135,13 +146,18 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         try {
           const colorClass = event.eventType === 'TOWN_OFFICIAL' ? '#3B82F6' : event.eventType === 'TEAM' ? '#10B981' : '#6B7280';
           
-          // 日付を JST で取得（toISOString() を使わない）
+          // 日付を JST で取得（データベースから返される日付は UTC なので、UTC の日付部分を使用）
           let dateStr: string;
           if (typeof event.date === 'string') {
+            // "2026-04-20T00:00:00.000Z" → "2026-04-20"
             dateStr = event.date.split('T')[0];
           } else {
+            // Date オブジェクトの場合は UTC の日付部分を取得
             const d = new Date(event.date);
-            dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            dateStr = `${year}-${month}-${day}`;
           }
           
           return {
