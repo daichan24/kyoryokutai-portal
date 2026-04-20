@@ -537,7 +537,7 @@ export const Schedule: React.FC = () => {
 
         {loading ? (
           <LoadingSpinner />
-        ) : useDraggable ? (
+        ) : useDraggable && viewMode !== 'day' ? (
           <>
             <DraggableCalendarView
               schedules={schedules}
@@ -559,7 +559,7 @@ export const Schedule: React.FC = () => {
               onScheduleUpdate={fetchSchedules}
             />
             {/* 行政出勤カレンダー（週表示のみ） */}
-            {(viewMode === 'week' || viewMode === 'day') && (
+            {viewMode === 'week' && (
               <div className="mt-4">
                 <GovernmentAttendanceCalendar
                   dates={weekDates}
