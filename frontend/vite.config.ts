@@ -24,6 +24,16 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_BUILD_ID': JSON.stringify(getBuildId()),
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // ファイル名にハッシュを追加してキャッシュを無効化
+        entryFileNames: `assets/[name].[hash].js`,
+        chunkFileNames: `assets/[name].[hash].js`,
+        assetFileNames: `assets/[name].[hash].[ext]`
+      }
+    }
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,

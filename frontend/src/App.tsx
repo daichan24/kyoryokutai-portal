@@ -419,6 +419,10 @@ const App: React.FC = () => {
           }
         />
       </Routes>
+      {/* ビルドバージョン表示（デバッグ用） */}
+      <div style={{ position: 'fixed', bottom: '5px', right: '5px', fontSize: '10px', color: '#999', zIndex: 9999 }}>
+        v{import.meta.env.VITE_BUILD_ID || 'dev'}
+      </div>
     </Suspense>
   );
 };

@@ -23,7 +23,7 @@ services:
   - type: static_site
     name: kyoryokutai-frontend
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: rm -rf node_modules dist && npm install && npm run build
     publishPath: dist
     envVars:
       - key: VITE_API_URL
