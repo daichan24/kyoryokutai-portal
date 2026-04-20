@@ -65,6 +65,8 @@ export const Schedule: React.FC = () => {
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
   const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
+  const [visibleMemberIds, setVisibleMemberIds] = useState<Set<string>>(new Set());
+  const [showMemberSidebar, setShowMemberSidebar] = useState(true);
 
   // 行政出勤記録（行政カレンダーモーダル用のみ）
   const govAttendanceFrom = '';
@@ -96,12 +98,39 @@ export const Schedule: React.FC = () => {
       fetchEvents();
       fetchProjects();
     }
-  }, [weekDates, calendarViewMode, selectedMemberId, user?.id, isStaff, workspaceMode]);
+  }, [weekDates, calendarViewMode, selectedMemberId, user?.id, isStaff, workspaceMode, visibleMemberIds]);
 
   // メンバーリストを取得（週表示・月表示共通）
   useEffect(() => {
     fetchMembers();
   }, []);
+
+  // 初期表示時に自分のIDをvisibleMemberIdsに追加
+  useEffect(() => {
+    if (user?.id && visibleMemberIds.size === 0) {
+      setVisibleMemberIds(new Set([user.id]));
+    }
+  }, [user?.id]);
+
+  // ローカルストレージから表示設定を読み込み
+  useEffect(() => {
+    const saved = localStorage.getItem('calendarVisibleMembers');
+    if (saved) {
+      try {
+        const ids = JSON.parse(saved);
+        setVisibleMemberIds(new Set(ids));
+      } catch (e) {
+        console.error('Failed to load visible members:', e);
+      }
+    }
+  }, []);
+
+  // 表示設定をローカルストレージに保存
+  useEffect(() => {
+    if (visibleMemberIds.size > 0) {
+      localStorage.setItem('calendarVisibleMembers', JSON.stringify([...visibleMemberIds]));
+    }
+  }, [visibleMemberIds]);
 
   const fetchMembers = async () => {
     try {
@@ -149,14 +178,24 @@ export const Schedule: React.FC = () => {
         if (selectedMemberId) {
           params.append('userId', selectedMemberId);
         } else if (calendarViewMode === 'all') {
-          params.append('allMembers', 'true');
+          // 全員表示の場合、visibleMemberIdsでフィルタリング
+          if (visibleMemberIds.size > 0) {
+            visibleMemberIds.forEach(id => params.append('userIds', id));
+          } else {
+            params.append('allMembers', 'true');
+          }
         }
       } else {
         // 週表示
         if (selectedMemberId) {
           params.append('userId', selectedMemberId);
         } else if (isStaff && workspaceMode === 'browse') {
-          params.append('allMembers', 'true');
+          // 閲覧モードの場合、visibleMemberIdsでフィルタリング
+          if (visibleMemberIds.size > 0) {
+            visibleMemberIds.forEach(id => params.append('userIds', id));
+          } else {
+            params.append('allMembers', 'true');
+          }
         }
       }
 
@@ -359,6 +398,33 @@ export const Schedule: React.FC = () => {
     );
   };
 
+  const toggleMemberVisibility = (memberId: string) => {
+    setVisibleMemberIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(memberId)) {
+        newSet.delete(memberId);
+      } else {
+        newSet.add(memberId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllMembers = () => {
+    const allIds = new Set([user?.id, ...availableMembers.map(m => m.id)].filter(Boolean) as string[]);
+    setVisibleMemberIds(allIds);
+  };
+
+  const selectOnlyMe = () => {
+    if (user?.id) {
+      setVisibleMemberIds(new Set([user.id]));
+    }
+  };
+
+  const clearAllMembers = () => {
+    setVisibleMemberIds(new Set());
+  };
+
   return (
     <div className="space-y-6">
       {/* スマホ: タイトルとボタンを別カラムに配置 */}
@@ -377,6 +443,9 @@ export const Schedule: React.FC = () => {
                   onClick={() => {
                     setCalendarViewModeMember('individual');
                     setSelectedMemberId(null);
+                    if (user?.id) {
+                      setVisibleMemberIds(new Set([user.id]));
+                    }
                   }}
                   className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
                     calendarViewModeMember === 'individual' && !selectedMemberId
@@ -391,6 +460,7 @@ export const Schedule: React.FC = () => {
                   onClick={() => {
                     setCalendarViewModeMember('all');
                     setSelectedMemberId(null);
+                    selectAllMembers();
                   }}
                   className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
                     calendarViewModeMember === 'all'
@@ -400,27 +470,6 @@ export const Schedule: React.FC = () => {
                 >
                   全体
                 </button>
-                {/* 全ロールで特定メンバーを選択可能 */}
-                {availableMembers.length > 0 && (
-                  <select
-                    value={selectedMemberId || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSelectedMemberId(value || null);
-                      if (value) setCalendarViewModeMember('individual');
-                    }}
-                    className={`px-2 py-1.5 rounded-lg border font-medium transition-colors text-sm ${
-                      selectedMemberId
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    <option value="">{isStaff ? '個人を選択' : '他のメンバー'}</option>
-                    {availableMembers.map((member) => (
-                      <option key={member.id} value={member.id}>{member.name}</option>
-                    ))}
-                  </select>
-                )}
               </div>
             </div>
           ) : viewMode === 'week' ? (
@@ -429,7 +478,12 @@ export const Schedule: React.FC = () => {
               <div className="flex gap-1 sm:gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedMemberId(null)}
+                  onClick={() => {
+                    setSelectedMemberId(null);
+                    if (user?.id) {
+                      setVisibleMemberIds(new Set([user.id]));
+                    }
+                  }}
                   className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
                     !selectedMemberId
                       ? 'bg-blue-600 text-white'
@@ -441,7 +495,13 @@ export const Schedule: React.FC = () => {
                 {availableMembers.length > 0 && (
                   <select
                     value={selectedMemberId || ''}
-                    onChange={(e) => setSelectedMemberId(e.target.value || null)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedMemberId(value || null);
+                      if (value) {
+                        setVisibleMemberIds(new Set([value]));
+                      }
+                    }}
                     className={`px-2 py-1.5 rounded-lg border font-medium transition-colors text-sm ${
                       selectedMemberId
                         ? 'bg-blue-600 text-white border-blue-600'
@@ -481,6 +541,117 @@ export const Schedule: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow sm:border lg:border-border dark:border-gray-700 p-0 sm:p-6 min-w-0 w-full">
+        <div className="flex gap-4">
+          {/* メンバーサイドバー（全員表示モードのみ） */}
+          {calendarViewMode === 'all' && showMemberSidebar && (
+            <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 hidden lg:block">
+              <div className="sticky top-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">メンバー</h3>
+                  <button
+                    onClick={() => setShowMemberSidebar(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    title="サイドバーを閉じる"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                {/* 選択数表示 */}
+                <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+                  {visibleMemberIds.size}人選択中
+                </div>
+
+                {/* クイックアクション */}
+                <div className="flex gap-1 mb-3">
+                  <button
+                    onClick={selectOnlyMe}
+                    className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                  >
+                    自分のみ
+                  </button>
+                  <button
+                    onClick={selectAllMembers}
+                    className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                  >
+                    全員
+                  </button>
+                  <button
+                    onClick={clearAllMembers}
+                    className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                  >
+                    クリア
+                  </button>
+                </div>
+
+                {/* 自分 */}
+                {user && (
+                  <label className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={visibleMemberIds.has(user.id)}
+                      onChange={() => toggleMemberVisibility(user.id)}
+                      className="rounded border-gray-300 dark:border-gray-600"
+                    />
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                      style={{ backgroundColor: user.avatarColor || '#6B7280' }}
+                    >
+                      {(user.avatarLetter || user.name || '').charAt(0)}
+                    </div>
+                    <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                      {user.name} (自分)
+                    </span>
+                  </label>
+                )}
+
+                {/* 区切り線 */}
+                {user && availableMembers.length > 0 && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+                )}
+
+                {/* 他のメンバー */}
+                <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                  {availableMembers.map((member) => (
+                    <label
+                      key={member.id}
+                      className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={visibleMemberIds.has(member.id)}
+                        onChange={() => toggleMemberVisibility(member.id)}
+                        className="rounded border-gray-300 dark:border-gray-600"
+                      />
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                        style={{ backgroundColor: member.avatarColor || '#6B7280' }}
+                      >
+                        {(member.avatarLetter || member.name || '').charAt(0)}
+                      </div>
+                      <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                        {member.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* サイドバー開閉ボタン（閉じている時のみ表示） */}
+          {calendarViewMode === 'all' && !showMemberSidebar && (
+            <button
+              onClick={() => setShowMemberSidebar(true)}
+              className="fixed left-4 top-32 z-10 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 hidden lg:block"
+              title="メンバーサイドバーを開く"
+            >
+              <ChevronRight className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          )}
+
+          {/* カレンダー本体 */}
+          <div className="flex-1 min-w-0">
         <div className="flex justify-between items-center mb-4 sm:mb-6 px-3 sm:px-0 pt-3 sm:pt-0">
           <Button variant="outline" onClick={handlePrev}>
             <ChevronLeft className="h-4 w-4" />
@@ -645,7 +816,8 @@ export const Schedule: React.FC = () => {
                 const r = parseInt(hex.substr(0, 2), 16);
                 const g = parseInt(hex.substr(2, 2), 16);
                 const b = parseInt(hex.substr(4, 2), 16);
-                return (r * 299 + g * 587 + b * 114) / 1000 > 128 ? '#111827' : '#ffffff';
+                const luminance = (r * 299 + g * 587 + b * 114) / 1000;
+                return luminance > 128 ? '#111827' : '#ffffff';
               };
 
               return weeks.map((weekDays, weekIndex) => {
@@ -762,10 +934,10 @@ export const Schedule: React.FC = () => {
                                         handleEditSchedule(schedule); 
                                       }
                                     }}
-                                    className="w-full text-left px-1.5 py-0.5 rounded text-xs hover:opacity-90 transition-opacity truncate"
+                                    className="w-full text-left px-1.5 py-0.5 rounded hover:opacity-90 transition-opacity truncate"
                                     style={{ backgroundColor: color, color: tc }}>
-                                    <span className="font-medium">{formatTime(schedule.startTime)}</span>
-                                    <span className="ml-1 truncate">{(schedule as any).title || schedule.activityDescription}</span>
+                                    <span className="text-[10px] font-semibold" style={{ color: tc }}>{formatTime(schedule.startTime)}</span>
+                                    <span className="ml-1 text-xs truncate" style={{ color: tc }}>{(schedule as any).title || schedule.activityDescription}</span>
                                   </button>
                                 );
                               })}
@@ -812,7 +984,7 @@ export const Schedule: React.FC = () => {
                               style={{
                                 left, width, top: `${top}px`, height: `${BAR_HEIGHT}px`,
                                 backgroundColor: color, color: tc, borderRadius,
-                                fontSize: '11px', padding: '2px 6px', lineHeight: '16px',
+                                fontSize: '10px', padding: '2px 6px', lineHeight: '16px',
                                 whiteSpace: 'nowrap', textOverflow: 'ellipsis',
                               }}
                               onClick={(e) => { 
@@ -827,7 +999,7 @@ export const Schedule: React.FC = () => {
                               }}
                               title={`${(bar.schedule as any).title || bar.schedule.activityDescription} (${formatTime(bar.schedule.startTime)}-${formatTime(bar.schedule.endTime)})`}>
                               {bar.isActualStart && (
-                                <span className="font-medium truncate">
+                                <span className="font-medium truncate" style={{ color: tc }}>
                                   {(bar.schedule as any).title || bar.schedule.activityDescription}
                                 </span>
                               )}
@@ -970,6 +1142,8 @@ export const Schedule: React.FC = () => {
             </div>
           )}
         </div>
+          </div>
+        </div>
       </div>
 
       {/* 新規タスク追加（TaskModal） */}
@@ -1075,7 +1249,7 @@ export const Schedule: React.FC = () => {
                                 style={{ borderLeftWidth: '3px', borderLeftColor: scheduleColor }}
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                     {formatTime(schedule.startTime)}–{formatTime(schedule.endTime)}
                                   </span>
                                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">

@@ -48,6 +48,21 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     console.log('DraggableCalendarView: events count =', events.length);
   }, [schedules, events]);
 
+  // 色のコントラストを計算して適切なテキスト色を返す
+  const getTextColor = (backgroundColor: string): string => {
+    // #RRGGBB形式の色からRGB値を抽出
+    const hex = backgroundColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // 相対輝度を計算（WCAG基準）
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // 輝度が0.5以上なら黒文字、それ以下なら白文字
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+  };
+
   // FullCalendar用のイベントデータに変換
   const calendarEvents = React.useMemo(() => {
     console.log('Converting schedules to calendar events...');
@@ -104,6 +119,9 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             ? schedule.user?.avatarColor || '#6B7280'
             : (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
 
+          // テキスト色を自動調整
+          const textColor = getTextColor(color);
+
           // 複数日スケジュールの場合
           const isMultiDay = startDate !== endDate;
           
@@ -125,6 +143,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             end: endDateTime,
             backgroundColor: color,
             borderColor: color,
+            textColor: textColor,
             allDay: false,
             editable: isEditable,
             extendedProps: {
@@ -152,6 +171,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       ...events.map((event) => {
         try {
           const colorClass = event.eventType === 'TOWN_OFFICIAL' ? '#3B82F6' : event.eventType === 'TEAM' ? '#10B981' : '#6B7280';
+          const textColor = getTextColor(colorClass);
           
           // 日付を JST で取得（データベースから返される日付は UTC なので、UTC の日付部分を使用）
           let dateStr: string;
@@ -174,6 +194,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             end: event.endTime ? `${dateStr}T${event.endTime}:00` : undefined,
             backgroundColor: colorClass,
             borderColor: colorClass,
+            textColor: textColor,
             allDay: !event.startTime,
             extendedProps: {
               type: 'event',

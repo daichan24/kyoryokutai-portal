@@ -297,14 +297,23 @@ const updateScheduleSchema = createScheduleSchema.partial();
 
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { userId, date, startDate, endDate, view, allMembers } = req.query;
+    const { userId, date, startDate, endDate, view, allMembers, userIds } = req.query;
     const currentUserId = req.user!.id;
 
     // 取得条件: 作成者であるか、承認済みの参加者である
     let where: any;
 
+    // userIdsが指定されている場合（複数メンバー選択）
+    if (userIds) {
+      const ids = Array.isArray(userIds) ? userIds : [userIds];
+      where = {
+        userId: {
+          in: ids as string[],
+        },
+      };
+    }
     // allMembersがtrueの場合、全メンバーのスケジュールを取得
-    if (allMembers === 'true') {
+    else if (allMembers === 'true') {
       // 全メンバーのスケジュールを取得
       // まず全メンバー（表示順0番目を除く）を取得
       const members = await prisma.user.findMany({
@@ -382,8 +391,8 @@ router.get('/', async (req: AuthRequest, res) => {
     }
 
     // 作成者かどうかを判定（where条件から）
-    // allMembersがtrueの場合は全メンバーのスケジュールを取得するため、isCreatorはfalse
-    const isCreator = allMembers !== 'true' && (where.userId === currentUserId || (where.OR && where.OR[0]?.userId === currentUserId));
+    // allMembersがtrueまたはuserIdsが指定されている場合は全メンバーのスケジュールを取得するため、isCreatorはfalse
+    const isCreator = !userIds && allMembers !== 'true' && (where.userId === currentUserId || (where.OR && where.OR[0]?.userId === currentUserId));
 
     const schedules = await prisma.schedule.findMany({
       where,
