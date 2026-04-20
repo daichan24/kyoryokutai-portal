@@ -388,3 +388,74 @@ console.log('getTimezoneOffset():', date.getTimezoneOffset());
 **最終更新:** 2026年4月20日  
 **作成者:** Kiro AI Assistant  
 **バージョン:** 1.0
+
+
+---
+
+## 2026-04-21: タスクモーダル - ミッション・プロジェクト保持の修正
+
+### 問題
+スケジュールから「タスク編集」を開いたときに、ミッションとプロジェクトの情報が正しく表示・保持されない問題。
+
+### 根本原因
+1. **バックエンド**: スケジュール取得APIに`task`情報が含まれていなかった
+2. **フロントエンド**: スケジュール編集時の初期値設定が不完全で、`schedule.task`を参照していなかった
+3. **UI**: タイトルが「メモ」フィールドに重複して表示されていた
+
+### 修正内容
+
+#### バックエンド（backend/src/routes/schedules.ts）
+```typescript
+// スケジュール取得APIにtask情報を追加
+task: {
+  select: {
+    id: true,
+    missionId: true,
+    projectId: true,
+    title: true,
+    linkKind: true,
+  },
+}
+```
+
+#### フロントエンド（frontend/src/components/project/TaskModal.tsx）
+```typescript
+// スケジュール編集時の初期値設定を完全に書き直し
+if ((schedule as any).task) {
+  const scheduleTask = (schedule as any).task;
+  setSelectedMissionId(scheduleTask.missionId || '');
+  setProjectId(scheduleTask.projectId || null);
+  
+  // linkKindからattachModeを設定
+  const taskLinkKind = scheduleTask.linkKind;
+  if (taskLinkKind === 'KYORYOKUTAI_WORK') {
+    setAttachMode('KYORYOKUTAI');
+  } else if (taskLinkKind === 'YAKUBA_WORK') {
+    setAttachMode('YAKUBA');
+  } else if (taskLinkKind === 'TRIAGE_PENDING') {
+    setAttachMode('TRIAGE');
+  } else if (scheduleTask.projectId) {
+    setAttachMode('PROJECT');
+  } else {
+    setAttachMode('UNSET');
+  }
+}
+```
+
+### 影響範囲
+- スケジュールページからの「タスク編集」
+- タスク一覧からの「タスク編集」
+- タスクの新規作成
+- スケジュールの編集
+
+### コミット
+- `f4110c4` - feat: スケジュール取得APIにタスク情報を含める
+- `739339d` - feat: スケジュール編集時にタスク情報からミッション・プロジェクトを取得
+- `872674d` - fix: タイトルがメモに飛ぶ問題を修正とミッション保持の改善
+- `7ea2c08` - fix: プロジェクト選択時にミッションがリセットされる問題を修正
+
+### 詳細ドキュメント
+[TASK_MODAL_MISSION_PROJECT_FIX.md](./TASK_MODAL_MISSION_PROJECT_FIX.md)
+
+### 重要度
+🔴 **CRITICAL** - タスク管理の基本機能に影響する重要な修正
