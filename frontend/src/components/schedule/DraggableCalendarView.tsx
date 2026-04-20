@@ -215,6 +215,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           date: newDateStr,
           startTime: oldStartTime,
           endTime: oldEndTime,
+          // 既存のフィールドを保持
+          title: (schedule as any).title || schedule.activityDescription,
+          activityDescription: schedule.activityDescription,
+          locationText: schedule.locationText || '',
         };
 
         // 複数日スケジュールの場合
@@ -223,6 +227,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         }
 
         console.log('月表示での移動:', {
+          scheduleId: schedule.id,
           oldDate: schedule.date,
           newDate: newDateStr,
           oldStartTime,
@@ -239,6 +244,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           date: newStart.toISOString().split('T')[0],
           startTime,
           endTime,
+          // 既存のフィールドを保持
+          title: (schedule as any).title || schedule.activityDescription,
+          activityDescription: schedule.activityDescription,
+          locationText: schedule.locationText || '',
         };
 
         // 複数日スケジュールの場合
@@ -247,6 +256,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         }
 
         console.log('週/日表示での移動:', {
+          scheduleId: schedule.id,
           oldDate: schedule.date,
           newDate: updateData.date,
           oldStartTime: schedule.startTime,
@@ -259,13 +269,15 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
       console.log('Updating schedule:', { id: schedule.id, updateData });
 
-      await api.put(`/api/schedules/${schedule.id}`, updateData);
+      const response = await api.put(`/api/schedules/${schedule.id}`, updateData);
+      console.log('Update response:', response.data);
       
       // 成功したら親コンポーネントに通知
       onScheduleUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update schedule:', error);
-      alert('スケジュールの更新に失敗しました');
+      console.error('Error response:', error.response?.data);
+      alert(`スケジュールの更新に失敗しました: ${error.response?.data?.error || error.message}`);
       info.revert();
     } finally {
       setIsUpdating(false);
@@ -311,6 +323,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         date: newStart.toISOString().split('T')[0],
         startTime,
         endTime,
+        // 既存のフィールドを保持
+        title: (schedule as any).title || schedule.activityDescription,
+        activityDescription: schedule.activityDescription,
+        locationText: schedule.locationText || '',
       };
 
       // 複数日スケジュールの場合
@@ -318,15 +334,24 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         updateData.endDate = newEnd.toISOString().split('T')[0];
       }
 
-      console.log('Resizing schedule:', { id: schedule.id, updateData });
+      console.log('Resizing schedule:', { 
+        scheduleId: schedule.id, 
+        oldStartTime: schedule.startTime,
+        newStartTime: startTime,
+        oldEndTime: schedule.endTime,
+        newEndTime: endTime,
+        updateData 
+      });
 
-      await api.put(`/api/schedules/${schedule.id}`, updateData);
+      const response = await api.put(`/api/schedules/${schedule.id}`, updateData);
+      console.log('Resize response:', response.data);
       
       // 成功したら親コンポーネントに通知
       onScheduleUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to resize schedule:', error);
-      alert('スケジュールのリサイズに失敗しました');
+      console.error('Error response:', error.response?.data);
+      alert(`スケジュールのリサイズに失敗しました: ${error.response?.data?.error || error.message}`);
       info.revert();
     } finally {
       setIsUpdating(false);
