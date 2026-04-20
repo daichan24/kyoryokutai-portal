@@ -535,24 +535,33 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
     if (isTimeGridView) {
       // 週/日表示の場合は時刻付きで作成
-      // FullCalendar の Date オブジェクトは既に JST なので、そのまま使用
+      // FullCalendar の timeZone: 'Asia/Tokyo' 設定により、
+      // info.date は JST の Date オブジェクトとして返される
       const clickedDate = info.date;
+      
+      console.log('=== 日付クリック（週/日表示）デバッグ ===');
+      console.log('clickedDate (raw):', clickedDate);
+      console.log('clickedDate.toString():', clickedDate.toString());
+      console.log('clickedDate.toISOString():', clickedDate.toISOString());
+      console.log('clickedDate.getHours():', clickedDate.getHours());
+      console.log('clickedDate.getMinutes():', clickedDate.getMinutes());
+      console.log('clickedDate.getTimezoneOffset():', clickedDate.getTimezoneOffset());
+      
       const startTime = `${String(clickedDate.getHours()).padStart(2, '0')}:${String(clickedDate.getMinutes()).padStart(2, '0')}`;
       const endDate = new Date(clickedDate);
       endDate.setHours(clickedDate.getHours() + 1);
       const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
       
-      console.log('週/日表示での時間クリック:', {
-        clickedTime: clickedDate,
-        jstHours: clickedDate.getHours(),
-        jstMinutes: clickedDate.getMinutes(),
-        startTime,
-        endTime,
-      });
+      console.log('計算された startTime:', startTime);
+      console.log('計算された endTime:', endTime);
+      console.log('===================================');
       
       onCreateSchedule(clickedDate, startTime, endTime);
     } else {
       // 月表示の場合は日付のみで作成
+      console.log('=== 日付クリック（月表示）デバッグ ===');
+      console.log('clickedDate:', info.date);
+      console.log('===================================');
       onCreateSchedule(info.date);
     }
   };
