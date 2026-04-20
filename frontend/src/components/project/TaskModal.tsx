@@ -299,8 +299,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setProjectId(task.projectId || null);
       const taskLinkKind = task.linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI' : task.linkKind === 'YAKUBA_WORK' ? 'YAKUBA' : task.linkKind === 'TRIAGE_PENDING' ? 'TRIAGE' : task.projectId ? 'PROJECT' : 'UNSET';
       setAttachMode(taskLinkKind);
-      setMemo([(task as any).description, (task as any).freeNote].filter(Boolean).join('
-'));
+      setMemo([(task as any).description, (task as any).freeNote].filter(Boolean).join('\n'));
       setCustomColor((task as any).customColor || '');
       setSupportEventId((task as any).supportEventId || null);
       setShowSupportEvents(!!(task as any).supportEventId);
