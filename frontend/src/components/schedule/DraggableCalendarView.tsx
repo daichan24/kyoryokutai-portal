@@ -165,7 +165,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       return;
     }
 
-    const { event } = info;
+    const { event, delta } = info;
     const extendedProps = event.extendedProps;
 
     // イベントタイプの場合は移動不可
@@ -177,6 +177,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     const schedule: ScheduleType = extendedProps.schedule;
     const oldStartDate = new Date(schedule.startDate || schedule.date);
     const oldEndDate = new Date(schedule.endDate || schedule.date);
+    
+    // FullCalendar から取得した新しい開始・終了時刻
     const newStart = event.start;
     const newEnd = event.end || newStart;
 
@@ -236,14 +238,26 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           updateData,
         });
       } else {
-        // 週/日表示の場合は通常の移動（時刻も変更）
-        const startTime = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
-        const endTime = `${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+        // 週/日表示の場合: ブロックごと移動（開始・終了の両方が移動）
+        // 元の所要時間を計算
+        const oldStartMinutes = parseInt(schedule.startTime.split(':')[0]) * 60 + parseInt(schedule.startTime.split(':')[1]);
+        const oldEndMinutes = parseInt(schedule.endTime.split(':')[0]) * 60 + parseInt(schedule.endTime.split(':')[1]);
+        const duration = oldEndMinutes - oldStartMinutes;
+
+        // 新しい開始時刻
+        const newStartTime = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
+        
+        // 新しい終了時刻 = 新しい開始時刻 + 元の所要時間
+        const newStartMinutes = newStart.getHours() * 60 + newStart.getMinutes();
+        const newEndMinutes = newStartMinutes + duration;
+        const newEndHours = Math.floor(newEndMinutes / 60);
+        const newEndMins = newEndMinutes % 60;
+        const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}`;
 
         updateData = {
           date: newStart.toISOString().split('T')[0],
-          startTime,
-          endTime,
+          startTime: newStartTime,
+          endTime: newEndTime,
           // 既存のフィールドを保持
           title: (schedule as any).title || schedule.activityDescription,
           activityDescription: schedule.activityDescription,
@@ -255,14 +269,15 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           updateData.endDate = newEnd.toISOString().split('T')[0];
         }
 
-        console.log('週/日表示での移動:', {
+        console.log('週/日表示でのブロック移動:', {
           scheduleId: schedule.id,
           oldDate: schedule.date,
           newDate: updateData.date,
           oldStartTime: schedule.startTime,
-          newStartTime: startTime,
+          newStartTime,
           oldEndTime: schedule.endTime,
-          newEndTime: endTime,
+          newEndTime,
+          duration: `${duration}分`,
           updateData,
         });
       }
@@ -291,7 +306,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       return;
     }
 
-    const { event } = info;
+    const { event, startDelta, endDelta } = info;
     const extendedProps = event.extendedProps;
 
     // イベントタイプまたは月表示の場合はリサイズ不可
@@ -316,8 +331,42 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     setIsUpdating(true);
 
     try {
-      const startTime = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
-      const endTime = `${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+      // リサイズの種類を判定
+      const isStartResize = startDelta && startDelta.milliseconds !== 0;
+      const isEndResize = endDelta && endDelta.milliseconds !== 0;
+
+      let startTime: string;
+      let endTime: string;
+
+      if (isStartResize) {
+        // 開始時刻のみ変更（終了時刻は固定）
+        startTime = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
+        endTime = schedule.endTime; // 元の終了時刻を保持
+        
+        console.log('開始時刻のみリサイズ:', {
+          scheduleId: schedule.id,
+          oldStartTime: schedule.startTime,
+          newStartTime: startTime,
+          endTime: endTime,
+          delta: `${startDelta.milliseconds / 1000 / 60}分`,
+        });
+      } else if (isEndResize) {
+        // 終了時刻のみ変更（開始時刻は固定）
+        startTime = schedule.startTime; // 元の開始時刻を保持
+        endTime = `${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+        
+        console.log('終了時刻のみリサイズ:', {
+          scheduleId: schedule.id,
+          startTime: startTime,
+          oldEndTime: schedule.endTime,
+          newEndTime: endTime,
+          delta: `${endDelta.milliseconds / 1000 / 60}分`,
+        });
+      } else {
+        // どちらも変更されていない場合（念のため）
+        startTime = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
+        endTime = `${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+      }
 
       const updateData: any = {
         date: newStart.toISOString().split('T')[0],
@@ -336,10 +385,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
       console.log('Resizing schedule:', { 
         scheduleId: schedule.id, 
-        oldStartTime: schedule.startTime,
-        newStartTime: startTime,
-        oldEndTime: schedule.endTime,
-        newEndTime: endTime,
+        isStartResize,
+        isEndResize,
         updateData 
       });
 
