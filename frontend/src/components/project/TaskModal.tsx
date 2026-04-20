@@ -295,12 +295,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setStartTime((task as any).startTime || '09:00'); setEndTime((task as any).endTime || '17:00');
       setLocationText((task as any).locationText || ''); setLocationOther('');
       setProjectId(task.projectId || null);
-      setAttachMode(task.projectId ? 'PROJECT' : task.linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI' : task.linkKind === 'TRIAGE_PENDING' ? 'TRIAGE' : 'UNSET');
-      setMemo([(task as any).description, (task as any).freeNote].filter(Boolean).join('\n'));
+      const taskLinkKind = task.linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI' : task.linkKind === 'YAKUBA_WORK' ? 'YAKUBA' : task.linkKind === 'TRIAGE_PENDING' ? 'TRIAGE' : task.projectId ? 'PROJECT' : 'UNSET';
+      setAttachMode(taskLinkKind);
+      setMemo([(task as any).description, (task as any).freeNote].filter(Boolean).join('
+'));
       setCustomColor((task as any).customColor || '');
       setSupportEventId((task as any).supportEventId || null);
       setShowSupportEvents(!!(task as any).supportEventId);
-      if (task.missionId) setSelectedMissionId(task.missionId);
+      // YAKUBA/KYORYOKUTAIの場合はselectedMissionIdを空にする（ドロップダウンで__YAKUBA__/__KYORYOKUTAI__が選択される）
+      if (taskLinkKind === 'YAKUBA' || taskLinkKind === 'KYORYOKUTAI') {
+        setSelectedMissionId('');
+      } else if (task.missionId) {
+        setSelectedMissionId(task.missionId);
+      }
     } else {
       setTitle(''); setDueDate(defaultDate ? toDateStr(defaultDate) : ''); setEndDate(defaultDate ? toDateStr(defaultDate) : '');
       setStartTime(defaultStartTime || '09:00'); setEndTime(defaultEndTime || '17:00');
@@ -350,7 +357,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   const handleMissionChange = (v: string) => {
     if (v === '__KYORYOKUTAI__') { setSelectedMissionId(''); setAttachMode('KYORYOKUTAI'); setProjectId(null); }
-    else { setSelectedMissionId(v); if (attachMode === 'KYORYOKUTAI') { setAttachMode('UNSET'); setProjectId(null); } }
+    else if (v === '__YAKUBA__') { setSelectedMissionId(''); setAttachMode('YAKUBA'); setProjectId(null); }
+    else { setSelectedMissionId(v); if (attachMode === 'KYORYOKUTAI' || attachMode === 'YAKUBA') { setAttachMode('UNSET'); setProjectId(null); } }
   };
 
   const addHour = (t: string, delta: number) => {
@@ -532,29 +540,32 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ミッション</label>
-                  <select value={attachMode === 'KYORYOKUTAI' ? '__KYORYOKUTAI__' : selectedMissionId}
+                  <select value={attachMode === 'KYORYOKUTAI' ? '__KYORYOKUTAI__' : attachMode === 'YAKUBA' ? '__YAKUBA__' : selectedMissionId}
                     onChange={e => handleMissionChange(e.target.value)}
                     className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
                     disabled={readOnly}>
                     <option value="">未選択</option>
                     <option value="__KYORYOKUTAI__">協力隊業務</option>
+                    <option value="__YAKUBA__">役場業務</option>
                     {missions.map(m => <option key={m.id} value={m.id}>{m.missionName}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">プロジェクト</label>
                   <select
-                    value={attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI' : attachMode === 'TRIAGE' ? 'TRIAGE' : attachMode === 'PROJECT' ? (projectId || '') : ''}
+                    value={attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI' : attachMode === 'YAKUBA' ? 'YAKUBA' : attachMode === 'TRIAGE' ? 'TRIAGE' : attachMode === 'PROJECT' ? (projectId || '') : ''}
                     onChange={e => {
                       const v = e.target.value;
                       if (v === 'KYORYOKUTAI') { setAttachMode('KYORYOKUTAI'); setProjectId(null); setSelectedMissionId(''); }
-                      else if (v === 'TRIAGE') { setAttachMode('TRIAGE'); setProjectId(null); }
-                      else if (v === '') { setAttachMode('UNSET'); setProjectId(null); }
+                      else if (v === 'YAKUBA') { setAttachMode('YAKUBA'); setProjectId(null); setSelectedMissionId(''); }
+                      else if (v === 'TRIAGE') { setAttachMode('TRIAGE'); setProjectId(null); setSelectedMissionId(''); }
+                      else if (v === '') { setAttachMode('UNSET'); setProjectId(null); setSelectedMissionId(''); }
                       else { setAttachMode('PROJECT'); setProjectId(v); }
                     }}
                     className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" disabled={readOnly}>
                     <option value="">未設定</option>
                     <option value="KYORYOKUTAI">協力隊業務</option>
+                    <option value="YAKUBA">役場業務</option>
                     <option value="TRIAGE">あとで振り分け</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.projectName}</option>)}
                   </select>
