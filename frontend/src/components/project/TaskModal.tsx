@@ -294,19 +294,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       setEndDate((task as any).endDate ? (task as any).endDate.split('T')[0] : (task.dueDate ? task.dueDate.split('T')[0] : ''));
       setStartTime((task as any).startTime || '09:00'); setEndTime((task as any).endTime || '17:30');
+      // ミッションとプロジェクトを設定
+      setSelectedMissionId(task.missionId || '');
       setProjectId(task.projectId || null);
       const taskLinkKind = task.linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI' : task.linkKind === 'YAKUBA_WORK' ? 'YAKUBA' : task.linkKind === 'TRIAGE_PENDING' ? 'TRIAGE' : task.projectId ? 'PROJECT' : 'UNSET';
       setAttachMode(taskLinkKind);
-      setMemo([(task as any).description, (task as any).freeNote].filter(Boolean).join('\n'));
+      setMemo([(task as any).description, (task as any).freeNote].filter(Boolean).join('
+'));
       setCustomColor((task as any).customColor || '');
       setSupportEventId((task as any).supportEventId || null);
       setShowSupportEvents(!!(task as any).supportEventId);
-      // YAKUBA/KYORYOKUTAI/TRIAGEの場合はselectedMissionIdを空にする
-      if (taskLinkKind === 'YAKUBA' || taskLinkKind === 'KYORYOKUTAI' || taskLinkKind === 'TRIAGE') {
-        setSelectedMissionId('');
-      } else if (task.missionId) {
-        setSelectedMissionId(task.missionId);
-      }
     } else {
       setTitle(''); setDueDate(defaultDate ? toDateStr(defaultDate) : ''); setEndDate(defaultDate ? toDateStr(defaultDate) : '');
       setStartTime(defaultStartTime || '09:00'); setEndTime(defaultEndTime || '17:30');
