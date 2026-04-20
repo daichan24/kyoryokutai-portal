@@ -270,13 +270,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDueDate(sd);
       setEndDate((schedule as any).endDate ? formatDate(new Date((schedule as any).endDate)) : sd);
       setStartTime(schedule.startTime); setEndTime(schedule.endTime);
-      // 場所の初期値設定 - 既存の場所リストにない場合は「その他」として扱う
-      const existingLocation = schedule.locationText;
-      if (existingLocation) {
-        // locationsが読み込まれる前に実行される可能性があるため、後で再チェック
-        setLocationText(existingLocation);
-        setLocationOther('');
-      }
       setProjectId(schedule.projectId || null);
       setAttachMode(schedule.projectId ? 'PROJECT' : 'UNSET');
       setMemo([schedule.activityDescription, schedule.freeNote].filter(Boolean).join('\n'));
@@ -301,13 +294,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       setEndDate((task as any).endDate ? (task as any).endDate.split('T')[0] : (task.dueDate ? task.dueDate.split('T')[0] : ''));
       setStartTime((task as any).startTime || '09:00'); setEndTime((task as any).endTime || '17:30');
-      
-      // 場所の初期値設定 - 既存の場所リストにない場合は「その他」として扱う
-      const existingLocation = (task as any).locationText;
-      if (existingLocation) {
-        setLocationText(existingLocation);
-        setLocationOther('');
-      }
       setProjectId(task.projectId || null);
       const taskLinkKind = task.linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI' : task.linkKind === 'YAKUBA_WORK' ? 'YAKUBA' : task.linkKind === 'TRIAGE_PENDING' ? 'TRIAGE' : task.projectId ? 'PROJECT' : 'UNSET';
       setAttachMode(taskLinkKind);
@@ -351,21 +337,32 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         setAvailableUsers((ur.data || []).filter((u: User) => u.role === 'MEMBER' && u.id !== currentUser?.id));
         setSupportEvents((er.data || []).map((e: any) => ({ id: e.id, eventName: e.eventName, startDate: e.startDate || e.date })));
         setMissions(mr.data || []);
-        
-        // 場所が読み込まれた後、既存の場所が「その他」かどうかを判定
-        if (schedule?.locationText || (task as any)?.locationText) {
-          const existingLoc = schedule?.locationText || (task as any)?.locationText;
-          const isInList = loadedLocations.some((l: Location) => l.name === existingLoc);
-          if (!isInList && existingLoc) {
-            // 既存の場所リストにない場合は「その他」として扱う
-            setLocationText('__OTHER__');
-            setLocationOther(existingLoc);
-          }
-        }
       } catch (err) { console.error('Failed to fetch data:', err); }
     };
     fetchAll();
-  }, [missionId, task?.missionId, currentUser?.id, schedule, task]);
+  }, [missionId, task?.missionId, currentUser?.id]);
+
+  // 場所データ読み込み後、既存の場所が「その他」かどうかを判定
+  useEffect(() => {
+    if (locations.length === 0) return; // 場所データがまだ読み込まれていない
+    
+    const existingLoc = schedule?.locationText || (task as any)?.locationText;
+    if (!existingLoc) return; // 既存の場所がない
+    
+    // 既に設定済みの場合はスキップ
+    if (locationText) return;
+    
+    const isInList = locations.some((l: Location) => l.name === existingLoc);
+    if (!isInList) {
+      // 既存の場所リストにない場合は「その他」として扱う
+      setLocationText('__OTHER__');
+      setLocationOther(existingLoc);
+    } else {
+      // リストにある場合はそのまま設定
+      setLocationText(existingLoc);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locations.length]); // locationsの長さが変わったとき（読み込み完了時）のみ実行
 
   useEffect(() => {
     if (readOnly || suspendOutsidePointerClose) return;
