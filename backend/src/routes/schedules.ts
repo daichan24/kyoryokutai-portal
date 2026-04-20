@@ -453,18 +453,23 @@ router.post('/', async (req: AuthRequest, res) => {
 
     // スケジュール作成
     // 日付のバリデーション
-    const startDate = new Date(data.date);
+    // YYYY-MM-DD 形式の文字列を JST の正午として解釈する
+    // これにより、タイムゾーンによる日付のずれを防ぐ
+    const startDate = new Date(`${data.date}T12:00:00+09:00`);
     if (isNaN(startDate.getTime())) {
       return res.status(400).json({ error: 'Invalid start date format' });
     }
     
-    const endDate = data.endDate ? new Date(data.endDate) : startDate; // 終了日が指定されていない場合は開始日と同じ
+    const endDate = data.endDate 
+      ? new Date(`${data.endDate}T12:00:00+09:00`) 
+      : startDate; // 終了日が指定されていない場合は開始日と同じ
     if (isNaN(endDate.getTime())) {
       return res.status(400).json({ error: 'Invalid end date format' });
     }
     
     console.log('Creating schedule with:', {
-      date: data.date,
+      inputDate: data.date,
+      inputEndDate: data.endDate,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       startTime: data.startTime,
@@ -624,13 +629,18 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const updateData: any = {};
 
     // 日付フィールドの処理
+    // YYYY-MM-DD 形式の文字列を JST の正午として解釈する
+    // これにより、タイムゾーンによる日付のずれを防ぐ
     if (data.date) {
-      const startDate = new Date(data.date);
+      // YYYY-MM-DD 形式の文字列を JST の正午として解釈
+      const startDate = new Date(`${data.date}T12:00:00+09:00`);
       if (isNaN(startDate.getTime())) {
         return res.status(400).json({ error: '無効な開始日です' });
       }
       const dataWithEndDate = data as any;
-      const endDate = dataWithEndDate.endDate ? new Date(dataWithEndDate.endDate) : startDate;
+      const endDate = dataWithEndDate.endDate 
+        ? new Date(`${dataWithEndDate.endDate}T12:00:00+09:00`) 
+        : startDate;
       if (isNaN(endDate.getTime())) {
         return res.status(400).json({ error: '無効な終了日です' });
       }
@@ -638,6 +648,16 @@ router.put('/:id', async (req: AuthRequest, res) => {
       if (endDate < startDate) {
         return res.status(400).json({ error: '終了日は開始日以降の日付を指定してください' });
       }
+      
+      console.log('Schedule update - date conversion:', {
+        inputDate: data.date,
+        inputEndDate: dataWithEndDate.endDate,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        startTime: data.startTime,
+        endTime: data.endTime,
+      });
+      
       updateData.date = startDate; // 後方互換性のため
       updateData.startDate = startDate;
       updateData.endDate = endDate;
@@ -649,7 +669,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         if (!existingStartDate) {
           return res.status(400).json({ error: '開始日が設定されていません' });
         }
-        const endDate = new Date(dataWithEndDate.endDate);
+        const endDate = new Date(`${dataWithEndDate.endDate}T12:00:00+09:00`);
         if (isNaN(endDate.getTime())) {
           return res.status(400).json({ error: '無効な終了日です' });
         }
