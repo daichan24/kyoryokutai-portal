@@ -968,7 +968,16 @@ export const Schedule: React.FC = () => {
       {isModalOpen && selectedSchedule && (
         <TaskModal
           schedule={selectedSchedule}
-          readOnly={calendarViewMode === 'all' && selectedSchedule.userId !== user?.id}
+          readOnly={(() => {
+            const isReadOnly = calendarViewMode === 'all' && selectedSchedule.userId !== user?.id;
+            console.log('=== TaskModal readOnly 判定 ===');
+            console.log('calendarViewMode:', calendarViewMode);
+            console.log('selectedSchedule.userId:', selectedSchedule.userId);
+            console.log('user?.id:', user?.id);
+            console.log('isReadOnly:', isReadOnly);
+            console.log('===================================');
+            return isReadOnly;
+          })()}
           onClose={handleCloseModal}
           onSaved={handleSaved}
         />
