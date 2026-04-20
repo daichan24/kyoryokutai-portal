@@ -106,12 +106,12 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           const isMultiDay = startDate !== endDate;
           
           // FullCalendar に渡す時刻を作成
-          // timeZone: 'Asia/Tokyo' を設定しているため、ISO 8601形式で渡す必要がある
-          // "2026-04-20T18:00:00+09:00" の形式で渡すことで、正確にJSTとして解釈される
-          const startDateTime = `${startDate}T${schedule.startTime}:00+09:00`;
+          // timeZone: 'Asia/Tokyo' を設定しているため、タイムゾーン情報なしで渡す
+          // FullCalendarが自動的にJSTとして解釈する
+          const startDateTime = `${startDate}T${schedule.startTime}:00`;
           const endDateTime = isMultiDay 
-            ? `${endDate}T${schedule.endTime}:00+09:00`
-            : `${startDate}T${schedule.endTime}:00+09:00`;
+            ? `${endDate}T${schedule.endTime}:00`
+            : `${startDate}T${schedule.endTime}:00`;
 
           const event = {
             id: schedule.id,
@@ -163,8 +163,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           return {
             id: `event-${event.id}`,
             title: event.eventName,
-            start: event.startTime ? `${dateStr}T${event.startTime}:00+09:00` : dateStr,
-            end: event.endTime ? `${dateStr}T${event.endTime}:00+09:00` : undefined,
+            start: event.startTime ? `${dateStr}T${event.startTime}:00` : dateStr,
+            end: event.endTime ? `${dateStr}T${event.endTime}:00` : undefined,
             backgroundColor: colorClass,
             borderColor: colorClass,
             allDay: !event.startTime,
