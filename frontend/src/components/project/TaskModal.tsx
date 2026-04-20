@@ -588,7 +588,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                       if (v === 'KYORYOKUTAI') { setAttachMode('KYORYOKUTAI'); setProjectId(null); setSelectedMissionId(''); }
                       else if (v === 'YAKUBA') { setAttachMode('YAKUBA'); setProjectId(null); setSelectedMissionId(''); }
                       else if (v === 'TRIAGE') { setAttachMode('TRIAGE'); setProjectId(null); setSelectedMissionId(''); }
-                      else if (v === '') { setAttachMode('UNSET'); setProjectId(null); setSelectedMissionId(''); }
+                      else if (v === '') { setAttachMode('UNSET'); setProjectId(null); }
                       else { setAttachMode('PROJECT'); setProjectId(v); }
                     }}
                     className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" disabled={readOnly}>
