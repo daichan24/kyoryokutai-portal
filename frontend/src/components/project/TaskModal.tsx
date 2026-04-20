@@ -100,7 +100,7 @@ const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 const RecurringScheduleModal: React.FC<{
   onClose: () => void; onSaved: () => void;
   defaultTitle?: string; defaultStartTime?: string; defaultEndTime?: string; defaultProjectId?: string | null;
-}> = ({ onClose, onSaved, defaultTitle = '', defaultStartTime = '09:00', defaultEndTime = '17:00', defaultProjectId = null }) => {
+}> = ({ onClose, onSaved, defaultTitle = '', defaultStartTime = '09:00', defaultEndTime = '17:30', defaultProjectId = null }) => {
   const [title, setTitle] = useState(defaultTitle);
   const [startTime, setStartTime] = useState(defaultStartTime);
   const [endTime, setEndTime] = useState(defaultEndTime);
@@ -229,7 +229,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [dueDate, setDueDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
+  const [endTime, setEndTime] = useState('17:30');
   const [locationText, setLocationText] = useState('');
   const [locationOther, setLocationOther] = useState('');
   const [selectedMissionId, setSelectedMissionId] = useState(missionId || '');
@@ -292,7 +292,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle(task.title);
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       setEndDate((task as any).endDate ? (task as any).endDate.split('T')[0] : (task.dueDate ? task.dueDate.split('T')[0] : ''));
-      setStartTime((task as any).startTime || '09:00'); setEndTime((task as any).endTime || '17:00');
+      setStartTime((task as any).startTime || '09:00'); setEndTime((task as any).endTime || '17:30');
       setLocationText((task as any).locationText || ''); setLocationOther('');
       setProjectId(task.projectId || null);
       const taskLinkKind = task.linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI' : task.linkKind === 'YAKUBA_WORK' ? 'YAKUBA' : task.linkKind === 'TRIAGE_PENDING' ? 'TRIAGE' : task.projectId ? 'PROJECT' : 'UNSET';
@@ -309,7 +309,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       }
     } else {
       setTitle(''); setDueDate(defaultDate ? toDateStr(defaultDate) : ''); setEndDate(defaultDate ? toDateStr(defaultDate) : '');
-      setStartTime(defaultStartTime || '09:00'); setEndTime(defaultEndTime || '17:00');
+      setStartTime(defaultStartTime || '09:00'); setEndTime(defaultEndTime || '17:30');
       setLocationText(''); setLocationOther('');
       setProjectId(defaultProjectId || null); setAttachMode(defaultProjectId ? 'PROJECT' : 'UNSET');
       setMemo(''); setCustomColor(''); setSupportEventId(null); setShowSupportEvents(false);
