@@ -301,6 +301,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       setEndDate((task as any).endDate ? (task as any).endDate.split('T')[0] : (task.dueDate ? task.dueDate.split('T')[0] : ''));
       setStartTime((task as any).startTime || '09:00'); setEndTime((task as any).endTime || '17:30');
+      
       // 場所の初期値設定 - 既存の場所リストにない場合は「その他」として扱う
       const existingLocation = (task as any).locationText;
       if (existingLocation) {
@@ -314,8 +315,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setCustomColor((task as any).customColor || '');
       setSupportEventId((task as any).supportEventId || null);
       setShowSupportEvents(!!(task as any).supportEventId);
-      // YAKUBA/KYORYOKUTAIの場合はselectedMissionIdを空にする（ドロップダウンで__YAKUBA__/__KYORYOKUTAI__が選択される）
-      if (taskLinkKind === 'YAKUBA' || taskLinkKind === 'KYORYOKUTAI') {
+      // YAKUBA/KYORYOKUTAI/TRIAGEの場合はselectedMissionIdを空にする
+      if (taskLinkKind === 'YAKUBA' || taskLinkKind === 'KYORYOKUTAI' || taskLinkKind === 'TRIAGE') {
         setSelectedMissionId('');
       } else if (task.missionId) {
         setSelectedMissionId(task.missionId);
@@ -441,9 +442,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           }
         }
       } else {
-        if (!effectiveMissionId && attachMode !== 'KYORYOKUTAI') { alert('ミッションを選択してください'); setLoading(false); return; }
+        // ミッションの必須チェック（KYORYOKUTAI、YAKUBA、TRIAGE以外は必須）
+        if (!effectiveMissionId && attachMode !== 'KYORYOKUTAI' && attachMode !== 'YAKUBA' && attachMode !== 'TRIAGE') { 
+          alert('ミッションを選択してください'); 
+          setLoading(false); 
+          return; 
+        }
+        // プロジェクトモードの場合はプロジェクトも必須
         if (attachMode === 'PROJECT' && !projectId) { alert('プロジェクトを選んでください'); setLoading(false); return; }
-        const linkKind = attachMode === 'PROJECT' ? 'PROJECT' : attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI_WORK' : attachMode === 'TRIAGE' ? 'TRIAGE_PENDING' : 'UNSET';
+        const linkKind = attachMode === 'PROJECT' ? 'PROJECT' : attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI_WORK' : attachMode === 'YAKUBA' ? 'YAKUBA_WORK' : attachMode === 'TRIAGE' ? 'TRIAGE_PENDING' : 'UNSET';
         const targetMissionId = effectiveMissionId || (missions.length > 0 ? missions[0].id : '');
         if (!targetMissionId) { alert('ミッションを選択してください'); setLoading(false); return; }
         const data: any = {
@@ -564,7 +571,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">連携</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ミッション</label>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ミッション {!isScheduleMode && <span className="text-red-500">*</span>}</label>
                   <select value={attachMode === 'KYORYOKUTAI' ? '__KYORYOKUTAI__' : attachMode === 'YAKUBA' ? '__YAKUBA__' : selectedMissionId}
                     onChange={e => handleMissionChange(e.target.value)}
                     className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
