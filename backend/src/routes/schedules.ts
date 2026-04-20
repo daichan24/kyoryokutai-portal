@@ -607,9 +607,11 @@ router.post('/', async (req: AuthRequest, res) => {
 router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    console.log('Schedule update request:', { id, body: req.body });
+    console.log('=== Schedule PUT Request ===');
+    console.log('Schedule ID:', id);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
     console.log('Request body keys:', Object.keys(req.body));
-    console.log('Request body values:', JSON.stringify(req.body, null, 2));
+    
     const data = updateScheduleSchema.parse(req.body);
 
     const existingSchedule = await prisma.schedule.findUnique({
