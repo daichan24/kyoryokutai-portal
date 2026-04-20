@@ -6,6 +6,7 @@ import { ja } from 'date-fns/locale';
 import { api } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
+import { formatTime } from '../../utils/date';
 
 type AttendanceStatus = 'PRESENT' | 'REMOTE' | 'ABSENT' | 'HALF_DAY';
 
@@ -333,10 +334,10 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                                 ? isStart ? 'rounded-l border-r-0' : isEnd ? 'rounded-r border-l-0' : 'rounded-none border-x-0'
                                 : 'rounded'
                             }`}
-                            title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${a.startTime}〜${a.endTime || ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
+                            title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${formatTime(a.startTime)}〜${a.endTime ? formatTime(a.endTime) : ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
                           >
                             <span className="truncate font-medium">{a.user.name.split(/[\s　]/)[0]}</span>
-                            {a.startTime && isStart && <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{a.startTime}</span>}
+                            {a.startTime && isStart && <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{formatTime(a.startTime)}</span>}
                           </div>
                         );
                       })}
@@ -357,13 +358,13 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                                 ? myIsStart ? 'rounded-l border-r-0' : myIsEnd ? 'rounded-r border-l-0' : 'rounded-none border-x-0'
                                 : 'rounded'
                             }`}
-                            title={`${user?.name}: ${STATUS_LABELS[myAttendance.status]}${myAttendance.startTime ? ` ${myAttendance.startTime}〜${myAttendance.endTime || ''}` : ''}${myAttendance.note ? ` (${myAttendance.note})` : ''}`}
+                            title={`${user?.name}: ${STATUS_LABELS[myAttendance.status]}${myAttendance.startTime ? ` ${formatTime(myAttendance.startTime)}〜${myAttendance.endTime ? formatTime(myAttendance.endTime) : ''}` : ''}${myAttendance.note ? ` (${myAttendance.note})` : ''}`}
                           >
                             {(myIsStart || !myIsMultiDay) && (
                               <span className="truncate font-medium">{(user?.name || '').split(/[\s　]/)[0]}</span>
                             )}
                             {myAttendance.startTime && myIsStart && (
-                              <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{myAttendance.startTime}</span>
+                              <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{formatTime(myAttendance.startTime)}</span>
                             )}
                           </div>
                         );
@@ -399,7 +400,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                         </span>
                         <span className="text-gray-700 dark:text-gray-300">{a.user.name}</span>
                         {(a.status === 'HALF_DAY' || a.startTime) && a.startTime && (
-                          <span className="text-gray-500 dark:text-gray-400">{a.startTime}〜{a.endTime || ''}</span>
+                          <span className="text-gray-500 dark:text-gray-400">{formatTime(a.startTime)}〜{a.endTime ? formatTime(a.endTime) : ''}</span>
                         )}
                         {a.note && <span className="text-gray-400 dark:text-gray-500">{a.note}</span>}
                       </div>
@@ -491,7 +492,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                         </span>
                         {(a.status === 'HALF_DAY' || a.startTime) && a.startTime && (
                           <span className="text-xs text-gray-600 dark:text-gray-400">
-                            {a.startTime}〜{a.endTime || ''}
+                            {formatTime(a.startTime)}〜{a.endTime ? formatTime(a.endTime) : ''}
                           </span>
                         )}
                         {a.endDate && a.endDate.slice(0, 10) !== a.date.slice(0, 10) && (

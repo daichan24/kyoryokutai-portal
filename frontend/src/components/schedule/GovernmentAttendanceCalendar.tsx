@@ -6,6 +6,7 @@ import { api } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { X } from 'lucide-react';
 import { Button } from '../common/Button';
+import { formatTime } from '../../utils/date';
 
 type AttendanceStatus = 'PRESENT' | 'REMOTE' | 'ABSENT' | 'HALF_DAY';
 
@@ -164,13 +165,13 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
                             ? isStart ? 'rounded-l border-r-0' : isEnd ? 'rounded-r border-l-0' : 'rounded-none border-x-0'
                             : 'rounded'
                         }`}
-                        title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${a.startTime}〜${a.endTime || ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
+                        title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${formatTime(a.startTime)}〜${a.endTime ? formatTime(a.endTime) : ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
                       >
                         {(isStart || !isMultiDay) && (
                           <span className="truncate font-medium">{a.user.name.split(/[\s　]/)[0]}</span>
                         )}
                         {a.startTime && isStart && (
-                          <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{a.startTime}</span>
+                          <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{formatTime(a.startTime)}</span>
                         )}
                       </button>
                     );
@@ -218,7 +219,7 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
                               </span>
                               {a.startTime && (
                                 <span className="text-[10px] text-gray-600 dark:text-gray-400">
-                                  {a.startTime}〜{a.endTime || ''}
+                                  {formatTime(a.startTime)}〜{a.endTime ? formatTime(a.endTime) : ''}
                                 </span>
                               )}
                             </div>

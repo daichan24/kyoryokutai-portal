@@ -612,12 +612,12 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         height="auto"
         dayMaxEvents={3}
         eventTimeFormat={{
-          hour: '2-digit',
+          hour: 'numeric',
           minute: '2-digit',
           hour12: false,
         }}
         slotLabelFormat={{
-          hour: '2-digit',
+          hour: 'numeric',
           minute: '2-digit',
           hour12: false,
         }}
