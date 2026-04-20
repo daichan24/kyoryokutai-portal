@@ -71,15 +71,18 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           // 複数日スケジュールの場合
           const isMultiDay = startDate !== endDate;
           
-          // 終了時刻を次の日の開始として扱う（FullCalendarの仕様）
+          // JST の日付と時刻を組み合わせる（タイムゾーンを明示）
+          // FullCalendar は timeZone: 'Asia/Tokyo' を設定しているので、
+          // ISO 8601 形式で日付と時刻を渡せば正しく解釈される
+          const startDateTime = `${startDate}T${schedule.startTime}:00`;
           const endDateTime = isMultiDay 
-            ? `${endDate}T${schedule.endTime}`
-            : `${startDate}T${schedule.endTime}`;
+            ? `${endDate}T${schedule.endTime}:00`
+            : `${startDate}T${schedule.endTime}:00`;
 
           const event = {
             id: schedule.id,
             title: (schedule as any).title || schedule.activityDescription || '(タイトルなし)',
-            start: `${startDate}T${schedule.startTime}`,
+            start: startDateTime,
             end: endDateTime,
             backgroundColor: color,
             borderColor: color,
@@ -90,7 +93,14 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             },
           };
 
-          console.log('Converted schedule:', { id: schedule.id, start: event.start, end: event.end, title: event.title });
+          console.log('Converted schedule:', { 
+            id: schedule.id, 
+            start: event.start, 
+            end: event.end, 
+            title: event.title,
+            originalStartTime: schedule.startTime,
+            originalEndTime: schedule.endTime,
+          });
           return event;
         } catch (error) {
           console.error('Error converting schedule:', schedule, error);
@@ -106,8 +116,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           return {
             id: `event-${event.id}`,
             title: event.eventName,
-            start: event.startTime ? `${dateStr}T${event.startTime}` : dateStr,
-            end: event.endTime ? `${dateStr}T${event.endTime}` : undefined,
+            start: event.startTime ? `${dateStr}T${event.startTime}:00` : dateStr,
+            end: event.endTime ? `${dateStr}T${event.endTime}:00` : undefined,
             backgroundColor: colorClass,
             borderColor: colorClass,
             allDay: !event.startTime,
@@ -244,7 +254,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         const oldEndMinutes = parseInt(schedule.endTime.split(':')[0]) * 60 + parseInt(schedule.endTime.split(':')[1]);
         const duration = oldEndMinutes - oldStartMinutes;
 
-        // 新しい開始時刻
+        // FullCalendar の Date オブジェクトは既に JST なので、そのまま使用
         const newStartTime = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
         
         // 新しい終了時刻 = 新しい開始時刻 + 元の所要時間
@@ -254,8 +264,14 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         const newEndMins = newEndMinutes % 60;
         const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}`;
 
+        // 日付も JST で取得
+        const year = newStart.getFullYear();
+        const month = String(newStart.getMonth() + 1).padStart(2, '0');
+        const day = String(newStart.getDate()).padStart(2, '0');
+        const newDateStr = `${year}-${month}-${day}`;
+
         updateData = {
-          date: newStart.toISOString().split('T')[0],
+          date: newDateStr,
           startTime: newStartTime,
           endTime: newEndTime,
           // 既存のフィールドを保持
@@ -266,18 +282,23 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
         // 複数日スケジュールの場合
         if (newStart.toDateString() !== newEnd.toDateString()) {
-          updateData.endDate = newEnd.toISOString().split('T')[0];
+          const endYear = newEnd.getFullYear();
+          const endMonth = String(newEnd.getMonth() + 1).padStart(2, '0');
+          const endDay = String(newEnd.getDate()).padStart(2, '0');
+          updateData.endDate = `${endYear}-${endMonth}-${endDay}`;
         }
 
         console.log('週/日表示でのブロック移動:', {
           scheduleId: schedule.id,
           oldDate: schedule.date,
-          newDate: updateData.date,
+          newDate: newDateStr,
           oldStartTime: schedule.startTime,
           newStartTime,
           oldEndTime: schedule.endTime,
           newEndTime,
           duration: `${duration}分`,
+          jstHours: newStart.getHours(),
+          jstMinutes: newStart.getMinutes(),
           updateData,
         });
       }
@@ -368,8 +389,14 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         endTime = `${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
       }
 
+      // 日付も JST で取得
+      const year = newStart.getFullYear();
+      const month = String(newStart.getMonth() + 1).padStart(2, '0');
+      const day = String(newStart.getDate()).padStart(2, '0');
+      const newDateStr = `${year}-${month}-${day}`;
+
       const updateData: any = {
-        date: newStart.toISOString().split('T')[0],
+        date: newDateStr,
         startTime,
         endTime,
         // 既存のフィールドを保持
@@ -380,7 +407,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
       // 複数日スケジュールの場合
       if (newStart.toDateString() !== newEnd.toDateString()) {
-        updateData.endDate = newEnd.toISOString().split('T')[0];
+        const endYear = newEnd.getFullYear();
+        const endMonth = String(newEnd.getMonth() + 1).padStart(2, '0');
+        const endDay = String(newEnd.getDate()).padStart(2, '0');
+        updateData.endDate = `${endYear}-${endMonth}-${endDay}`;
       }
 
       console.log('Resizing schedule:', { 
@@ -423,11 +453,21 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
     if (isTimeGridView) {
       // 週/日表示の場合は時刻付きで作成
+      // FullCalendar の Date オブジェクトは既に JST なので、そのまま使用
       const clickedDate = info.date;
       const startTime = `${String(clickedDate.getHours()).padStart(2, '0')}:${String(clickedDate.getMinutes()).padStart(2, '0')}`;
       const endDate = new Date(clickedDate);
       endDate.setHours(clickedDate.getHours() + 1);
       const endTime = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+      
+      console.log('週/日表示での時間クリック:', {
+        clickedTime: clickedDate,
+        jstHours: clickedDate.getHours(),
+        jstMinutes: clickedDate.getMinutes(),
+        startTime,
+        endTime,
+      });
+      
       onCreateSchedule(clickedDate, startTime, endTime);
     } else {
       // 月表示の場合は日付のみで作成
