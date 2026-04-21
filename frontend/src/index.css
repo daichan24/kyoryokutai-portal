@@ -177,10 +177,12 @@
 }
 
 /* カレンダーの日付を中央揃え */
-.fc-daygrid-day-number {
+.fc-daygrid-day-number,
+.fc .fc-daygrid-day-number {
   @apply text-center w-full;
   padding: 4px 0 !important;
   justify-content: center !important;
+  font-size: 0.875rem !important; /* 数字のサイズを小さく (14px) */
 }
 
 /* 日付の「日」を非表示 */

@@ -661,6 +661,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           minute: '2-digit',
           hour12: false,
         }}
+        dayCellContent={(arg) => {
+          // 日付の数字のみを表示（「日」を削除）
+          return arg.dayNumberText.replace('日', '');
+        }}
         firstDay={0}
         weekends={true}
         nowIndicator={true}
