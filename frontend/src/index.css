@@ -155,6 +155,31 @@
   @apply text-gray-400;
 }
 
+/* 30分のラベルを非表示 */
+.fc-timegrid-slot-label[data-time$=":30:00"] {
+  visibility: hidden;
+}
+
+/* 時間軸の罫線 - デフォルトは実線 */
+.fc-timegrid-slot {
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.dark .fc-timegrid-slot {
+  border-bottom: 1px solid #374151 !important;
+}
+
+/* 30分の罫線を薄い点線に */
+.fc-timegrid-slot-minor {
+  border-bottom: 1px dashed #e5e7eb !important;
+  opacity: 0.5;
+}
+
+.dark .fc-timegrid-slot-minor {
+  border-bottom: 1px dashed #4b5563 !important;
+  opacity: 0.5;
+}
+
 /* イベントのテキストスタイル */
 .fc-event-title {
   @apply font-medium text-xs;

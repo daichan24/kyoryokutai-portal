@@ -48,20 +48,12 @@ export const Schedule: React.FC = () => {
   const [defaultEndTime, setDefaultEndTime] = useState<string | undefined>(undefined);
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>([]);
-  /** 隊員向け: 月表示の個人/全体。マスター等はダッシュボードのモードを使用 */
-  const [calendarViewModeMember, setCalendarViewModeMember] = useState<'individual' | 'all'>('individual');
-  const calendarViewMode = isStaff
-    ? workspaceMode === 'browse'
-      ? 'all'
-      : 'individual'
-    : calendarViewModeMember;
   const projectViewMode: 'view' | 'personal' = isStaff
     ? workspaceMode === 'browse'
       ? 'view'
       : 'personal'
     : 'personal';
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<Date | null>(null); // 詳細表示用の選択日
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null); // 週表示の個人モードで選択されたメンバーID
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
   const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
@@ -98,7 +90,7 @@ export const Schedule: React.FC = () => {
       fetchEvents();
       fetchProjects();
     }
-  }, [weekDates, calendarViewMode, selectedMemberId, user?.id, isStaff, workspaceMode, visibleMemberIds]);
+  }, [weekDates, user?.id, isStaff, workspaceMode, visibleMemberIds]);
 
   // メンバーリストを取得（週表示・月表示共通）
   useEffect(() => {
@@ -171,32 +163,13 @@ export const Schedule: React.FC = () => {
         view: viewMode,
       });
 
-      if (viewMode === 'day') {
-        // 日表示: 全メンバーのスケジュールを取得
-        params.append('allMembers', 'true');
-      } else if (viewMode === 'month') {
-        if (selectedMemberId) {
-          params.append('userId', selectedMemberId);
-        } else if (calendarViewMode === 'all') {
-          // 全員表示の場合、visibleMemberIdsでフィルタリング
-          if (visibleMemberIds.size > 0) {
-            visibleMemberIds.forEach(id => params.append('userIds', id));
-          } else {
-            params.append('allMembers', 'true');
-          }
-        }
+      // すべてのビューモードで visibleMemberIds を使用
+      if (visibleMemberIds.size > 0) {
+        visibleMemberIds.forEach(id => params.append('userIds', id));
       } else {
-        // 週表示
-        if (selectedMemberId) {
-          params.append('userId', selectedMemberId);
-        } else if (isStaff && workspaceMode === 'browse') {
-          // 閲覧モードの場合、visibleMemberIdsでフィルタリング
-          if (visibleMemberIds.size > 0) {
-            visibleMemberIds.forEach(id => params.append('userIds', id));
-          } else {
-            params.append('allMembers', 'true');
-          }
-        }
+        // チェックが1つもない場合は何も表示しない
+        setSchedules([]);
+        return;
       }
 
       const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
@@ -433,90 +406,6 @@ export const Schedule: React.FC = () => {
           スケジュール管理
         </h1>
         <div className="flex flex-wrap gap-2 items-center">
-          {/* カレンダー表示切り替え: 隊員・スタッフ共通 */}
-          {viewMode === 'month' ? (
-            <div className="flex items-center gap-2 mr-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">表示:</span>
-              <div className="flex gap-1 sm:gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCalendarViewModeMember('individual');
-                    setSelectedMemberId(null);
-                    if (user?.id) {
-                      setVisibleMemberIds(new Set([user.id]));
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
-                    calendarViewModeMember === 'individual' && !selectedMemberId
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  個人
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCalendarViewModeMember('all');
-                    setSelectedMemberId(null);
-                    selectAllMembers();
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
-                    calendarViewModeMember === 'all'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  全体
-                </button>
-              </div>
-            </div>
-          ) : viewMode === 'week' ? (
-            <div className="flex items-center gap-2 mr-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">表示:</span>
-              <div className="flex gap-1 sm:gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedMemberId(null);
-                    if (user?.id) {
-                      setVisibleMemberIds(new Set([user.id]));
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors text-sm ${
-                    !selectedMemberId
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  自分
-                </button>
-                {availableMembers.length > 0 && (
-                  <select
-                    value={selectedMemberId || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSelectedMemberId(value || null);
-                      if (value) {
-                        setVisibleMemberIds(new Set([value]));
-                      }
-                    }}
-                    className={`px-2 py-1.5 rounded-lg border font-medium transition-colors text-sm ${
-                      selectedMemberId
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    <option value="">メンバーを選択</option>
-                    {availableMembers.map((member) => (
-                      <option key={member.id} value={member.id}>{member.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-          ) : null}
           <Button
             variant="outline"
             onClick={() => setIsGovernmentAttendanceModalOpen(true)}
@@ -542,8 +431,8 @@ export const Schedule: React.FC = () => {
 
       <div className="bg-white dark:bg-gray-800 shadow border-y border-border dark:border-gray-700 min-w-0 w-full">
         <div className="flex gap-4 px-2 sm:px-3 md:px-4 py-6">
-          {/* メンバーサイドバー（全員表示モードのみ） */}
-          {calendarViewMode === 'all' && showMemberSidebar && (
+          {/* メンバーサイドバー（すべてのビューモードで表示） */}
+          {showMemberSidebar && (
             <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 hidden lg:block">
               <div className="sticky top-0">
                 <div className="flex items-center justify-between mb-3">
@@ -640,7 +529,7 @@ export const Schedule: React.FC = () => {
           )}
 
           {/* サイドバー開閉ボタン（閉じている時のみ表示） */}
-          {calendarViewMode === 'all' && !showMemberSidebar && (
+          {!showMemberSidebar && (
             <button
               onClick={() => setShowMemberSidebar(true)}
               className="fixed left-4 top-32 z-10 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 hidden lg:block"
@@ -715,7 +604,7 @@ export const Schedule: React.FC = () => {
               events={events}
               viewMode={viewMode}
               currentDate={currentDate}
-              calendarViewMode={calendarViewMode}
+              calendarViewMode="all"
               currentUserId={user?.id}
               onScheduleClick={(schedule) => {
                 // 他人のスケジュールは読み取り専用
