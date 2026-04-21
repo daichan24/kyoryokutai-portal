@@ -426,9 +426,9 @@ export const Schedule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 -mx-3 sm:-mx-4 md:-mx-6">
       {/* スマホ: タイトルとボタンを別カラムに配置 */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-3 sm:px-4 md:px-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
           スケジュール管理
         </h1>
@@ -540,8 +540,8 @@ export const Schedule: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow sm:border lg:border-border dark:border-gray-700 p-0 sm:p-6 min-w-0 w-full">
-        <div className="flex gap-4">
+      <div className="bg-white dark:bg-gray-800 shadow border-y border-border dark:border-gray-700 min-w-0 w-full">
+        <div className="flex gap-4 px-3 sm:px-4 md:px-6 py-6">
           {/* メンバーサイドバー（全員表示モードのみ） */}
           {calendarViewMode === 'all' && showMemberSidebar && (
             <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 hidden lg:block">
@@ -1014,9 +1014,13 @@ export const Schedule: React.FC = () => {
             })()}
           </div>
         )}
+          </div>
+        </div>
+      </div>
 
-        {/* プロジェクトの複数日にわたるスケジュール表示（＋タスク一覧） */}
-        <div className="mt-6 space-y-2">
+      {/* プロジェクトの複数日にわたるスケジュール表示（＋タスク一覧） */}
+      <div className="bg-white dark:bg-gray-800 shadow border-y border-border dark:border-gray-700 min-w-0 w-full px-3 sm:px-4 md:px-6 py-6">
+        <div className="space-y-2">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               進行中のプロジェクト
@@ -1141,8 +1145,6 @@ export const Schedule: React.FC = () => {
               {projectViewMode === 'personal' ? '表示期間内に自分のプロジェクトはありません' : '表示期間内に進行中のプロジェクトはありません'}
             </div>
           )}
-        </div>
-          </div>
         </div>
       </div>
 
