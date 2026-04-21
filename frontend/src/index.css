@@ -81,6 +81,15 @@
   @apply w-full min-w-0;
 }
 
+/* FullCalendarのテーブル幅を最大化 */
+.fc-view-harness {
+  width: 100% !important;
+}
+
+.fc-scrollgrid {
+  width: 100% !important;
+}
+
 /* ダークモード対応 */
 .dark .fc {
   @apply bg-gray-800 text-gray-100;

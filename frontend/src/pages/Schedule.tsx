@@ -541,7 +541,7 @@ export const Schedule: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow border-y border-border dark:border-gray-700 min-w-0 w-full">
-        <div className="flex gap-4 px-3 sm:px-4 md:px-6 py-6">
+        <div className="flex gap-4 px-2 sm:px-3 md:px-4 py-6">
           {/* メンバーサイドバー（全員表示モードのみ） */}
           {calendarViewMode === 'all' && showMemberSidebar && (
             <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 hidden lg:block">
@@ -652,7 +652,7 @@ export const Schedule: React.FC = () => {
 
           {/* カレンダー本体 */}
           <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-center mb-4 sm:mb-6 px-3 sm:px-0 pt-3 sm:pt-0">
+        <div className="flex justify-between items-center mb-4 sm:mb-6 px-1 sm:px-2 pt-3 sm:pt-0">
           <Button variant="outline" onClick={handlePrev}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
