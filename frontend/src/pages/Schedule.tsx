@@ -36,6 +36,7 @@ export const Schedule: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduleType[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [missions, setMissions] = useState<Array<{ id: string; missionName: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
@@ -91,6 +92,7 @@ export const Schedule: React.FC = () => {
       fetchSchedules();
       fetchEvents();
       fetchProjects();
+      fetchMissions();
     }
   }, [weekDates, user?.id, isStaff, workspaceMode, visibleMemberIds]);
 
@@ -298,6 +300,16 @@ export const Schedule: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch projects:', error);
       setProjects([]);
+    }
+  };
+
+  const fetchMissions = async () => {
+    try {
+      const response = await api.get('/api/missions');
+      setMissions(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch missions:', error);
+      setMissions([]);
     }
   };
 
@@ -1052,6 +1064,7 @@ export const Schedule: React.FC = () => {
       {/* 新規タスク追加（TaskModal） */}
       {isModalOpen && !selectedSchedule && (
         <TaskModal
+          missionId={missions.length > 0 ? missions[0].id : undefined}
           defaultDate={selectedDate}
           defaultStartTime={defaultStartTime || undefined}
           defaultEndTime={defaultEndTime || undefined}
@@ -1063,6 +1076,7 @@ export const Schedule: React.FC = () => {
       {/* スケジュール編集（TaskModal で統一） */}
       {isModalOpen && selectedSchedule && (
         <TaskModal
+          missionId={selectedSchedule.task?.missionId || (missions.length > 0 ? missions[0].id : undefined)}
           schedule={selectedSchedule}
           readOnly={selectedSchedule.userId !== user?.id}
           onClose={handleCloseModal}
