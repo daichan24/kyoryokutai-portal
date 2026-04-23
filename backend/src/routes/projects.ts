@@ -396,6 +396,67 @@ router.get('/:id/schedule-history', async (req: AuthRequest, res) => {
 import tasksRoutes from './tasks';
 router.use('/', tasksRoutes);
 
+// プロジェクトの順番入れ替え（インデックス指定）
+router.post('/:id/reorder-to', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { newIndex, oldIndex } = req.body;
+
+    console.log('Reorder request:', { id, newIndex, oldIndex });
+
+    const project = await prisma.project.findUnique({
+      where: { id },
+      select: { id: true, userId: true, order: true },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'プロジェクトが見つかりません' });
+    }
+
+    // 権限チェック
+    if (project.userId !== req.user!.id && req.user!.role !== 'MASTER') {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    // 同じユーザーのプロジェクトを取得
+    const allProjects = await prisma.project.findMany({
+      where: { userId: project.userId },
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, order: true },
+    });
+
+    console.log('All projects count:', allProjects.length);
+
+    // 配列を作成して並び替え
+    const projectIds = allProjects.map(p => p.id);
+    const [movedId] = projectIds.splice(oldIndex, 1);
+    projectIds.splice(newIndex, 0, movedId);
+
+    // 新しい順番で更新
+    const updates = projectIds.map((projectId, index) => ({
+      id: projectId,
+      order: index,
+    }));
+
+    console.log('Updates:', updates);
+
+    // トランザクションで更新
+    await prisma.$transaction(
+      updates.map(update =>
+        prisma.project.update({
+          where: { id: update.id },
+          data: { order: update.order },
+        })
+      )
+    );
+
+    res.json({ message: '順番を入れ替えました' });
+  } catch (error) {
+    console.error('Reorder project error:', error);
+    res.status(500).json({ error: '順番の入れ替えに失敗しました' });
+  }
+});
+
 // プロジェクトの順番入れ替え
 router.post('/:id/reorder', async (req: AuthRequest, res) => {
   try {

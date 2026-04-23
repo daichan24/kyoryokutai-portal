@@ -564,6 +564,8 @@ router.post('/missions/:missionId/tasks/:id/reorder-to', async (req: AuthRequest
     const { missionId, id } = req.params;
     const { newIndex, oldIndex } = req.body;
 
+    console.log('Task reorder request:', { id, missionId, newIndex, oldIndex });
+
     // タスクの存在確認
     const task = await prisma.task.findUnique({
       where: { id },
@@ -600,31 +602,20 @@ router.post('/missions/:missionId/tasks/:id/reorder-to', async (req: AuthRequest
       select: { id: true, order: true },
     });
 
-    // 新しい順番を計算
-    const updates = [];
-    if (newIndex > oldIndex) {
-      // 下に移動
-      for (let i = 0; i < allTasks.length; i++) {
-        if (i === oldIndex) {
-          updates.push({ id: allTasks[i].id, order: newIndex });
-        } else if (i > oldIndex && i <= newIndex) {
-          updates.push({ id: allTasks[i].id, order: i - 1 });
-        } else {
-          updates.push({ id: allTasks[i].id, order: i });
-        }
-      }
-    } else {
-      // 上に移動
-      for (let i = 0; i < allTasks.length; i++) {
-        if (i === oldIndex) {
-          updates.push({ id: allTasks[i].id, order: newIndex });
-        } else if (i >= newIndex && i < oldIndex) {
-          updates.push({ id: allTasks[i].id, order: i + 1 });
-        } else {
-          updates.push({ id: allTasks[i].id, order: i });
-        }
-      }
-    }
+    console.log('All tasks count:', allTasks.length);
+
+    // 配列を作成して並び替え
+    const taskIds = allTasks.map(t => t.id);
+    const [movedId] = taskIds.splice(oldIndex, 1);
+    taskIds.splice(newIndex, 0, movedId);
+
+    // 新しい順番で更新
+    const updates = taskIds.map((taskId, index) => ({
+      id: taskId,
+      order: index,
+    }));
+
+    console.log('Task updates:', updates);
 
     // トランザクションで更新
     await prisma.$transaction(

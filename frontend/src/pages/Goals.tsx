@@ -296,6 +296,8 @@ export const Goals: React.FC = () => {
     }
     
     try {
+      console.log('Mission drag end:', { missionId, sourceIndex, destinationIndex });
+      
       await api.post(`/api/missions/${missionId}/reorder-to`, {
         newIndex: destinationIndex,
         oldIndex: sourceIndex,

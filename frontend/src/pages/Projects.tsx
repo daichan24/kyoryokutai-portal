@@ -137,10 +137,7 @@ export const Projects: React.FC = () => {
     const projectId = result.draggableId;
     
     try {
-      // 一時的にUIを更新
-      const items = Array.from(filteredProjects || []);
-      const [reorderedItem] = items.splice(sourceIndex, 1);
-      items.splice(destinationIndex, 0, reorderedItem);
+      console.log('Drag end:', { projectId, sourceIndex, destinationIndex });
       
       // バックエンドに順番を送信
       await api.post(`/api/projects/${projectId}/reorder-to`, {
@@ -148,10 +145,12 @@ export const Projects: React.FC = () => {
         oldIndex: sourceIndex,
       });
       
+      // 成功したらクエリを無効化して再取得
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     } catch (error: any) {
       console.error('Reorder error:', error);
       alert(error.response?.data?.error || '順番の入れ替えに失敗しました');
+      // エラー時もクエリを無効化して元の状態に戻す
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     }
   };

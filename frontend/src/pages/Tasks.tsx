@@ -306,6 +306,8 @@ export const Tasks: React.FC = () => {
     }
     
     try {
+      console.log('Task drag end:', { taskId, sourceIndex, destinationIndex, missionId: task.missionId });
+      
       await api.post(`/api/missions/${task.missionId}/tasks/${taskId}/reorder-to`, {
         newIndex: destinationIndex,
         oldIndex: sourceIndex,

@@ -434,6 +434,8 @@ router.post('/:id/reorder-to', async (req: AuthRequest, res) => {
     const { id } = req.params;
     const { newIndex, oldIndex } = req.body;
 
+    console.log('Mission reorder request:', { id, newIndex, oldIndex });
+
     const mission = await prisma.mission.findUnique({
       where: { id },
       select: { id: true, userId: true, order: true, missionName: true },
@@ -465,31 +467,20 @@ router.post('/:id/reorder-to', async (req: AuthRequest, res) => {
       select: { id: true, order: true },
     });
 
-    // 新しい順番を計算
-    const updates = [];
-    if (newIndex > oldIndex) {
-      // 下に移動
-      for (let i = 0; i < allMissions.length; i++) {
-        if (i === oldIndex) {
-          updates.push({ id: allMissions[i].id, order: newIndex });
-        } else if (i > oldIndex && i <= newIndex) {
-          updates.push({ id: allMissions[i].id, order: i - 1 });
-        } else {
-          updates.push({ id: allMissions[i].id, order: i });
-        }
-      }
-    } else {
-      // 上に移動
-      for (let i = 0; i < allMissions.length; i++) {
-        if (i === oldIndex) {
-          updates.push({ id: allMissions[i].id, order: newIndex });
-        } else if (i >= newIndex && i < oldIndex) {
-          updates.push({ id: allMissions[i].id, order: i + 1 });
-        } else {
-          updates.push({ id: allMissions[i].id, order: i });
-        }
-      }
-    }
+    console.log('All missions count:', allMissions.length);
+
+    // 配列を作成して並び替え
+    const missionIds = allMissions.map(m => m.id);
+    const [movedId] = missionIds.splice(oldIndex, 1);
+    missionIds.splice(newIndex, 0, movedId);
+
+    // 新しい順番で更新
+    const updates = missionIds.map((missionId, index) => ({
+      id: missionId,
+      order: index,
+    }));
+
+    console.log('Mission updates:', updates);
 
     // トランザクションで更新
     await prisma.$transaction(
