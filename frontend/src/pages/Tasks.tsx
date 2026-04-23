@@ -184,6 +184,13 @@ export const Tasks: React.FC = () => {
 
   const handleCreateTask = (projectId?: string) => {
     setSelectedTask(null);
+    
+    // ミッションが存在しない場合はアラートを表示
+    if (missions.length === 0) {
+      alert('タスクを作成するには、ミッション（目標）が必要です。');
+      return;
+    }
+    
     let targetProjectId = projectId;
     if (!targetProjectId && projects.length > 0) {
       targetProjectId = projects[0].id;
@@ -196,6 +203,7 @@ export const Tasks: React.FC = () => {
       const first = projects[0];
       setSelectedProjectId(first.missionId || missions[0]?.id || null);
     } else {
+      // プロジェクトがない場合は最初のミッションを設定
       setSelectedProjectId(missions[0]?.id || null);
     }
     setIsModalOpen(true);
@@ -211,8 +219,12 @@ export const Tasks: React.FC = () => {
       const project = projects.find(p => p.id === task.projectId);
       if (project?.missionId) {
         setSelectedProjectId(project.missionId);
+      } else if (missions.length > 0) {
+        // プロジェクトからも取得できない場合は最初のミッションを設定
+        setSelectedProjectId(missions[0].id);
       } else {
-        setSelectedProjectId(null);
+        alert('ミッション情報が見つかりません');
+        return;
       }
     }
     setIsModalOpen(true);
@@ -775,9 +787,9 @@ export const Tasks: React.FC = () => {
       )}
 
       {/* タスクモーダル */}
-      {isModalOpen && selectedProjectId && (
+      {isModalOpen && (
         <TaskModal
-          missionId={selectedProjectId}
+          missionId={selectedProjectId || undefined}
           task={selectedTask}
           onClose={() => {
             setIsModalOpen(false);
