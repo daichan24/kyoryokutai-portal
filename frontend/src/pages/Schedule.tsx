@@ -39,6 +39,7 @@ export const Schedule: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
+  const [calendarViewMode, setCalendarViewMode] = useState<'individual' | 'all'>('individual'); // カレンダー表示モード
   const [useDraggable, setUseDraggable] = useState(true); // ドラッグ可能カレンダーを使用
   const [weekDates, setWeekDates] = useState<Date[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,6 +58,7 @@ export const Schedule: React.FC = () => {
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
   const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [visibleMemberIds, setVisibleMemberIds] = useState<Set<string>>(new Set());
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
 
