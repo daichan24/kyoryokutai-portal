@@ -472,199 +472,226 @@ export const Tasks: React.FC = () => {
 
           {/* タスク一覧 */}
           {displayMode === 'card' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredAndSortedTasks.map((task, index) => {
-          const missionName = getMissionName(task);
-          return (
-            <div
-              key={task.id}
-              className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => setPreviewTask(task)}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2 flex-1">
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex-1">
-                    {task.title}
-                  </h3>
-                </div>
-                {canCreate && viewMode === 'create' && (
-                  <div className="flex items-center gap-1">
-                    <div className="flex flex-col gap-1 mr-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReorderTask(task, 'up');
-                        }}
-                        disabled={index === 0}
-                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="上に移動"
-                      >
-                        <ArrowUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReorderTask(task, 'down');
-                        }}
-                        disabled={index === filteredAndSortedTasks.length - 1}
-                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="下に移動"
-                      >
-                        <ArrowDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                      </button>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditTask(task);
-                      }}
-                      title="編集"
-                    >
-                      <Edit2 className="h-4 w-4 mr-1" />
-                      編集
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteTask(task);
-                      }}
-                      title="削除"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      削除
-                    </Button>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="tasks-card">
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  >
+                    {filteredAndSortedTasks.map((task, index) => {
+                      const missionName = getMissionName(task);
+                      return (
+                        <Draggable key={task.id} draggableId={task.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow ${
+                                snapshot.isDragging ? 'shadow-2xl ring-2 ring-blue-500' : ''
+                              }`}
+                            >
+                              <div className="flex items-start gap-2 mb-3">
+                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing pt-1">
+                                  <GripVertical className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div 
+                                    className="cursor-pointer"
+                                    onClick={() => setPreviewTask(task)}
+                                  >
+                                    <div className="flex items-start justify-between mb-3">
+                                      <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex-1">
+                                        {task.title}
+                                      </h3>
+                                      {canCreate && viewMode === 'create' && (
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleEditTask(task);
+                                            }}
+                                            title="編集"
+                                          >
+                                            <Edit2 className="h-4 w-4 mr-1" />
+                                            編集
+                                          </Button>
+                                          <Button
+                                            variant="danger"
+                                            size="sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteTask(task);
+                                            }}
+                                            title="削除"
+                                          >
+                                            <Trash2 className="h-4 w-4 mr-1" />
+                                            削除
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {task.description && (
+                                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                                        {task.description}
+                                      </p>
+                                    )}
+
+                                    {/* プロジェクト情報 */}
+                                    {task.project && (
+                                      <div className="mb-2">
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                          プロジェクト: 
+                                        </span>
+                                        <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
+                                          {task.project.projectName}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {!task.projectId && (
+                                      <div className="mb-2">
+                                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                                          {task.linkKind === 'KYORYOKUTAI_WORK'
+                                            ? '協力隊業務（プロジェクトなし）'
+                                            : task.linkKind === 'YAKUBA_WORK'
+                                              ? '役場業務（プロジェクトなし）'
+                                              : task.linkKind === 'TRIAGE_PENDING'
+                                                ? 'あとで振り分け（当日メモ・保留）'
+                                                : '未設定（プロジェクトなし）'}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {/* ミッション（薄く表示） */}
+                                    {missionName && (
+                                      <div className="mb-3">
+                                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                                          ミッション: {missionName}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {/* 担当者情報（メンバー以外の時のみ表示） */}
+                                    {isNonMember && task.project?.user && (
+                                      <div className="mb-2">
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                          担当者: 
+                                        </span>
+                                        <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
+                                          {task.project.user.name}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                      <div className="flex items-center gap-2">
+                                        {viewMode === 'create' && (
+                                          <Button
+                                            variant="primary"
+                                            size="sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setScheduleTask(task);
+                                              setIsScheduleModalOpen(true);
+                                            }}
+                                            title="スケジュールに追加"
+                                          >
+                                            <Calendar className="h-3 w-3 mr-1" />
+                                            スケジュール
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
                   </div>
                 )}
-              </div>
-
-              {task.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                  {task.description}
-                </p>
-              )}
-
-              {/* プロジェクト情報 */}
-              {task.project && (
-                <div className="mb-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    プロジェクト: 
-                  </span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
-                    {task.project.projectName}
-                  </span>
-                </div>
-              )}
-              {!task.projectId && (
-                <div className="mb-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                    {task.linkKind === 'KYORYOKUTAI_WORK'
-                      ? '協力隊業務（プロジェクトなし）'
-                      : task.linkKind === 'YAKUBA_WORK'
-                        ? '役場業務（プロジェクトなし）'
-                        : task.linkKind === 'TRIAGE_PENDING'
-                          ? 'あとで振り分け（当日メモ・保留）'
-                          : '未設定（プロジェクトなし）'}
-                  </span>
-                </div>
-              )}
-
-              {/* ミッション（薄く表示） */}
-              {missionName && (
-                <div className="mb-3">
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    ミッション: {missionName}
-                  </span>
-                </div>
-              )}
-
-              {/* 担当者情報（メンバー以外の時のみ表示） */}
-              {isNonMember && task.project?.user && (
-                <div className="mb-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    担当者: 
-                  </span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
-                    {task.project.user.name}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                  {viewMode === 'create' && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setScheduleTask(task);
-                        setIsScheduleModalOpen(true);
-                      }}
-                      title="スケジュールに追加"
-                    >
-                      <Calendar className="h-3 w-3 mr-1" />
-                      スケジュール
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-          </div>
+              </Droppable>
+            </DragDropContext>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク名</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ミッション</th>
-                    {viewMode === 'view' && isNonMember && (
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">担当者</th>
-                    )}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">期日</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredAndSortedTasks.map((task) => {
-                    const missionName = getMissionName(task);
-                    return (
-                      <tr
-                        key={task.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
-                        onClick={() => setPreviewTask(task)}
-                      >
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{task.title}</div>
-                          {task.description && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{task.description}</div>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="tasks-list">
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  >
+                    <table className="w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-8"></th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク名</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ミッション</th>
+                          {viewMode === 'view' && isNonMember && (
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">担当者</th>
                           )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {task.project?.projectName || 'プロジェクトなし'}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {missionName || '-'}
-                        </td>
-                        {viewMode === 'view' && isNonMember && (
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {task.project?.user?.name || '-'}
-                          </td>
-                        )}
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ja-JP') : '-'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">期日</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredAndSortedTasks.map((task, index) => {
+                          const missionName = getMissionName(task);
+                          return (
+                            <Draggable key={task.id} draggableId={task.id} index={index}>
+                              {(provided, snapshot) => (
+                                <tr
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer ${
+                                    snapshot.isDragging ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                  }`}
+                                  onClick={() => setPreviewTask(task)}
+                                >
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                      <GripVertical className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{task.title}</div>
+                                    {task.description && (
+                                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{task.description}</div>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {task.project?.projectName || 'プロジェクトなし'}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {missionName || '-'}
+                                  </td>
+                                  {viewMode === 'view' && isNonMember && (
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                      {task.project?.user?.name || '-'}
+                                    </td>
+                                  )}
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString('ja-JP') : '-'}
+                                  </td>
+                                </tr>
+                              )}
+                            </Draggable>
+                          );
+                        })}
+                        {provided.placeholder}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           )}
 
           {filteredAndSortedTasks.length === 0 && (
