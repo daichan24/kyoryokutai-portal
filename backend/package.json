@@ -1,6 +1,6 @@
 {
   "name": "kyoryokutai-backend",
-  "version": "2.45.0",
+  "version": "2.46.0",
   "description": "Backend for 協力隊クリアベース (regional revitalization team portal)",
   "main": "dist/index.js",
   "scripts": {
