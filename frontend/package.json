@@ -1,6 +1,6 @@
 {
   "name": "kyoryokutai-frontend",
-  "version": "2.52.0",
+  "version": "2.53.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
