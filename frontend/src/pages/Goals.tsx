@@ -402,121 +402,144 @@ export const Goals: React.FC = () => {
 
       {viewMode === 'view' && (
         <>
-          {/* 目標一覧 */}
-      <div className="space-y-4">
-        {/* デフォルトミッション（ドラッグ不可） */}
-        {defaultGoals.map((goal) => {
-          return (
-          <div key={goal.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            {/* 目標ヘッダー */}
-            <div
-              className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              onClick={() => toggleGoal(goal.id)}
-            >
-              {(viewMode === 'create' || (viewMode === 'view' && user?.id === goal.user.id)) && !goal.id.startsWith('__') && (
-                <div className="flex justify-end gap-2 mb-2">
-                  {viewMode === 'create' && !isDefaultMission && (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReorderMission(goal.id, 'up');
-                        }}
-                        disabled={index === 0}
-                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="上に移動"
-                      >
-                        <ArrowUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+          {/* ミッション一覧 */}
+          <div className="space-y-4">
+            {/* デフォルトミッション（ドラッグ不可） */}
+            {defaultGoals.map((goal) => (
+              <div key={goal.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                {/* 目標ヘッダー */}
+                <div
+                  className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  onClick={() => toggleGoal(goal.id)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                        {expandedGoals.has(goal.id) ? '▼' : '▶'}
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReorderMission(goal.id, 'down');
-                        }}
-                        disabled={index === (goals?.length || 0) - 1}
-                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="下に移動"
-                      >
-                        <ArrowDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                          デフォルト項目
+                        </span>
+                      </div>
                     </div>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditGoal(goal);
-                    }}
+                  </div>
+                </div>
+
+                {/* ミッション詳細 */}
+                {expandedGoals.has(goal.id) && (
+                  <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5">
+                    <div className="py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <p>
+                        {goal.id === '__KYORYOKUTAI__' 
+                          ? 'スケジュール入力時に「協力隊業務」を選択すると、このミッションに紐づけられます。プロジェクトに紐づかない協力隊としての一般的な業務に使用してください。'
+                          : 'スケジュール入力時に「役場業務」を選択すると、このミッションに紐づけられます。役場の業務に使用してください。'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* ドラッグ可能なミッション */}
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="missions-view">
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="space-y-4"
                   >
-                    編集
-                  </Button>
-                </div>
-              )}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
-                    {expandedGoals.has(goal.id) ? '▼' : '▶'}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
-                    {goal.id.startsWith('__') && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                        デフォルト項目
-                      </span>
-                    )}
-                    {viewMode === 'view' && isNonMember && !selectedUserId && !goal.id.startsWith('__') && (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        （{goal.user.name}）
-                      </span>
-                    )}
-                  </div>
-                  {!goal.id.startsWith('__') && (
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      (goal.missionType || goal.goalType) === 'PRIMARY' 
-                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                    }`}>
-                      {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
-                    </span>
-                  )}
-                </div>
-                {!goal.id.startsWith('__') && (
-                  <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
-                )}
-              </div>
+                    {draggableGoals.map((goal, index) => (
+                      <Draggable key={goal.id} draggableId={goal.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${
+                              snapshot.isDragging ? 'shadow-2xl ring-2 ring-blue-500' : ''
+                            }`}
+                          >
+                            {/* 目標ヘッダー */}
+                            <div className="p-5">
+                              <div className="flex items-start gap-2 mb-3">
+                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing pt-1">
+                                  <GripVertical className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div 
+                                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors rounded -m-2 p-2"
+                                    onClick={() => toggleGoal(goal.id)}
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-3">
+                                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                                          {expandedGoals.has(goal.id) ? '▼' : '▶'}
+                                        </button>
+                                        <div className="flex items-center gap-2">
+                                          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
+                                          {viewMode === 'view' && isNonMember && !selectedUserId && (
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                              （{goal.user.name}）
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span className={`text-xs px-2 py-1 rounded-full ${
+                                          (goal.missionType || goal.goalType) === 'PRIMARY' 
+                                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                        }`}>
+                                          {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
+                                        </span>
+                                      </div>
+                                      <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
+                                    </div>
 
-              {/* プログレスバー */}
-              {!goal.id.startsWith('__') && (
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
-                    style={{ width: `${goal.progress}%` }}
-                  />
-                </div>
-              )}
-            </div>
+                                    {/* プログレスバー */}
+                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                                      <div
+                                        className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
+                                        style={{ width: `${goal.progress}%` }}
+                                      />
+                                    </div>
+                                  </div>
 
-            {/* ミッション詳細 */}
-            {expandedGoals.has(goal.id) && (
-              <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5">
-                {goal.id.startsWith('__') ? (
-                  <div className="py-4 text-sm text-gray-600 dark:text-gray-400">
-                    <p>
-                      {goal.id === '__KYORYOKUTAI__' 
-                        ? 'スケジュール入力時に「協力隊業務」を選択すると、このミッションに紐づけられます。プロジェクトに紐づかない協力隊としての一般的な業務に使用してください。'
-                        : 'スケジュール入力時に「役場業務」を選択すると、このミッションに紐づけられます。役場の業務に使用してください。'}
-                    </p>
+                                  {/* 編集ボタン */}
+                                  {(viewMode === 'view' && user?.id === goal.user.id) && (
+                                    <div className="flex justify-end mt-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEditGoal(goal);
+                                        }}
+                                      >
+                                        編集
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* ミッション詳細 */}
+                              {expandedGoals.has(goal.id) && (
+                                <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5 -mx-5 -mb-5 mt-3">
+                                  <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
-                ) : (
-                  <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
                 )}
-              </div>
-            )}
+              </Droppable>
+            </DragDropContext>
           </div>
-        );
-        })}
-      </div>
 
           {/* 空状態 */}
           {goals?.length === 0 && (
@@ -529,29 +552,16 @@ export const Goals: React.FC = () => {
 
       {viewMode === 'create' && (
         <>
-          {/* 目標一覧 */}
+          {/* ミッション一覧 */}
           <div className="space-y-4">
-            {goals?.map((goal) => (
+            {/* デフォルトミッション（ドラッグ不可） */}
+            {defaultGoals.map((goal) => (
               <div key={goal.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                 {/* 目標ヘッダー */}
                 <div
                   className="p-5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   onClick={() => toggleGoal(goal.id)}
                 >
-                  {!goal.id.startsWith('__') && (
-                    <div className="flex justify-end mb-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditGoal(goal);
-                        }}
-                      >
-                        編集
-                      </Button>
-                    </div>
-                  )}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
@@ -559,56 +569,117 @@ export const Goals: React.FC = () => {
                       </button>
                       <div className="flex items-center gap-2">
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
-                        {goal.id.startsWith('__') && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                            デフォルト項目
-                          </span>
-                        )}
-                      </div>
-                      {!goal.id.startsWith('__') && (
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          (goal.missionType || goal.goalType) === 'PRIMARY' 
-                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                        }`}>
-                          {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                          デフォルト項目
                         </span>
-                      )}
+                      </div>
                     </div>
-                    {!goal.id.startsWith('__') && (
-                      <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
-                    )}
                   </div>
-
-                  {/* プログレスバー */}
-                  {!goal.id.startsWith('__') && (
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
-                        style={{ width: `${goal.progress}%` }}
-                      />
-                    </div>
-                  )}
                 </div>
 
                 {/* ミッション詳細 */}
                 {expandedGoals.has(goal.id) && (
                   <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5">
-                    {goal.id.startsWith('__') ? (
-                      <div className="py-4 text-sm text-gray-600 dark:text-gray-400">
-                        <p>
-                          {goal.id === '__KYORYOKUTAI__' 
-                            ? 'スケジュール入力時に「協力隊業務」を選択すると、このミッションに紐づけられます。プロジェクトに紐づかない協力隊としての一般的な業務に使用してください。'
-                            : 'スケジュール入力時に「役場業務」を選択すると、このミッションに紐づけられます。役場の業務に使用してください。'}
-                        </p>
-                      </div>
-                    ) : (
-                      <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
-                    )}
+                    <div className="py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <p>
+                        {goal.id === '__KYORYOKUTAI__' 
+                          ? 'スケジュール入力時に「協力隊業務」を選択すると、このミッションに紐づけられます。プロジェクトに紐づかない協力隊としての一般的な業務に使用してください。'
+                          : 'スケジュール入力時に「役場業務」を選択すると、このミッションに紐づけられます。役場の業務に使用してください。'}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
             ))}
+
+            {/* ドラッグ可能なミッション */}
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="missions-create">
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="space-y-4"
+                  >
+                    {draggableGoals.map((goal, index) => (
+                      <Draggable key={goal.id} draggableId={goal.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden ${
+                              snapshot.isDragging ? 'shadow-2xl ring-2 ring-blue-500' : ''
+                            }`}
+                          >
+                            {/* 目標ヘッダー */}
+                            <div className="p-5">
+                              <div className="flex items-start gap-2 mb-3">
+                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing pt-1">
+                                  <GripVertical className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-end mb-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditGoal(goal);
+                                      }}
+                                    >
+                                      編集
+                                    </Button>
+                                  </div>
+                                  <div 
+                                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors rounded -m-2 p-2"
+                                    onClick={() => toggleGoal(goal.id)}
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-3">
+                                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                                          {expandedGoals.has(goal.id) ? '▼' : '▶'}
+                                        </button>
+                                        <div className="flex items-center gap-2">
+                                          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{goal.missionName || goal.goalName}</h2>
+                                        </div>
+                                        <span className={`text-xs px-2 py-1 rounded-full ${
+                                          (goal.missionType || goal.goalType) === 'PRIMARY' 
+                                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' 
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                        }`}>
+                                          {(goal.missionType || goal.goalType) === 'PRIMARY' ? 'メインミッション' : 'サブミッション'}
+                                        </span>
+                                      </div>
+                                      <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{goal.progress}%</span>
+                                    </div>
+
+                                    {/* プログレスバー */}
+                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                                      <div
+                                        className={`h-full transition-all duration-300 ${getProgressColor(goal.progress)}`}
+                                        style={{ width: `${goal.progress}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* ミッション詳細 */}
+                              {expandedGoals.has(goal.id) && (
+                                <div className="bg-gray-50 dark:bg-gray-800 px-5 pb-5 -mx-5 -mb-5 mt-3">
+                                  <MissionDetailContent missionId={goal.id} viewMode={viewMode} />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           </div>
 
           {/* 空状態 */}
