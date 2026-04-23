@@ -427,3 +427,83 @@ router.post('/:id/reorder', async (req: AuthRequest, res) => {
     res.status(500).json({ error: '順番の入れ替えに失敗しました' });
   }
 });
+
+// ミッションの順番入れ替え（ドラッグ&ドロップ用）
+router.post('/:id/reorder-to', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { newIndex, oldIndex } = req.body;
+
+    const mission = await prisma.mission.findUnique({
+      where: { id },
+      select: { id: true, userId: true, order: true, missionName: true },
+    });
+
+    if (!mission) {
+      return res.status(404).json({ error: 'ミッションが見つかりません' });
+    }
+
+    // デフォルトミッション（協力隊業務・役場業務）は順番変更不可
+    if (mission.missionName === '協力隊業務' || mission.missionName === '役場業務') {
+      return res.status(400).json({ error: 'デフォルトミッションの順番は変更できません' });
+    }
+
+    // 権限チェック
+    if (mission.userId !== req.user!.id && req.user!.role !== 'MASTER') {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    // 同じユーザーのミッションを取得（デフォルトミッションを除く）
+    const allMissions = await prisma.mission.findMany({
+      where: { 
+        userId: mission.userId,
+        missionName: {
+          notIn: ['協力隊業務', '役場業務'],
+        },
+      },
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, order: true },
+    });
+
+    // 新しい順番を計算
+    const updates = [];
+    if (newIndex > oldIndex) {
+      // 下に移動
+      for (let i = 0; i < allMissions.length; i++) {
+        if (i === oldIndex) {
+          updates.push({ id: allMissions[i].id, order: newIndex });
+        } else if (i > oldIndex && i <= newIndex) {
+          updates.push({ id: allMissions[i].id, order: i - 1 });
+        } else {
+          updates.push({ id: allMissions[i].id, order: i });
+        }
+      }
+    } else {
+      // 上に移動
+      for (let i = 0; i < allMissions.length; i++) {
+        if (i === oldIndex) {
+          updates.push({ id: allMissions[i].id, order: newIndex });
+        } else if (i >= newIndex && i < oldIndex) {
+          updates.push({ id: allMissions[i].id, order: i + 1 });
+        } else {
+          updates.push({ id: allMissions[i].id, order: i });
+        }
+      }
+    }
+
+    // トランザクションで更新
+    await prisma.$transaction(
+      updates.map(update =>
+        prisma.mission.update({
+          where: { id: update.id },
+          data: { order: update.order },
+        })
+      )
+    );
+
+    res.json({ message: '順番を入れ替えました' });
+  } catch (error) {
+    console.error('Reorder mission error:', error);
+    res.status(500).json({ error: '順番の入れ替えに失敗しました' });
+  }
+});

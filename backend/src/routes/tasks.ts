@@ -554,3 +554,91 @@ router.post('/missions/:missionId/tasks/:id/reorder', async (req: AuthRequest, r
     res.status(500).json({ error: '順番の入れ替えに失敗しました' });
   }
 });
+
+/**
+ * POST /api/missions/:missionId/tasks/:id/reorder-to
+ * タスクの順番を入れ替え（ドラッグ&ドロップ用）
+ */
+router.post('/missions/:missionId/tasks/:id/reorder-to', async (req: AuthRequest, res) => {
+  try {
+    const { missionId, id } = req.params;
+    const { newIndex, oldIndex } = req.body;
+
+    // タスクの存在確認
+    const task = await prisma.task.findUnique({
+      where: { id },
+      include: {
+        mission: {
+          select: {
+            id: true,
+            userId: true,
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      return res.status(404).json({ error: 'タスクが見つかりません' });
+    }
+
+    if (task.missionId !== missionId) {
+      return res.status(400).json({ error: 'ミッションIDが一致しません' });
+    }
+
+    // 権限チェック
+    if (req.user!.role === 'GOVERNMENT') {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+    if (req.user!.role === 'MEMBER' && task.mission.userId !== req.user!.id) {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    // 同じミッションのタスクを取得
+    const allTasks = await prisma.task.findMany({
+      where: { missionId },
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, order: true },
+    });
+
+    // 新しい順番を計算
+    const updates = [];
+    if (newIndex > oldIndex) {
+      // 下に移動
+      for (let i = 0; i < allTasks.length; i++) {
+        if (i === oldIndex) {
+          updates.push({ id: allTasks[i].id, order: newIndex });
+        } else if (i > oldIndex && i <= newIndex) {
+          updates.push({ id: allTasks[i].id, order: i - 1 });
+        } else {
+          updates.push({ id: allTasks[i].id, order: i });
+        }
+      }
+    } else {
+      // 上に移動
+      for (let i = 0; i < allTasks.length; i++) {
+        if (i === oldIndex) {
+          updates.push({ id: allTasks[i].id, order: newIndex });
+        } else if (i >= newIndex && i < oldIndex) {
+          updates.push({ id: allTasks[i].id, order: i + 1 });
+        } else {
+          updates.push({ id: allTasks[i].id, order: i });
+        }
+      }
+    }
+
+    // トランザクションで更新
+    await prisma.$transaction(
+      updates.map(update =>
+        prisma.task.update({
+          where: { id: update.id },
+          data: { order: update.order },
+        })
+      )
+    );
+
+    res.json({ message: '順番を入れ替えました' });
+  } catch (error) {
+    console.error('Reorder task error:', error);
+    res.status(500).json({ error: '順番の入れ替えに失敗しました' });
+  }
+});

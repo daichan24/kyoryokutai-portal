@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { api } from '../utils/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { GoalModal } from '../components/goal/GoalModal';
@@ -10,7 +11,7 @@ import { MissionDetailContent } from '../components/mission/MissionDetailContent
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, HelpCircle, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, HelpCircle, GripVertical, LayoutGrid, List } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { Task, Project } from '../types';
@@ -80,6 +81,7 @@ export const Goals: React.FC = () => {
   const [selectedNewTask, setSelectedNewTask] = useState<Task | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
+  const [displayMode, setDisplayMode] = useState<'card' | 'list'>('card');
 
   const viewMode: 'view' | 'create' =
     user?.role === 'MEMBER'
@@ -276,12 +278,34 @@ export const Goals: React.FC = () => {
     handleCloseModals();
   };
 
-  const handleReorderMission = async (missionId: string, direction: 'up' | 'down') => {
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+
+    const missionId = result.draggableId;
+    
+    // デフォルトミッションはドラッグ不可（念のためチェック）
+    const mission = goals?.find(g => g.id === missionId);
+    if (mission && (mission.missionName === '協力隊業務' || mission.missionName === '役場業務')) {
+      alert('デフォルトミッションの順番は変更できません');
+      return;
+    }
+    
     try {
-      await api.post(`/api/missions/${missionId}/reorder`, { direction });
+      await api.post(`/api/missions/${missionId}/reorder-to`, {
+        newIndex: destinationIndex,
+        oldIndex: sourceIndex,
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['missions'] });
     } catch (error: any) {
+      console.error('Reorder error:', error);
       alert(error.response?.data?.error || '順番の入れ替えに失敗しました');
+      queryClient.invalidateQueries({ queryKey: ['missions'] });
     }
   };
 
@@ -294,6 +318,16 @@ export const Goals: React.FC = () => {
   }
 
   const isNonMember = user?.role !== 'MEMBER';
+
+  // デフォルトミッション（協力隊業務・役場業務）を除外したリスト
+  const draggableGoals = goals?.filter(g => 
+    g.missionName !== '協力隊業務' && g.missionName !== '役場業務'
+  ) || [];
+
+  // デフォルトミッションのみ
+  const defaultGoals = goals?.filter(g => 
+    g.missionName === '協力隊業務' || g.missionName === '役場業務'
+  ) || [];
 
   return (
     <div className="space-y-6">
@@ -313,7 +347,7 @@ export const Goals: React.FC = () => {
             使い方
           </Button>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
           {isNonMember && isStaff && (
             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md text-right">
               閲覧／個人はダッシュボードの表示モードに連動（現在:{' '}
@@ -329,20 +363,49 @@ export const Goals: React.FC = () => {
         </div>
       </div>
 
-      {viewMode === 'view' && (
-        <>
-          {isNonMember && (
+      {/* フィルタ・表示切り替え */}
+      <div className="flex gap-4 flex-wrap items-center justify-between">
+        <div className="flex gap-4 flex-wrap items-center">
+          {isNonMember && viewMode === 'view' && (
             <UserFilter
               selectedUserId={selectedUserId}
               onUserChange={setSelectedUserId}
               label="担当者"
             />
           )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setDisplayMode('card')}
+            className={`p-2 rounded-lg transition-colors ${
+              displayMode === 'card'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`}
+            title="カード表示"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setDisplayMode('list')}
+            className={`p-2 rounded-lg transition-colors ${
+              displayMode === 'list'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`}
+            title="リスト表示"
+          >
+            <List className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
+      {viewMode === 'view' && (
+        <>
           {/* 目標一覧 */}
       <div className="space-y-4">
-        {goals?.map((goal, index) => {
-          const isDefaultMission = goal.missionName === '協力隊業務' || goal.missionName === '役場業務';
+        {/* デフォルトミッション（ドラッグ不可） */}
+        {defaultGoals.map((goal) => {
           return (
           <div key={goal.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             {/* 目標ヘッダー */}
