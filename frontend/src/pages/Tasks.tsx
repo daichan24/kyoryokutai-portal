@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
@@ -9,7 +10,7 @@ import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, HelpCircle, LayoutGrid, List, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, HelpCircle, LayoutGrid, List, X, GripVertical } from 'lucide-react';
 import { Task, Project, Mission } from '../types';
 
 export const Tasks: React.FC = () => {
@@ -288,17 +289,35 @@ export const Tasks: React.FC = () => {
     setSelectedProjectId(null);
   };
 
-  const handleReorderTask = async (task: Task, direction: 'up' | 'down') => {
-    if (!task.missionId) {
-      alert('ミッション情報が見つかりません');
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+
+    const taskId = result.draggableId;
+    const task = filteredAndSortedTasks.find(t => t.id === taskId);
+    
+    if (!task || !task.missionId) {
+      alert('タスク情報が見つかりません');
       return;
     }
+    
     try {
-      await api.post(`/api/missions/${task.missionId}/tasks/${task.id}/reorder`, { direction });
+      await api.post(`/api/missions/${task.missionId}/tasks/${taskId}/reorder-to`, {
+        newIndex: destinationIndex,
+        oldIndex: sourceIndex,
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     } catch (error: any) {
+      console.error('Reorder error:', error);
       alert(error.response?.data?.error || '順番の入れ替えに失敗しました');
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     }
   };
 
