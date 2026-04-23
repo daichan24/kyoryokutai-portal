@@ -8,7 +8,7 @@ import { ProjectModal } from '../components/project/ProjectModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, HelpCircle, LayoutGrid, List } from 'lucide-react';
+import { Plus, HelpCircle, LayoutGrid, List, ArrowUp, ArrowDown } from 'lucide-react';
 import { Task } from '../types';
 import { formatDate } from '../utils/date';
 
@@ -123,6 +123,15 @@ export const Projects: React.FC = () => {
     // viewModeに関係なく、すべてのprojectsクエリを無効化
     queryClient.invalidateQueries({ queryKey: ['projects'] });
     handleCloseModal();
+  };
+
+  const handleReorder = async (projectId: string, direction: 'up' | 'down') => {
+    try {
+      await api.post(`/api/projects/${projectId}/reorder`, { direction });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    } catch (error: any) {
+      alert(error.response?.data?.error || '順番の入れ替えに失敗しました');
+    }
   };
 
   const getPhaseLabel = (phase: string) => {
@@ -387,8 +396,48 @@ export const Projects: React.FC = () => {
         <>
           {displayMode === 'card' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects?.map((project) => (
+              {filteredProjects?.map((project, index) => (
                 <div
+                  key={project.id}
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 
+                      className="font-semibold text-lg text-gray-900 dark:text-gray-100 flex-1 cursor-pointer hover:text-blue-600"
+                      onClick={() => handleEditProject(project)}
+                    >
+                      {project.projectName}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
+                        {getPhaseLabel(project.phase)}
+                      </span>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReorder(project.id, 'up');
+                          }}
+                          disabled={index === 0}
+                          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="上に移動"
+                        >
+                          <ArrowUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReorder(project.id, 'down');
+                          }}
+                          disabled={index === (filteredProjects?.length || 0) - 1}
+                          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="下に移動"
+                        >
+                          <ArrowDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   key={project.id}
                   className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
                   onClick={() => handleEditProject(project)}

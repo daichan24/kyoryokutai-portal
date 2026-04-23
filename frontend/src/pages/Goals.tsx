@@ -10,7 +10,7 @@ import { MissionDetailContent } from '../components/mission/MissionDetailContent
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, HelpCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, HelpCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { Task, Project } from '../types';
@@ -276,6 +276,15 @@ export const Goals: React.FC = () => {
     handleCloseModals();
   };
 
+  const handleReorderMission = async (missionId: string, direction: 'up' | 'down') => {
+    try {
+      await api.post(`/api/missions/${missionId}/reorder`, { direction });
+      queryClient.invalidateQueries({ queryKey: ['missions'] });
+    } catch (error: any) {
+      alert(error.response?.data?.error || '順番の入れ替えに失敗しました');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -332,7 +341,9 @@ export const Goals: React.FC = () => {
 
           {/* 目標一覧 */}
       <div className="space-y-4">
-        {goals?.map((goal) => (
+        {goals?.map((goal, index) => {
+          const isDefaultMission = goal.missionName === '協力隊業務' || goal.missionName === '役場業務';
+          return (
           <div key={goal.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             {/* 目標ヘッダー */}
             <div
@@ -340,7 +351,33 @@ export const Goals: React.FC = () => {
               onClick={() => toggleGoal(goal.id)}
             >
               {(viewMode === 'create' || (viewMode === 'view' && user?.id === goal.user.id)) && !goal.id.startsWith('__') && (
-                <div className="flex justify-end mb-2">
+                <div className="flex justify-end gap-2 mb-2">
+                  {viewMode === 'create' && !isDefaultMission && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReorderMission(goal.id, 'up');
+                        }}
+                        disabled={index === 0}
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="上に移動"
+                      >
+                        <ArrowUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReorderMission(goal.id, 'down');
+                        }}
+                        disabled={index === (goals?.length || 0) - 1}
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="下に移動"
+                      >
+                        <ArrowDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      </button>
+                    </div>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -414,7 +451,8 @@ export const Goals: React.FC = () => {
               </div>
             )}
           </div>
-        ))}
+        );
+        })}
       </div>
 
           {/* 空状態 */}

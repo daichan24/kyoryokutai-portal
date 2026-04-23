@@ -170,6 +170,9 @@ export interface Project {
   phase?: 'PREPARATION' | 'EXECUTION' | 'COMPLETED' | 'REVIEW';
   relatedTasks?: Task[];
   taskProgress?: number;
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // ミッション（旧：起業準備進捗 / Goal）
@@ -191,6 +194,7 @@ export interface Mission {
   midGoals?: MidGoal[];
   projects?: Project[];
   tasks?: Task[]; // タスク（小目標）
+  order?: number;
   createdAt: string;
   updatedAt: string;
 }

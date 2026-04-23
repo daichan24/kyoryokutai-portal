@@ -261,6 +261,8 @@ model Mission {
   approvedBy      String?
   approvedAt      DateTime?
 
+  order Int @default(0) // 表示順序
+
   midGoals MidGoal[]
   projects Project[]
   tasks    Task[] // タスク（小目標）
@@ -270,6 +272,7 @@ model Mission {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, order])
 }
 
 model MidGoal {
@@ -391,6 +394,8 @@ model Project {
   /// 関わった町民のContact ID配列
   relatedContactIds String[] @default([])
 
+  order Int @default(0) // 表示順序
+
   members          ProjectMember[]
   tasks            ProjectTask[]
   relatedTasks     Task[] // このプロジェクトに関連するタスク（小目標、任意）
@@ -406,6 +411,7 @@ model Project {
 
   @@index([userId])
   @@index([missionId])
+  @@index([userId, order])
 }
 
 model ProjectMember {

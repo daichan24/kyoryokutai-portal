@@ -46,7 +46,7 @@ router.get('/', async (req: AuthRequest, res) => {
         tasks: { orderBy: { order: 'asc' } },
         relatedTasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // このプロジェクトに関連するタスク（小目標、任意）
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
     });
 
     res.json(projects);
@@ -130,6 +130,13 @@ router.post('/', async (req: AuthRequest, res) => {
       }
     }
 
+    // orderが指定されていない場合は最後に追加
+    const lastProject = await prisma.project.findFirst({
+      where: { userId: req.user!.id },
+      orderBy: { order: 'desc' },
+    });
+    const order = lastProject ? lastProject.order + 1 : 0;
+
     const project = await prisma.project.create({
       data: {
         userId: req.user!.id,
@@ -141,6 +148,7 @@ router.post('/', async (req: AuthRequest, res) => {
         missionId: missionId,
         themeColor: data.themeColor || null,
         tags: data.tags || [],
+        order,
       },
       include: { user: true, mission: true },
     });
@@ -387,5 +395,74 @@ router.get('/:id/schedule-history', async (req: AuthRequest, res) => {
 // タスク関連のルートを統合（旧：サブ目標）
 import tasksRoutes from './tasks';
 router.use('/', tasksRoutes);
+
+// プロジェクトの順番入れ替え
+router.post('/:id/reorder', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { direction } = req.body; // 'up' or 'down'
+
+    const project = await prisma.project.findUnique({
+      where: { id },
+      select: { id: true, userId: true, order: true },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'プロジェクトが見つかりません' });
+    }
+
+    // 権限チェック
+    if (project.userId !== req.user!.id && req.user!.role !== 'MASTER') {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    // 同じユーザーのプロジェクトを取得
+    const allProjects = await prisma.project.findMany({
+      where: { userId: project.userId },
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, order: true },
+    });
+
+    const currentIndex = allProjects.findIndex(p => p.id === id);
+    if (currentIndex === -1) {
+      return res.status(404).json({ error: 'プロジェクトが見つかりません' });
+    }
+
+    let targetIndex: number;
+    if (direction === 'up') {
+      if (currentIndex === 0) {
+        return res.status(400).json({ error: 'これ以上上に移動できません' });
+      }
+      targetIndex = currentIndex - 1;
+    } else if (direction === 'down') {
+      if (currentIndex === allProjects.length - 1) {
+        return res.status(400).json({ error: 'これ以上下に移動できません' });
+      }
+      targetIndex = currentIndex + 1;
+    } else {
+      return res.status(400).json({ error: '無効な方向です' });
+    }
+
+    // 順番を入れ替え
+    const currentProject = allProjects[currentIndex];
+    const targetProject = allProjects[targetIndex];
+
+    await prisma.$transaction([
+      prisma.project.update({
+        where: { id: currentProject.id },
+        data: { order: targetProject.order },
+      }),
+      prisma.project.update({
+        where: { id: targetProject.id },
+        data: { order: currentProject.order },
+      }),
+    ]);
+
+    res.json({ message: '順番を入れ替えました' });
+  } catch (error) {
+    console.error('Reorder project error:', error);
+    res.status(500).json({ error: '順番の入れ替えに失敗しました' });
+  }
+});
 
 export default router;

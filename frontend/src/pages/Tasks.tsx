@@ -9,7 +9,7 @@ import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, HelpCircle, LayoutGrid, List, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, HelpCircle, LayoutGrid, List, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { Task, Project, Mission } from '../types';
 
 export const Tasks: React.FC = () => {
@@ -288,6 +288,20 @@ export const Tasks: React.FC = () => {
     setSelectedProjectId(null);
   };
 
+  const handleReorderTask = async (task: Task, direction: 'up' | 'down') => {
+    if (!task.missionId) {
+      alert('ミッション情報が見つかりません');
+      return;
+    }
+    try {
+      await api.post(`/api/missions/${task.missionId}/tasks/${task.id}/reorder`, { direction });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    } catch (error: any) {
+      alert(error.response?.data?.error || '順番の入れ替えに失敗しました');
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -440,7 +454,7 @@ export const Tasks: React.FC = () => {
           {/* タスク一覧 */}
           {displayMode === 'card' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredAndSortedTasks.map((task) => {
+        {filteredAndSortedTasks.map((task, index) => {
           const missionName = getMissionName(task);
           return (
             <div
@@ -456,6 +470,30 @@ export const Tasks: React.FC = () => {
                 </div>
                 {canCreate && viewMode === 'create' && (
                   <div className="flex items-center gap-1">
+                    <div className="flex flex-col gap-1 mr-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReorderTask(task, 'up');
+                        }}
+                        disabled={index === 0}
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="上に移動"
+                      >
+                        <ArrowUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReorderTask(task, 'down');
+                        }}
+                        disabled={index === filteredAndSortedTasks.length - 1}
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="下に移動"
+                      >
+                        <ArrowDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      </button>
+                    </div>
                     <Button
                       variant="secondary"
                       size="sm"
