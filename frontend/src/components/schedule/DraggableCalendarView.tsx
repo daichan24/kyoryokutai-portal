@@ -56,11 +56,18 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
     
-    // 相対輝度を計算（WCAG基準）
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    // 相対輝度を計算（WCAG 2.1基準）
+    const toLinear = (c: number) => {
+      const val = c / 255;
+      return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+    };
     
-    // 輝度が0.5以上なら黒文字、それ以下なら白文字
-    return luminance > 0.5 ? '#000000' : '#ffffff';
+    const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    
+    // 輝度に基づいて適切なテキスト色を返す
+    // 明るい背景: 濃いグレー (#1F2937 - gray-800)
+    // 暗い背景: オフホワイト (#F9FAFB - gray-50)
+    return luminance > 0.5 ? '#1F2937' : '#F9FAFB';
   };
 
   // FullCalendar用のイベントデータに変換

@@ -149,7 +149,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
           fontSize: '18pt', 
           fontWeight: 'bold',
           marginBottom: '40px',
-          color: isDarkMode ? '#1f2937' : '#000000'
+          color: isDarkMode ? '#1f2937' : '#1F2937'
         }}>
           {title}
         </h1>
@@ -246,7 +246,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                 <div style={{ 
                   fontWeight: 'bold', 
                   backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-                  color: isDarkMode ? '#f3f4f6' : '#000000',
+                  color: isDarkMode ? '#F9FAFB' : '#1F2937',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -270,7 +270,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                 <div style={{ 
                   fontWeight: 'bold', 
                   backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-                  color: isDarkMode ? '#f3f4f6' : '#000000',
+                  color: isDarkMode ? '#F9FAFB' : '#1F2937',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -286,7 +286,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                 <div style={{ 
                   fontWeight: 'bold', 
                   backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-                  color: isDarkMode ? '#f3f4f6' : '#000000',
+                  color: isDarkMode ? '#F9FAFB' : '#1F2937',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -302,7 +302,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                 <div style={{ 
                   fontWeight: 'bold', 
                   backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-                  color: isDarkMode ? '#f3f4f6' : '#000000',
+                  color: isDarkMode ? '#F9FAFB' : '#1F2937',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -341,7 +341,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
           fontSize: '16pt', 
           fontWeight: 'bold',
           marginBottom: '40px',
-          color: isDarkMode ? '#1f2937' : '#000000'
+          color: isDarkMode ? '#1f2937' : '#1F2937'
         }}>
           一般社団法人まおいのはこの支援内容（{monthStr}）
         </h2>

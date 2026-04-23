@@ -707,8 +707,18 @@ export const Schedule: React.FC = () => {
                 const r = parseInt(hex.substr(0, 2), 16);
                 const g = parseInt(hex.substr(2, 2), 16);
                 const b = parseInt(hex.substr(4, 2), 16);
-                const luminance = (r * 299 + g * 587 + b * 114) / 1000;
-                return luminance > 128 ? '#111827' : '#ffffff';
+                
+                // 相対輝度を計算（WCAG 2.1基準）
+                const toLinear = (c: number) => {
+                  const val = c / 255;
+                  return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+                };
+                
+                const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+                
+                // 明るい背景: 濃いグレー (#1F2937)
+                // 暗い背景: オフホワイト (#F9FAFB)
+                return luminance > 0.5 ? '#1F2937' : '#F9FAFB';
               };
 
               return weeks.map((weekDays, weekIndex) => {
