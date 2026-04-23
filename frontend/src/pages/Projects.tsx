@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
@@ -8,7 +9,7 @@ import { ProjectModal } from '../components/project/ProjectModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, HelpCircle, LayoutGrid, List, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, HelpCircle, LayoutGrid, List, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { Task } from '../types';
 import { formatDate } from '../utils/date';
 
@@ -125,12 +126,33 @@ export const Projects: React.FC = () => {
     handleCloseModal();
   };
 
-  const handleReorder = async (projectId: string, direction: 'up' | 'down') => {
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+
+    const projectId = result.draggableId;
+    
     try {
-      await api.post(`/api/projects/${projectId}/reorder`, { direction });
+      // 一時的にUIを更新
+      const items = Array.from(filteredProjects || []);
+      const [reorderedItem] = items.splice(sourceIndex, 1);
+      items.splice(destinationIndex, 0, reorderedItem);
+      
+      // バックエンドに順番を送信
+      await api.post(`/api/projects/${projectId}/reorder-to`, {
+        newIndex: destinationIndex,
+        oldIndex: sourceIndex,
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['projects'] });
     } catch (error: any) {
+      console.error('Reorder error:', error);
       alert(error.response?.data?.error || '順番の入れ替えに失敗しました');
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     }
   };
 
@@ -203,185 +225,237 @@ export const Projects: React.FC = () => {
         </div>
       </div>
 
+      {/* フィルタ・表示切り替え（全役職共通） */}
+      <div className="flex gap-4 flex-wrap items-center justify-between">
+        <div className="flex gap-4 flex-wrap items-center">
+          {isNonMember && viewMode === 'view' && (
+            <UserFilter
+              selectedUserId={selectedUserId}
+              onUserChange={setSelectedUserId}
+              label="担当者"
+            />
+          )}
+          <select
+            value={filterPhase}
+            onChange={(e) => setFilterPhase(e.target.value)}
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">全てのフェーズ</option>
+            <option value="PREPARATION">準備</option>
+            <option value="EXECUTION">実施</option>
+            <option value="COMPLETED">完了</option>
+            <option value="REVIEW">振り返り</option>
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setDisplayMode('card')}
+            className={`p-2 rounded-lg transition-colors ${
+              displayMode === 'card'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`}
+            title="カード表示"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setDisplayMode('list')}
+            className={`p-2 rounded-lg transition-colors ${
+              displayMode === 'list'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`}
+            title="リスト表示"
+          >
+            <List className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
       {viewMode === 'view' && (
         <>
-          <div className="flex gap-4 flex-wrap items-center justify-between">
-            <div className="flex gap-4 flex-wrap items-center">
-              {isNonMember && (
-                <UserFilter
-                  selectedUserId={selectedUserId}
-                  onUserChange={setSelectedUserId}
-                  label="担当者"
-                />
-              )}
-              <select
-                value={filterPhase}
-                onChange={(e) => setFilterPhase(e.target.value)}
-                className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">全てのフェーズ</option>
-                <option value="PREPARATION">準備</option>
-                <option value="EXECUTION">実施</option>
-                <option value="COMPLETED">完了</option>
-                <option value="REVIEW">振り返り</option>
-              </select>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDisplayMode('card')}
-                className={`p-2 rounded-lg transition-colors ${
-                  displayMode === 'card'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-                title="カード表示"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setDisplayMode('list')}
-                className={`p-2 rounded-lg transition-colors ${
-                  displayMode === 'list'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-                title="リスト表示"
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
           {displayMode === 'card' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProjects?.map((project) => (
-              <div
-                key={project.id}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => handleEditProject(project)}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 flex-1">
-                    {project.projectName}
-                  </h3>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
-                    {getPhaseLabel(project.phase)}
-                  </span>
-                </div>
-
-                {project.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                    {project.description}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                  <span>担当: {project.user.name}</span>
-                  {project.members.length > 0 && (
-                    <span>+{project.members.length}名</span>
-                  )}
-                </div>
-
-                {/* 方向性（Mission）表示 */}
-                {project.mission && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    方向性: <span className="text-gray-700 dark:text-gray-300">{project.mission.missionName || project.mission.goalName || '未設定'}</span>
-                  </div>
-                )}
-
-                {/* タスク数表示 */}
-                {project.projectTasks && project.projectTasks.length > 0 && (
-                  <div className="text-xs text-gray-500 mb-3">
-                    タスク: {project.projectTasks.length}件
-                    {project.projectTasks.filter(t => t.status === 'COMPLETED').length > 0 && (
-                      <span className="text-green-600 ml-1">
-                        （完了: {project.projectTasks.filter(t => t.status === 'COMPLETED').length}）
-                      </span>
-                    )}
-                    {project.projectTasks.filter(t => t.status === 'IN_PROGRESS').length > 0 && (
-                      <span className="text-blue-600 ml-1">
-                        （進行中: {project.projectTasks.filter(t => t.status === 'IN_PROGRESS').length}）
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end pt-3 border-t border-gray-100">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditProject(project);
-                    }}
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="projects-view">
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
                   >
-                    {viewMode === 'view' ? '詳細' : '詳細・編集'}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+                    {filteredProjects?.map((project, index) => (
+                      <Draggable key={project.id} draggableId={project.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow ${
+                              snapshot.isDragging ? 'shadow-2xl ring-2 ring-blue-500' : ''
+                            }`}
+                          >
+                            <div className="flex items-start gap-2 mb-3">
+                              <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing pt-1">
+                                <GripVertical className="h-5 w-5 text-gray-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-start mb-2">
+                                  <h3 
+                                    className="font-semibold text-lg text-gray-900 dark:text-gray-100 flex-1 cursor-pointer hover:text-blue-600"
+                                    onClick={() => handleEditProject(project)}
+                                  >
+                                    {project.projectName}
+                                  </h3>
+                                  <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
+                                    {getPhaseLabel(project.phase)}
+                                  </span>
+                                </div>
+
+                                {project.description && (
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                                    {project.description}
+                                  </p>
+                                )}
+
+                                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                  <span>担当: {project.user.name}</span>
+                                  {project.members.length > 0 && (
+                                    <span>+{project.members.length}名</span>
+                                  )}
+                                </div>
+
+                                {project.mission && (
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                    方向性: <span className="text-gray-700 dark:text-gray-300">{project.mission.missionName || project.mission.goalName || '未設定'}</span>
+                                  </div>
+                                )}
+
+                                {project.projectTasks && project.projectTasks.length > 0 && (
+                                  <div className="text-xs text-gray-500 mb-3">
+                                    タスク: {project.projectTasks.length}件
+                                    {project.projectTasks.filter(t => t.status === 'COMPLETED').length > 0 && (
+                                      <span className="text-green-600 ml-1">
+                                        （完了: {project.projectTasks.filter(t => t.status === 'COMPLETED').length}）
+                                      </span>
+                                    )}
+                                    {project.projectTasks.filter(t => t.status === 'IN_PROGRESS').length > 0 && (
+                                      <span className="text-blue-600 ml-1">
+                                        （進行中: {project.projectTasks.filter(t => t.status === 'IN_PROGRESS').length}）
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className="flex items-center justify-end pt-3 border-t border-gray-100">
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditProject(project);
+                                    }}
+                                  >
+                                    詳細
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト名</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">フェーズ</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">担当者</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向性</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredProjects?.map((project) => (
-                    <tr
-                      key={project.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
-                      onClick={() => handleEditProject(project)}
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{project.projectName}</div>
-                        {project.description && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{project.description}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
-                          {getPhaseLabel(project.phase)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {project.user.name}
-                        {project.members.length > 0 && <span className="ml-1">+{project.members.length}</span>}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {project.mission?.missionName || project.mission?.goalName || '未設定'}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {project.projectTasks?.length || 0}件
-                        {project.projectTasks && project.projectTasks.filter(t => t.status === 'COMPLETED').length > 0 && (
-                          <span className="text-green-600 ml-1">（完了: {project.projectTasks.filter(t => t.status === 'COMPLETED').length}）</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditProject(project);
-                          }}
-                        >
-                          {viewMode === 'view' ? '詳細' : '詳細・編集'}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="projects-view-list">
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  >
+                    <table className="w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-8"></th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">プロジェクト名</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">フェーズ</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">担当者</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向性</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">タスク</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredProjects?.map((project, index) => (
+                          <Draggable key={project.id} draggableId={project.id} index={index}>
+                            {(provided, snapshot) => (
+                              <tr
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
+                                  snapshot.isDragging ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                }`}
+                              >
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                    <GripVertical className="h-5 w-5 text-gray-400" />
+                                  </div>
+                                </td>
+                                <td 
+                                  className="px-4 py-3 whitespace-nowrap cursor-pointer"
+                                  onClick={() => handleEditProject(project)}
+                                >
+                                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{project.projectName}</div>
+                                  {project.description && (
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{project.description}</div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
+                                    {getPhaseLabel(project.phase)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                  {project.user.name}
+                                  {project.members.length > 0 && <span className="ml-1">+{project.members.length}</span>}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                  {project.mission?.missionName || project.mission?.goalName || '未設定'}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                  {project.projectTasks?.length || 0}件
+                                  {project.projectTasks && project.projectTasks.filter(t => t.status === 'COMPLETED').length > 0 && (
+                                    <span className="text-green-600 ml-1">（完了: {project.projectTasks.filter(t => t.status === 'COMPLETED').length}）</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditProject(project);
+                                    }}
+                                  >
+                                    詳細
+                                  </Button>
+                                </td>
+                              </tr>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           )}
 
           {filteredProjects?.length === 0 && (
@@ -395,126 +469,152 @@ export const Projects: React.FC = () => {
       {viewMode === 'create' && (
         <>
           {displayMode === 'card' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects?.map((project, index) => (
-                <div
-                  key={project.id}
-                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 
-                      className="font-semibold text-lg text-gray-900 dark:text-gray-100 flex-1 cursor-pointer hover:text-blue-600"
-                      onClick={() => handleEditProject(project)}
-                    >
-                      {project.projectName}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
-                        {getPhaseLabel(project.phase)}
-                      </span>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReorder(project.id, 'up');
-                          }}
-                          disabled={index === 0}
-                          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                          title="上に移動"
-                        >
-                          <ArrowUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReorder(project.id, 'down');
-                          }}
-                          disabled={index === (filteredProjects?.length || 0) - 1}
-                          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                          title="下に移動"
-                        >
-                          <ArrowDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="projects-create">
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
+                    {filteredProjects?.map((project, index) => (
+                      <Draggable key={project.id} draggableId={project.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-lg transition-shadow ${
+                              snapshot.isDragging ? 'shadow-2xl ring-2 ring-blue-500' : ''
+                            }`}
+                          >
+                            <div className="flex items-start gap-2">
+                              <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing pt-1">
+                                <GripVertical className="h-5 w-5 text-gray-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-start mb-3">
+                                  <h3 
+                                    className="font-semibold text-lg text-gray-900 dark:text-gray-100 flex-1 cursor-pointer hover:text-blue-600"
+                                    onClick={() => handleEditProject(project)}
+                                  >
+                                    {project.projectName}
+                                  </h3>
+                                  <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
+                                    {getPhaseLabel(project.phase)}
+                                  </span>
+                                </div>
 
-                  {project.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                      {project.description}
-                    </p>
-                  )}
-                  {project.startDate && project.endDate && (
-                    <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {formatDate(new Date(project.startDate), 'yyyy年M月d日')} - {formatDate(new Date(project.endDate), 'yyyy年M月d日')}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      プロジェクト名
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      フェーズ
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      期間
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      アクション
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredProjects?.map((project) => (
-                    <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {project.projectName}
-                        </div>
-                        {project.description && (
-                          <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-md">
-                            {project.description}
+                                {project.description && (
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                                    {project.description}
+                                  </p>
+                                )}
+                                {project.startDate && project.endDate && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                                    {formatDate(new Date(project.startDate), 'yyyy年M月d日')} - {formatDate(new Date(project.endDate), 'yyyy年M月d日')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
-                          {getPhaseLabel(project.phase)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {project.startDate && project.endDate ? (
-                          <>
-                            {formatDate(new Date(project.startDate), 'yyyy年M月d日')} - {formatDate(new Date(project.endDate), 'yyyy年M月d日')}
-                          </>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditProject(project);
-                          }}
-                        >
-                          詳細
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          ) : (
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="projects-create-list">
+                {(provided) => (
+                  <div 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  >
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-8"></th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            プロジェクト名
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            フェーズ
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            期間
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            アクション
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredProjects?.map((project, index) => (
+                          <Draggable key={project.id} draggableId={project.id} index={index}>
+                            {(provided, snapshot) => (
+                              <tr 
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
+                                  snapshot.isDragging ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                }`}
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                    <GripVertical className="h-5 w-5 text-gray-400" />
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {project.projectName}
+                                  </div>
+                                  {project.description && (
+                                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-md">
+                                      {project.description}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={`text-xs px-2 py-1 rounded-full ${getPhaseColor(project.phase)}`}>
+                                    {getPhaseLabel(project.phase)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                  {project.startDate && project.endDate ? (
+                                    <>
+                                      {formatDate(new Date(project.startDate), 'yyyy年M月d日')} - {formatDate(new Date(project.endDate), 'yyyy年M月d日')}
+                                    </>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditProject(project);
+                                    }}
+                                  >
+                                    詳細
+                                  </Button>
+                                </td>
+                              </tr>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           )}
           {filteredProjects?.length === 0 && (
             <div className="text-center py-12 text-gray-500">
@@ -523,6 +623,8 @@ export const Projects: React.FC = () => {
           )}
         </>
       )}
+
+
 
       {isModalOpen && (
         <ProjectModal
