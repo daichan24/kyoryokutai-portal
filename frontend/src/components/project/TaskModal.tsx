@@ -397,6 +397,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, [title, memo, dueDate, readOnly, suspendOutsidePointerClose, showRecurringModal]);
 
+  // ミッション選択時にプロジェクトをフィルタリング
+  const filteredProjects = React.useMemo(() => {
+    if (attachMode === 'KYORYOKUTAI' || attachMode === 'YAKUBA') return [];
+    if (!selectedMissionId) return [];
+    return projects.filter(p => p.missionId === selectedMissionId);
+  }, [projects, selectedMissionId, attachMode]);
+
+  const sortedFilteredProjects = React.useMemo(() => {
+    return [...filteredProjects].sort((a, b) => {
+      if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+      return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+    });
+  }, [filteredProjects]);
+
   const effectiveMissionId = missionId || selectedMissionId || task?.missionId || '';
 
   const handleMissionChange = (v: string) => {
