@@ -939,8 +939,8 @@ export const Schedule: React.FC = () => {
             dates={weekDates}
             viewMode="month"
           />
+        </div>
         )}
-          </div>
         </div>
       </div>
 
