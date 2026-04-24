@@ -933,15 +933,13 @@ export const Schedule: React.FC = () => {
                 );
               });
             })()}
-          </div>
           {/* 行政出勤カレンダー（月表示） */}
           <GovernmentAttendanceCalendar
             dates={weekDates}
             viewMode="month"
           />
-        </div>
+          </div>
         )}
-        </div>
       </div>
 
       {/* プロジェクトの複数日にわたるスケジュール表示（＋タスク一覧） */}
