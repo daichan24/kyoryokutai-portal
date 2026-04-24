@@ -224,40 +224,93 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
           );
         })}
       </div>
-      {!isDayView && multiDaySchedules.length > 0 && (
-        <div className="grid w-full min-w-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ gridTemplateColumns: gridTemplate }}>
-          <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0 flex items-center justify-end pr-1">
-            <span className="text-[8px] text-gray-400">終日</span>
-          </div>
-          {dates.map((date, di) => {
-            const d = new Date(date); d.setHours(0,0,0,0);
-            const dayMulti = multiDaySchedules.filter((s) => {
-              const sd = new Date((s as any).startDate || s.date); sd.setHours(0,0,0,0);
-              const ed = new Date((s as any).endDate || s.date); ed.setHours(0,0,0,0);
-              return d >= sd && d <= ed;
-            });
-            return (
-              <div key={di} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 py-0.5 space-y-0.5 flex flex-col justify-center" style={{ minHeight: '1.75rem' }}>
-                {dayMulti.map((s) => {
-                  const sd = new Date((s as any).startDate || s.date); sd.setHours(0,0,0,0);
-                  const ed = new Date((s as any).endDate || s.date); ed.setHours(0,0,0,0);
-                  const isFirst = d.getTime() === sd.getTime(); const isLast = d.getTime() === ed.getTime();
-                  const color = (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
-                  const isRecurring = (s as any).createdBy === 'RECURRENCE';
-                  return (
-                    <button key={s.id} onClick={() => onScheduleClick(s)}
-                      className="w-full text-left text-xs text-white px-1 truncate hover:opacity-90 flex items-center gap-0.5"
-                      style={{ backgroundColor: color, marginLeft: isFirst ? '2px' : 0, marginRight: isLast ? '2px' : 0, height: '1.25rem', lineHeight: '1.25rem', borderRadius: isFirst && isLast ? '4px' : isFirst ? '4px 0 0 4px' : isLast ? '0 4px 4px 0' : '0' }}>
-                      <span className="flex-1 truncate">{isFirst ? ((s as any).title || s.activityDescription) : ''}</span>
-                      {isRecurring && isLast && <RefreshCw className="h-2.5 w-2.5 text-white/80 flex-shrink-0" />}
-                    </button>
-                  );
-                })}
+      {/* 複数日バナー（週表示のみ） - Googleカレンダー方式で横断バー表示 */}
+      {!isDayView && multiDaySchedules.length > 0 && (() => {
+        const weekStart = new Date(dates[0]); weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(dates[dates.length - 1]); weekEnd.setHours(0, 0, 0, 0);
+        const totalCols = dates.length;
+
+        type BannerRow = { scheduleId: string; startCol: number; endCol: number };
+        const rows: BannerRow[][] = [];
+
+        const banners = multiDaySchedules.map((s) => {
+          const sd = new Date((s as any).startDate || s.date); sd.setHours(0, 0, 0, 0);
+          const ed = new Date((s as any).endDate || s.date); ed.setHours(0, 0, 0, 0);
+          const clampedStart = sd < weekStart ? weekStart : sd;
+          const clampedEnd = ed > weekEnd ? weekEnd : ed;
+          const startCol = dates.findIndex((d) => { const dd = new Date(d); dd.setHours(0,0,0,0); return dd.getTime() === clampedStart.getTime(); });
+          const endCol = dates.findIndex((d) => { const dd = new Date(d); dd.setHours(0,0,0,0); return dd.getTime() === clampedEnd.getTime(); });
+          const sc = startCol < 0 ? 0 : startCol;
+          const ec = endCol < 0 ? totalCols - 1 : endCol;
+          const startsInWeek = sd.getTime() >= weekStart.getTime();
+          const endsInWeek = ed.getTime() <= weekEnd.getTime();
+
+          let rowIdx = 0;
+          while (true) {
+            if (!rows[rowIdx]) { rows[rowIdx] = []; }
+            const conflict = rows[rowIdx].some((b) => !(ec < b.startCol || sc > b.endCol));
+            if (!conflict) { rows[rowIdx].push({ scheduleId: s.id, startCol: sc, endCol: ec }); break; }
+            rowIdx++;
+          }
+
+          return { s, sc, ec, rowIdx, startsInWeek, endsInWeek };
+        });
+
+        const rowCount = rows.length;
+        const ROW_H = 22;
+        const bannerAreaHeight = rowCount * ROW_H + 4;
+
+        return (
+          <div className="border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800 flex"
+            style={{ minHeight: `${bannerAreaHeight}px` }}>
+            <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-start justify-end pr-1 pt-1 flex-shrink-0"
+              style={{ minWidth: '2rem', maxWidth: '3.5rem' }}>
+              <span className="text-[8px] text-gray-400">終日</span>
+            </div>
+            <div className="relative flex-1 min-w-0">
+              <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${totalCols}, minmax(0, 1fr))` }}>
+                {dates.map((_, di) => (
+                  <div key={di} className="border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-full" />
+                ))}
               </div>
-            );
-          })}
-        </div>
-      )}
+              {banners.map(({ s, sc, ec, rowIdx, startsInWeek, endsInWeek }) => {
+                const color = calendarViewMode === 'all'
+                  ? s.user?.avatarColor || '#6B7280'
+                  : (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
+                const textColor = getTextColor(color);
+                const isRecurring = (s as any).createdBy === 'RECURRENCE';
+                const leftPct = (sc / totalCols) * 100;
+                const widthPct = ((ec - sc + 1) / totalCols) * 100;
+                const top = rowIdx * ROW_H + 2;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => onScheduleClick(s)}
+                    className="absolute flex items-center text-xs px-1.5 hover:opacity-90 transition-opacity overflow-hidden z-10"
+                    style={{
+                      left: `calc(${leftPct}% + ${startsInWeek ? 2 : 0}px)`,
+                      width: `calc(${widthPct}% - ${(startsInWeek ? 2 : 0) + (endsInWeek ? 2 : 0)}px)`,
+                      top: `${top}px`,
+                      height: `${ROW_H - 2}px`,
+                      backgroundColor: color,
+                      color: textColor,
+                      borderRadius: startsInWeek && endsInWeek ? '4px' : startsInWeek ? '4px 0 0 4px' : endsInWeek ? '0 4px 4px 0' : '0',
+                    }}
+                    title={`${(s as any).title || s.activityDescription}`}>
+                    <span className="truncate flex-1 font-medium" style={{ fontSize: '11px' }}>
+                      {startsInWeek ? ((s as any).title || s.activityDescription) : ''}
+                    </span>
+                    {isRecurring && endsInWeek && (
+                      <RefreshCw className="h-2.5 w-2.5 opacity-80 flex-shrink-0 ml-0.5" style={{ color: textColor }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <div ref={scrollRef} className="w-full min-w-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: '60vh' }}>
         <div className="grid w-full min-w-0" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0">
