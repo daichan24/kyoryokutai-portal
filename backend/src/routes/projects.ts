@@ -26,7 +26,8 @@ router.get('/', async (req: AuthRequest, res) => {
 
     if (userId) {
       where.userId = userId;
-    } else if (req.user!.role === 'MEMBER') {
+    } else if (req.user!.role === 'MEMBER' && !missionId) {
+      // missionId指定時はミッションに紐づく全プロジェクトを返す（他ユーザー作成分も含む）
       where.userId = req.user!.id;
     }
 

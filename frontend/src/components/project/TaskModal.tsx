@@ -413,7 +413,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   const effectiveMissionId = missionId || selectedMissionId || task?.missionId || '';
 
-  const handleMissionChange = (v: string) => {
+  const handleMissionChange = async (v: string) => {
     if (v === '__KYORYOKUTAI__') {
       setSelectedMissionId(''); setAttachMode('KYORYOKUTAI'); setProjectId(null);
     } else if (v === '__YAKUBA__') {
@@ -422,12 +422,26 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setSelectedMissionId(v);
       setProjectId(null);
       setAttachMode('UNSET');
-      // ミッションに紐づくプロジェクトが1つだけの場合は自動選択
       if (v) {
-        const missionProjects = projects.filter(p => p.missionId === v);
-        if (missionProjects.length === 1) {
-          setProjectId(missionProjects[0].id);
-          setAttachMode('PROJECT');
+        try {
+          // ミッション変更時にそのミッションに紐づくプロジェクトをAPIから取得
+          const res = await api.get(`/api/projects?missionId=${v}`);
+          const missionProjects: Project[] = res.data || [];
+          setProjects(prev => {
+            // 既存のプロジェクトと新しいプロジェクトをマージ（重複排除）
+            const merged = [...prev];
+            missionProjects.forEach(mp => {
+              if (!merged.find(p => p.id === mp.id)) merged.push(mp);
+            });
+            return merged;
+          });
+          // プロジェクトが1つだけの場合は自動選択
+          if (missionProjects.length === 1) {
+            setProjectId(missionProjects[0].id);
+            setAttachMode('PROJECT');
+          }
+        } catch (err) {
+          console.error('Failed to fetch projects for mission:', err);
         }
       }
     }
