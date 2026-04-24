@@ -942,7 +942,6 @@ export const Schedule: React.FC = () => {
         )}
           </div>
         </div>
-        </div>
       </div>
 
       {/* プロジェクトの複数日にわたるスケジュール表示（＋タスク一覧） */}
