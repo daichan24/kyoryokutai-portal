@@ -459,3 +459,80 @@ if ((schedule as any).task) {
 
 ### 重要度
 🔴 **CRITICAL** - タスク管理の基本機能に影響する重要な修正
+
+
+---
+
+## [2026-04-24] TaskModal ミッション→プロジェクト連携フローの完全修正
+
+### 問題
+タスク追加・編集ポップアップの「連携」セクションで、ミッションを選択してもそのミッションに紐づくプロジェクトが表示されない問題。
+
+### 症状
+- ミッションを変更すると「あとで振り分け」しか表示されない
+- 特定のミッション（初期表示のもの）だけプロジェクトが表示される
+- `ReferenceError: sortedFilteredProjects is not defined` エラーでモーダルが開かない
+
+### 根本原因（3段階）
+
+**① Kiroのエディタ変更がディスクに書き込まれていなかった**
+`strReplace`ツールでの変更がエディタ上では反映されているように見えたが、実際のディスクファイルは変更されていなかった。`git status`がcleanなのにエディタ上では変更済みという矛盾が発生。Pythonスクリプトで直接書き込むことで解決。
+
+**② `sortedFilteredProjects`のuseMemo定義が抜けていた**
+UIで`sortedFilteredProjects`を参照しているが、その定義（`React.useMemo`）がファイルに存在しなかった。`ReferenceError`が発生してモーダルが開けない状態に。
+
+**③ MEMBERロールのユーザーは自分のプロジェクトしか取得できなかった**
+`/api/projects`はMEMBERロールの場合`where.userId = req.user.id`でフィルタリングされるため、他のユーザー（管理者など）が作成したプロジェクトが返ってこなかった。ミッションに紐づくプロジェクトが管理者作成の場合、MEMBERには見えない。
+
+### 修正内容
+
+**フロントエンド（TaskModal.tsx）**
+- `filteredProjects`と`sortedFilteredProjects`のuseMemoを追加
+- `handleMissionChange`をasync化し、ミッション変更時にAPIから動的にプロジェクトを取得
+- 協力隊業務・役場業務選択時はプロジェクトをselectではなく固定テキスト（グレーアウトdiv）で表示
+- ミッション未選択時はプロジェクトselectをdisabledでグレーアウト
+
+**バックエンド（routes/projects.ts）**
+- `missionId`クエリパラメータが指定された場合はMEMBERのuserIdフィルタを外す
+- これによりミッションに紐づく全プロジェクト（他ユーザー作成分も含む）が返るようになった
+
+```typescript
+// Before
+} else if (req.user!.role === 'MEMBER') {
+  where.userId = req.user!.id;
+}
+
+// After
+} else if (req.user!.role === 'MEMBER' && !missionId) {
+  // missionId指定時はミッションに紐づく全プロジェクトを返す
+  where.userId = req.user!.id;
+}
+```
+
+```typescript
+// ミッション変更時に動的取得
+const handleMissionChange = async (v: string) => {
+  // ...
+  const res = await api.get(`/api/projects?missionId=${v}`);
+  const missionProjects: Project[] = res.data || [];
+  setProjects(prev => {
+    const merged = [...prev];
+    missionProjects.forEach(mp => {
+      if (!merged.find(p => p.id === mp.id)) merged.push(mp);
+    });
+    return merged;
+  });
+};
+```
+
+### 教訓
+- Kiroのstreplaceツールの変更がディスクに書き込まれない場合がある。`git diff`や`grep`で実際のファイル内容を必ず確認すること
+- MEMBERロールのAPIアクセス制限は意図せずフィルタリングを引き起こすことがある。ミッション/プロジェクトの関係性を扱うAPIは権限設計を慎重に
+
+### コミット
+- `38ba3e9` - fix: TaskModalのミッション→プロジェクト連携フローを改善
+- `daa3c73` - fix: sortedFilteredProjectsのuseMemo定義が抜けていたのを修正
+- `fde8c58` - fix: ミッション選択時にそのミッションのプロジェクトをAPIから動的取得
+
+### 重要度
+🔴 **CRITICAL** - タスク追加・編集の基本フローに影響する修正
