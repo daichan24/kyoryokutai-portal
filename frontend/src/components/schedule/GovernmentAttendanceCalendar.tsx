@@ -30,7 +30,7 @@ interface GovernmentAttendance {
 
 interface GovernmentAttendanceCalendarProps {
   dates: Date[];
-  viewMode: 'week' | 'month';
+  viewMode: 'week' | 'month' | 'day';
 }
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
@@ -124,6 +124,104 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
     setEditStatus(existing?.status ?? 'PRESENT');
     setEditNote(existing?.note ?? '');
   };
+
+  if (viewMode === 'month') {
+    // 月表示: 日付ごとにドットで出勤状況を表示
+    const uniqueDates = Array.from(new Set(dates.map(d => format(d, 'yyyy-MM-dd')))).sort();
+    const hasAnyAttendance = attendances.length > 0;
+    if (!hasAnyAttendance) return null;
+
+    return (
+      <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div className="bg-gray-50 dark:bg-gray-800/80 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            🏢 行政出勤カレンダー
+            <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+              （今日相談できるか確認できます）
+            </span>
+          </h3>
+        </div>
+        <div className="p-3 bg-white dark:bg-gray-800">
+          {/* 凡例 */}
+          <div className="flex flex-wrap gap-3 mb-3">
+            {(Object.entries(STATUS_LABELS) as [AttendanceStatus, string][]).map(([status, label]) => (
+              <span key={status} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                <span className={`w-2 h-2 rounded-full ${STATUS_DOT[status]}`} />
+                {label}
+              </span>
+            ))}
+          </div>
+          {/* メンバーごとの出勤状況 */}
+          {(() => {
+            const memberMap = new Map<string, { user: GovernmentAttendance['user']; attendances: GovernmentAttendance[] }>();
+            attendances.forEach((a) => {
+              if (!memberMap.has(a.userId)) memberMap.set(a.userId, { user: a.user, attendances: [] });
+              memberMap.get(a.userId)!.attendances.push(a);
+            });
+            return Array.from(memberMap.values()).map(({ user: member, attendances: memberAttendances }) => (
+              <div key={member.id} className="mb-2 last:mb-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                    style={{ backgroundColor: member.avatarColor }}>
+                    {(member.avatarLetter || member.name || '').charAt(0)}
+                  </div>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{member.name}</span>
+                </div>
+                <div className="flex flex-wrap gap-1 ml-7">
+                  {memberAttendances.map((a) => {
+                    const startStr = a.date.slice(0, 10);
+                    const endStr = a.endDate?.slice(0, 10) || startStr;
+                    const label = startStr === endStr
+                      ? format(parseISO(startStr), 'M/d')
+                      : `${format(parseISO(startStr), 'M/d')}〜${format(parseISO(endStr), 'M/d')}`;
+                    return (
+                      <span key={a.id}
+                        className={`text-[10px] px-1.5 py-0.5 rounded border ${STATUS_COLORS[a.status]}`}
+                        title={`${STATUS_LABELS[a.status]}${a.startTime ? ` ${formatTime(a.startTime)}〜${a.endTime ? formatTime(a.endTime) : ''}` : ''}${a.note ? ` (${a.note})` : ''}`}>
+                        {label} {STATUS_LABELS[a.status]}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ));
+          })()}
+          {/* 自分の記録ボタン（行政のみ） */}
+          {canEdit && (
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">自分の出勤を記録：</p>
+              <div className="flex flex-wrap gap-1">
+                {dates.filter((d, i, arr) => {
+                  const ds = format(d, 'yyyy-MM-dd');
+                  return arr.findIndex(x => format(x, 'yyyy-MM-dd') === ds) === i;
+                }).slice(0, 31).map((date) => {
+                  const myAtt = getMyAttendanceForDate(date);
+                  return (
+                    <button key={format(date, 'yyyy-MM-dd')}
+                      onClick={() => openEdit(date)}
+                      className={`text-[10px] px-1.5 py-0.5 rounded border ${myAtt ? `${STATUS_COLORS[myAtt.status]} border-solid` : 'border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:border-blue-400 hover:text-blue-500'}`}>
+                      {format(date, 'M/d')}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+        {editingDate && canEdit && (
+          <AttendanceEditModal
+            date={editingDate}
+            existingId={attendances.find((a) => a.userId === user?.id && a.date.slice(0, 10) === editingDate)?.id}
+            initialStatus={editStatus}
+            initialNote={editNote}
+            onClose={() => setEditingDate(null)}
+            onSaved={() => setEditingDate(null)}
+            onDeleted={() => setEditingDate(null)}
+          />
+        )}
+      </div>
+    );
+  }
 
   if (viewMode === 'week') {
     return (

@@ -643,6 +643,14 @@ export const Schedule: React.FC = () => {
                 />
               </div>
             )}
+            {viewMode === 'month' && (
+              <div className="mt-4">
+                <GovernmentAttendanceCalendar
+                  dates={weekDates}
+                  viewMode="month"
+                />
+              </div>
+            )}
           </>
         ) : viewMode === 'week' || viewMode === 'day' ? (
           <>
@@ -926,6 +934,11 @@ export const Schedule: React.FC = () => {
               });
             })()}
           </div>
+          {/* 行政出勤カレンダー（月表示） */}
+          <GovernmentAttendanceCalendar
+            dates={weekDates}
+            viewMode="month"
+          />
         )}
           </div>
         </div>

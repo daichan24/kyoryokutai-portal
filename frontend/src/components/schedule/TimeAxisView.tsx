@@ -78,6 +78,16 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
       ? s.user?.avatarColor || '#6B7280'
       : (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
 
+  const getTextColor = (bg: string): string => {
+    const hex = bg.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const toLinear = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const lum = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    return lum > 0.5 ? '#1F2937' : '#F9FAFB';
+  };
+
   const isDayView = viewMode === 'day';
   const dayDate = isDayView ? dates[0] : null;
   const memberCount = Math.max(members.length, 1);

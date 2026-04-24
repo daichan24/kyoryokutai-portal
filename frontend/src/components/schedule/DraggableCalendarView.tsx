@@ -146,13 +146,18 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           const event = {
             id: schedule.id,
             title: (schedule as any).title || schedule.activityDescription || '(タイトルなし)',
-            start: startDateTime,
-            end: endDateTime,
+            start: isMultiDay ? startDate : startDateTime,
+            // allDay イベントの end は exclusive（終了日の翌日）なので +1日
+            end: isMultiDay ? (() => {
+              const d = new Date(endDate + 'T00:00:00');
+              d.setDate(d.getDate() + 1);
+              return d.toISOString().slice(0, 10);
+            })() : endDateTime,
             backgroundColor: color,
             borderColor: color,
             textColor: textColor,
-            allDay: false,
-            editable: isEditable,
+            allDay: isMultiDay,
+            editable: isEditable && !isMultiDay,
             extendedProps: {
               type: 'schedule',
               schedule,
