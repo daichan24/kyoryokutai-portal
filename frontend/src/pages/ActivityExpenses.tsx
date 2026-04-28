@@ -7,7 +7,6 @@ import { useAuthStore } from '../stores/authStore';
 import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
-import { HelpCircle, X } from 'lucide-react';
 
 function formatYen(n: number) {
   return `¥${n.toLocaleString('ja-JP')}`;
@@ -25,47 +24,11 @@ interface ExpenseEntry {
   updatedBy?: { id: string; name: string } | null;
 }
 
-interface ChecklistItem {
-  id: string;
-  label: string;
-  allowed: boolean;
-  sortOrder: number;
-}
-
-interface ApprovedExample {
-  id: string;
-  missionId: string;
-  summary: string;
-  rationale: string;
-  createdAt: string;
-  mission?: { id: string; missionName: string; userId?: string };
-  createdBy?: { id: string; name: string };
-}
-
-interface ExpenseGuidance {
-  id: string;
-  procedureText: string;
-  updatedAt: string;
-}
-
 interface ProjectOption {
   id: string;
   projectName: string;
   missionId?: string | null;
 }
-
-interface MissionOption {
-  id: string;
-  missionName: string;
-}
-
-const DEFAULT_EXPENSE_PROCEDURE = `【購入までの大枠の流れ】
-1. 欲しいもの・支出が発生しそうになったら、まず下の「セルフチェック」を確認する。
-2. 問題なさそうなら、役場に「この活動のためにこれを買いたい」と相談し、口頭または書面で了承を得る。
-3. OKが出たら、この画面で「紐づくプロジェクト」を選び、支出を登録する。
-4. その後、実際に購入する。
-
-※ 「過去の事例」は参考用です。ミッションごとの文脈・理由があるため、自分のケースに当てはまるかは必ず上記1〜3を踏んで最終確認してください。`;
 
 interface ExpenseSummary {
   allocatedAmount: number;
@@ -90,56 +53,8 @@ export const ActivityExpenses: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [projectIdForEntry, setProjectIdForEntry] = useState('');
-  const [newChecklistLabel, setNewChecklistLabel] = useState('');
-  const [newChecklistAllowed, setNewChecklistAllowed] = useState(true);
-  const [exampleMissionId, setExampleMissionId] = useState('');
-  const [exampleSummary, setExampleSummary] = useState('');
-  const [exampleRationale, setExampleRationale] = useState('');
-  const [guidanceDraft, setGuidanceDraft] = useState('');
-  const [procedureHelpOpen, setProcedureHelpOpen] = useState(false);
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
-
-
-
-  React.useEffect(() => {
-    setEditingId(null);
-    setDescription('');
-    setAmount('');
-    setProjectIdForEntry('');
-  }, [effectiveUserId]);
-
-  const { data: guidance } = useQuery<ExpenseGuidance>({
-    queryKey: ['activity-expenses', 'guidance'],
-    queryFn: async () => {
-      const r = await api.get<ExpenseGuidance>('/api/activity-expenses/guidance');
-      return r.data;
-    },
-  });
-
-  const procedureBody =
-    (guidance?.procedureText?.trim() ? guidance.procedureText : DEFAULT_EXPENSE_PROCEDURE) ||
-    DEFAULT_EXPENSE_PROCEDURE;
-
-  React.useEffect(() => {
-    if (guidance) setGuidanceDraft(guidance.procedureText || '');
-  }, [guidance?.id]);
-
-  const { data: checklistItems = [] } = useQuery<ChecklistItem[]>({
-    queryKey: ['activity-expenses', 'checklist'],
-    queryFn: async () => {
-      const r = await api.get<ChecklistItem[]>('/api/activity-expenses/checklist');
-      return r.data || [];
-    },
-  });
-
-  const { data: examples = [] } = useQuery<ApprovedExample[]>({
-    queryKey: ['activity-expenses', 'examples'],
-    queryFn: async () => {
-      const r = await api.get<ApprovedExample[]>('/api/activity-expenses/examples');
-      return r.data || [];
-    },
-  });
 
   const { data: memberProjects = [] } = useQuery<ProjectOption[]>({
     queryKey: ['activity-expenses', 'projects', effectiveUserId],
@@ -148,15 +63,6 @@ export const ActivityExpenses: React.FC = () => {
       return r.data || [];
     },
     enabled: Boolean(effectiveUserId),
-  });
-
-  const { data: memberMissions = [] } = useQuery<MissionOption[]>({
-    queryKey: ['activity-expenses', 'missions', effectiveUserId],
-    queryFn: async () => {
-      const r = await api.get<MissionOption[]>(`/api/missions?userId=${effectiveUserId}`);
-      return r.data || [];
-    },
-    enabled: Boolean(effectiveUserId) && isStaff,
   });
 
   const { data: members = [], isLoading: membersLoading } = useQuery<User[]>({
@@ -206,59 +112,6 @@ export const ActivityExpenses: React.FC = () => {
       });
     },
     onSuccess: invalidate,
-  });
-
-  const guidanceMut = useMutation({
-    mutationFn: async () => {
-      await api.put('/api/activity-expenses/guidance', { procedureText: guidanceDraft });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'guidance'] });
-    },
-  });
-
-  const checklistAddMut = useMutation({
-    mutationFn: async () => {
-      await api.post('/api/activity-expenses/checklist', {
-        label: newChecklistLabel.trim(),
-        allowed: newChecklistAllowed,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'checklist'] });
-      setNewChecklistLabel('');
-      setNewChecklistAllowed(true);
-    },
-  });
-
-  const checklistDeleteMut = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/activity-expenses/checklist/${id}`);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'checklist'] }),
-  });
-
-  const exampleAddMut = useMutation({
-    mutationFn: async () => {
-      await api.post('/api/activity-expenses/examples', {
-        missionId: exampleMissionId,
-        summary: exampleSummary.trim(),
-        rationale: exampleRationale.trim(),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'examples'] });
-      setExampleSummary('');
-      setExampleRationale('');
-      setExampleMissionId('');
-    },
-  });
-
-  const exampleDeleteMut = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/activity-expenses/examples/${id}`);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activity-expenses', 'examples'] }),
   });
 
   const createMut = useMutation({
@@ -337,235 +190,118 @@ export const ActivityExpenses: React.FC = () => {
         </p>
       </div>
 
-      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">購入までの手続き</h2>
-          <button
-            type="button"
-            onClick={() => setProcedureHelpOpen(true)}
-            className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            title="手続きの詳細を表示"
-            aria-label="購入までの手続きの説明を開く"
-          >
-            <HelpCircle className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          支出前の流れは「？」ボタンで確認できます。行政・サポート・マスターは下から手順文を編集できます。
-        </p>
-        {procedureHelpOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setProcedureHelpOpen(false)}
-            role="presentation"
-          >
-            <div
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col border border-gray-200 dark:border-gray-700"
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-labelledby="procedure-help-title"
-            >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                <h3 id="procedure-help-title" className="font-semibold text-gray-900 dark:text-gray-100">
-                  購入までの手続き
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setProcedureHelpOpen(false)}
-                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
-                  aria-label="閉じる"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="p-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                {procedureBody}
-              </div>
-              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-                <Button type="button" variant="outline" size="sm" onClick={() => setProcedureHelpOpen(false)}>
-                  閉じる
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-        {isStaff && (
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">手順文の編集（行政・サポート・マスター）</label>
-            <textarea
-              value={guidanceDraft}
-              onChange={(e) => setGuidanceDraft(e.target.value)}
-              rows={8}
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
-            />
-            <Button type="button" size="sm" onClick={() => guidanceMut.mutate()} disabled={guidanceMut.isPending}>
-              手順を保存
-            </Button>
-          </div>
-        )}
-      </section>
-
       <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">セルフチェック</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          経費として使えるか確認してください。〇＝経費として認められる想定、✕＝原則不可などの目安です（最終判断は役場との相談）。
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">対象経費一覧</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          長沼町地域おこし協力隊活動費補助金交付要綱に基づく対象経費です。詳細は役場にご確認ください。
         </p>
-        {checklistItems.length === 0 ? (
-          <p className="text-sm text-gray-500">項目がまだありません。スタッフが追加できます。</p>
-        ) : (
-          <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700/80">
-                <tr>
-                  <th className="text-left px-3 py-2">内容</th>
-                  <th className="text-center px-3 py-2 w-24">目安</th>
-                  {isStaff && <th className="text-right px-3 py-2 w-24">操作</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {checklistItems.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-3 py-2 text-gray-800 dark:text-gray-100">{row.label}</td>
-                    <td className="px-3 py-2 text-center text-lg">{row.allowed ? '〇' : '✕'}</td>
-                    {isStaff && (
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          className="text-red-600 dark:text-red-400 text-xs hover:underline"
-                          onClick={() => {
-                            if (confirm('この項目を削除しますか？')) checklistDeleteMut.mutate(row.id);
-                          }}
-                        >
-                          削除
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {isStaff && (
-          <div className="mt-4 flex flex-wrap gap-2 items-end">
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs mb-1">項目を追加</label>
-              <input
-                type="text"
-                value={newChecklistLabel}
-                onChange={(e) => setNewChecklistLabel(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                placeholder="例：隊の活動に直接必要な消耗品"
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={newChecklistAllowed}
-                onChange={(e) => setNewChecklistAllowed(e.target.checked)}
-              />
-              〇（可）
-            </label>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => {
-                if (!newChecklistLabel.trim()) {
-                  alert('ラベルを入力してください');
-                  return;
-                }
-                checklistAddMut.mutate();
-              }}
-              disabled={checklistAddMut.isPending}
-            >
-              追加
-            </Button>
-          </div>
-        )}
-      </section>
-
-      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">過去の事例</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          あくまで参考程度にしてください。必ずミッション（活動）と理由が紐づいた過去の事例です。自分のケースにそのまま当てはまるとは限らないため、セルフチェックと役場との相談で最終確認してください。
-        </p>
-        {examples.length === 0 ? (
-          <p className="text-sm text-gray-500">過去の事例はまだありません。</p>
-        ) : (
-          <ul className="space-y-3">
-            {examples.map((ex) => (
-              <li
-                key={ex.id}
-                className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm"
-              >
-                <div className="font-medium text-gray-900 dark:text-gray-100">{ex.summary}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  ミッション: {ex.mission?.missionName || ex.missionId} ·{' '}
-                  {format(parseISO(ex.createdAt), 'yyyy/M/d', { locale: ja })}{' '}
-                  {ex.createdBy?.name}
-                </div>
-                <p className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ex.rationale}</p>
-                {isStaff && (
-                  <button
-                    type="button"
-                    className="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline"
-                    onClick={() => {
-                            if (confirm('この事例を削除しますか？')) exampleDeleteMut.mutate(ex.id);
-                    }}
-                  >
-                    削除
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        {isStaff && (
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">過去の事例の追加</p>
-            <select
-              value={exampleMissionId}
-              onChange={(e) => setExampleMissionId(e.target.value)}
-              className="w-full max-w-md px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-            >
-              <option value="">ミッションを選択（必須）</option>
-              {memberMissions.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.missionName}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              value={exampleSummary}
-              onChange={(e) => setExampleSummary(e.target.value)}
-              placeholder="一行要約（例：○○研修の資料印刷代）"
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-              maxLength={500}
-            />
-            <textarea
-              value={exampleRationale}
-              onChange={(e) => setExampleRationale(e.target.value)}
-              placeholder="なぜこの活動・文脈ではOKだったか（購入時は必ず自分のミッションと照らす）"
-              rows={4}
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-            />
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => {
-                if (!exampleMissionId || !exampleSummary.trim() || !exampleRationale.trim()) {
-                  alert('ミッション・要約・理由を入力してください');
-                  return;
-                }
-                exampleAddMut.mutate();
-              }}
-              disabled={exampleAddMut.isPending}
-            >
-              事例を登録
-            </Button>
-          </div>
-        )}
+        <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-700/80">
+              <tr>
+                <th className="text-left px-3 py-2 font-medium w-32">費用区分</th>
+                <th className="text-left px-3 py-2 font-medium">対象経費</th>
+                <th className="text-left px-3 py-2 font-medium w-48">対象外経費</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">旅費</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  <div>・研修等の宿泊代、交通費等</div>
+                  <div>・長期間に帰省する際に要する交通費等</div>
+                  <div>・本町に帰省する</div>
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・目的外の出張
+                </td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">消耗品費</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・事務用品及備品等
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・転売目的の製作物等を仕入れ
+                </td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">印刷製本費</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・印刷物の制作費
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top"></td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">通信運搬費</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  <div>・活動に要する郵便料、配送料</div>
+                  <div>・試験に要する電話料</div>
+                  <div>・事業に係る必要な通信料</div>
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top"></td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">広告料</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・活動に要する広告宣伝費
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top"></td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">手数料</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・活動に要する手続手数料
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top"></td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">保険料</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・イベント保険料
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  <div>・任意の保険料</div>
+                  <div>・個人の生命保険料等</div>
+                </td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">使用料、賃借料</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  <div>・会場使用料</div>
+                  <div>・試験に要する車両等の賃料</div>
+                  <div>・時間貸に区分されている場合に限る</div>
+                  <div>・活動に不可欠な資材等の賃料</div>
+                  <div>・ソフトウェア、一般賃貸ソフトウェア、ライセンス費用等、イベント資材のリース料</div>
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  <div>・駐車スペースに係る費用（駐車、洗車代、共益費等）</div>
+                </td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">備品購入費</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  <div>・活動に必要な備品（机等、機材等）</div>
+                  <div>・町民の来客なく製品として扱うことはならない</div>
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  <div>・車の購入費用</div>
+                  <div>・転売目的の購入</div>
+                  <div>・貸与作りあり、目的外の使用ができるもの（調べパソコン、スマートフォン、タブレット端末等）</div>
+                </td>
+              </tr>
+              <tr>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">謝礼費</td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・研修受講の謝礼
+                </td>
+                <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
+                  ・飲食の費用
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {isStaff && (
