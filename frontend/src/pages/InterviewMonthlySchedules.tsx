@@ -6,7 +6,7 @@ import { ja } from 'date-fns/locale';
 import { api } from '../utils/api';
 import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { InterviewCalendar } from '../components/interview/InterviewCalendar';
+import { EnhancedInterviewCalendar } from '../components/interview/EnhancedInterviewCalendar';
 import { ActivityExpensesByProject } from '../components/interview/ActivityExpensesByProject';
 
 interface InterviewParticipantUser {
@@ -372,7 +372,12 @@ export const InterviewMonthlySchedules: React.FC = () => {
 
           {/* スケジュールカレンダー */}
           <section>
-            <InterviewCalendar schedules={schedules} month={month} memberName={data.member.name} />
+            <EnhancedInterviewCalendar 
+              schedules={schedules} 
+              initialMonth={month} 
+              memberName={data.member.name}
+              onMonthChange={(newMonth) => setMonth(newMonth)}
+            />
           </section>
 
           <section className="space-y-4">
