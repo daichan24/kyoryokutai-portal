@@ -13,7 +13,7 @@ export async function createDefaultMissionsAndProjects(userId: string) {
       missionName: '協力隊業務',
       missionType: 'PRIMARY',
       order: 0,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: new Date(),
       endDate: null,
     },
   });
@@ -25,7 +25,7 @@ export async function createDefaultMissionsAndProjects(userId: string) {
       missionName: '役場業務',
       missionType: 'SUB',
       order: 1,
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: new Date(),
       endDate: null,
     },
   });
@@ -38,7 +38,7 @@ export async function createDefaultMissionsAndProjects(userId: string) {
       phase: 'EXECUTION',
       missionId: kyoryokutaiMission.id,
       themeColor: '#3B82F6', // 青色
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: new Date(),
       endDate: null,
       order: 0,
     },
@@ -52,7 +52,7 @@ export async function createDefaultMissionsAndProjects(userId: string) {
       phase: 'EXECUTION',
       missionId: yakubaMission.id,
       themeColor: '#10B981', // 緑色
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: new Date(),
       endDate: null,
       order: 1,
     },
@@ -126,7 +126,7 @@ export async function createDefaultMissionsAndProjectsForExistingMembers() {
             phase: 'EXECUTION',
             missionId: existingKyoryokutaiMission.id,
             themeColor: '#3B82F6',
-            startDate: new Date().toISOString().split('T')[0],
+            startDate: new Date(),
             endDate: null,
             order: 0,
           },
@@ -142,7 +142,7 @@ export async function createDefaultMissionsAndProjectsForExistingMembers() {
             phase: 'EXECUTION',
             missionId: existingYakubaMission.id,
             themeColor: '#10B981',
-            startDate: new Date().toISOString().split('T')[0],
+            startDate: new Date(),
             endDate: null,
             order: 1,
           },
