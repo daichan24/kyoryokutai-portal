@@ -995,12 +995,12 @@ export const InterviewMonthlySchedules: React.FC = () => {
                 </p>
               )}
               
-              <Link
-                to="/activity-expenses"
+              <a
+                href="#activity-expenses"
                 className="mt-4 block text-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >
                 活動経費の詳細を開く →
-              </Link>
+              </a>
             </div>
           )}
         </div>
