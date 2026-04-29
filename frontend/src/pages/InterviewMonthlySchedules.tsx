@@ -181,8 +181,8 @@ function formatYenInterview(n: number) {
 }
 
 export const InterviewMonthlySchedules: React.FC = () => {
-  /** 月初の前月振り返り想定で、既定は前月 */
-  const defaultMonth = format(subMonths(new Date(), 1), 'yyyy-MM');
+  /** デフォルトは今日の月 */
+  const defaultMonth = format(new Date(), 'yyyy-MM');
 
   const [memberId, setMemberId] = useState<string>('');
   const [month, setMonth] = useState<string>(defaultMonth);
@@ -272,7 +272,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 max-w-7xl">{/* max-w-5xl から max-w-7xl に変更 */}
       <div>
         <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">面談</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
@@ -324,6 +324,37 @@ export const InterviewMonthlySchedules: React.FC = () => {
 
       {memberId && data && !isFetching && (
         <>
+          {/* 面談の流れ */}
+          <section className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">面談の流れ</h2>
+            <ol className="text-sm text-blue-950/90 dark:text-blue-100/90 space-y-2 list-decimal list-inside">
+              <li>
+                <strong>スケジュール確認</strong> - カレンダーで対象月の活動状況を把握
+              </li>
+              <li>
+                <strong>ミッション・プロジェクトの達成状況</strong> - 進捗率とタスク完了状況を確認
+              </li>
+              <li>
+                <strong>相談内容の確認</strong> - 隊員からの相談事項を事前に把握
+              </li>
+              <li>
+                <strong>活動経費</strong> - 予算の使用状況とプロジェクト別の支出を確認
+              </li>
+              <li>
+                <strong>プロジェクト別の活動</strong> - 各プロジェクトでの予定を確認
+              </li>
+              <li>
+                <strong>協働した人</strong> - 誰と一緒に活動したかを確認
+              </li>
+              <li>
+                <strong>来月の予定</strong> - 翌月の計画を確認
+              </li>
+              <li>
+                <strong>週次報告</strong> - 提出された週次報告から今後の計画を確認
+              </li>
+            </ol>
+          </section>
+
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <span className="font-medium text-gray-900 dark:text-gray-100">
               {data.member.name}さん · {format(new Date(`${data.month}-01`), 'yyyy年M月', { locale: ja })}
@@ -488,36 +519,6 @@ export const InterviewMonthlySchedules: React.FC = () => {
                 プロジェクトを開く →
               </Link>
             </div>
-          </section>
-
-          <section className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">面談の観点（ヒント）</h2>
-            <ul className="text-sm text-amber-950/90 dark:text-amber-100/90 space-y-1 list-disc list-inside">
-              <li>
-                <strong>スケジュール</strong>：カレンダーで日付を選択すると、その日の予定詳細を確認できます
-              </li>
-              <li>
-                <strong>誰とあったか</strong>：「一緒に働いた人」で、紐づけられた協力隊などを名前ごとにたどる
-              </li>
-              <li>
-                <strong>相談</strong>：隊員から届いている相談を先に確認し、面談で扱う
-              </li>
-              <li>
-                <strong>活動経費</strong>：残り金額とプロジェクト別の支出を確認し、必要なら詳細画面で修正
-              </li>
-              <li>
-                <strong>目標・プロジェクトの達成</strong>：ミッションとプロジェクトの関連性を確認しながら進捗を把握
-              </li>
-              <li>
-                <strong>プロジェクトの進み（予定）</strong>：「プロジェクト別」でその月の予定のまとまりを見る
-              </li>
-              <li>
-                <strong>翌月の動き</strong>：「来月の予定」は面談開催日から見た翌暦月のスケジュールです
-              </li>
-              <li>
-                <strong>今後の計画</strong>：「週次報告の来週の予定」で、その月に提出された分の「来週の予定」を集約
-              </li>
-            </ul>
           </section>
 
           <section className="space-y-3">
