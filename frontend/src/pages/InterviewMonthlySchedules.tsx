@@ -6,6 +6,8 @@ import { ja } from 'date-fns/locale';
 import { api } from '../utils/api';
 import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { InterviewCalendar } from '../components/interview/InterviewCalendar';
+import { ActivityExpensesByProject } from '../components/interview/ActivityExpensesByProject';
 
 interface InterviewParticipantUser {
   id: string;
@@ -91,6 +93,7 @@ interface ActivityExpenseSummaryLite {
     spentAt: string;
     description: string;
     amount: number;
+    project?: { id: string; projectName: string; themeColor: string | null } | null;
   }>;
 }
 
@@ -273,7 +276,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
       <div>
         <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">面談</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-          隊員と対象月を選ぶと、その月の予定（自分が作成したもの＋承認済みの共同予定）と、対象月と期間が重なるミッション・プロジェクトの達成状況をまとめて表示します。月初の前月振り返りでは、既定の対象月（前月）で KPI を確認しつつ、スケジュールと週次報告で行動をたどってください。
+          隊員と対象月を選ぶと、スケジュールカレンダー、ミッション・プロジェクトの達成状況、活動経費、相談内容などを一画面で確認できます。面談で使いやすいように情報を整理して表示します。
         </p>
       </div>
 
@@ -336,111 +339,146 @@ export const InterviewMonthlySchedules: React.FC = () => {
             </Link>
           </div>
 
+          {/* スケジュールカレンダー */}
+          <section>
+            <InterviewCalendar schedules={schedules} month={month} memberName={data.member.name} />
+          </section>
+
           <section className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-              ミッション・プロジェクトの達成（対象月と期間が重なるもの）
+              ミッション・プロジェクトの達成状況
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              ミッションの％は中目標・サブ目標・目標タスクの加重平均です。プロジェクトの％はプロジェクトタスクの進捗の平均です。ミッション直下のタスク（小目標タスク）は件数・完了数で別表示しています。
+              対象月と期間が重なるミッション・プロジェクトの進捗状況です。ミッションとプロジェクトの関連性を確認できます。
             </p>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">ミッション</h3>
-              {missionsKpi.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">該当するミッションはありません。</p>
-              ) : (
-                <ul className="space-y-3">
-                  {missionsKpi.map((mi) => (
-                    <li
-                      key={mi.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{mi.missionName}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {mi.missionType === 'PRIMARY' ? '主目標' : '副目標'}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex items-center gap-3">
-                        <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">
-                          {mi.progress}%
-                        </span>
-                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[120px]">
+            {/* ミッション別にプロジェクトをグループ化 */}
+            {missionsKpi.length === 0 && projectsKpi.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">該当するミッション・プロジェクトはありません。</p>
+            ) : (
+              <div className="space-y-6">
+                {missionsKpi.map((mi) => {
+                  const relatedProjects = projectsKpi.filter((p) => p.mission?.id === mi.id);
+                  return (
+                    <div key={mi.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80">
+                      {/* ミッション情報 */}
+                      <div className="mb-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-lg text-gray-900 dark:text-gray-100">{mi.missionName}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200">
+                              {mi.missionType === 'PRIMARY' ? '主目標' : '副目標'}
+                            </span>
+                          </div>
+                          <span className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                            {mi.progress}%
+                          </span>
+                        </div>
+                        <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-2">
                           <div
                             className={`h-full transition-all ${progressBarColor(mi.progress)}`}
                             style={{ width: `${Math.min(100, mi.progress)}%` }}
                           />
                         </div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
-                        <span>
-                          目標ツリー内タスク: {mi.goalTasks.completed}/{mi.goalTasks.total} 完了
-                          {mi.goalTasks.total > 0 && (
-                            <span className="text-gray-400 ml-1">
-                              （
-                              {Math.round((mi.goalTasks.completed / mi.goalTasks.total) * 100)}
-                              %）
-                            </span>
-                          )}
-                        </span>
-                        <span>
-                          ミッション直下タスク: {mi.standaloneTasks.completed}/{mi.standaloneTasks.total} 完了
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">プロジェクト</h3>
-              {projectsKpi.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">該当するプロジェクトはありません。</p>
-              ) : (
-                <ul className="space-y-3">
-                  {projectsKpi.map((p) => (
-                    <li
-                      key={p.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className="inline-block w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: p.themeColor || '#6366f1' }}
-                        />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{p.projectName}</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-                          {phaseLabelJa(p.phase)}
-                        </span>
-                        {p.mission && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">ミッション: {p.mission.missionName}</span>
-                        )}
-                      </div>
-                      <div className="mt-2 flex items-center gap-3">
-                        <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">
-                          {p.progress}%
-                        </span>
-                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[120px]">
-                          <div
-                            className={`h-full transition-all ${progressBarColor(p.progress)}`}
-                            style={{ width: `${Math.min(100, p.progress)}%` }}
-                          />
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+                          <span>
+                            目標ツリー内タスク: {mi.goalTasks.completed}/{mi.goalTasks.total} 完了
+                            {mi.goalTasks.total > 0 && (
+                              <span className="text-gray-400 ml-1">
+                                （{Math.round((mi.goalTasks.completed / mi.goalTasks.total) * 100)}%）
+                              </span>
+                            )}
+                          </span>
+                          <span>
+                            ミッション直下タスク: {mi.standaloneTasks.completed}/{mi.standaloneTasks.total} 完了
+                          </span>
                         </div>
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
-                        <span>
-                          プロジェクトタスク: {p.projectTasks.completed}/{p.projectTasks.total}（進捗100%を完了扱い）
-                        </span>
-                        <span>
-                          関連タスク（小目標）: {p.relatedTasks.completed}/{p.relatedTasks.total} 完了
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+
+                      {/* 関連プロジェクト */}
+                      {relatedProjects.length > 0 && (
+                        <div className="ml-4 space-y-2 border-l-2 border-gray-300 dark:border-gray-600 pl-4">
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">関連プロジェクト</p>
+                          {relatedProjects.map((p) => (
+                            <div key={p.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/40">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span
+                                  className="inline-block w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: p.themeColor || '#6366f1' }}
+                                />
+                                <span className="font-medium text-gray-900 dark:text-gray-100">{p.projectName}</span>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                                  {phaseLabelJa(p.phase)}
+                                </span>
+                                <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums ml-auto">
+                                  {p.progress}%
+                                </span>
+                              </div>
+                              <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-2">
+                                <div
+                                  className={`h-full transition-all ${progressBarColor(p.progress)}`}
+                                  style={{ width: `${Math.min(100, p.progress)}%` }}
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+                                <span>
+                                  プロジェクトタスク: {p.projectTasks.completed}/{p.projectTasks.total}
+                                </span>
+                                <span>
+                                  関連タスク: {p.relatedTasks.completed}/{p.relatedTasks.total} 完了
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* ミッションに紐づかないプロジェクト */}
+                {projectsKpi.filter((p) => !p.mission).length > 0 && (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80">
+                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3">ミッション未設定のプロジェクト</p>
+                    <div className="space-y-2">
+                      {projectsKpi
+                        .filter((p) => !p.mission)
+                        .map((p) => (
+                          <div key={p.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/40">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <span
+                                className="inline-block w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: p.themeColor || '#6366f1' }}
+                              />
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{p.projectName}</span>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                                {phaseLabelJa(p.phase)}
+                              </span>
+                              <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums ml-auto">
+                                {p.progress}%
+                              </span>
+                            </div>
+                            <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-2">
+                              <div
+                                className={`h-full transition-all ${progressBarColor(p.progress)}`}
+                                style={{ width: `${Math.min(100, p.progress)}%` }}
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
+                              <span>
+                                プロジェクトタスク: {p.projectTasks.completed}/{p.projectTasks.total}
+                              </span>
+                              <span>
+                                関連タスク: {p.relatedTasks.completed}/{p.relatedTasks.total} 完了
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-3 text-sm">
               <Link to="/goals" className="text-blue-600 dark:text-blue-400 hover:underline">
@@ -456,19 +494,19 @@ export const InterviewMonthlySchedules: React.FC = () => {
             <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">面談の観点（ヒント）</h2>
             <ul className="text-sm text-amber-950/90 dark:text-amber-100/90 space-y-1 list-disc list-inside">
               <li>
-                <strong>活動内容（詳細）</strong>：ページ末尾の「日付順」で、いつ何に時間を使ったかをなぞる
+                <strong>スケジュール</strong>：カレンダーで日付を選択すると、その日の予定詳細を確認できます
               </li>
               <li>
-                <strong>誰とあったか</strong>：「一緒に働いた人」で、紐づけられた協力隊などを名前ごとにたどる（町民DBは「町民データベース」）
+                <strong>誰とあったか</strong>：「一緒に働いた人」で、紐づけられた協力隊などを名前ごとにたどる
               </li>
               <li>
                 <strong>相談</strong>：隊員から届いている相談を先に確認し、面談で扱う
               </li>
               <li>
-                <strong>活動経費</strong>：残り金額と直近の支出を確認し、必要なら詳細画面で修正
+                <strong>活動経費</strong>：残り金額とプロジェクト別の支出を確認し、必要なら詳細画面で修正
               </li>
               <li>
-                <strong>目標・プロジェクトの達成</strong>：ミッション進捗・目標ツリー内タスク数・プロジェクトタスクと関連タスクの完了数で KPI を確認
+                <strong>目標・プロジェクトの達成</strong>：ミッションとプロジェクトの関連性を確認しながら進捗を把握
               </li>
               <li>
                 <strong>プロジェクトの進み（予定）</strong>：「プロジェクト別」でその月の予定のまとまりを見る
@@ -542,19 +580,21 @@ export const InterviewMonthlySchedules: React.FC = () => {
           {expenseSummary && (
             <section className="space-y-3">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-                活動経費（残り・直近）
+                活動経費
               </h2>
+              
+              {/* サマリー */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80">
-                  <p className="text-xs text-gray-500">設定上限</p>
+                  <p className="text-xs text-gray-500">設定上限額</p>
                   <p className="text-lg font-bold tabular-nums">{formatYenInterview(expenseSummary.allocatedAmount)}</p>
                 </div>
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80">
-                  <p className="text-xs text-gray-500">使用累計</p>
+                  <p className="text-xs text-gray-500">使用累計額</p>
                   <p className="text-lg font-bold tabular-nums">{formatYenInterview(expenseSummary.totalSpent)}</p>
                 </div>
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80">
-                  <p className="text-xs text-gray-500">残り</p>
+                  <p className="text-xs text-gray-500">残り額</p>
                   <p
                     className={`text-lg font-bold tabular-nums ${
                       expenseSummary.remaining < 0 ? 'text-red-600 dark:text-red-400' : ''
@@ -564,22 +604,19 @@ export const InterviewMonthlySchedules: React.FC = () => {
                   </p>
                 </div>
               </div>
+              
               {expenseSummary.memo && (
-                <p className="text-xs text-gray-600 dark:text-gray-300">{expenseSummary.memo}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded p-2">
+                  {expenseSummary.memo}
+                </p>
               )}
-              {expenseSummary.recentEntries.length > 0 && (
-                <ul className="text-sm space-y-1 border border-gray-100 dark:border-gray-700 rounded-lg p-3 bg-gray-50/80 dark:bg-gray-900/40">
-                  {expenseSummary.recentEntries.map((e) => (
-                    <li key={e.id} className="flex flex-wrap gap-x-2 text-gray-800 dark:text-gray-200">
-                      <span className="text-gray-500">
-                        {format(parseISO(e.spentAt.slice(0, 10)), 'M月d日', { locale: ja })}
-                      </span>
-                      <span>{e.description}</span>
-                      <span className="font-medium tabular-nums ml-auto">{formatYenInterview(e.amount)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+
+              {/* 対象者ごとの使用リスト（プロジェクト別） */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">使用明細（プロジェクト別）</h3>
+                <ActivityExpensesByProject entries={expenseSummary.recentEntries} />
+              </div>
+
               <Link
                 to="/activity-expenses"
                 className="inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -747,72 +784,6 @@ export const InterviewMonthlySchedules: React.FC = () => {
             </Link>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-              日付順（対象月の予定・詳細）
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              一覧の細かい確認用です。上部の「プロジェクト別」「一緒に働いた人」で先に全体像を掴んでも大丈夫です。
-            </p>
-            {schedules.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-sm py-4">この月に該当する予定はありません。</p>
-            ) : (
-              <ul className="space-y-3">
-                {schedules.map((s) => {
-                  const people = schedulePeople(s);
-                  const headline =
-                    s.shortTitle?.trim() ||
-                    s.activityDescription?.trim()?.split(/\n/)?.[0]?.slice(0, 120) ||
-                    '（タイトルなし）';
-                  return (
-                    <li
-                      key={s.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
-                    >
-                      <div className="flex flex-wrap gap-2 items-baseline justify-between">
-                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{formatScheduleDateRange(s)}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-                          {s.startTime}–{s.endTime}
-                        </div>
-                      </div>
-                      <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{headline}</p>
-                      {s.activityDescription?.trim() && s.activityDescription.trim() !== headline && (
-                        <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{s.activityDescription}</p>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {s.project && (
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full font-medium text-white"
-                            style={{ backgroundColor: s.project.themeColor || '#6366f1' }}
-                          >
-                            {s.project.projectName}
-                          </span>
-                        )}
-                        {(s.location?.name || s.locationText) && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                            📍 {s.location?.name || s.locationText}
-                          </span>
-                        )}
-                        {people.map((p) => (
-                          <span
-                            key={p.id}
-                            className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-                          >
-                            {p.name}
-                          </span>
-                        ))}
-                      </div>
-                      {s.freeNote?.trim() && (
-                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-dashed border-gray-200 dark:border-gray-600 pt-2">
-                          メモ: {s.freeNote}
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
         </>
       )}
     </div>
