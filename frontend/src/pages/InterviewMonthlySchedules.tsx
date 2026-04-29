@@ -355,30 +355,19 @@ export const InterviewMonthlySchedules: React.FC = () => {
             </ol>
           </section>
 
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              {data.member.name}さん · {format(new Date(`${data.month}-01`), 'yyyy年M月', { locale: ja })}
-            </span>
-            <span className="text-gray-500 dark:text-gray-400">
-              予定 {schedules.length} 件 · プロジェクト {projectCount} 件 · 関わった人（重複除く）{uniquePeopleCount} 名
-            </span>
-            <Link
-              to="/schedule"
-              className="text-blue-600 dark:text-blue-400 hover:underline text-sm ml-auto"
-            >
-              スケジュール画面で確認 →
-            </Link>
-          </div>
-
-          {/* スケジュールカレンダー */}
-          <section>
-            <EnhancedInterviewCalendar 
-              schedules={schedules} 
-              initialMonth={month} 
-              memberName={data.member.name}
-              onMonthChange={(newMonth) => setMonth(newMonth)}
-            />
-          </section>
+          {/* 2カラムレイアウト */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* 左カラム（メインコンテンツ） */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* スケジュールカレンダー */}
+              <section>
+                <EnhancedInterviewCalendar 
+                  schedules={schedules} 
+                  initialMonth={month} 
+                  memberName={data.member.name}
+                  onMonthChange={(newMonth) => setMonth(newMonth)}
+                />
+              </section>
 
           <section className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -789,6 +778,119 @@ export const InterviewMonthlySchedules: React.FC = () => {
               週次報告一覧を開く →
             </Link>
           </section>
+        </div>
+
+        {/* 右カラム（サマリー情報） */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* 統計サマリー */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 sticky top-4">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+              {data.member.name}さん · {format(new Date(`${data.month}-01`), 'yyyy年M月', { locale: ja })}
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">予定</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{schedules.length} 件</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">プロジェクト</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{projectCount} 件</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">協働した人</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{uniquePeopleCount} 名</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">相談</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{consultations.length} 件</span>
+              </div>
+            </div>
+
+            <Link
+              to="/schedule"
+              className="mt-4 block text-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              スケジュール画面で確認 →
+            </Link>
+          </div>
+
+          {/* 相談サマリー */}
+          {consultations.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                相談状況
+              </h3>
+              <div className="space-y-2">
+                {consultations.slice(0, 3).map((c) => (
+                  <div key={c.id} className="text-sm">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate flex-1">
+                        {c.subject?.trim() || '（件名なし）'}
+                      </span>
+                      <span
+                        className={`text-xs ml-2 ${
+                          c.status === 'OPEN'
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-green-600 dark:text-green-400'
+                        }`}
+                      >
+                        {c.status === 'OPEN' ? '未対応' : '対応済み'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {format(new Date(c.createdAt), 'M/d', { locale: ja })}
+                    </p>
+                  </div>
+                ))}
+                {consultations.length > 3 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    他 {consultations.length - 3} 件
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 活動経費サマリー */}
+          {expenseSummary && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                活動経費
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">設定上限額</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                    {formatYenInterview(expenseSummary.allocatedAmount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">使用累計額</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                    {formatYenInterview(expenseSummary.totalSpent)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">残り額</span>
+                  <span
+                    className={`font-semibold tabular-nums ${
+                      expenseSummary.remaining < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
+                    }`}
+                  >
+                    {formatYenInterview(expenseSummary.remaining)}
+                  </span>
+                </div>
+              </div>
+              {expenseSummary.remaining < 0 && (
+                <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                  ⚠️ 予算を超過しています
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
         </>
       )}
