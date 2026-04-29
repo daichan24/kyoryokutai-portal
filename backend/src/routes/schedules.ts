@@ -199,7 +199,7 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
 
     const projectsKpi = await Promise.all(
       allProjects
-        .filter((p) => overlapsCalendarMonth(p.startDate, p.endDate, startStr, endStr))
+        // 期間フィルタリングを削除 - 全てのプロジェクトを表示
         .map(async (p) => {
           const progress = await calculateProjectProgress(p.id);
           const pts = p.tasks;
