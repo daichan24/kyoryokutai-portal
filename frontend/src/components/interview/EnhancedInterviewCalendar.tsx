@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { SchedulePreviewModal } from './SchedulePreviewModal';
 
 interface InterviewParticipantUser {
   id: string;
@@ -45,6 +46,7 @@ export const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps>
 }) => {
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date(`${initialMonth}-01`));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   const monthStart = useMemo(() => startOfMonth(currentMonth), [currentMonth]);
   const monthEnd = useMemo(() => endOfMonth(currentMonth), [currentMonth]);
@@ -90,6 +92,15 @@ export const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps>
 
   const isCurrentMonth = (day: Date) => {
     return day.getMonth() === currentMonth.getMonth();
+  };
+
+  const handleDateClick = (day: Date) => {
+    setSelectedDate(day);
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
   };
 
   return (
@@ -144,7 +155,7 @@ export const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps>
             return (
               <button
                 key={dateKey}
-                onClick={() => setSelectedDate(day)}
+                onClick={() => handleDateClick(day)}
                 className={`min-h-[80px] p-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors text-left ${
                   isSelected ? 'ring-2 ring-blue-500 ring-inset' : ''
                 } ${isOtherMonth ? 'opacity-40' : ''}`}
@@ -186,82 +197,13 @@ export const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps>
         </div>
       </div>
 
-      {/* Schedule Preview */}
-      {selectedDate && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-          <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            {format(selectedDate, 'M月d日（EEE）', { locale: ja })}の予定
-          </h4>
-
-          {selectedSchedules.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">この日の予定はありません</p>
-          ) : (
-            <div className="space-y-3">
-              {selectedSchedules.map((s) => {
-                const people = [
-                  ...s.scheduleParticipants.map((p) => p.user),
-                  ...s.legacyParticipantUsers,
-                ];
-                const uniquePeople = Array.from(
-                  new Map(people.map((p) => [p.id, p])).values()
-                );
-
-                return (
-                  <div
-                    key={s.id}
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/40"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums">
-                        {s.startTime} - {s.endTime}
-                      </span>
-                      {s.project && (
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-full font-medium text-white"
-                          style={{ backgroundColor: s.project.themeColor || '#6366f1' }}
-                        >
-                          {s.project.projectName}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                      {s.shortTitle?.trim() || s.activityDescription?.trim()?.split(/\n/)?.[0]?.slice(0, 80) || '（タイトルなし）'}
-                    </p>
-
-                    {s.activityDescription?.trim() && (
-                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mb-2 line-clamp-3">
-                        {s.activityDescription}
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      {(s.location?.name || s.locationText) && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                          📍 {s.location?.name || s.locationText}
-                        </span>
-                      )}
-                      {uniquePeople.map((p) => (
-                        <span
-                          key={p.id}
-                          className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100"
-                        >
-                          {p.name}
-                        </span>
-                      ))}
-                    </div>
-
-                    {s.freeNote?.trim() && (
-                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-dashed border-gray-200 dark:border-gray-600 pt-2">
-                        メモ: {s.freeNote}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      {/* モーダルでプレビュー表示 */}
+      {showModal && selectedDate && (
+        <SchedulePreviewModal
+          date={selectedDate}
+          schedules={selectedSchedules}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   );

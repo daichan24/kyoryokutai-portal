@@ -212,6 +212,38 @@ export const InterviewMonthlySchedules: React.FC = () => {
     enabled: Boolean(memberId && month),
   });
 
+  // カレンダー表示用：前後3ヶ月分のスケジュールを取得
+  const calendarMonths = useMemo(() => {
+    const current = new Date(`${month}-01`);
+    return [
+      format(subMonths(current, 3), 'yyyy-MM'),
+      format(subMonths(current, 2), 'yyyy-MM'),
+      format(subMonths(current, 1), 'yyyy-MM'),
+      month,
+      format(addMonths(current, 1), 'yyyy-MM'),
+      format(addMonths(current, 2), 'yyyy-MM'),
+      format(addMonths(current, 3), 'yyyy-MM'),
+    ];
+  }, [month]);
+
+  const { data: calendarData } = useQuery({
+    queryKey: ['interview-calendar', 'schedules', memberId, calendarMonths],
+    queryFn: async () => {
+      const results = await Promise.all(
+        calendarMonths.map(async (m) => {
+          const response = await api.get<InterviewMonthResponse>('/api/schedules/for-interview-month', {
+            params: { userId: memberId, month: m },
+          });
+          return response.data.schedules;
+        })
+      );
+      return results.flat();
+    },
+    enabled: Boolean(memberId && month),
+  });
+
+  const allSchedulesForCalendar = useMemo(() => calendarData ?? [], [calendarData]);
+
   /** 面談開催日の「翌月」の予定（今日基準の翌暦月） */
   const nextMonthYm = useMemo(() => format(addMonths(new Date(), 1), 'yyyy-MM'), []);
 
@@ -362,7 +394,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
               {/* スケジュールカレンダー */}
               <section>
                 <EnhancedInterviewCalendar 
-                  schedules={schedules} 
+                  schedules={allSchedulesForCalendar} 
                   initialMonth={month} 
                   memberName={data.member.name}
                   onMonthChange={undefined} // カレンダー独立動作
