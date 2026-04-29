@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { createDefaultMissionsAndProjects, createDefaultMissionsAndProjectsForExistingMembers } from '../services/defaultMissionProjectService';
 
 const router = Router();
 
@@ -81,6 +82,17 @@ router.post('/users', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, r
     });
 
     console.log('✅ [API] ユーザー作成成功:', user.email);
+
+    // メンバーの場合、デフォルトのミッションとプロジェクトを作成
+    if (user.role === 'MEMBER') {
+      try {
+        await createDefaultMissionsAndProjects(user.id);
+        console.log('✅ [API] デフォルトミッション・プロジェクト作成成功');
+      } catch (error) {
+        console.error('⚠️ [API] デフォルトミッション・プロジェクト作成失敗:', error);
+        // エラーが発生してもユーザー作成は成功として扱う
+      }
+    }
 
     res.status(201).json(user);
   } catch (error) {
@@ -163,6 +175,29 @@ router.post('/update-member-sato-name', authorize('MASTER'), async (req: AuthReq
     console.error('❌ [API] Error updating member name:', error);
     res.status(500).json({ 
       error: 'メンバー名の更新に失敗しました',
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+/**
+ * POST /api/admin/create-default-missions-projects
+ * 既存のメンバーにデフォルトのミッションとプロジェクトを作成（MASTERのみ）
+ */
+router.post('/create-default-missions-projects', authorize('MASTER'), async (req: AuthRequest, res) => {
+  try {
+    console.log('🔄 [API] Creating default missions and projects for existing members...');
+    
+    await createDefaultMissionsAndProjectsForExistingMembers();
+    
+    res.json({ 
+      success: true, 
+      message: '既存メンバーにデフォルトのミッションとプロジェクトを作成しました'
+    });
+  } catch (error) {
+    console.error('❌ [API] Error creating default missions and projects:', error);
+    res.status(500).json({ 
+      error: 'デフォルトミッション・プロジェクトの作成に失敗しました',
       details: error instanceof Error ? error.message : String(error)
     });
   }
