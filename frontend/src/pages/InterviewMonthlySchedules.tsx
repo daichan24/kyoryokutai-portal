@@ -657,40 +657,89 @@ export const InterviewMonthlySchedules: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
               プロジェクト別
             </h2>
-            {schedules.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-sm">予定がないためプロジェクト別の集計はありません。</p>
-            ) : (
-            [...byProject.entries()]
-              .sort(([a], [b]) => {
-                if (a === UNLINKED_KEY) return 1;
-                if (b === UNLINKED_KEY) return -1;
-                return 0;
-              })
-              .map(([key, list]) => {
-                const proj = list[0]?.project;
-                const label = proj?.projectName ?? 'プロジェクト未設定';
-                return (
-                  <div key={key} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                    <div
-                      className="px-3 py-2 text-sm font-medium text-white flex items-center gap-2"
-                      style={{ backgroundColor: proj?.themeColor || '#64748b' }}
-                    >
-                      {label}
-                      <span className="opacity-90 font-normal text-xs">（{list.length} 件）</span>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              全てのプロジェクトを表示します。スケジュールがないプロジェクトも表示され、なぜ実行されなかったかを確認できます。
+            </p>
+            {(() => {
+              // 全プロジェクトのリストを作成（projectsKpi から）
+              const allProjects = projectsKpi.map(p => ({
+                id: p.id,
+                name: p.projectName,
+                color: p.themeColor || '#6366f1',
+              }));
+
+              // プロジェクトごとのスケジュールをマップ
+              const projectSchedulesMap = new Map<string, InterviewSchedule[]>();
+              schedules.forEach(s => {
+                const projectId = s.project?.id;
+                if (projectId) {
+                  if (!projectSchedulesMap.has(projectId)) {
+                    projectSchedulesMap.set(projectId, []);
+                  }
+                  projectSchedulesMap.get(projectId)!.push(s);
+                }
+              });
+
+              // プロジェクト未設定のスケジュール
+              const unlinkedSchedules = schedules.filter(s => !s.project);
+
+              return (
+                <div className="space-y-3">
+                  {/* 全プロジェクトを表示 */}
+                  {allProjects.map(proj => {
+                    const projectSchedules = projectSchedulesMap.get(proj.id) || [];
+                    return (
+                      <div key={proj.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div
+                          className="px-3 py-2 text-sm font-medium text-white flex items-center gap-2"
+                          style={{ backgroundColor: proj.color }}
+                        >
+                          {proj.name}
+                          <span className="opacity-90 font-normal text-xs">（{projectSchedules.length} 件）</span>
+                        </div>
+                        {projectSchedules.length > 0 ? (
+                          <ul className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800/60">
+                            {projectSchedules.map((s) => (
+                              <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
+                                <span className="text-gray-500 dark:text-gray-400 mr-2">{formatScheduleDateRange(s)}</span>
+                                {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
+                                {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800/60 italic">
+                            この月は実行されませんでした
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* プロジェクト未設定 */}
+                  {unlinkedSchedules.length > 0 && (
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div
+                        className="px-3 py-2 text-sm font-medium text-white flex items-center gap-2"
+                        style={{ backgroundColor: '#64748b' }}
+                      >
+                        プロジェクト未設定
+                        <span className="opacity-90 font-normal text-xs">（{unlinkedSchedules.length} 件）</span>
+                      </div>
+                      <ul className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800/60">
+                        {unlinkedSchedules.map((s) => (
+                          <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
+                            <span className="text-gray-500 dark:text-gray-400 mr-2">{formatScheduleDateRange(s)}</span>
+                            {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
+                            {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800/60">
-                      {list.map((s) => (
-                        <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
-                          <span className="text-gray-500 dark:text-gray-400 mr-2">{formatScheduleDateRange(s)}</span>
-                          {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
-                          {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })
-            )}
+                  )}
+                </div>
+              );
+            })()}
           </section>
 
           <section className="space-y-3">
@@ -945,6 +994,13 @@ export const InterviewMonthlySchedules: React.FC = () => {
                   ⚠️ 予算を超過しています
                 </p>
               )}
+              
+              <Link
+                to="/activity-expenses"
+                className="mt-4 block text-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                活動経費の詳細を開く →
+              </Link>
             </div>
           )}
         </div>
