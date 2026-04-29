@@ -950,8 +950,8 @@ export const InterviewMonthlySchedules: React.FC = () => {
         </div>
       </div>
 
-        </>
-      )}
-    </div>
-  );
+      </>
+    )}
+  </div>
+);
 };
