@@ -946,7 +946,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
                 </p>
               )}
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -12,7 +12,7 @@ export async function createDefaultMissionsAndProjects(userId: string) {
       userId,
       missionName: '協力隊業務',
       missionType: 'PRIMARY',
-      displayOrder: 0,
+      order: 0,
       startDate: new Date().toISOString().split('T')[0],
       endDate: null,
     },
@@ -23,8 +23,8 @@ export async function createDefaultMissionsAndProjects(userId: string) {
     data: {
       userId,
       missionName: '役場業務',
-      missionType: 'SECONDARY',
-      displayOrder: 1,
+      missionType: 'SUB',
+      order: 1,
       startDate: new Date().toISOString().split('T')[0],
       endDate: null,
     },
@@ -40,7 +40,7 @@ export async function createDefaultMissionsAndProjects(userId: string) {
       themeColor: '#3B82F6', // 青色
       startDate: new Date().toISOString().split('T')[0],
       endDate: null,
-      displayOrder: 0,
+      order: 0,
     },
   });
 
@@ -54,7 +54,7 @@ export async function createDefaultMissionsAndProjects(userId: string) {
       themeColor: '#10B981', // 緑色
       startDate: new Date().toISOString().split('T')[0],
       endDate: null,
-      displayOrder: 1,
+      order: 1,
     },
   });
 
@@ -128,7 +128,7 @@ export async function createDefaultMissionsAndProjectsForExistingMembers() {
             themeColor: '#3B82F6',
             startDate: new Date().toISOString().split('T')[0],
             endDate: null,
-            displayOrder: 0,
+            order: 0,
           },
         });
         console.log(`  ✅ Created 協力隊業務 project for ${member.name}`);
@@ -144,7 +144,7 @@ export async function createDefaultMissionsAndProjectsForExistingMembers() {
             themeColor: '#10B981',
             startDate: new Date().toISOString().split('T')[0],
             endDate: null,
-            displayOrder: 1,
+            order: 1,
           },
         });
         console.log(`  ✅ Created 役場業務 project for ${member.name}`);
