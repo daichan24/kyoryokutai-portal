@@ -365,11 +365,11 @@ export const InterviewMonthlySchedules: React.FC = () => {
                   schedules={schedules} 
                   initialMonth={month} 
                   memberName={data.member.name}
-                  onMonthChange={(newMonth) => setMonth(newMonth)}
+                  onMonthChange={undefined} // カレンダー独立動作
                 />
               </section>
 
-          <section className="space-y-4">
+          <section id="missions-projects" className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
               ミッション・プロジェクトの達成状況
             </h2>
@@ -515,7 +515,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
             </div>
           </section>
 
-          <section className="space-y-3">
+          <section id="consultations" className="space-y-3">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
               相談（この隊員・対象月に関係なく一覧）
             </h2>
@@ -573,7 +573,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
           </section>
 
           {expenseSummary && (
-            <section className="space-y-3">
+            <section id="activity-expenses" className="space-y-3">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
                 活動経費
               </h2>
@@ -782,16 +782,46 @@ export const InterviewMonthlySchedules: React.FC = () => {
 
         {/* 右カラム（サマリー情報） */}
         <div className="lg:col-span-1 space-y-6">
-          {/* 統計サマリー */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 sticky top-4">
+          <div className="sticky top-4 space-y-6">
+            {/* 統計サマリー */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
               {data.member.name}さん · {format(new Date(`${data.month}-01`), 'yyyy年M月', { locale: ja })}
             </h3>
             
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">予定</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{schedules.length} 件</span>
+              <a
+                href="#missions-projects"
+                className="flex items-center justify-between text-sm hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors cursor-pointer"
+              >
+                <span className="text-gray-600 dark:text-gray-400">ミッション・プロジェクト</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{missionsKpi.length + projectsKpi.length} 件</span>
+              </a>
+              <a
+                href="#consultations"
+                className="flex items-center justify-between text-sm hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors cursor-pointer"
+              >
+                <span className="text-gray-600 dark:text-gray-400">相談</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{consultations.length} 件</span>
+              </a>
+              {expenseSummary && (
+                <a
+                  href="#activity-expenses"
+                  className="flex items-center justify-between text-sm hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors cursor-pointer"
+                >
+                  <span className="text-gray-600 dark:text-gray-400">活動経費</span>
+                  <span className={`font-semibold tabular-nums ${
+                    expenseSummary.remaining < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
+                  }`}>
+                    {formatYenInterview(expenseSummary.remaining)}
+                  </span>
+                </a>
+              )}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">予定</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{schedules.length} 件</span>
+                </div>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">プロジェクト</span>
@@ -800,10 +830,6 @@ export const InterviewMonthlySchedules: React.FC = () => {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">協働した人</span>
                 <span className="font-semibold text-gray-900 dark:text-gray-100">{uniquePeopleCount} 名</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">相談</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{consultations.length} 件</span>
               </div>
             </div>
 
@@ -888,7 +914,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
                 </p>
               )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
