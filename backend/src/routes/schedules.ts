@@ -225,6 +225,11 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
         }),
     );
 
+    console.log(`[Interview API] userId: ${userId}, month: ${month}`);
+    console.log(`[Interview API] allProjects.length: ${allProjects.length}`);
+    console.log(`[Interview API] projectsKpi.length: ${projectsKpi.length}`);
+    console.log(`[Interview API] projectsKpi:`, projectsKpi.map(p => ({ id: p.id, name: p.projectName })));
+
     const consultations = await prisma.consultation.findMany({
       where: { memberId: userId },
       include: {

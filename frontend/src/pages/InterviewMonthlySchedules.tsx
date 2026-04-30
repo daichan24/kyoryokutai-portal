@@ -207,6 +207,8 @@ export const InterviewMonthlySchedules: React.FC = () => {
       const response = await api.get<InterviewMonthResponse>('/api/schedules/for-interview-month', {
         params: { userId: memberId, month },
       });
+      console.log('🔍 [API Response] projectsKpi:', response.data.projectsKpi);
+      console.log('🔍 [API Response] projectsKpi.length:', response.data.projectsKpi?.length);
       return response.data;
     },
     enabled: Boolean(memberId && month),
@@ -661,12 +663,18 @@ export const InterviewMonthlySchedules: React.FC = () => {
               全てのプロジェクトを表示します。スケジュールがないプロジェクトも表示され、なぜ実行されなかったかを確認できます。
             </p>
             {(() => {
+              // デバッグ: projectsKpi の内容を確認
+              console.log('🔍 [InterviewMonthlySchedules] projectsKpi:', projectsKpi);
+              console.log('🔍 [InterviewMonthlySchedules] projectsKpi.length:', projectsKpi.length);
+              
               // 全プロジェクトのリストを作成（projectsKpi から）
               const allProjects = projectsKpi.map(p => ({
                 id: p.id,
                 name: p.projectName,
                 color: p.themeColor || '#6366f1',
               }));
+              
+              console.log('🔍 [InterviewMonthlySchedules] allProjects:', allProjects);
 
               // プロジェクトごとのスケジュールをマップ
               const projectSchedulesMap = new Map<string, InterviewSchedule[]>();
