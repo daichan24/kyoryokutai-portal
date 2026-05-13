@@ -208,9 +208,8 @@ export const ActivityExpenses: React.FC = () => {
               <tr>
                 <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">旅費</td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  <div>・研修等の宿泊代、交通費等</div>
-                  <div>・長期間に帰省する際に要する交通費等</div>
-                  <div>・本町に帰省する</div>
+                  <div>・研修等の宿泊料、交通費</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">※長沼町職員等の旅費に関する条例に準ずる</div>
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
                   ・目的外の出張
@@ -219,10 +218,10 @@ export const ActivityExpenses: React.FC = () => {
               <tr>
                 <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">消耗品費</td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  ・事務用品及備品等
+                  ・事務用品費等
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  ・転売目的の製作物等を仕入れ
+                  ・転売目的の原材料等仕入れ
                 </td>
               </tr>
               <tr>
@@ -236,22 +235,22 @@ export const ActivityExpenses: React.FC = () => {
                 <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">通信運搬費</td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
                   <div>・活動に要する郵便料、配送料</div>
-                  <div>・試験に要する電話料</div>
-                  <div>・事業に係る必要な通信料</div>
+                  <div>・活動に要する電話料</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">※事業に係る部分に限る</div>
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top"></td>
               </tr>
               <tr>
                 <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">広告料</td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  ・活動に要する広告宣伝費
+                  ・活動に関する広告掲載料
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top"></td>
               </tr>
               <tr>
                 <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">手数料</td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  ・活動に要する手続手数料
+                  ・活動に要する対応手数料
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top"></td>
               </tr>
@@ -261,39 +260,38 @@ export const ActivityExpenses: React.FC = () => {
                   ・イベント保険料
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  <div>・任意の保険料</div>
+                  <div>・住居の保険料</div>
                   <div>・個人の生命保険料等</div>
                 </td>
               </tr>
               <tr>
-                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">使用料、賃借料</td>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">使用料、借上料</td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
                   <div>・会場使用料</div>
-                  <div>・試験に要する車両等の賃料</div>
-                  <div>・時間貸に区分されている場合に限る</div>
-                  <div>・活動に不可欠な資材等の賃料</div>
-                  <div>・ソフトウェア、一般賃貸ソフトウェア、ライセンス費用等、イベント資材のリース料</div>
+                  <div>・活動に要する事務所の賃料</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">※明確に区分されている場合に限る</div>
+                  <div>・活動に不可欠な特定業務ソフトウェア、一般事務用ソフトウェアの使用料、ライセンス費用、イベント資材のリース料</div>
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  <div>・駐車スペースに係る費用（駐車、洗車代、共益費等）</div>
+                  ・居住スペースに係る費用（家賃、光熱水費、共益費、敷金礼金等）
                 </td>
               </tr>
               <tr>
                 <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">備品購入費</td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  <div>・活動に必要な備品（机等、機材等）</div>
-                  <div>・町民の来客なく製品として扱うことはならない</div>
+                  <div>・活動に必要な備品（機器、機材等）</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">※町長の承認なく処分してはならない</div>
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
                   <div>・車の購入費用</div>
                   <div>・転売目的の購入</div>
-                  <div>・貸与作りあり、目的外の使用ができるもの（調べパソコン、スマートフォン、タブレット端末等）</div>
+                  <div>・汎用性があり、目的外の使用ができるもの（例：パソコン、スマートフォン、タブレット端末等）</div>
                 </td>
               </tr>
               <tr>
-                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">謝礼費</td>
+                <td className="px-3 py-3 text-gray-800 dark:text-gray-100 align-top font-medium">負担金</td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
-                  ・研修受講の謝礼
+                  ・研修受講の経費
                 </td>
                 <td className="px-3 py-3 text-gray-700 dark:text-gray-200 align-top">
                   ・飲食の費用
