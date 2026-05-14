@@ -61,13 +61,10 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
         },
       });
 
-      // ③ 活動経費（行政・サポートのみ）
-      let expenseCount = 0;
-      if (role === 'GOVERNMENT' || role === 'SUPPORT') {
-        expenseCount = await prisma.activityExpenseEntry.count({
-          where: { userId: { not: userId } },
-        });
-      }
+      // ③ 活動経費（行政・サポート・マスター） — PENDINGのみカウント
+      const expenseCount = await prisma.activityExpenseEntry.count({
+        where: { userId: { not: userId }, status: 'PENDING' },
+      });
 
       // ④ 週次報告の提出
       const weeklyReportCount = await prisma.weeklyReport.count({
@@ -138,32 +135,41 @@ router.get('/', async (req: AuthRequest, res) => {
 
       const consults = await prisma.consultation.findMany({
         where: {
-          status: 'OPEN',
           OR: [
-            { audience: 'ANY' },
-            { audience: 'SUPPORT_ONLY', targetUserId: null },
-            { audience: 'GOVERNMENT_ONLY', targetUserId: null },
-            { audience: 'SPECIFIC_USER', targetUserId: userId },
+            { status: 'OPEN' },
+            { status: 'RESOLVED' },
+          ],
+          AND: [
+            {
+              OR: [
+                { audience: 'ANY' },
+                { audience: 'SUPPORT_ONLY', targetUserId: null },
+                { audience: 'GOVERNMENT_ONLY', targetUserId: null },
+                { audience: 'SPECIFIC_USER', targetUserId: userId },
+              ],
+            },
           ],
         },
         include: {
           member: { select: { id: true, name: true, avatarColor: true } },
           targetUser: { select: { id: true, name: true } },
+          resolvedBy: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
       });
       consultations.push(...consults);
 
-      if (role === 'GOVERNMENT' || role === 'SUPPORT') {
-        const expenseList = await prisma.activityExpenseEntry.findMany({
-          where: { userId: { not: userId } },
-          include: {
-            user: { select: { id: true, name: true, avatarColor: true } },
-          },
-          orderBy: { createdAt: 'desc' },
-        });
-        expenses.push(...expenseList);
-      }
+      // 活動経費: PENDING + APPROVED/REJECTED 全件返す（フロント側でタブ分け）
+      const expenseList = await prisma.activityExpenseEntry.findMany({
+        where: { userId: { not: userId } },
+        include: {
+          user: { select: { id: true, name: true, avatarColor: true } },
+          project: { select: { id: true, projectName: true } },
+          updatedBy: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      expenses.push(...expenseList);
 
       const reports = await prisma.weeklyReport.findMany({
         where: { submittedAt: { not: null }, user: { role: 'MEMBER' } },

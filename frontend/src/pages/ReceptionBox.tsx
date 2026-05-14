@@ -42,10 +42,12 @@ interface ReceptionData {
     description: string;
     spentAt: string;
     createdAt: string;
-    status?: string;
+    updatedAt: string;
+    status: string;
     rejectionReason?: string | null;
     user: { id: string; name: string };
     project?: { id: string; projectName: string } | null;
+    updatedBy?: { id: string; name: string } | null;
   }>;
   weeklyReports: Array<{
     id: string;
@@ -193,6 +195,7 @@ const ItemPopup: React.FC<{
               <p><span className="text-gray-500">金額:</span> ¥{item.data.amount.toLocaleString()}</p>
               {item.data.project && <p><span className="text-gray-500">プロジェクト:</span> {item.data.project.projectName}</p>}
               <p><span className="text-gray-500">支出日:</span> {format(new Date(item.data.spentAt), 'yyyy/MM/dd', { locale: ja })}</p>
+              <p><span className="text-gray-500">登録日:</span> {format(new Date(item.data.createdAt), 'yyyy/MM/dd HH:mm', { locale: ja })}</p>
             </div>
             {isStaff && item.data.status === 'PENDING' && (
               <div className="flex gap-2 pt-2">
@@ -205,16 +208,24 @@ const ItemPopup: React.FC<{
               </div>
             )}
             {item.data.status === 'APPROVED' && (
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-sm mt-2">
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-sm mt-2 space-y-1">
                 <p className="text-green-700 dark:text-green-300 font-medium">✓ 承認済み</p>
+                {item.data.updatedBy && (
+                  <p className="text-gray-600 dark:text-gray-400">承認者: {item.data.updatedBy.name}</p>
+                )}
+                <p className="text-gray-400 text-xs">{format(new Date(item.data.updatedAt), 'yyyy/MM/dd HH:mm', { locale: ja })}</p>
               </div>
             )}
             {item.data.status === 'REJECTED' && (
-              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-sm mt-2">
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-sm mt-2 space-y-1">
                 <p className="text-red-700 dark:text-red-300 font-medium">✗ 差し戻し</p>
-                {item.data.rejectionReason && (
-                  <p className="text-gray-700 dark:text-gray-300 mt-1">理由: {item.data.rejectionReason}</p>
+                {item.data.updatedBy && (
+                  <p className="text-gray-600 dark:text-gray-400">差し戻し者: {item.data.updatedBy.name}</p>
                 )}
+                {item.data.rejectionReason && (
+                  <p className="text-gray-700 dark:text-gray-300">理由: {item.data.rejectionReason}</p>
+                )}
+                <p className="text-gray-400 text-xs">{format(new Date(item.data.updatedAt), 'yyyy/MM/dd HH:mm', { locale: ja })}</p>
               </div>
             )}
           </div>
@@ -405,14 +416,16 @@ export const ReceptionBox: React.FC = () => {
         </div>
       ))}
 
-      {/* 活動経費 */}
+      {/* 活動経費（未対応＝PENDING） */}
       {data.expenses.filter(e => e.status === 'PENDING').map((e) => (
         <div key={e.id} className="bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200">活動経費</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200">承認待ち</span>
             </div>
             <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{e.user.name}さん: {e.description} — ¥{e.amount.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-0.5">支出日: {format(new Date(e.spentAt), 'M月d日', { locale: ja })}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'expense', data: e })}>
             確認・承認
@@ -514,7 +527,7 @@ export const ReceptionBox: React.FC = () => {
             }`}
         >
           <Clock className="h-4 w-4" />
-          未対応・未承認
+          未対応
           {pendingCount > 0 && (
             <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
               {pendingCount}
