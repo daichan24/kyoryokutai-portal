@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { ExpenseStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getActivityExpenseSummary } from '../services/activityExpenseService';
@@ -240,7 +241,11 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
 
     const row = await prisma.activityExpenseEntry.update({
       where: { id },
-      data: update,
+      data: {
+        ...update,
+        status: ExpenseStatus.PENDING,
+        rejectionReason: null,
+      },
     });
 
     const summary = await getActivityExpenseSummary(row.userId, 500);
@@ -269,6 +274,47 @@ router.delete('/entries/:id', async (req: AuthRequest, res) => {
     if (err.message === 'FORBIDDEN') return res.status(403).json({ error: '権限がありません' });
     console.error('activity-expenses delete entry:', e);
     res.status(500).json({ error: '削除に失敗しました' });
+  }
+});
+
+router.post('/entries/:id/approve', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    if (!isStaff(req.user!.role)) {
+      return res.status(403).json({ error: '承認は行政・サポート・マスターのみです' });
+    }
+    const entry = await prisma.activityExpenseEntry.findUnique({ where: { id } });
+    if (!entry) return res.status(404).json({ error: '見つかりません' });
+
+    const row = await prisma.activityExpenseEntry.update({
+      where: { id },
+      data: { status: ExpenseStatus.APPROVED, rejectionReason: null, updatedById: req.user!.id },
+    });
+    res.json({ entry: row });
+  } catch (e) {
+    console.error('activity-expenses approve entry:', e);
+    res.status(500).json({ error: '承認に失敗しました' });
+  }
+});
+
+router.post('/entries/:id/reject', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    if (!isStaff(req.user!.role)) {
+      return res.status(403).json({ error: '差し戻しは行政・サポート・マスターのみです' });
+    }
+    const { reason } = req.body;
+    const entry = await prisma.activityExpenseEntry.findUnique({ where: { id } });
+    if (!entry) return res.status(404).json({ error: '見つかりません' });
+
+    const row = await prisma.activityExpenseEntry.update({
+      where: { id },
+      data: { status: ExpenseStatus.REJECTED, rejectionReason: reason || null, updatedById: req.user!.id },
+    });
+    res.json({ entry: row });
+  } catch (e) {
+    console.error('activity-expenses reject entry:', e);
+    res.status(500).json({ error: '差し戻しに失敗しました' });
   }
 });
 
