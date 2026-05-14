@@ -257,7 +257,7 @@ export const ReceptionBox: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const isMember = user?.role === 'MEMBER';
-  const [activeTab, setActiveTab] = useState<'pending' | 'resolved'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'unapproved' | 'resolved'>(isMember ? 'unapproved' : 'pending');
   const [popupItem, setPopupItem] = useState<PopupItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -299,9 +299,8 @@ export const ReceptionBox: React.FC = () => {
           setPopupItem(null);
         }
       } else if (action === 'confirm') {
-        // 確認はページへ誘導（現状APIがないため）
+        // モーダルを閉じるだけ（プレビュー確認済みとして扱う）
         setPopupItem(null);
-        alert('対応ページで確認してください。');
       }
     } catch (e: any) {
       alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
@@ -316,21 +315,50 @@ export const ReceptionBox: React.FC = () => {
 
   if (!data) return null;
 
-  // 未対応件数
-  const pendingCount =
+  // 未対応（相談）件数
+  const pendingCount = data.consultations.filter(c => c.status === 'OPEN').length;
+
+  // 未承認（報告書・経費・スケジュール招待）件数
+  const unapprovedCount =
     data.scheduleInvites.filter(s => s.status === 'PENDING').length +
-    data.consultations.filter(c => c.status === 'OPEN').length +
     data.expenses.filter(e => e.status === 'PENDING').length +
     data.weeklyReports.length +
     data.inspections.length +
     data.monthlyReports.length;
 
   // 解決済み件数
-  const resolvedCount = 
+  const resolvedCount =
     data.consultations.filter(c => c.status === 'RESOLVED').length +
     data.expenses.filter(e => e.status === 'APPROVED' || e.status === 'REJECTED').length;
 
+  // 未対応タブ（相談のみ）
   const renderPending = () => (
+    <div className="space-y-4">
+      {data.consultations.filter(c => c.status === 'OPEN').map((c) => (
+        <div key={c.id} className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">相談</span>
+            </div>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{c.member.name}さん: {c.subject || '（件名なし）'}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{format(new Date(c.createdAt), 'M月d日 HH:mm', { locale: ja })}</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'consultation', data: c })}>
+            確認・対応
+          </Button>
+        </div>
+      ))}
+      {pendingCount === 0 && (
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg border border-gray-200 dark:border-gray-700 text-center text-gray-500">
+          <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-400" />
+          未対応の相談はありません
+        </div>
+      )}
+    </div>
+  );
+
+  // 未承認タブ（報告書・経費・スケジュール招待）
+  const renderUnapproved = () => (
     <div className="space-y-4">
       {/* スケジュール招待 */}
       {data.scheduleInvites.filter(s => s.status === 'PENDING').map((s) => (
@@ -339,9 +367,7 @@ export const ReceptionBox: React.FC = () => {
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-200">スケジュール招待</span>
             </div>
-            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-              {s.schedule.user.name}さんから: {s.schedule.activityDescription}
-            </p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{s.schedule.user.name}さんから: {s.schedule.activityDescription}</p>
             <p className="text-xs text-gray-500 mt-0.5">{format(new Date(s.schedule.date), 'M月d日', { locale: ja })} {formatTime(s.schedule.startTime)}〜{formatTime(s.schedule.endTime)}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'scheduleInvite', data: s })}>
@@ -350,26 +376,8 @@ export const ReceptionBox: React.FC = () => {
         </div>
       ))}
 
-      {/* 相談 */}
-      {data.consultations.filter(c => c.status === 'OPEN').map((c) => (
-        <div key={c.id} className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">相談</span>
-            </div>
-            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-              {c.member.name}さん: {c.subject || '（件名なし）'}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">{format(new Date(c.createdAt), 'M月d日 HH:mm', { locale: ja })}</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'consultation', data: c })}>
-            確認・完了
-          </Button>
-        </div>
-      ))}
-
       {/* 週次報告 */}
-      {data.weeklyReports.map((r) => (
+      {!isMember && data.weeklyReports.map((r) => (
         <div key={r.id} className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -385,7 +393,7 @@ export const ReceptionBox: React.FC = () => {
       ))}
 
       {/* 復命書 */}
-      {data.inspections.map((i) => (
+      {!isMember && data.inspections.map((i) => (
         <div key={i.id} className="bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -401,7 +409,7 @@ export const ReceptionBox: React.FC = () => {
       ))}
 
       {/* 月次報告 */}
-      {data.monthlyReports.map((m) => (
+      {!isMember && data.monthlyReports.map((m) => (
         <div key={m.id} className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -416,8 +424,8 @@ export const ReceptionBox: React.FC = () => {
         </div>
       ))}
 
-      {/* 活動経費（未対応＝PENDING） */}
-      {data.expenses.filter(e => e.status === 'PENDING').map((e) => (
+      {/* 活動経費（PENDING） */}
+      {!isMember && data.expenses.filter(e => e.status === 'PENDING').map((e) => (
         <div key={e.id} className="bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -433,15 +441,16 @@ export const ReceptionBox: React.FC = () => {
         </div>
       ))}
 
-      {pendingCount === 0 && (
+      {unapprovedCount === 0 && (
         <div className="bg-white dark:bg-gray-800 p-8 rounded-lg border border-gray-200 dark:border-gray-700 text-center text-gray-500">
           <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-400" />
-          未対応の項目はありません
+          未承認の項目はありません
         </div>
       )}
     </div>
   );
 
+  // 解決済みタブ
   const renderResolved = () => (
     <div className="space-y-4">
       {data.consultations.filter(c => c.status === 'RESOLVED').map((c) => (
@@ -454,52 +463,31 @@ export const ReceptionBox: React.FC = () => {
               <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{c.member.name}さん: {c.subject || '（件名なし）'}</p>
               {c.resolvedBy && (
                 <p className="text-xs text-gray-500 mt-1">
-                  対応: {c.resolvedBy.name}
-                  {c.resolvedAt && ` — ${format(new Date(c.resolvedAt), 'M月d日 HH:mm', { locale: ja })}`}
+                  対応: {c.resolvedBy.name}{c.resolvedAt && ` — ${format(new Date(c.resolvedAt), 'M月d日 HH:mm', { locale: ja })}`}
                 </p>
               )}
-              {c.resolutionNote && (
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1">{c.resolutionNote}</p>
-              )}
+              {c.resolutionNote && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1">{c.resolutionNote}</p>}
             </div>
-            <button
-              onClick={() => setPopupItem({ type: 'consultation', data: c })}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
-            >
-              詳細
-            </button>
+            <button onClick={() => setPopupItem({ type: 'consultation', data: c })} className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">詳細</button>
           </div>
         </div>
       ))}
-
       {data.expenses.filter(e => e.status === 'APPROVED' || e.status === 'REJECTED').map((e) => (
         <div key={e.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  e.status === 'APPROVED' 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
-                    : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
-                }`}>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${e.status === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'}`}>
                   活動経費（{e.status === 'APPROVED' ? '承認済み' : '差し戻し'}）
                 </span>
               </div>
               <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{e.user.name}さん: {e.description}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                支出日: {format(new Date(e.spentAt), 'M月d日', { locale: ja })} — ¥{e.amount.toLocaleString()}
-              </p>
+              <p className="text-xs text-gray-500 mt-1">支出日: {format(new Date(e.spentAt), 'M月d日', { locale: ja })} — ¥{e.amount.toLocaleString()}</p>
             </div>
-            <button
-              onClick={() => setPopupItem({ type: 'expense', data: e })}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
-            >
-              詳細
-            </button>
+            <button onClick={() => setPopupItem({ type: 'expense', data: e })} className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">詳細</button>
           </div>
         </div>
       ))}
-
       {resolvedCount === 0 && (
         <div className="bg-white dark:bg-gray-800 p-8 rounded-lg border border-gray-200 dark:border-gray-700 text-center text-gray-500">
           解決済みの項目はまだありません
@@ -513,45 +501,46 @@ export const ReceptionBox: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">受付ボックス</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          未対応 {pendingCount} 件 / 解決済み {resolvedCount} 件
+          {!isMember && `未対応 ${pendingCount} 件 / `}未承認 {unapprovedCount} 件 / 解決済み {resolvedCount} 件
         </p>
       </div>
 
       {/* タブ */}
       <div className="flex border-b border-gray-200 dark:border-gray-700">
+        {/* 未対応タブ（スタッフのみ） */}
+        {!isMember && (
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === 'pending' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+          >
+            <Clock className="h-4 w-4" />
+            未対応
+            {pendingCount > 0 && <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">{pendingCount}</span>}
+          </button>
+        )}
+        {/* 未承認タブ */}
         <button
-          onClick={() => setActiveTab('pending')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === 'pending'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
+          onClick={() => setActiveTab('unapproved')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === 'unapproved' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
         >
           <Clock className="h-4 w-4" />
-          未対応
-          {pendingCount > 0 && (
-            <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
-              {pendingCount}
-            </span>
-          )}
+          未承認
+          {unapprovedCount > 0 && <span className="ml-1 bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">{unapprovedCount}</span>}
         </button>
+        {/* 解決済みタブ */}
         <button
           onClick={() => setActiveTab('resolved')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === 'resolved'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === 'resolved' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
         >
           <CheckCircle className="h-4 w-4" />
           解決済み
-          {resolvedCount > 0 && (
-            <span className="ml-1 bg-gray-400 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
-              {resolvedCount}
-            </span>
-          )}
+          {resolvedCount > 0 && <span className="ml-1 bg-gray-400 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">{resolvedCount}</span>}
         </button>
       </div>
 
-      {activeTab === 'pending' ? renderPending() : renderResolved()}
+      {activeTab === 'pending' && renderPending()}
+      {activeTab === 'unapproved' && renderUnapproved()}
+      {activeTab === 'resolved' && renderResolved()}
 
       {/* ポップアップ */}
       {popupItem && (
@@ -565,3 +554,4 @@ export const ReceptionBox: React.FC = () => {
     </div>
   );
 };
+
