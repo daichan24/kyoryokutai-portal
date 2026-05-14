@@ -443,11 +443,10 @@ export const ReceptionBox: React.FC = () => {
       <div className="flex border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setActiveTab('pending')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'pending'
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === 'pending'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
+            }`}
         >
           <Clock className="h-4 w-4" />
           未対応・未承認
@@ -459,11 +458,10 @@ export const ReceptionBox: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('resolved')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'resolved'
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === 'resolved'
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-          }`}
+            }`}
         >
           <CheckCircle className="h-4 w-4" />
           解決済み

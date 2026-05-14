@@ -62,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             >
               <Menu className="h-6 w-6 text-gray-700 dark:text-gray-300" />
             </button>
-            
+
             <div className="min-w-0">
               <h1 className="text-lg md:text-xl font-bold text-primary truncate leading-tight">
                 協力隊クリアベース
@@ -108,22 +108,20 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     <button
                       type="button"
                       onClick={() => applyWorkspaceMode('personal')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                        workspaceMode === 'personal'
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${workspaceMode === 'personal'
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/80 dark:hover:bg-gray-700'
-                      }`}
+                        }`}
                     >
                       個人
                     </button>
                     <button
                       type="button"
                       onClick={() => applyWorkspaceMode('browse')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                        workspaceMode === 'browse'
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${workspaceMode === 'browse'
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/80 dark:hover:bg-gray-700'
-                      }`}
+                        }`}
                     >
                       閲覧
                     </button>

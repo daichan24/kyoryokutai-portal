@@ -352,9 +352,8 @@ export const ActivityExpenses: React.FC = () => {
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">残り</p>
               <p
-                className={`text-2xl font-bold tabular-nums ${
-                  summary.remaining < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
-                }`}
+                className={`text-2xl font-bold tabular-nums ${summary.remaining < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
+                  }`}
               >
                 {formatYen(summary.remaining)}
               </p>
@@ -476,22 +475,22 @@ export const ActivityExpenses: React.FC = () => {
                 <>
                   <Button
                     type="button"
-                  onClick={() => {
-                    if (!description.trim()) {
-                      alert('内容を入力してください');
-                      return;
-                    }
-                    if (!projectIdForEntry) {
-                      alert('プロジェクトを選択してください');
-                      return;
-                    }
-                    const n = parseInt(amount.replace(/[,]/g, ''), 10);
-                    if (Number.isNaN(n) || n < 1) {
-                      alert('金額は1円以上の半角数字で入力してください');
-                      return;
-                    }
-                    updateMut.mutate();
-                  }}
+                    onClick={() => {
+                      if (!description.trim()) {
+                        alert('内容を入力してください');
+                        return;
+                      }
+                      if (!projectIdForEntry) {
+                        alert('プロジェクトを選択してください');
+                        return;
+                      }
+                      const n = parseInt(amount.replace(/[,]/g, ''), 10);
+                      if (Number.isNaN(n) || n < 1) {
+                        alert('金額は1円以上の半角数字で入力してください');
+                        return;
+                      }
+                      updateMut.mutate();
+                    }}
                     disabled={updateMut.isPending}
                   >
                     更新
