@@ -25,7 +25,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     queryClient.invalidateQueries();
   };
 
-  // 受付ボックスの未読数
+  // 受付ボックスの未読数（お知らせの未確認数も含む）
   const { data: unreadReception } = useQuery({
     queryKey: ['reception-box', 'unread-count'],
     queryFn: async () => {
@@ -35,18 +35,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     enabled: !!user,
     staleTime: 60_000,
     refetchInterval: 120_000,
-  });
-
-  // お知らせの未確認数（全員対象）
-  const { data: unreadAnnounce } = useQuery({
-    queryKey: ['announcements', 'unread-count'],
-    queryFn: async () => {
-      const r = await api.get<{ count: number }>('/api/announcements/unread-count');
-      return r.data;
-    },
-    enabled: !!user,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
   });
 
   return (
@@ -94,14 +82,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 </Link>
                 {/* メモ帳（notepadEnabled がtrue の場合のみ表示） */}
                 {user.notepadEnabled !== false && <NotepadDropdown />}
-                {(unreadAnnounce?.count ?? 0) > 0 && (
-                  <Link
-                    to="/announcements"
-                    className="text-sm font-semibold text-primary hover:underline whitespace-nowrap"
-                  >
-                    未確認 {unreadAnnounce?.count} 件
-                  </Link>
-                )}
                 {/* 個人/閲覧モード切替（スタッフのみ） */}
                 {isStaff && (
                   <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 p-0.5 bg-gray-50 dark:bg-gray-900/60 shrink-0">

@@ -42,6 +42,8 @@ interface ReceptionData {
     description: string;
     spentAt: string;
     createdAt: string;
+    status?: string;
+    rejectionReason?: string | null;
     user: { id: string; name: string };
     project?: { id: string; projectName: string } | null;
   }>;
@@ -192,10 +194,28 @@ const ItemPopup: React.FC<{
               {item.data.project && <p><span className="text-gray-500">プロジェクト:</span> {item.data.project.projectName}</p>}
               <p><span className="text-gray-500">支出日:</span> {format(new Date(item.data.spentAt), 'yyyy/MM/dd', { locale: ja })}</p>
             </div>
-            {isStaff && (
-              <Button size="sm" onClick={() => onAction?.('approve')} disabled={actionLoading}>
-                承認する
-              </Button>
+            {isStaff && item.data.status === 'PENDING' && (
+              <div className="flex gap-2 pt-2">
+                <Button size="sm" onClick={() => onAction?.('approveExpense')} disabled={actionLoading}>
+                  承認する
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => onAction?.('rejectExpense')} disabled={actionLoading}>
+                  差し戻す
+                </Button>
+              </div>
+            )}
+            {item.data.status === 'APPROVED' && (
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-sm mt-2">
+                <p className="text-green-700 dark:text-green-300 font-medium">✓ 承認済み</p>
+              </div>
+            )}
+            {item.data.status === 'REJECTED' && (
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-sm mt-2">
+                <p className="text-red-700 dark:text-red-300 font-medium">✗ 差し戻し</p>
+                {item.data.rejectionReason && (
+                  <p className="text-gray-700 dark:text-gray-300 mt-1">理由: {item.data.rejectionReason}</p>
+                )}
+              </div>
             )}
           </div>
         );
@@ -252,10 +272,25 @@ export const ReceptionBox: React.FC = () => {
         await api.patch(`/api/consultations/${popupItem.data.id}/resolve`, { resolutionNote: note || '対応済み' });
         queryClient.invalidateQueries({ queryKey: ['reception-box'] });
         setPopupItem(null);
-      } else if (action === 'confirm' || action === 'approve') {
-        // 確認・承認はページへ誘導（現状APIがないため）
+      } else if (popupItem.type === 'expense') {
+        if (action === 'approveExpense') {
+          await api.post(`/api/activity-expenses/entries/${popupItem.data.id}/approve`);
+          queryClient.invalidateQueries({ queryKey: ['reception-box'] });
+          queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
+          queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
+          setPopupItem(null);
+        } else if (action === 'rejectExpense') {
+          const reason = window.prompt('差し戻し理由を入力してください（任意）') ?? '';
+          await api.post(`/api/activity-expenses/entries/${popupItem.data.id}/reject`, { reason });
+          queryClient.invalidateQueries({ queryKey: ['reception-box'] });
+          queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
+          queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
+          setPopupItem(null);
+        }
+      } else if (action === 'confirm') {
+        // 確認はページへ誘導（現状APIがないため）
         setPopupItem(null);
-        alert('対応ページで確認・承認してください。');
+        alert('対応ページで確認してください。');
       }
     } catch (e: any) {
       alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
@@ -274,13 +309,15 @@ export const ReceptionBox: React.FC = () => {
   const pendingCount =
     data.scheduleInvites.filter(s => s.status === 'PENDING').length +
     data.consultations.filter(c => c.status === 'OPEN').length +
-    data.expenses.length +
+    data.expenses.filter(e => e.status === 'PENDING').length +
     data.weeklyReports.length +
     data.inspections.length +
     data.monthlyReports.length;
 
   // 解決済み件数
-  const resolvedCount = data.consultations.filter(c => c.status === 'RESOLVED').length;
+  const resolvedCount = 
+    data.consultations.filter(c => c.status === 'RESOLVED').length +
+    data.expenses.filter(e => e.status === 'APPROVED' || e.status === 'REJECTED').length;
 
   const renderPending = () => (
     <div className="space-y-4">
@@ -369,7 +406,7 @@ export const ReceptionBox: React.FC = () => {
       ))}
 
       {/* 活動経費 */}
-      {data.expenses.map((e) => (
+      {data.expenses.filter(e => e.status === 'PENDING').map((e) => (
         <div key={e.id} className="bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -414,6 +451,34 @@ export const ReceptionBox: React.FC = () => {
             </div>
             <button
               onClick={() => setPopupItem({ type: 'consultation', data: c })}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+            >
+              詳細
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {data.expenses.filter(e => e.status === 'APPROVED' || e.status === 'REJECTED').map((e) => (
+        <div key={e.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  e.status === 'APPROVED' 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
+                }`}>
+                  活動経費（{e.status === 'APPROVED' ? '承認済み' : '差し戻し'}）
+                </span>
+              </div>
+              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{e.user.name}さん: {e.description}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                支出日: {format(new Date(e.spentAt), 'M月d日', { locale: ja })} — ¥{e.amount.toLocaleString()}
+              </p>
+            </div>
+            <button
+              onClick={() => setPopupItem({ type: 'expense', data: e })}
               className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
             >
               詳細

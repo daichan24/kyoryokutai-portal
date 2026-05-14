@@ -18,8 +18,9 @@ interface ExpenseEntry {
   description: string;
   amount: number;
   projectId?: string | null;
-  project?: { id: string; projectName: string; missionId?: string | null } | null;
   createdAt: string;
+  status?: string;
+  rejectionReason?: string | null;
   createdBy?: { id: string; name: string } | null;
   updatedBy?: { id: string; name: string } | null;
 }
@@ -540,6 +541,7 @@ export const ActivityExpenses: React.FC = () => {
                         <th className="text-left px-3 py-2 font-medium">日付</th>
                         <th className="text-left px-3 py-2 font-medium">プロジェクト</th>
                         <th className="text-left px-3 py-2 font-medium">内容</th>
+                        <th className="text-center px-3 py-2 font-medium w-24">状態</th>
                         <th className="text-right px-3 py-2 font-medium">金額</th>
                         <th className="text-right px-3 py-2 font-medium w-40">操作</th>
                       </tr>
@@ -555,7 +557,21 @@ export const ActivityExpenses: React.FC = () => {
                               <span className="text-amber-600 dark:text-amber-400">未設定</span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-gray-800 dark:text-gray-100">{row.description}</td>
+                          <td className="px-3 py-2 text-gray-800 dark:text-gray-100">
+                            {row.description}
+                            {row.status === 'REJECTED' && row.rejectionReason && (
+                              <p className="text-xs text-red-600 dark:text-red-400 mt-1">差し戻し理由: {row.rejectionReason}</p>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            {row.status === 'APPROVED' ? (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">承認済</span>
+                            ) : row.status === 'REJECTED' ? (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">差戻し</span>
+                            ) : (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">未検証</span>
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-right tabular-nums font-medium">{formatYen(row.amount)}</td>
                           <td className="px-3 py-2 text-right space-x-2">
                             <button
@@ -586,13 +602,23 @@ export const ActivityExpenses: React.FC = () => {
                     <div key={row.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 tabular-nums mb-0.5">
                             {format(parseISO(row.spentAt), 'M/d', { locale: ja })}
+                            {row.status === 'APPROVED' ? (
+                              <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">承認済</span>
+                            ) : row.status === 'REJECTED' ? (
+                              <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">差戻し</span>
+                            ) : (
+                              <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">未検証</span>
+                            )}
                           </p>
                           <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{row.description}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
                             {row.project?.projectName || <span className="text-amber-600 dark:text-amber-400">プロジェクト未設定</span>}
                           </p>
+                          {row.status === 'REJECTED' && row.rejectionReason && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 line-clamp-2">差し戻し: {row.rejectionReason}</p>
+                          )}
                         </div>
                         <p className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatYen(row.amount)}</p>
                       </div>
