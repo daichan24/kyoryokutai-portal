@@ -614,24 +614,33 @@ model ActivityExpenseApprovedExample {
   @@index([missionId])
 }
 
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model ActivityExpenseEntry {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation("ActivityExpenseEntryMember", fields: [userId], references: [id], onDelete: Cascade)
-  projectId   String?
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  spentAt     DateTime @db.Date
-  description String   @db.VarChar(500)
-  amount      Int // 円（支出）
-  createdById String?
-  createdBy   User?    @relation("ActivityExpenseEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedById String?
-  updatedBy   User?    @relation("ActivityExpenseEntryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation("ActivityExpenseEntryMember", fields: [userId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  spentAt         DateTime      @db.Date
+  description     String        @db.VarChar(500)
+  amount          Int // 円（支出）
+  status          ExpenseStatus @default(PENDING)
+  rejectionReason String?       @db.Text
+  createdById     String?
+  createdBy       User?         @relation("ActivityExpenseEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById     String?
+  updatedBy       User?         @relation("ActivityExpenseEntryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([userId, spentAt])
   @@index([projectId])
+  @@index([status])
 }
 
 // ========================================
