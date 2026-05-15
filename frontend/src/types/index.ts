@@ -101,6 +101,10 @@ export interface WeeklyReport {
   nextWeekPlan?: string;
   note?: string;
   submittedAt?: string;
+  approvalStatus?: ApprovalStatus;
+  approvalComment?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

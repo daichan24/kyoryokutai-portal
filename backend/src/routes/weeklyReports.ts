@@ -9,6 +9,10 @@ const router = Router();
 
 router.use(authenticate);
 
+function isStaff(role: string) {
+  return role === 'MASTER' || role === 'SUPPORT' || role === 'GOVERNMENT';
+}
+
 const createWeeklyReportSchema = z.object({
   week: z.string().regex(/^\d{4}-\d{2}$/),
   thisWeekActivities: z.array(
@@ -23,6 +27,10 @@ const createWeeklyReportSchema = z.object({
 });
 
 const updateWeeklyReportSchema = createWeeklyReportSchema.partial();
+const approvalSchema = z.object({
+  approvalStatus: z.enum(['APPROVED', 'REJECTED']),
+  comment: z.string().max(2000).optional().nullable(),
+});
 
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -67,7 +75,7 @@ router.get('/:userId/:week', async (req: AuthRequest, res) => {
   try {
     const { userId, week } = req.params;
 
-    if (userId !== req.user!.id && req.user!.role !== 'MASTER' && req.user!.role !== 'SUPPORT') {
+    if (userId !== req.user!.id && !isStaff(req.user!.role)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -114,6 +122,7 @@ router.post('/', async (req: AuthRequest, res) => {
         nextWeekPlan: data.nextWeekPlan,
         note: data.note,
         submittedAt: data.submittedAt ? new Date(data.submittedAt) : null,
+        approvalStatus: data.submittedAt ? 'PENDING' : 'DRAFT',
       },
       include: {
         user: {
@@ -159,6 +168,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const updateData: any = { ...data };
     if (data.submittedAt) {
       updateData.submittedAt = new Date(data.submittedAt);
+      updateData.approvalStatus = 'PENDING';
+      updateData.approvalComment = null;
+      updateData.approvedBy = null;
+      updateData.approvedAt = null;
     }
 
     const report = await prisma.weeklyReport.update({
@@ -184,6 +197,63 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
     console.error('Update weekly report error:', error);
     res.status(500).json({ error: 'Failed to update weekly report' });
+  }
+});
+
+router.post('/:id/approve', async (req: AuthRequest, res) => {
+  try {
+    if (!isStaff(req.user!.role)) {
+      return res.status(403).json({ error: '承認は行政・サポート・マスターのみです' });
+    }
+    const { id } = req.params;
+    const data = approvalSchema.parse(req.body);
+
+    const existingReport = await prisma.weeklyReport.findUnique({
+      where: { id },
+      select: { id: true, submittedAt: true },
+    });
+
+    if (!existingReport) {
+      return res.status(404).json({ error: 'Weekly report not found' });
+    }
+    if (!existingReport.submittedAt) {
+      return res.status(400).json({ error: '未提出の週次報告は承認できません' });
+    }
+
+    const report = await prisma.weeklyReport.update({
+      where: { id },
+      data: {
+        approvalStatus: data.approvalStatus,
+        approvalComment: data.comment?.trim() || null,
+        approvedBy: req.user!.id,
+        approvedAt: new Date(),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            avatarColor: true,
+          },
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    res.json(report);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error('Approve weekly report error:', error);
+    res.status(500).json({ error: '週次報告の承認処理に失敗しました' });
   }
 });
 
@@ -248,7 +318,7 @@ router.get('/:userId/:week/pdf', async (req: AuthRequest, res) => {
   try {
     const { userId, week } = req.params;
 
-    if (userId !== req.user!.id && req.user!.role !== 'MASTER' && req.user!.role !== 'SUPPORT') {
+    if (userId !== req.user!.id && !isStaff(req.user!.role)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 

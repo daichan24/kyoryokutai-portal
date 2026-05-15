@@ -70,6 +70,7 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
       const weeklyReportCount = await prisma.weeklyReport.count({
         where: {
           submittedAt: { not: null },
+          approvalStatus: 'PENDING',
           user: { role: 'MEMBER' },
         },
       });
@@ -172,7 +173,7 @@ router.get('/', async (req: AuthRequest, res) => {
       expenses.push(...expenseList);
 
       const reports = await prisma.weeklyReport.findMany({
-        where: { submittedAt: { not: null }, user: { role: 'MEMBER' } },
+        where: { submittedAt: { not: null }, approvalStatus: 'PENDING', user: { role: 'MEMBER' } },
         include: { user: { select: { id: true, name: true, avatarColor: true } } },
         orderBy: { submittedAt: 'desc' },
       });

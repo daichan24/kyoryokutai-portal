@@ -56,8 +56,8 @@ interface ReceptionData {
     resolutionNote?: string | null; member: { id: string; name: string };
     targetUser?: { id: string; name: string } | null;
   }>;
-  expenses: Array<{ id: string; amount: number; description: string; spentAt: string; createdAt: string; user: { id: string; name: string }; project?: { id: string; projectName: string } | null }>;
-  weeklyReports: Array<{ id: string; week: string; submittedAt: string; user: { id: string; name: string } }>;
+  expenses: Array<{ id: string; amount: number; description: string; spentAt: string; createdAt: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; rejectionReason?: string | null; user: { id: string; name: string }; project?: { id: string; projectName: string } | null }>;
+  weeklyReports: Array<{ id: string; week: string; submittedAt: string; approvalStatus?: string; user: { id: string; name: string } }>;
   inspections: Array<{ id: string; destination: string; date: string; createdAt: string; user: { id: string; name: string } }>;
   monthlyReports: Array<{ id: string; month: string; submittedAt: string; creator: { id: string; name: string } }>;
 }
@@ -305,6 +305,37 @@ export const InboxPage: React.FC = () => {
     }
   };
 
+  const handleApprovalAction = async (
+    item: { id: string; type: 'weeklyReport' | 'expense' },
+    approvalStatus: 'APPROVED' | 'REJECTED',
+  ) => {
+    setActionLoading(true);
+    try {
+      const comment = approvalStatus === 'REJECTED'
+        ? window.prompt('差し戻し理由を入力してください（任意）')
+        : '';
+      if (item.type === 'weeklyReport') {
+        await api.post(`/api/weekly-reports/${item.id}/approve`, {
+          approvalStatus,
+          comment: comment || null,
+        });
+        queryClient.invalidateQueries({ queryKey: ['weekly-reports'] });
+      } else if (approvalStatus === 'APPROVED') {
+        await api.post(`/api/activity-expenses/entries/${item.id}/approve`);
+        queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
+      } else {
+        await api.post(`/api/activity-expenses/entries/${item.id}/reject`, { reason: comment || null });
+        queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['reception-box'] });
+      queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
+    } catch (e: any) {
+      alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const isLoading = isStaff ? (receptionLoading || inboxLoading) : (myLoading || memberReceptionLoading);
   if (isLoading) return <div className="flex justify-center p-8"><LoadingSpinner /></div>;
 
@@ -352,7 +383,8 @@ export const InboxPage: React.FC = () => {
       createdAt: m.submittedAt, raw: m,
     })),
     ...(receptionData?.expenses || []).map(e => ({
-      id: e.id, type: 'expense' as const, status: 'unapproved' as const,
+      id: e.id, type: 'expense' as const,
+      status: e.status === 'PENDING' ? 'unapproved' as const : 'resolved' as const,
       from: e.user.name, label: `活動経費: ${e.description} ¥${e.amount.toLocaleString()}`,
       createdAt: e.createdAt, raw: e,
     })),
@@ -476,7 +508,17 @@ export const InboxPage: React.FC = () => {
                     {item.status === 'pending' ? '確認・対応' : '詳細'}
                   </Button>
                 )}
-                {(item.type === 'weeklyReport' || item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'expense') && (
+                {(item.type === 'weeklyReport' || item.type === 'expense') && item.status === 'unapproved' && (
+                  <>
+                    <Button size="sm" onClick={() => handleApprovalAction(item, 'APPROVED')} disabled={actionLoading}>
+                      承認
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleApprovalAction(item, 'REJECTED')} disabled={actionLoading}>
+                      差し戻し
+                    </Button>
+                  </>
+                )}
+                {(item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'weeklyReport' || item.type === 'expense') && (
                   <Button size="sm" variant="outline" onClick={() => {
                     const routes: Record<string, string> = {
                       weeklyReport: '/reports/weekly',
