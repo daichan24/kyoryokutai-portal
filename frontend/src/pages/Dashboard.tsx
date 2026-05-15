@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Megaphone, Clock, Inbox, Check, X, Settings } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
-import { useStaffWorkspace, type StaffWorkspaceMode } from '../stores/workspaceStore';
+import { useStaffWorkspace } from '../stores/workspaceStore';
 import { api } from '../utils/api';
 import { Schedule } from '../types';
 import { formatDate, getWeekRange } from '../utils/date';
@@ -75,25 +75,7 @@ interface DashboardConfig {
 export const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const { isStaff, workspaceMode, setWorkspaceMode } = useStaffWorkspace();
-
-  const invalidateDataScopeQueries = useCallback(() => {
-    const keys: (string | string[])[] = [
-      'missions',
-      'projects',
-      'tasks',
-      'schedules',
-      'goals-widget',
-      'projects-widget',
-      'tasks-widget',
-      'wishes',
-      'requests',
-      'sns-posts',
-      'sns-weekly-status',
-      'inbox',
-    ];
-    keys.forEach((k) => queryClient.invalidateQueries({ queryKey: Array.isArray(k) ? k : [k] }));
-  }, [queryClient]);
+  const { isStaff } = useStaffWorkspace();
 
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,20 +128,11 @@ export const Dashboard: React.FC = () => {
     const sns = { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 1 };
 
     let baseWidgets: typeof tail & { key: string }[];
-    if (role !== 'MEMBER') {
-      baseWidgets = [
-        sns,
-        { key: 'goals-personal', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
-        { key: 'goals-view', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4.5 },
-        ...tail,
-      ] as any;
-    } else {
-      baseWidgets = [
-        sns,
-        { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
-        ...tail,
-      ] as any;
-    }
+    baseWidgets = [
+      sns,
+      { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
+      ...tail,
+    ] as any;
 
     if (role === 'MEMBER') {
       return {
@@ -179,7 +152,7 @@ export const Dashboard: React.FC = () => {
         widgets: baseWidgets.map((w: any, i: number) => {
           let enabled = true;
           if (w.key === 'snsHistory') enabled = false;
-          if (w.key === 'goals-personal' || w.key === 'goals-view') enabled = false;
+          if (w.key === 'goals') enabled = false;
           if (w.key === 'nextWish') enabled = false;
           return { ...w, enabled, order: i + 1 };
         }),
@@ -224,10 +197,7 @@ export const Dashboard: React.FC = () => {
 
       if (user.role === 'MEMBER') {
         params.append('userId', user.id);
-      } else if (
-        isStaff &&
-        workspaceMode === 'browse'
-      ) {
+      } else if (isStaff) {
         params.append('allMembers', 'true');
       }
 
@@ -240,15 +210,7 @@ export const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, isStaff, workspaceMode]);
-
-  const applyWorkspaceMode = useCallback(
-    (mode: StaffWorkspaceMode) => {
-      setWorkspaceMode(mode);
-      invalidateDataScopeQueries();
-    },
-    [setWorkspaceMode, invalidateDataScopeQueries]
-  );
+  }, [user, isStaff]);
 
   useEffect(() => {
     fetchThisWeekSchedules();
@@ -296,7 +258,6 @@ export const Dashboard: React.FC = () => {
         case 'goals':
           return <GoalsWidget key={widget.key} {...commonProps} viewMode="personal" />;
         case 'goals-personal':
-          return <GoalsWidget key={widget.key} {...commonProps} viewMode="personal" />;
         case 'goals-view':
           return <GoalsWidget key={widget.key} {...commonProps} viewMode="view" />;
         case 'tasks':
@@ -401,43 +362,6 @@ export const Dashboard: React.FC = () => {
           カスタマイズ
         </Button>
       </div>
-
-      {isStaff && (
-        <div className="bg-card dark:bg-gray-800 rounded-xl border border-border dark:border-gray-700 p-4 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">表示モード（個人 / 閲覧）</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed max-w-2xl">
-                ミッション・プロジェクト・タスク・スケジュール・SNS・やりたいことなど、画面全体で同じ基準が使われます。ここで選んだモードはこのブラウザに保存され、次回ログイン時も維持されます。
-              </p>
-            </div>
-            <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 p-1 bg-gray-50 dark:bg-gray-900/60 shrink-0">
-              <button
-                type="button"
-                onClick={() => applyWorkspaceMode('personal')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  workspaceMode === 'personal'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200/80 dark:hover:bg-gray-700'
-                }`}
-              >
-                個人
-              </button>
-              <button
-                type="button"
-                onClick={() => applyWorkspaceMode('browse')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  workspaceMode === 'browse'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200/80 dark:hover:bg-gray-700'
-                }`}
-              >
-                閲覧
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Link

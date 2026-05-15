@@ -951,12 +951,6 @@ export const Schedule: React.FC = () => {
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               進行中のプロジェクト
             </h3>
-            {/* メンバー以外の役職で閲覧・個人切り替え */}
-            {user?.role !== 'MEMBER' && isStaff && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                プロジェクト一覧はダッシュボードのモードに連動
-              </p>
-            )}
           </div>
           {projects.length > 0 ? (
             projects.map((project) => {

@@ -306,11 +306,6 @@ export const Wishes: React.FC = () => {
           </button>
         </div>
         <div className="flex gap-2 flex-wrap items-center justify-end">
-          {user?.role !== 'MEMBER' && isStaff && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs text-right">
-              閲覧／個人はダッシュボードに連動（{workspaceMode === 'browse' ? '閲覧' : '個人'}）
-            </p>
-          )}
           {viewMode === 'create' && (
             <Button onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-2" />
@@ -885,13 +880,6 @@ export const Wishes: React.FC = () => {
                 </div>
               </section>
 
-              <section className="space-y-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">閲覧/個人（役職別の見え方）</h3>
-                <div className="text-gray-700 dark:text-gray-300 space-y-1">
-                  <div className="text-sm">- メンバー以外（MASTER/SUPPORT/GOVERNMENT等）は「閲覧」で隊員のリストを見る、「個人」で自分のリストを管理できます。</div>
-                  <div className="text-sm">- メンバーは基本「個人」運用（自分の100を育てる）です。</div>
-                </div>
-              </section>
             </div>
 
             {/* フッター（固定） */}
@@ -1032,4 +1020,3 @@ export const Wishes: React.FC = () => {
     </div>
   );
 };
-

@@ -35,8 +35,8 @@ const widgetLabels: Record<string, string> = {
   snsQuickAdd: 'SNS投稿追加',
   projects: 'プロジェクト',
   goals: 'ミッション',
-  'goals-personal': 'ミッション（個人）',
-  'goals-view': 'ミッション（閲覧）',
+  'goals-personal': 'ミッション',
+  'goals-view': 'ミッション',
   tasks: 'タスク',
   events: 'イベント',
   contacts: '町民データベース',
@@ -45,7 +45,6 @@ const widgetLabels: Record<string, string> = {
 };
 
 // カスタマイズ画面に必ず表示する全ウィジェットのテンプレート
-// メンバー以外の場合はgoals-personalとgoals-viewを分離
 const getFullWidgetTemplate = (role: string): Omit<WidgetConfig, 'order'>[] => {
   const tail = [
     { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const },
@@ -65,15 +64,6 @@ const getFullWidgetTemplate = (role: string): Omit<WidgetConfig, 'order'>[] => {
     columnSpan: 2 as const,
   };
 
-  if (role !== 'MEMBER') {
-    return [
-      sns,
-      { key: 'goals-personal', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
-      { key: 'goals-view', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
-      ...tail,
-    ];
-  }
-
   return [
     sns,
     { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const },
@@ -90,16 +80,13 @@ function mergeWithTemplate(apiConfig: DashboardConfig | null | undefined, role: 
   const byKey = new Map<string, any>();
   raw.forEach((w) => {
     if (w.key === 'taskRequests') return;
+    if (w.key === 'goals-personal' || w.key === 'goals-view') {
+      const existing = byKey.get('goals');
+      byKey.set('goals', existing ? { ...existing, enabled: existing.enabled || w.enabled } : { ...w, key: 'goals' });
+      return;
+    }
     byKey.set(w.key, w);
   });
-  
-  // 古いgoalsウィジェットをgoals-personalとgoals-viewに変換（メンバー以外の場合）
-  if (role !== 'MEMBER' && byKey.has('goals') && !byKey.has('goals-personal') && !byKey.has('goals-view')) {
-    const oldGoals = byKey.get('goals');
-    byKey.set('goals-personal', { ...oldGoals, key: 'goals-personal', order: oldGoals.order });
-    byKey.set('goals-view', { ...oldGoals, key: 'goals-view', order: (oldGoals.order || 0) + 0.5, enabled: false });
-    byKey.delete('goals');
-  }
   
   const template = getFullWidgetTemplate(role);
   const merged = template.map((t, i) => {
@@ -136,7 +123,7 @@ function getDefaultConfig(role: string = 'MEMBER'): DashboardConfig {
       widgets: base.map((w, i) => {
         let enabled = true;
         if (w.key === 'snsHistory') enabled = false;
-        if (w.key === 'goals-personal' || w.key === 'goals-view') enabled = false;
+        if (w.key === 'goals') enabled = false;
         if (w.key === 'nextWish') enabled = false;
         return { ...w, enabled, order: i + 1 };
       }),
@@ -470,4 +457,3 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
     </div>
   );
 };
-

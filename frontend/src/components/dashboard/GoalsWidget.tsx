@@ -24,14 +24,14 @@ interface GoalsWidgetProps {
   displayMode?: DisplayMode;
   showAddButton?: boolean;
   onAddClick?: () => void;
-  viewMode?: 'personal' | 'view'; // 個人 or 閲覧
+  viewMode?: 'personal' | 'view';
 }
 
 export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
   displayMode = 'view-only',
   showAddButton = false,
   onAddClick,
-  viewMode = 'personal', // デフォルトは個人
+  viewMode = 'personal',
 }) => {
   const { user } = useAuthStore();
   const { isStaff, workspaceMode } = useStaffWorkspace();
@@ -46,16 +46,13 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
     queryFn: async () => {
       let url = '/api/missions';
       
-      // 閲覧モード: 選択したユーザーのミッションを表示（MEMBERは自分のみ）
       if (effectiveViewMode === 'view') {
         if (user?.role === 'MEMBER') {
           url = `/api/missions?userId=${user.id}`;
         } else {
-          // 非メンバーの場合は全員のミッションを表示
           url = '/api/missions';
         }
       } else {
-        // 個人モード: 自分のミッションのみ表示
         url = `/api/missions?userId=${user?.id}`;
       }
       
@@ -83,7 +80,7 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4 h-full flex flex-col">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          ミッション{effectiveViewMode === 'view' ? '（閲覧）' : '（個人）'}
+          ミッション
         </h3>
         {(displayMode === 'view-with-add' || showAddButton) && (user?.role === 'MEMBER' || user?.role === 'MASTER') && (
           <Link to="/missions">
@@ -137,4 +134,3 @@ export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
     </div>
   );
 };
-

@@ -6,12 +6,13 @@ const router = Router();
 router.use(authenticate);
 
 function consultationMatchesStaff(
-  c: { audience: string; targetUserId: string | null },
+  c: { audience: string; targetUserId: string | null; assignedUsers?: { id: string }[] },
   staffId: string,
   staffRole: string,
 ) {
   if (c.audience === 'SPECIFIC_USER') {
-    return c.targetUserId === staffId || staffRole === 'MASTER';
+    const isAssigned = c.assignedUsers?.some((u) => u.id === staffId);
+    return isAssigned || c.targetUserId === staffId || staffRole === 'MASTER';
   }
   if (c.audience === 'SUPPORT_ONLY') {
     return staffRole === 'MASTER' || staffRole === 'SUPPORT';
@@ -117,6 +118,7 @@ router.get('/', async (req: AuthRequest, res) => {
         where: { status: 'OPEN' },
         include: {
           member: { select: { name: true } },
+          assignedUsers: { select: { id: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: 80,
@@ -165,4 +167,3 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 export default router;
-

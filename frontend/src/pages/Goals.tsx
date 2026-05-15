@@ -350,12 +350,6 @@ export const Goals: React.FC = () => {
           </Button>
         </div>
         <div className="flex gap-3 items-center">
-          {isNonMember && isStaff && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md text-right">
-              閲覧／個人はダッシュボードの表示モードに連動（現在:{' '}
-              {workspaceMode === 'browse' ? '閲覧' : '個人'}）
-            </p>
-          )}
           {((user?.role === 'MEMBER') || (isNonMember && viewMode === 'create')) && (
             <Button onClick={handleCreateGoal}>
               <Plus className="h-4 w-4 mr-2" />

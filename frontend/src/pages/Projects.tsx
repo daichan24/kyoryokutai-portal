@@ -209,12 +209,6 @@ export const Projects: React.FC = () => {
           </Button>
         </div>
         <div className="flex gap-3">
-          {isNonMember && isStaff && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md text-right">
-              閲覧／個人はダッシュボードの表示モードに連動しています（現在:{' '}
-              {workspaceMode === 'browse' ? '閲覧' : '個人'}）
-            </p>
-          )}
           {showCreateButton && (
             <Button onClick={handleCreateProject}>
               <Plus className="h-4 w-4 mr-2" />

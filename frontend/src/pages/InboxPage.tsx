@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -7,9 +7,11 @@ import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
-import { X, CheckCircle, Clock, MessageSquare, ShieldAlert, Inbox, Send, ExternalLink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import type { User } from '../types';
+import { X, CheckCircle, Clock, MessageSquare, ShieldAlert, Inbox, Send } from 'lucide-react';
+import type { User, WeeklyReport } from '../types';
+import { WeeklyReportModal } from '../components/report/WeeklyReportModal';
+import { InspectionDetailModal } from '../components/inspection/InspectionDetailModal';
+import { MonthlyReportDetailModal } from '../components/report/MonthlyReportDetailModal';
 
 // ============================================================
 // 型定義
@@ -56,8 +58,8 @@ interface ReceptionData {
     resolutionNote?: string | null; member: { id: string; name: string };
     targetUser?: { id: string; name: string } | null;
   }>;
-  expenses: Array<{ id: string; amount: number; description: string; spentAt: string; createdAt: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; rejectionReason?: string | null; user: { id: string; name: string }; project?: { id: string; projectName: string } | null }>;
-  weeklyReports: Array<{ id: string; week: string; submittedAt: string; approvalStatus?: string; user: { id: string; name: string } }>;
+  expenses: Array<{ id: string; amount: number; description: string; spentAt: string; createdAt: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; rejectionReason?: string | null; user: { id: string; name: string }; project?: { id: string; projectName: string } | null; updatedBy?: { id: string; name: string } | null }>;
+  weeklyReports: Array<{ id: string; week: string; submittedAt: string; approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
   inspections: Array<{ id: string; destination: string; date: string; createdAt: string; user: { id: string; name: string } }>;
   monthlyReports: Array<{ id: string; month: string; submittedAt: string; creator: { id: string; name: string } }>;
 }
@@ -78,6 +80,70 @@ type TabKey = 'all' | 'pending' | 'unapproved' | 'resolved';
 // ============================================================
 // 相談詳細モーダル
 // ============================================================
+const statusLabel = (status?: string) => {
+  if (status === 'APPROVED') return '承認済み';
+  if (status === 'REJECTED') return '差し戻し';
+  return '未承認';
+};
+
+const ExpenseDetailModal: React.FC<{
+  expense: ReceptionData['expenses'][0];
+  onClose: () => void;
+  onAction: (approvalStatus: 'APPROVED' | 'REJECTED') => void;
+  actionLoading: boolean;
+}> = ({ expense, onClose, onAction, actionLoading }) => (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+      <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">活動経費</h3>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><X className="w-5 h-5" /></button>
+      </div>
+      <div className="p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div>
+            <p className="text-gray-500">申請者</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{expense.user.name}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">状態</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{statusLabel(expense.status)}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">支出日</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{format(new Date(expense.spentAt), 'yyyy年M月d日', { locale: ja })}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">金額</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">¥{expense.amount.toLocaleString()}</p>
+          </div>
+        </div>
+        <div className="text-sm">
+          <p className="text-gray-500">プロジェクト</p>
+          <p className="font-medium text-gray-900 dark:text-gray-100">{expense.project?.projectName || '未設定'}</p>
+        </div>
+        <div className="text-sm">
+          <p className="text-gray-500">内容</p>
+          <p className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">{expense.description}</p>
+        </div>
+        {expense.rejectionReason && (
+          <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
+            差し戻し理由: {expense.rejectionReason}
+          </div>
+        )}
+        {expense.updatedBy && expense.status && expense.status !== 'PENDING' && (
+          <p className="text-xs text-gray-500">対応者: {expense.updatedBy.name}</p>
+        )}
+        {expense.status === 'PENDING' && (
+          <div className="flex justify-end gap-2 pt-2">
+            <Button size="sm" onClick={() => onAction('APPROVED')} disabled={actionLoading}>承認</Button>
+            <Button size="sm" variant="outline" onClick={() => onAction('REJECTED')} disabled={actionLoading}>差し戻し</Button>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
 const ConsultationDetailModal: React.FC<{
   consultationId: string;
   onClose: () => void;
@@ -222,12 +288,15 @@ const ConsultationDetailModal: React.FC<{
 export const InboxPage: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const isMember = user?.role === 'MEMBER';
   const isStaff = !isMember;
 
   const [activeTab, setActiveTab] = useState<TabKey>('pending');
   const [selectedConsultationId, setSelectedConsultationId] = useState<string | null>(null);
+  const [selectedWeekly, setSelectedWeekly] = useState<ReceptionData['weeklyReports'][0] | null>(null);
+  const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
+  const [selectedMonthlyReportId, setSelectedMonthlyReportId] = useState<string | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<ReceptionData['expenses'][0] | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // 相談送信フォーム（メンバー用）
@@ -273,6 +342,15 @@ export const InboxPage: React.FC = () => {
       return [...(s.data || []), ...(g.data || [])].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
     },
     enabled: isMember,
+  });
+
+  const { data: selectedWeeklyReport, isLoading: weeklyLoading } = useQuery<WeeklyReport>({
+    queryKey: ['weekly-report-detail', selectedWeekly?.user.id, selectedWeekly?.week],
+    queryFn: async () => {
+      const r = await api.get<WeeklyReport>(`/api/weekly-reports/${selectedWeekly!.user.id}/${selectedWeekly!.week}`);
+      return r.data;
+    },
+    enabled: Boolean(selectedWeekly),
   });
 
   const createMut = useMutation({
@@ -329,6 +407,8 @@ export const InboxPage: React.FC = () => {
       }
       queryClient.invalidateQueries({ queryKey: ['reception-box'] });
       queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
+      if (item.type === 'weeklyReport') setSelectedWeekly(null);
+      if (item.type === 'expense') setSelectedExpense(null);
     } catch (e: any) {
       alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
     } finally {
@@ -368,7 +448,8 @@ export const InboxPage: React.FC = () => {
       createdAt: c.createdAt, raw: c,
     })),
     ...(receptionData?.weeklyReports || []).map(r => ({
-      id: r.id, type: 'weeklyReport' as const, status: 'unapproved' as const,
+      id: r.id, type: 'weeklyReport' as const,
+      status: r.approvalStatus === 'APPROVED' || r.approvalStatus === 'REJECTED' ? 'resolved' as const : 'unapproved' as const,
       from: r.user.name, label: `週次報告: ${r.week}`,
       createdAt: r.submittedAt, raw: r,
     })),
@@ -495,6 +576,17 @@ export const InboxPage: React.FC = () => {
                     {item.raw.resolvedAt && ` — ${format(new Date(item.raw.resolvedAt), 'M/d HH:mm', { locale: ja })}`}
                   </p>
                 )}
+                {item.status === 'resolved' && item.type === 'weeklyReport' && item.raw.approver && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                    対応: {item.raw.approver.name}
+                    {item.raw.approvedAt && ` — ${format(new Date(item.raw.approvedAt), 'M/d HH:mm', { locale: ja })}`}
+                  </p>
+                )}
+                {item.status === 'resolved' && item.type === 'expense' && item.raw.updatedBy && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                    対応: {item.raw.updatedBy.name}
+                  </p>
+                )}
               </div>
               <div className="flex gap-2 flex-shrink-0">
                 {item.type === 'scheduleInvite' && item.status === 'unapproved' && (
@@ -520,15 +612,12 @@ export const InboxPage: React.FC = () => {
                 )}
                 {(item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'weeklyReport' || item.type === 'expense') && (
                   <Button size="sm" variant="outline" onClick={() => {
-                    const routes: Record<string, string> = {
-                      weeklyReport: '/reports/weekly',
-                      inspection: '/inspections',
-                      monthlyReport: '/reports/monthly',
-                      expense: '/activity-expenses',
-                    };
-                    navigate(routes[item.type]);
+                    if (item.type === 'weeklyReport') setSelectedWeekly(item.raw);
+                    if (item.type === 'inspection') setSelectedInspectionId(item.id);
+                    if (item.type === 'monthlyReport') setSelectedMonthlyReportId(item.id);
+                    if (item.type === 'expense') setSelectedExpense(item.raw);
                   }}>
-                    <ExternalLink className="h-3.5 w-3.5 mr-1" />確認
+                    詳細
                   </Button>
                 )}
               </div>
@@ -653,6 +742,47 @@ export const InboxPage: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['consultations'] });
             queryClient.invalidateQueries({ queryKey: ['reception-box'] });
           }}
+        />
+      )}
+      {selectedWeekly && (
+        weeklyLoading || !selectedWeeklyReport ? (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-8"><LoadingSpinner /></div>
+          </div>
+        ) : (
+          <WeeklyReportModal
+            report={selectedWeeklyReport}
+            onClose={() => setSelectedWeekly(null)}
+            onSaved={() => {
+              queryClient.invalidateQueries({ queryKey: ['weekly-reports'] });
+              queryClient.invalidateQueries({ queryKey: ['reception-box'] });
+            }}
+            viewMode="preview"
+          />
+        )
+      )}
+      {selectedInspectionId && (
+        <InspectionDetailModal
+          inspectionId={selectedInspectionId}
+          onClose={() => setSelectedInspectionId(null)}
+          onUpdated={() => queryClient.invalidateQueries({ queryKey: ['reception-box'] })}
+          viewMode="preview"
+        />
+      )}
+      {selectedMonthlyReportId && (
+        <MonthlyReportDetailModal
+          reportId={selectedMonthlyReportId}
+          onClose={() => setSelectedMonthlyReportId(null)}
+          onUpdated={() => queryClient.invalidateQueries({ queryKey: ['reception-box'] })}
+          viewMode="preview"
+        />
+      )}
+      {selectedExpense && (
+        <ExpenseDetailModal
+          expense={selectedExpense}
+          onClose={() => setSelectedExpense(null)}
+          onAction={(approvalStatus) => handleApprovalAction({ id: selectedExpense.id, type: 'expense' }, approvalStatus)}
+          actionLoading={actionLoading}
         />
       )}
     </div>

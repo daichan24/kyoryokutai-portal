@@ -306,15 +306,6 @@ export const SNSPosts: React.FC = () => {
         </div>
       )}
 
-      {user?.role !== 'MEMBER' && isStaff && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            個人／閲覧はダッシュボードの表示モードに連動しています（現在:{' '}
-            <span className="font-medium text-gray-900 dark:text-gray-100">{workspaceMode === 'browse' ? '閲覧' : '個人'}</span>）
-          </p>
-        </div>
-      )}
-
       {/* 今週・今月の状況（個人タブのみ） */}
       {viewMode === 'personal' && (
         <div className="space-y-2">

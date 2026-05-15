@@ -398,11 +398,6 @@ export const Tasks: React.FC = () => {
           </Button>
         </div>
         <div className="flex gap-3">
-          {isNonMember && isStaff && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md text-right">
-              閲覧／個人はダッシュボードに連動（現在: {workspaceMode === 'browse' ? '閲覧' : '個人'}）
-            </p>
-          )}
           {showCreateButton && (
             <Button 
               onClick={() => {
@@ -827,4 +822,3 @@ export const Tasks: React.FC = () => {
     </div>
   );
 };
-

@@ -18,6 +18,7 @@ interface ExpenseEntry {
   description: string;
   amount: number;
   projectId?: string | null;
+  project?: { id: string; projectName: string; missionId?: string | null } | null;
   createdAt: string;
   status?: string;
   rejectionReason?: string | null;
@@ -54,6 +55,7 @@ export const ActivityExpenses: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [projectIdForEntry, setProjectIdForEntry] = useState('');
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
 
@@ -179,6 +181,22 @@ export const ActivityExpenses: React.FC = () => {
     setProjectIdForEntry('');
     setSpentAt(format(new Date(), 'yyyy-MM-dd'));
   };
+
+  const filteredEntries = useMemo(() => {
+    const entries = summary?.entries || [];
+    if (expenseStatusFilter === 'ALL') return entries;
+    return entries.filter((entry) => (entry.status || 'PENDING') === expenseStatusFilter);
+  }, [summary?.entries, expenseStatusFilter]);
+
+  const statusCounts = useMemo(() => {
+    const entries = summary?.entries || [];
+    return {
+      ALL: entries.length,
+      PENDING: entries.filter((entry) => (entry.status || 'PENDING') === 'PENDING').length,
+      APPROVED: entries.filter((entry) => entry.status === 'APPROVED').length,
+      REJECTED: entries.filter((entry) => entry.status === 'REJECTED').length,
+    };
+  }, [summary?.entries]);
 
   if (!user) return null;
 
@@ -528,9 +546,34 @@ export const ActivityExpenses: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">一覧（新しい順）</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">一覧（新しい順）</h2>
+              <div className="flex flex-wrap gap-1 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-900/40">
+                {[
+                  ['ALL', `すべて ${statusCounts.ALL}`],
+                  ['PENDING', `未承認 ${statusCounts.PENDING}`],
+                  ['APPROVED', `承認済み ${statusCounts.APPROVED}`],
+                  ['REJECTED', `差し戻し ${statusCounts.REJECTED}`],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setExpenseStatusFilter(key as typeof expenseStatusFilter)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      expenseStatusFilter === key
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             {summary.entries.length === 0 ? (
               <p className="text-sm text-gray-500">まだ登録がありません。</p>
+            ) : filteredEntries.length === 0 ? (
+              <p className="text-sm text-gray-500">この状態の経費はありません。</p>
             ) : (
               <div className="space-y-2">
                 {/* PC表示: テーブル */}
@@ -547,7 +590,7 @@ export const ActivityExpenses: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                      {summary.entries.map((row) => (
+                      {filteredEntries.map((row) => (
                         <tr key={row.id}>
                           <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
                             {format(parseISO(row.spentAt), 'yyyy年M月d日', { locale: ja })}
@@ -570,6 +613,9 @@ export const ActivityExpenses: React.FC = () => {
                               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">差戻し</span>
                             ) : (
                               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">未検証</span>
+                            )}
+                            {row.status && row.status !== 'PENDING' && row.updatedBy && (
+                              <p className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">対応: {row.updatedBy.name}</p>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums font-medium">{formatYen(row.amount)}</td>
@@ -598,7 +644,7 @@ export const ActivityExpenses: React.FC = () => {
                 </div>
                 {/* スマホ表示: カード */}
                 <div className="sm:hidden space-y-2">
-                  {summary.entries.map((row) => (
+                  {filteredEntries.map((row) => (
                     <div key={row.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div className="flex-1 min-w-0">
@@ -618,6 +664,9 @@ export const ActivityExpenses: React.FC = () => {
                           </p>
                           {row.status === 'REJECTED' && row.rejectionReason && (
                             <p className="text-xs text-red-600 dark:text-red-400 mt-1 line-clamp-2">差し戻し: {row.rejectionReason}</p>
+                          )}
+                          {row.status && row.status !== 'PENDING' && row.updatedBy && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">対応: {row.updatedBy.name}</p>
                           )}
                         </div>
                         <p className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatYen(row.amount)}</p>

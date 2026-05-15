@@ -5,6 +5,20 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 const router = Router();
 router.use(authenticate);
 
+function consultationMatchesStaff(c: any, staffId: string, staffRole: string) {
+  if (c.audience === 'SPECIFIC_USER') {
+    const isAssigned = c.assignedUsers?.some((u: any) => u.id === staffId);
+    return isAssigned || c.targetUserId === staffId || staffRole === 'MASTER';
+  }
+  if (c.audience === 'SUPPORT_ONLY') {
+    return staffRole === 'MASTER' || staffRole === 'SUPPORT';
+  }
+  if (c.audience === 'GOVERNMENT_ONLY') {
+    return staffRole === 'MASTER' || staffRole === 'GOVERNMENT';
+  }
+  return staffRole === 'MASTER' || staffRole === 'SUPPORT' || staffRole === 'GOVERNMENT';
+}
+
 // 受付ボックスの未読数を取得
 router.get('/unread-count', async (req: AuthRequest, res) => {
   try {
@@ -49,17 +63,17 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
       });
 
       // ② 相談（メンバーから届いたもの）
-      const consultationCount = await prisma.consultation.count({
+      const openConsultations = await prisma.consultation.findMany({
         where: {
           status: 'OPEN',
-          OR: [
-            { audience: 'ANY' },
-            { audience: 'SUPPORT_ONLY', targetUserId: null },
-            { audience: 'GOVERNMENT_ONLY', targetUserId: null },
-            { audience: 'SPECIFIC_USER', targetUserId: userId },
-          ],
+        },
+        include: {
+          assignedUsers: { select: { id: true } },
         },
       });
+      const consultationCount = openConsultations.filter((c) =>
+        consultationMatchesStaff(c, userId, role)
+      ).length;
 
       // ③ 活動経費（行政・サポート・マスター） — PENDINGのみカウント
       const expenseCount = await prisma.activityExpenseEntry.count({
@@ -140,25 +154,16 @@ router.get('/', async (req: AuthRequest, res) => {
             { status: 'OPEN' },
             { status: 'RESOLVED' },
           ],
-          AND: [
-            {
-              OR: [
-                { audience: 'ANY' },
-                { audience: 'SUPPORT_ONLY', targetUserId: null },
-                { audience: 'GOVERNMENT_ONLY', targetUserId: null },
-                { audience: 'SPECIFIC_USER', targetUserId: userId },
-              ],
-            },
-          ],
         },
         include: {
           member: { select: { id: true, name: true, avatarColor: true } },
           targetUser: { select: { id: true, name: true } },
+          assignedUsers: { select: { id: true, name: true, role: true } },
           resolvedBy: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
       });
-      consultations.push(...consults);
+      consultations.push(...consults.filter((c) => consultationMatchesStaff(c, userId, role)));
 
       // 活動経費: PENDING + APPROVED/REJECTED 全件返す（フロント側でタブ分け）
       const expenseList = await prisma.activityExpenseEntry.findMany({
@@ -173,8 +178,11 @@ router.get('/', async (req: AuthRequest, res) => {
       expenses.push(...expenseList);
 
       const reports = await prisma.weeklyReport.findMany({
-        where: { submittedAt: { not: null }, approvalStatus: 'PENDING', user: { role: 'MEMBER' } },
-        include: { user: { select: { id: true, name: true, avatarColor: true } } },
+        where: { submittedAt: { not: null }, user: { role: 'MEMBER' } },
+        include: {
+          user: { select: { id: true, name: true, avatarColor: true } },
+          approver: { select: { id: true, name: true } },
+        },
         orderBy: { submittedAt: 'desc' },
       });
       weeklyReports.push(...reports);

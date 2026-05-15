@@ -139,6 +139,19 @@ export const WeeklyReport: React.FC = () => {
   const canCreate = user?.role === 'MEMBER';
   const canView = user?.role !== 'MEMBER'; // メンバー以外は閲覧のみ
 
+  const approvalBadge = (report: WeeklyReportType) => {
+    if (report.approvalStatus === 'APPROVED') {
+      return { label: '承認済み', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' };
+    }
+    if (report.approvalStatus === 'REJECTED') {
+      return { label: '差し戻し', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' };
+    }
+    if (report.submittedAt) {
+      return { label: '承認待ち', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' };
+    }
+    return { label: '下書き', className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' };
+  };
+
   const handleDelete = async (reportId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // カードのクリックイベントを防ぐ
     if (!confirm('この週次報告を削除しますか？')) return;
@@ -426,6 +439,14 @@ export const WeeklyReport: React.FC = () => {
                             提出済み
                           </span>
                         )}
+                        {(() => {
+                          const badge = approvalBadge(report);
+                          return (
+                            <span className={`px-3 py-1 text-sm rounded-full ${badge.className}`} title={report.approver ? `対応者: ${report.approver.name}` : undefined}>
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
                         <Button
                           variant="outline"
                           size="sm"
@@ -570,6 +591,14 @@ export const WeeklyReport: React.FC = () => {
                                 提出済み
                               </span>
                             )}
+                            {(() => {
+                              const badge = approvalBadge(report);
+                              return (
+                                <span className={`px-2 py-1 text-xs rounded-full ${badge.className}`} title={report.approver ? `対応者: ${report.approver.name}` : undefined}>
+                                  {badge.label}
+                                </span>
+                              );
+                            })()}
                           </div>
                           {!report.submittedAt && (
                             <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs rounded-full">

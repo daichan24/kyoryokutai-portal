@@ -60,6 +60,12 @@ router.get('/', async (req: AuthRequest, res) => {
             avatarColor: true,
           },
         },
+        approver: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: { week: 'desc' },
     });
@@ -94,6 +100,12 @@ router.get('/:userId/:week', async (req: AuthRequest, res) => {
             email: true,
             role: true,
             avatarColor: true,
+          },
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },

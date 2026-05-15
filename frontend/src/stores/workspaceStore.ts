@@ -52,10 +52,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 }));
 
-/** マスター・サポート・行政向けの「個人 / 閲覧」。隊員は常に personal 相当。 */
+/** 管理役職は常に閲覧・管理運用。隊員は常に personal 相当。 */
 export function useStaffWorkspace() {
   const user = useAuthStore((s) => s.user);
-  const staffWorkspaceMode = useWorkspaceStore((s) => s.staffWorkspaceMode);
   const setStaffWorkspaceMode = useWorkspaceStore((s) => s.setStaffWorkspaceMode);
   const hydrateForUser = useWorkspaceStore((s) => s.hydrateForUser);
   const clearHydration = useWorkspaceStore((s) => s.clearHydration);
@@ -65,10 +64,9 @@ export function useStaffWorkspace() {
 
   return {
     isStaff,
-    /** browse = 閲覧（隊員データ中心）、personal = 個人（自分の予定・プロジェクト等） */
-    workspaceMode: (isStaff ? staffWorkspaceMode : 'personal') as StaffWorkspaceMode,
+    workspaceMode: (isStaff ? 'browse' : 'personal') as StaffWorkspaceMode,
     setWorkspaceMode: (mode: StaffWorkspaceMode) => {
-      if (user && isStaff) {
+      if (user && !isStaff) {
         setStaffWorkspaceMode(mode, user.id);
       }
     },

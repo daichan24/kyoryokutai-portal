@@ -104,6 +104,7 @@ export interface WeeklyReport {
   approvalStatus?: ApprovalStatus;
   approvalComment?: string | null;
   approvedBy?: string | null;
+  approver?: { id: string; name: string } | null;
   approvedAt?: string | null;
   createdAt: string;
   updatedAt: string;
