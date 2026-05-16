@@ -194,6 +194,10 @@ model Schedule {
   scheduleParticipants ScheduleParticipant[]
   compensatoryLeaves   CompensatoryLeave[]   @relation("CompensatoryLeaveSchedule")
   timeAdjustmentsAsSource TimeAdjustment[]   @relation("TimeAdjustmentSourceSchedule")
+  paidLeaveEntries     PaidLeaveEntry[]      @relation("PaidLeaveEntrySchedule")
+  unpaidLeaveEntries   UnpaidLeaveEntry[]    @relation("UnpaidLeaveEntrySchedule")
+  compensatoryLeaveUsages CompensatoryLeaveUsage[] @relation("CompensatoryLeaveUsageSchedule")
+  timeAdjustmentsAsUsed TimeAdjustment[]      @relation("TimeAdjustmentUsedSchedule")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1523,12 +1527,15 @@ model PaidLeaveEntry {
   usedAt      DateTime @db.Date
   days        Float    // 使用日数（0.5日単位）
   note        String?  @db.VarChar(500)
+  scheduleId  String?
+  schedule    Schedule? @relation("PaidLeaveEntrySchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
   createdById String?
   createdBy   User?    @relation("PaidLeaveEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId, usedAt])
+  @@index([scheduleId])
 }
 
 /// 無休使用記録（メンバーも追加可）
@@ -1539,12 +1546,15 @@ model UnpaidLeaveEntry {
   usedAt      DateTime @db.Date
   days        Float    // 使用日数
   note        String?  @db.VarChar(500)
+  scheduleId  String?
+  schedule    Schedule? @relation("UnpaidLeaveEntrySchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
   createdById String?
   createdBy   User?    @relation("UnpaidLeaveEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId, usedAt])
+  @@index([scheduleId])
 }
 
 /// 代休（休日出勤タスクから発生）
@@ -1601,11 +1611,14 @@ model CompensatoryLeaveUsage {
   usedAt              DateTime          @db.Date
   days                Float             // 使用日数（1日単位）
   note                String?           @db.VarChar(500)
+  scheduleId          String?
+  schedule            Schedule?         @relation("CompensatoryLeaveUsageSchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
   createdById         String?
   createdBy           User?             @relation("CompensatoryLeaveUsageCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt           DateTime          @default(now())
 
   @@index([compensatoryLeaveId])
+  @@index([scheduleId])
 }
 
 /// 時間調整（代休の時間版）
@@ -1624,6 +1637,7 @@ model TimeAdjustment {
   usedStartTime       String?            @db.VarChar(5) // HH:mm
   usedEndTime         String?            @db.VarChar(5) // HH:mm
   usedScheduleId      String?            // 使用時のスケジュールID
+  usedSchedule        Schedule?          @relation("TimeAdjustmentUsedSchedule", fields: [usedScheduleId], references: [id], onDelete: SetNull)
   note                String?            @db.VarChar(500)
   confirmedById       String?
   confirmedBy         User?              @relation("TimeAdjustmentConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
