@@ -22,6 +22,10 @@ interface Inspection {
   participants: string[];
   user: { id: string; name: string; department?: string | null; missionType?: 'FREE' | 'MISSION' | null };
   project?: { id: string; projectName: string };
+  approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approvalComment?: string | null;
+  approvedAt?: string | null;
+  approver?: { id: string; name: string } | null;
 }
 
 interface InspectionDetailModalProps {
@@ -159,6 +163,16 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
     reflection,
     futureAction,
   } : null;
+  const approvalLabel =
+    inspection.approvalStatus === 'APPROVED' ? '承認済み'
+    : inspection.approvalStatus === 'REJECTED' ? '差し戻し'
+    : '未承認';
+  const approvalClass =
+    inspection.approvalStatus === 'APPROVED'
+      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+      : inspection.approvalStatus === 'REJECTED'
+      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
 
   return (
     <div 
@@ -170,7 +184,22 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-          <h2 className="text-2xl font-bold dark:text-gray-100">復命書</h2>
+          <div>
+            <h2 className="text-2xl font-bold dark:text-gray-100">復命書</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${approvalClass}`}>
+                {approvalLabel}
+              </span>
+              {inspection.approver && inspection.approvedAt && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  対応: {inspection.approver.name}（{format(new Date(inspection.approvedAt), 'M/d HH:mm')}）
+                </span>
+              )}
+            </div>
+            {inspection.approvalComment && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">差し戻し理由: {inspection.approvalComment}</p>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {/* タブ切り替え */}
             <button
@@ -343,4 +372,3 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
     </div>
   );
 };
-

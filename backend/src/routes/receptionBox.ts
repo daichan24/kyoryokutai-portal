@@ -91,7 +91,7 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
 
       // ⑤ 復命書の提出
       const inspectionCount = await prisma.inspection.count({
-        where: { user: { role: 'MEMBER' } },
+        where: { user: { role: 'MEMBER' }, approvalStatus: 'PENDING' },
       });
 
       // ⑥ 月次報告の提出
@@ -189,7 +189,10 @@ router.get('/', async (req: AuthRequest, res) => {
 
       const insp = await prisma.inspection.findMany({
         where: { user: { role: 'MEMBER' } },
-        include: { user: { select: { id: true, name: true, avatarColor: true } } },
+        include: {
+          user: { select: { id: true, name: true, avatarColor: true } },
+          approver: { select: { id: true, name: true } },
+        },
         orderBy: { createdAt: 'desc' },
       });
       inspections.push(...insp);

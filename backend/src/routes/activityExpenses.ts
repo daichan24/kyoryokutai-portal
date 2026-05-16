@@ -318,6 +318,39 @@ router.post('/entries/:id/reject', async (req: AuthRequest, res) => {
   }
 });
 
+router.post('/entries/:id/reopen', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    if (!isStaff(req.user!.role)) {
+      return res.status(403).json({ error: '戻し操作は行政・サポート・マスターのみです' });
+    }
+    const entry = await prisma.activityExpenseEntry.findUnique({
+      where: { id },
+      select: { id: true, status: true, updatedById: true },
+    });
+    if (!entry) return res.status(404).json({ error: '見つかりません' });
+    if (entry.status === ExpenseStatus.PENDING) {
+      return res.status(400).json({ error: 'すでに未承認です' });
+    }
+    if (entry.updatedById !== req.user!.id) {
+      return res.status(403).json({ error: 'この対応を戻せるのは対応した本人のみです' });
+    }
+
+    const row = await prisma.activityExpenseEntry.update({
+      where: { id },
+      data: {
+        status: ExpenseStatus.PENDING,
+        rejectionReason: null,
+        updatedById: null,
+      },
+    });
+    res.json({ entry: row });
+  } catch (e) {
+    console.error('activity-expenses reopen entry:', e);
+    res.status(500).json({ error: '対応取り消しに失敗しました' });
+  }
+});
+
 // ----- 購入手順（全員GET / スタッフPUT）-----
 router.get('/guidance', async (_req: AuthRequest, res) => {
   try {

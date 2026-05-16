@@ -21,6 +21,15 @@ const createInspectionSchema = z.object({
   projectId: z.string().optional(),
 });
 
+const approvalSchema = z.object({
+  approvalStatus: z.enum(['APPROVED', 'REJECTED']),
+  comment: z.string().max(5000).optional().nullable(),
+});
+
+function isStaff(role: string) {
+  return role === 'MASTER' || role === 'SUPPORT' || role === 'GOVERNMENT';
+}
+
 // 視察一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -54,6 +63,12 @@ router.get('/', async (req: AuthRequest, res) => {
             projectName: true,
           },
         },
+        approver: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: { date: 'desc' },
     });
@@ -82,6 +97,7 @@ router.get('/:id', async (req, res) => {
           },
         },
         project: true,
+        approver: { select: { id: true, name: true } },
       },
     });
 
@@ -161,6 +177,12 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.reflection !== undefined) updateData.reflection = data.reflection;
     if (data.futureAction !== undefined) updateData.futureAction = data.futureAction;
     if (data.projectId !== undefined) updateData.projectId = data.projectId;
+    if (existingInspection.userId === req.user!.id) {
+      updateData.approvalStatus = 'PENDING';
+      updateData.approvalComment = null;
+      updateData.approvedBy = null;
+      updateData.approvedAt = null;
+    }
 
     const inspection = await prisma.inspection.update({
       where: { id },
@@ -178,6 +200,86 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
     console.error('Update inspection error:', error);
     res.status(500).json({ error: 'Failed to update inspection' });
+  }
+});
+
+router.post('/:id/approve', async (req: AuthRequest, res) => {
+  try {
+    if (!isStaff(req.user!.role)) {
+      return res.status(403).json({ error: '承認は行政・サポート・マスターのみです' });
+    }
+    const { id } = req.params;
+    const data = approvalSchema.parse(req.body);
+
+    const inspection = await prisma.inspection.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+    if (!inspection) return res.status(404).json({ error: 'Inspection not found' });
+    if (inspection.userId === req.user!.id) {
+      return res.status(400).json({ error: '自分の復命書は承認できません' });
+    }
+
+    const updated = await prisma.inspection.update({
+      where: { id },
+      data: {
+        approvalStatus: data.approvalStatus,
+        approvalComment: data.comment?.trim() || null,
+        approvedBy: req.user!.id,
+        approvedAt: new Date(),
+      },
+      include: {
+        user: { select: { id: true, name: true, avatarColor: true } },
+        project: { select: { id: true, projectName: true } },
+        approver: { select: { id: true, name: true } },
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    console.error('Approve inspection error:', error);
+    res.status(500).json({ error: '復命書の承認処理に失敗しました' });
+  }
+});
+
+router.post('/:id/reopen', async (req: AuthRequest, res) => {
+  try {
+    if (!isStaff(req.user!.role)) {
+      return res.status(403).json({ error: '戻し操作は行政・サポート・マスターのみです' });
+    }
+    const { id } = req.params;
+    const inspection = await prisma.inspection.findUnique({
+      where: { id },
+      select: { id: true, approvalStatus: true, approvedBy: true },
+    });
+    if (!inspection) return res.status(404).json({ error: 'Inspection not found' });
+    if (inspection.approvalStatus === 'PENDING') {
+      return res.status(400).json({ error: 'すでに未承認です' });
+    }
+    if (inspection.approvedBy !== req.user!.id) {
+      return res.status(403).json({ error: 'この対応を戻せるのは対応した本人のみです' });
+    }
+
+    const updated = await prisma.inspection.update({
+      where: { id },
+      data: {
+        approvalStatus: 'PENDING',
+        approvalComment: null,
+        approvedBy: null,
+        approvedAt: null,
+      },
+      include: {
+        user: { select: { id: true, name: true, avatarColor: true } },
+        project: { select: { id: true, projectName: true } },
+        approver: { select: { id: true, name: true } },
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Reopen inspection error:', error);
+    res.status(500).json({ error: '復命書の対応取り消しに失敗しました' });
   }
 });
 

@@ -59,6 +59,7 @@ model User {
   requestsSent         Request[]             @relation("Requester")
   requestsReceived     Request[]             @relation("Requestee")
   inspections          Inspection[]
+  inspectionsApproved  Inspection[]          @relation("InspectionApprover")
   wishes               Wish[]
   wishCheckins         WishCheckin[]
   personalModeEnabled  Boolean               @default(false)
@@ -1202,6 +1203,12 @@ model Inspection {
   reflection        String @db.Text
   futureAction      String @db.Text
 
+  approvalStatus  ApprovalStatus @default(PENDING)
+  approvalComment String?        @db.Text
+  approvedBy      String?
+  approver        User?          @relation("InspectionApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
+
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
@@ -1210,6 +1217,7 @@ model Inspection {
 
   @@index([userId])
   @@index([date])
+  @@index([approvalStatus])
 }
 
 // ========================================

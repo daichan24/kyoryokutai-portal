@@ -22,6 +22,10 @@ interface Inspection {
   participants: string[];
   user: { id: string; name: string };
   project?: { id: string; projectName: string };
+  approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approvalComment?: string | null;
+  approvedAt?: string | null;
+  approver?: { id: string; name: string } | null;
 }
 
 export const Inspections: React.FC = () => {
@@ -87,6 +91,16 @@ export const Inspections: React.FC = () => {
     handleCloseModal();
   };
 
+  const approvalBadge = (inspection: Inspection) => {
+    if (inspection.approvalStatus === 'APPROVED') {
+      return <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">承認済み</span>;
+    }
+    if (inspection.approvalStatus === 'REJECTED') {
+      return <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">差し戻し</span>;
+    }
+    return <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">未承認</span>;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -115,10 +129,21 @@ export const Inspections: React.FC = () => {
           <div key={inspection.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{inspection.destination}</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{inspection.destination}</h3>
+                  {approvalBadge(inspection)}
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {format(new Date(inspection.date), 'yyyy年M月d日')}
                 </p>
+                {inspection.approver && inspection.approvedAt && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    対応: {inspection.approver.name}（{format(new Date(inspection.approvedAt), 'M/d HH:mm')}）
+                  </p>
+                )}
+                {inspection.approvalComment && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">差し戻し理由: {inspection.approvalComment}</p>
+                )}
               </div>
               <button
                 onClick={() =>

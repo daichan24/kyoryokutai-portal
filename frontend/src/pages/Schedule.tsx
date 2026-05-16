@@ -15,6 +15,7 @@ import { DraggableCalendarView } from '../components/schedule/DraggableCalendarV
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { format } from 'date-fns';
+import { useIsMobileBreakpoint } from '../hooks/useIsMobileBreakpoint';
 
 type ViewMode = 'week' | 'month' | 'day';
 
@@ -32,6 +33,7 @@ interface Event {
 export const Schedule: React.FC = () => {
   const { user } = useAuthStore();
   const { isStaff, workspaceMode } = useStaffWorkspace();
+  const isMobile = useIsMobileBreakpoint();
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<ScheduleType[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -72,6 +74,12 @@ export const Schedule: React.FC = () => {
       setSelectedMemberId(null);
     }
   }, [isStaff, workspaceMode]);
+
+  useEffect(() => {
+    if (isMobile && viewMode === 'week') {
+      setViewMode('day');
+    }
+  }, [isMobile, viewMode]);
 
   useEffect(() => {
     setDetailFilterUserId('');
@@ -413,7 +421,7 @@ export const Schedule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 -mx-3 sm:-mx-4 md:-mx-6">
+    <div className="space-y-4 sm:space-y-6 -mx-3 sm:-mx-4 md:-mx-6">
       {/* スマホ: タイトルとボタンを別カラムに配置 */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-3 sm:px-4 md:px-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
@@ -444,7 +452,7 @@ export const Schedule: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow border-y border-border dark:border-gray-700 min-w-0 w-full">
-        <div className="flex gap-4 px-2 sm:px-3 md:px-4 py-6">
+        <div className="flex gap-4 px-0 sm:px-3 md:px-4 py-0 sm:py-6">
           {/* メンバーサイドバー（すべてのビューモードで表示） */}
           {showMemberSidebar && (
             <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 hidden lg:block">
@@ -555,16 +563,41 @@ export const Schedule: React.FC = () => {
 
           {/* カレンダー本体 */}
           <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-center mb-4 sm:mb-6 px-1 sm:px-2 pt-3 sm:pt-0">
-          <Button variant="outline" onClick={handlePrev}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex items-center gap-4">
-            <div className="flex gap-2">
+        <div className="sticky top-0 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur border-b border-gray-100 dark:border-gray-700 sm:static sm:border-b-0 px-3 sm:px-2 py-3 sm:py-0 mb-3 sm:mb-6">
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="outline" onClick={handlePrev} className="h-9 w-9 p-0">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-gray-100 text-center min-w-0 truncate">
+              {viewMode === 'day' && formatDate(currentDate, isMobile ? 'M月d日' : 'yyyy年M月d日')}
+              {viewMode === 'week' && weekDates[0] && weekDates[6] && (
+                <>
+                  {formatDate(weekDates[0], isMobile ? 'M/d' : 'yyyy年M月d日')} -{' '}
+                  {formatDate(weekDates[6], isMobile ? 'M/d' : 'M月d日')}
+                </>
+              )}
+              {viewMode === 'month' && formatDate(currentDate, 'yyyy年M月')}
+            </h2>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentDate(new Date())}
+                className="h-9 px-3 py-0"
+              >
+                今日
+              </Button>
+              <Button variant="outline" onClick={handleNext} className="h-9 w-9 p-0">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="inline-flex shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-0.5">
               <Button
                 variant={viewMode === 'day' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('day')}
+                className="border-0 shadow-none h-8 px-3"
               >
                 日
               </Button>
@@ -572,6 +605,7 @@ export const Schedule: React.FC = () => {
                 variant={viewMode === 'week' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('week')}
+                className="border-0 shadow-none h-8 px-3"
               >
                 週
               </Button>
@@ -579,32 +613,56 @@ export const Schedule: React.FC = () => {
                 variant={viewMode === 'month' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('month')}
+                className="border-0 shadow-none h-8 px-3"
               >
                 月
               </Button>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              {viewMode === 'day' && formatDate(currentDate, 'yyyy年M月d日')}
-              {viewMode === 'week' && weekDates[0] && weekDates[6] && (
-                <>
-                  {formatDate(weekDates[0], 'yyyy年M月d日')} -{' '}
-                  {formatDate(weekDates[6], 'M月d日')}
-                </>
-              )}
-              {viewMode === 'month' && formatDate(currentDate, 'yyyy年M月')}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setCurrentDate(new Date())}
-              className="px-3 py-1.5"
+            <button
+              type="button"
+              onClick={selectOnlyMe}
+              className="lg:hidden shrink-0 h-8 px-3 rounded-full border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
             >
-              今日
-            </Button>
-            <Button variant="outline" onClick={handleNext}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              自分のみ
+            </button>
+            <button
+              type="button"
+              onClick={selectAllMembers}
+              className="lg:hidden shrink-0 h-8 px-3 rounded-full border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+            >
+              全員
+            </button>
+          </div>
+          <div className="lg:hidden mt-2 -mx-3 px-3 flex gap-2 overflow-x-auto pb-1">
+            {user && (
+              <button
+                type="button"
+                onClick={() => toggleMemberVisibility(user.id)}
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs ${
+                  visibleMemberIds.has(user.id)
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: user.avatarColor || '#6B7280' }} />
+                自分
+              </button>
+            )}
+            {availableMembers.map((member) => (
+              <button
+                key={member.id}
+                type="button"
+                onClick={() => toggleMemberVisibility(member.id)}
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs ${
+                  visibleMemberIds.has(member.id)
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: member.avatarColor || '#6B7280' }} />
+                {member.name}
+              </button>
+            ))}
           </div>
         </div>
 

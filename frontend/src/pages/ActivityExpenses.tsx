@@ -166,6 +166,13 @@ export const ActivityExpenses: React.FC = () => {
     onSuccess: invalidate,
   });
 
+  const reopenMut = useMutation({
+    mutationFn: async (id: string) => {
+      await api.post(`/api/activity-expenses/entries/${id}/reopen`);
+    },
+    onSuccess: invalidate,
+  });
+
   const startEdit = (e: ExpenseEntry) => {
     setEditingId(e.id);
     setSpentAt(e.spentAt.slice(0, 10));
@@ -366,6 +373,9 @@ export const ActivityExpenses: React.FC = () => {
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">使用累計</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                 {formatYen(summary.totalSpent)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                未承認・差し戻しを含む提出額
               </p>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -620,6 +630,17 @@ export const ActivityExpenses: React.FC = () => {
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums font-medium">{formatYen(row.amount)}</td>
                           <td className="px-3 py-2 text-right space-x-2">
+                            {row.status && row.status !== 'PENDING' && row.updatedBy?.id === user?.id && (
+                              <button
+                                type="button"
+                                className="text-amber-600 dark:text-amber-400 hover:underline text-xs"
+                                onClick={() => {
+                                  if (confirm('この対応を未承認に戻しますか？')) reopenMut.mutate(row.id);
+                                }}
+                              >
+                                戻す
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
@@ -672,6 +693,17 @@ export const ActivityExpenses: React.FC = () => {
                         <p className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatYen(row.amount)}</p>
                       </div>
                       <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        {row.status && row.status !== 'PENDING' && row.updatedBy?.id === user?.id && (
+                          <button
+                            type="button"
+                            className="flex-1 text-center text-xs text-amber-600 dark:text-amber-400 py-1 rounded border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                            onClick={() => {
+                              if (confirm('この対応を未承認に戻しますか？')) reopenMut.mutate(row.id);
+                            }}
+                          >
+                            戻す
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="flex-1 text-center text-xs text-blue-600 dark:text-blue-400 py-1 rounded border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20"

@@ -5,6 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Schedule as ScheduleType } from '../../types';
 import { api } from '../../utils/api';
+import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface DraggableCalendarViewProps {
   schedules: ScheduleType[];
@@ -41,6 +42,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const isMobile = useIsMobileBreakpoint();
 
   // デバッグ: スケジュール数を確認
   useEffect(() => {
@@ -628,7 +630,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   };
 
   return (
-    <div className="fullcalendar-wrapper">
+    <div className={`fullcalendar-wrapper ${isMobile ? 'fullcalendar-mobile' : ''}`}>
       {calendarEvents.length === 0 && (
         <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg mb-4">
           <p className="text-yellow-800 dark:text-yellow-200">
@@ -662,8 +664,15 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         eventResize={handleEventResize}
         eventClick={handleEventClick}
         dateClick={handleDateClick}
-        height="auto"
-        dayMaxEvents={3}
+        height={isMobile ? 'calc(100dvh - 220px)' : 'auto'}
+        contentHeight={isMobile ? 'auto' : undefined}
+        expandRows={true}
+        stickyHeaderDates={true}
+        dayMaxEvents={isMobile ? 2 : 3}
+        dayMaxEventRows={isMobile ? 2 : 3}
+        longPressDelay={180}
+        selectLongPressDelay={180}
+        eventLongPressDelay={250}
         eventTimeFormat={{
           hour: 'numeric',
           minute: '2-digit',

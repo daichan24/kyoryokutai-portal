@@ -60,7 +60,7 @@ interface ReceptionData {
   }>;
   expenses: Array<{ id: string; amount: number; description: string; spentAt: string; createdAt: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; rejectionReason?: string | null; user: { id: string; name: string }; project?: { id: string; projectName: string } | null; updatedBy?: { id: string; name: string } | null }>;
   weeklyReports: Array<{ id: string; week: string; submittedAt: string; approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
-  inspections: Array<{ id: string; destination: string; date: string; createdAt: string; user: { id: string; name: string } }>;
+  inspections: Array<{ id: string; destination: string; date: string; createdAt: string; approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
   monthlyReports: Array<{ id: string; month: string; submittedAt: string; creator: { id: string; name: string } }>;
 }
 
@@ -90,8 +90,10 @@ const ExpenseDetailModal: React.FC<{
   expense: ReceptionData['expenses'][0];
   onClose: () => void;
   onAction: (approvalStatus: 'APPROVED' | 'REJECTED') => void;
+  onReopen: () => void;
   actionLoading: boolean;
-}> = ({ expense, onClose, onAction, actionLoading }) => (
+  currentUserId?: string;
+}> = ({ expense, onClose, onAction, onReopen, actionLoading, currentUserId }) => (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
       <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
@@ -137,6 +139,13 @@ const ExpenseDetailModal: React.FC<{
           <div className="flex justify-end gap-2 pt-2">
             <Button size="sm" onClick={() => onAction('APPROVED')} disabled={actionLoading}>承認</Button>
             <Button size="sm" variant="outline" onClick={() => onAction('REJECTED')} disabled={actionLoading}>差し戻し</Button>
+          </div>
+        )}
+        {expense.status !== 'PENDING' && expense.updatedBy?.id === currentUserId && (
+          <div className="flex justify-end gap-2 pt-2">
+            <Button size="sm" variant="outline" onClick={onReopen} disabled={actionLoading}>
+              未承認に戻す
+            </Button>
           </div>
         )}
       </div>
@@ -384,7 +393,7 @@ export const InboxPage: React.FC = () => {
   };
 
   const handleApprovalAction = async (
-    item: { id: string; type: 'weeklyReport' | 'expense' },
+    item: { id: string; type: 'weeklyReport' | 'inspection' | 'expense' },
     approvalStatus: 'APPROVED' | 'REJECTED',
   ) => {
     setActionLoading(true);
@@ -398,6 +407,12 @@ export const InboxPage: React.FC = () => {
           comment: comment || null,
         });
         queryClient.invalidateQueries({ queryKey: ['weekly-reports'] });
+      } else if (item.type === 'inspection') {
+        await api.post(`/api/inspections/${item.id}/approve`, {
+          approvalStatus,
+          comment: comment || null,
+        });
+        queryClient.invalidateQueries({ queryKey: ['inspections'] });
       } else if (approvalStatus === 'APPROVED') {
         await api.post(`/api/activity-expenses/entries/${item.id}/approve`);
         queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
@@ -408,7 +423,30 @@ export const InboxPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['reception-box'] });
       queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
       if (item.type === 'weeklyReport') setSelectedWeekly(null);
+      if (item.type === 'inspection') setSelectedInspectionId(null);
       if (item.type === 'expense') setSelectedExpense(null);
+    } catch (e: any) {
+      alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReopenAction = async (item: { id: string; type: 'inspection' | 'expense' }) => {
+    if (!window.confirm('この対応を未承認に戻します。よろしいですか？')) return;
+    setActionLoading(true);
+    try {
+      if (item.type === 'inspection') {
+        await api.post(`/api/inspections/${item.id}/reopen`);
+        queryClient.invalidateQueries({ queryKey: ['inspections'] });
+        setSelectedInspectionId(null);
+      } else {
+        await api.post(`/api/activity-expenses/entries/${item.id}/reopen`);
+        queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
+        setSelectedExpense(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ['reception-box'] });
+      queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
     } catch (e: any) {
       alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
     } finally {
@@ -454,7 +492,8 @@ export const InboxPage: React.FC = () => {
       createdAt: r.submittedAt, raw: r,
     })),
     ...(receptionData?.inspections || []).map(i => ({
-      id: i.id, type: 'inspection' as const, status: 'unapproved' as const,
+      id: i.id, type: 'inspection' as const,
+      status: i.approvalStatus === 'APPROVED' || i.approvalStatus === 'REJECTED' ? 'resolved' as const : 'unapproved' as const,
       from: i.user.name, label: `復命書: ${i.destination || '視察先未記入'} (${format(new Date(i.date), 'M月d日', { locale: ja })})`,
       createdAt: i.createdAt, raw: i,
     })),
@@ -582,6 +621,12 @@ export const InboxPage: React.FC = () => {
                     {item.raw.approvedAt && ` — ${format(new Date(item.raw.approvedAt), 'M/d HH:mm', { locale: ja })}`}
                   </p>
                 )}
+                {item.status === 'resolved' && item.type === 'inspection' && item.raw.approver && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                    対応: {item.raw.approver.name}
+                    {item.raw.approvedAt && ` — ${format(new Date(item.raw.approvedAt), 'M/d HH:mm', { locale: ja })}`}
+                  </p>
+                )}
                 {item.status === 'resolved' && item.type === 'expense' && item.raw.updatedBy && (
                   <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
                     対応: {item.raw.updatedBy.name}
@@ -600,7 +645,7 @@ export const InboxPage: React.FC = () => {
                     {item.status === 'pending' ? '確認・対応' : '詳細'}
                   </Button>
                 )}
-                {(item.type === 'weeklyReport' || item.type === 'expense') && item.status === 'unapproved' && (
+                {(item.type === 'weeklyReport' || item.type === 'inspection' || item.type === 'expense') && item.status === 'unapproved' && (
                   <>
                     <Button size="sm" onClick={() => handleApprovalAction(item, 'APPROVED')} disabled={actionLoading}>
                       承認
@@ -609,6 +654,16 @@ export const InboxPage: React.FC = () => {
                       差し戻し
                     </Button>
                   </>
+                )}
+                {item.status === 'resolved' && item.type === 'inspection' && item.raw.approver?.id === user?.id && (
+                  <Button size="sm" variant="outline" onClick={() => handleReopenAction({ id: item.id, type: 'inspection' })} disabled={actionLoading}>
+                    戻す
+                  </Button>
+                )}
+                {item.status === 'resolved' && item.type === 'expense' && item.raw.updatedBy?.id === user?.id && (
+                  <Button size="sm" variant="outline" onClick={() => handleReopenAction({ id: item.id, type: 'expense' })} disabled={actionLoading}>
+                    戻す
+                  </Button>
                 )}
                 {(item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'weeklyReport' || item.type === 'expense') && (
                   <Button size="sm" variant="outline" onClick={() => {
@@ -782,7 +837,9 @@ export const InboxPage: React.FC = () => {
           expense={selectedExpense}
           onClose={() => setSelectedExpense(null)}
           onAction={(approvalStatus) => handleApprovalAction({ id: selectedExpense.id, type: 'expense' }, approvalStatus)}
+          onReopen={() => handleReopenAction({ id: selectedExpense.id, type: 'expense' })}
           actionLoading={actionLoading}
+          currentUserId={user?.id}
         />
       )}
     </div>
