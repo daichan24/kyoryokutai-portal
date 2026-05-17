@@ -3,7 +3,7 @@ import { X, FileDown } from 'lucide-react';
 import { api } from '../../utils/api';
 import { WeeklyReport, Schedule } from '../../types';
 import { getWeekString, parseWeekString, formatDate, formatTime } from '../../utils/date';
-import { startOfWeek, endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
+import { endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
 import { ja } from 'date-fns/locale/ja';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
@@ -14,6 +14,7 @@ import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface WeeklyReportModalProps {
   report?: WeeklyReport | null;
+  initialWeek?: string;
   onClose: () => void;
   onSaved: () => void;
   viewMode?: 'edit' | 'preview'; // 表示モード（デフォルトはedit）
@@ -21,6 +22,7 @@ interface WeeklyReportModalProps {
 
 export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   report,
+  initialWeek,
   onClose,
   onSaved,
   viewMode: initialViewMode = 'edit',
@@ -86,11 +88,10 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       setNextWeekPlan(report.nextWeekPlan || '');
       setNote(report.note || '');
     } else {
-      const initialWeek = getWeekString();
-      setWeek(initialWeek);
+      setWeek(initialWeek || getWeekString());
       setCurrentReport(null);
     }
-  }, [report]);
+  }, [report, initialWeek]);
 
   // 新規作成時または週が変更された時にスケジュールから自動取得
   useEffect(() => {
@@ -109,8 +110,6 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       
       // 対象週の開始日と終了日を取得
       const weekStart = parseWeekString(week);
-      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 }); // 月曜始まり
-      
       // 先週（振り返り用）
       const lastWeekStart = subWeeks(weekStart, 1);
       const lastWeekEnd = endOfWeek(lastWeekStart, { weekStartsOn: 1 });
@@ -283,7 +282,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
         <div className="flex-1 overflow-y-auto min-h-0">
           {viewMode === 'preview' && previewReport ? (
-            <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+            <div className="p-4 bg-gray-100 flex justify-center">
               <div className="shadow-lg">
                 <WeeklyReportPreview report={previewReport} />
               </div>
@@ -298,6 +297,11 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
               {loadingSchedules && (
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
                   スケジュールから活動内容と予定を自動取得中...
+                </div>
+              )}
+              {!report && initialWeek && (
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
+                  カレンダーの予定から対象週を引き継いでいます。
                 </div>
               )}
               

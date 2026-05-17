@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -22,6 +23,7 @@ interface Inspection {
   participants: string[];
   user: { id: string; name: string };
   project?: { id: string; projectName: string };
+  schedule?: { id: string; title?: string | null; startDate?: string | null; locationText?: string | null } | null;
   approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   approvalComment?: string | null;
   approvedAt?: string | null;
@@ -31,8 +33,33 @@ interface Inspection {
 export const Inspections: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
+  const scheduleIdFromQuery = searchParams.get('scheduleId') || undefined;
+
+  const initialInspectionData = useMemo(() => {
+    if (!scheduleIdFromQuery) return undefined;
+    const destination = searchParams.get('destination') || undefined;
+    const purpose = searchParams.get('purpose') || undefined;
+    const inspectionContent = [destination, purpose].filter(Boolean).join('\n');
+    return {
+      scheduleId: scheduleIdFromQuery,
+      userId: searchParams.get('userId') || undefined,
+      date: searchParams.get('date') || undefined,
+      destination,
+      purpose,
+      inspectionPurpose: purpose ? `${purpose}について確認・報告するため。` : '',
+      inspectionContent,
+      projectId: searchParams.get('projectId') || undefined,
+    };
+  }, [scheduleIdFromQuery, searchParams]);
+
+  useEffect(() => {
+    if (scheduleIdFromQuery) {
+      setIsModalOpen(true);
+    }
+  }, [scheduleIdFromQuery]);
 
   const { data: inspections, isLoading } = useQuery<Inspection[]>({
     queryKey: ['inspections', user?.id],
@@ -82,8 +109,16 @@ export const Inspections: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const clearScheduleParams = () => {
+    if (!scheduleIdFromQuery) return;
+    const next = new URLSearchParams(searchParams);
+    ['scheduleId', 'userId', 'date', 'destination', 'purpose', 'projectId'].forEach((key) => next.delete(key));
+    setSearchParams(next, { replace: true });
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    clearScheduleParams();
   };
 
   const handleSaved = () => {
@@ -164,6 +199,12 @@ export const Inspections: React.FC = () => {
                   <span className="font-medium">プロジェクト:</span> {inspection.project.projectName}
                 </p>
               )}
+              {inspection.schedule && (
+                <p className="text-blue-600 dark:text-blue-300">
+                  <span className="font-medium">関連予定:</span> {inspection.schedule.title || inspection.schedule.locationText || '予定'}
+                  {inspection.schedule.startDate ? `（${format(new Date(inspection.schedule.startDate), 'M月d日')}）` : ''}
+                </p>
+              )}
               {inspection.participants.length > 0 && (
                 <p>
                   <span className="font-medium">参加者:</span> {inspection.user.name}、{inspection.participants.join('、')}
@@ -192,6 +233,7 @@ export const Inspections: React.FC = () => {
 
       {isModalOpen && (
         <InspectionModal
+          initialData={initialInspectionData}
           onClose={handleCloseModal}
           onSaved={handleSaved}
         />

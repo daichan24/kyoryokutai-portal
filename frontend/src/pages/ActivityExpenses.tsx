@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../utils/api';
@@ -19,6 +20,8 @@ interface ExpenseEntry {
   amount: number;
   projectId?: string | null;
   project?: { id: string; projectName: string; missionId?: string | null } | null;
+  scheduleId?: string | null;
+  schedule?: { id: string; title?: string | null; startDate?: string | null; endDate?: string | null; startTime?: string | null; endTime?: string | null } | null;
   createdAt: string;
   status?: string;
   rejectionReason?: string | null;
@@ -45,6 +48,7 @@ interface ExpenseSummary {
 export const ActivityExpenses: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isStaff = user?.role === 'MASTER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT';
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -55,7 +59,10 @@ export const ActivityExpenses: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [projectIdForEntry, setProjectIdForEntry] = useState('');
+  const [scheduleIdForEntry, setScheduleIdForEntry] = useState('');
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const scheduleIdFromQuery = searchParams.get('scheduleId') || '';
+  const appliedScheduleParamsRef = React.useRef<string | null>(null);
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
 
@@ -99,6 +106,27 @@ export const ActivityExpenses: React.FC = () => {
     }
   }, [summary?.allocatedAmount, summary?.memo, isStaff, effectiveUserId]);
 
+  React.useEffect(() => {
+    if (!scheduleIdFromQuery || appliedScheduleParamsRef.current === scheduleIdFromQuery) return;
+    appliedScheduleParamsRef.current = scheduleIdFromQuery;
+    const queryUserId = searchParams.get('userId');
+    if (isStaff && queryUserId) setSelectedMemberId(queryUserId);
+    const queryDate = searchParams.get('date');
+    const queryDescription = searchParams.get('description');
+    const queryProjectId = searchParams.get('projectId');
+    setScheduleIdForEntry(scheduleIdFromQuery);
+    if (queryDate) setSpentAt(queryDate);
+    if (queryDescription) setDescription(queryDescription);
+    if (queryProjectId) setProjectIdForEntry(queryProjectId);
+  }, [isStaff, scheduleIdFromQuery, searchParams]);
+
+  const clearScheduleParams = () => {
+    if (!scheduleIdFromQuery) return;
+    const next = new URLSearchParams(searchParams);
+    ['scheduleId', 'date', 'description', 'projectId', 'userId'].forEach((key) => next.delete(key));
+    setSearchParams(next, { replace: true });
+  };
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
     queryClient.invalidateQueries({ queryKey: ['interview-monthly'] });
@@ -124,6 +152,7 @@ export const ActivityExpenses: React.FC = () => {
       await api.post('/api/activity-expenses/entries', {
         userId: isStaff ? effectiveUserId : undefined,
         projectId: projectIdForEntry,
+        scheduleId: scheduleIdForEntry || undefined,
         spentAt,
         description: description.trim(),
         amount: n,
@@ -134,7 +163,9 @@ export const ActivityExpenses: React.FC = () => {
       setDescription('');
       setAmount('');
       setProjectIdForEntry('');
+      setScheduleIdForEntry('');
       setSpentAt(format(new Date(), 'yyyy-MM-dd'));
+      clearScheduleParams();
     },
   });
 
@@ -148,6 +179,7 @@ export const ActivityExpenses: React.FC = () => {
         amount: n,
       };
       if (projectIdForEntry) body.projectId = projectIdForEntry;
+      body.scheduleId = scheduleIdForEntry || null;
       await api.put(`/api/activity-expenses/entries/${editingId}`, body);
     },
     onSuccess: () => {
@@ -156,6 +188,7 @@ export const ActivityExpenses: React.FC = () => {
       setDescription('');
       setAmount('');
       setProjectIdForEntry('');
+      setScheduleIdForEntry('');
     },
   });
 
@@ -179,6 +212,7 @@ export const ActivityExpenses: React.FC = () => {
     setDescription(e.description);
     setAmount(String(e.amount));
     setProjectIdForEntry(e.projectId || '');
+    setScheduleIdForEntry(e.scheduleId || '');
   };
 
   const cancelEdit = () => {
@@ -186,7 +220,9 @@ export const ActivityExpenses: React.FC = () => {
     setDescription('');
     setAmount('');
     setProjectIdForEntry('');
+    setScheduleIdForEntry('');
     setSpentAt(format(new Date(), 'yyyy-MM-dd'));
+    clearScheduleParams();
   };
 
   const filteredEntries = useMemo(() => {
@@ -446,6 +482,11 @@ export const ActivityExpenses: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {editingId ? '支出の修正' : '支出を追加'}
             </h2>
+            {scheduleIdForEntry && (
+              <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-200">
+                カレンダーの予定から経費登録中です。この支出は予定と紐づきます。備品購入など予定と関係しない経費は、この表示がない通常入力のままプロジェクトに紐づけて登録できます。
+              </div>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-medium mb-1">日付</label>
@@ -612,6 +653,11 @@ export const ActivityExpenses: React.FC = () => {
                           </td>
                           <td className="px-3 py-2 text-gray-800 dark:text-gray-100">
                             {row.description}
+                            {row.schedule && (
+                              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                                予定: {row.schedule.title || '予定'}{row.schedule.startDate ? `（${format(parseISO(row.schedule.startDate), 'M/d', { locale: ja })}）` : ''}
+                              </p>
+                            )}
                             {row.status === 'REJECTED' && row.rejectionReason && (
                               <p className="text-xs text-red-600 dark:text-red-400 mt-1">差し戻し理由: {row.rejectionReason}</p>
                             )}
@@ -683,6 +729,11 @@ export const ActivityExpenses: React.FC = () => {
                           <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
                             {row.project?.projectName || <span className="text-amber-600 dark:text-amber-400">プロジェクト未設定</span>}
                           </p>
+                          {row.schedule && (
+                            <p className="text-xs text-blue-600 dark:text-blue-300 truncate mt-0.5">
+                              予定: {row.schedule.title || '予定'}{row.schedule.startDate ? `（${format(parseISO(row.schedule.startDate), 'M/d', { locale: ja })}）` : ''}
+                            </p>
+                          )}
                           {row.status === 'REJECTED' && row.rejectionReason && (
                             <p className="text-xs text-red-600 dark:text-red-400 mt-1 line-clamp-2">差し戻し: {row.rejectionReason}</p>
                           )}

@@ -14,6 +14,7 @@ export async function getActivityExpenseSummary(userId: string, recentLimit = 10
     take: recentLimit,
     include: {
       project: { select: { id: true, projectName: true, missionId: true } },
+      schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true } },
       createdBy: { select: { id: true, name: true } },
       updatedBy: { select: { id: true, name: true } },
     },
@@ -39,6 +40,8 @@ export async function getActivityExpenseSummary(userId: string, recentLimit = 10
       userId: e.userId,
       projectId: e.projectId,
       project: e.project,
+      scheduleId: e.scheduleId,
+      schedule: e.schedule,
       spentAt: e.spentAt.toISOString(),
       description: e.description,
       amount: e.amount,
@@ -63,6 +66,7 @@ export async function getActivityExpenseSummaryLite(userId: string) {
     orderBy: [{ spentAt: 'desc' }, { createdAt: 'desc' }],
     include: {
       project: { select: { id: true, projectName: true, themeColor: true } },
+      schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true } },
     },
   });
 
@@ -86,6 +90,8 @@ export async function getActivityExpenseSummaryLite(userId: string) {
       description: e.description,
       amount: e.amount,
       project: e.project,
+      scheduleId: e.scheduleId,
+      schedule: e.schedule,
     })),
   };
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, FileDown, Edit2, History, Save, Trash2, Eye, Plus } from 'lucide-react';
+import { X, FileDown, Edit2, Save, Trash2, Eye, Plus } from 'lucide-react';
 import { api } from '../../utils/api';
 import { format } from 'date-fns';
 import { Button } from '../common/Button';
@@ -72,14 +72,13 @@ interface SupportRecord {
 export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> = ({
   reportId,
   onClose,
-  onEdit,
   onUpdated,
   viewMode: initialViewMode = 'edit',
 }) => {
   const { user } = useAuthStore();
   const isMobile = useIsMobileBreakpoint();
   const queryClient = useQueryClient();
-  const [showRevisions, setShowRevisions] = useState(false);
+  const [showRevisions] = useState(false);
   const [isEditing, setIsEditing] = useState(initialViewMode === 'edit');
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [pageTab, setPageTab] = useState<PageTab>('cover');
@@ -468,7 +467,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   const renderCoverPage = () => {
     if (viewMode === 'preview' && coverPreviewData) {
       return (
-        <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+        <div className="p-4 bg-gray-100 flex justify-center">
           <div className="shadow-lg">
             <MonthlyReportPreview report={coverPreviewData} />
           </div>
@@ -542,7 +541,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
       const memberPreview = getMemberPreviewData(index);
       if (!memberPreview) return null;
       return (
-        <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+        <div className="p-4 bg-gray-100 flex justify-center">
           <div className="shadow-lg">
             <MonthlyReportPreview report={memberPreview} />
           </div>
@@ -673,7 +672,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   const renderSupportRecords = () => {
     if (viewMode === 'preview' && supportPreviewData) {
       return (
-        <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+        <div className="p-4 bg-gray-100 flex justify-center">
           <div className="shadow-lg">
             <MonthlyReportPreview report={supportPreviewData} />
           </div>
@@ -817,7 +816,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
   const renderFullPreview = () => {
     if (!previewReport) return null;
     return (
-      <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+      <div className="p-4 bg-gray-100 flex justify-center">
         <div className="shadow-lg">
           <MonthlyReportPreview report={previewReport} />
         </div>

@@ -47,6 +47,7 @@ const budgetPutSchema = z.object({
 const entryCreateSchema = z.object({
   userId: z.string().uuid().optional(),
   projectId: z.string().uuid(),
+  scheduleId: z.string().uuid().optional().nullable(),
   spentAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   description: z.string().min(1).max(500),
   amount: z.number().int().min(1).max(50_000_000),
@@ -54,6 +55,7 @@ const entryCreateSchema = z.object({
 
 const entryUpdateSchema = z.object({
   projectId: z.string().uuid().optional().nullable(),
+  scheduleId: z.string().uuid().optional().nullable(),
   spentAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   description: z.string().min(1).max(500).optional(),
   amount: z.number().int().min(1).max(50_000_000).optional(),
@@ -171,12 +173,31 @@ router.post('/entries', async (req: AuthRequest, res) => {
         error: 'プロジェクトが見つからないか、この隊員の活動（ミッション配下のプロジェクト）に紐づいていません',
       });
     }
+    if (data.scheduleId) {
+      const schedule = await prisma.schedule.findFirst({
+        where: {
+          id: data.scheduleId,
+          OR: [
+            { userId: targetUserId },
+            { scheduleParticipants: { some: { userId: targetUserId, status: 'APPROVED' } } },
+          ],
+        },
+        select: { id: true, projectId: true },
+      });
+      if (!schedule) {
+        return res.status(400).json({ error: '紐づける予定が見つからないか、この隊員の予定ではありません' });
+      }
+      if (schedule.projectId && schedule.projectId !== data.projectId) {
+        return res.status(400).json({ error: '予定と経費のプロジェクトが一致していません' });
+      }
+    }
 
     const spentAt = new Date(`${data.spentAt}T12:00:00.000Z`);
     const row = await prisma.activityExpenseEntry.create({
       data: {
         userId: targetUserId,
         projectId: data.projectId,
+        scheduleId: data.scheduleId || null,
         spentAt,
         description: data.description.trim(),
         amount: data.amount,
@@ -203,7 +224,7 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
     const { id } = req.params;
     await loadEntryWithAccess(id, req);
     const data = entryUpdateSchema.parse(req.body);
-    if (!data.spentAt && !data.description && data.amount === undefined && data.projectId === undefined) {
+    if (!data.spentAt && !data.description && data.amount === undefined && data.projectId === undefined && data.scheduleId === undefined) {
       return res.status(400).json({ error: '更新内容がありません' });
     }
 
@@ -220,6 +241,7 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
       description?: string;
       amount?: number;
       projectId?: string | null;
+      scheduleId?: string | null;
       updatedById: string;
     } = { updatedById: req.user!.id };
     if (data.spentAt) update.spentAt = new Date(`${data.spentAt}T12:00:00.000Z`);
@@ -237,6 +259,30 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
         return res.status(400).json({ error: 'プロジェクトがこの隊員の活動に紐づいていません' });
       }
       update.projectId = data.projectId;
+    }
+    if (data.scheduleId !== undefined) {
+      if (data.scheduleId === null) {
+        update.scheduleId = null;
+      } else {
+        const schedule = await prisma.schedule.findFirst({
+          where: {
+            id: data.scheduleId,
+            OR: [
+              { userId: entryUser.userId },
+              { scheduleParticipants: { some: { userId: entryUser.userId, status: 'APPROVED' } } },
+            ],
+          },
+          select: { id: true, projectId: true },
+        });
+        if (!schedule) {
+          return res.status(400).json({ error: '紐づける予定がこの隊員の予定ではありません' });
+        }
+        const nextProjectId = update.projectId !== undefined ? update.projectId : (await prisma.activityExpenseEntry.findUnique({ where: { id }, select: { projectId: true } }))?.projectId;
+        if (schedule.projectId && nextProjectId && schedule.projectId !== nextProjectId) {
+          return res.status(400).json({ error: '予定と経費のプロジェクトが一致していません' });
+        }
+        update.scheduleId = data.scheduleId;
+      }
     }
 
     const row = await prisma.activityExpenseEntry.update({

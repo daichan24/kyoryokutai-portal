@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, ReceiptText, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
 import { Schedule, Location, User } from '../../types';
-import { formatDate } from '../../utils/date';
+import { formatDate, getWeekString } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { useAuthStore } from '../../stores/authStore';
@@ -25,7 +26,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   defaultDate,
   defaultStartTime,
   defaultEndTime,
-  defaultTaskId,
   defaultProjectId,
   defaultActivityDescription,
   readOnly = false,
@@ -52,6 +52,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [customColor, setCustomColor] = useState<string>(''); // カスタムカラー（空=プロジェクト色/ユーザー色）
 
   const { user: currentUser } = useAuthStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchLocations();
@@ -259,7 +260,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         await api.post('/api/schedules', data);
         // 複製モードをリセット
         setIsDuplicateMode(false);
-        setOriginalScheduleId(null);
       } else {
         await api.put(`/api/schedules/${schedule.id}`, data);
       }
@@ -312,7 +312,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false);
   const [isDuplicateMode, setIsDuplicateMode] = useState(false);
-  const [originalScheduleId, setOriginalScheduleId] = useState<string | null>(null);
 
   const handleDuplicate = () => {
     if (!schedule) return;
@@ -323,9 +322,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     if (!schedule) return;
     setShowDuplicateConfirm(false);
     
-    // 複製モードを有効にして、元のスケジュールIDを保存
+    // 複製モードを有効にする
     setIsDuplicateMode(true);
-    setOriginalScheduleId(schedule.id);
     
     // スケジュール情報をコピーして、新しいスケジュールとして編集可能にする
     // 日付は今日の日付に変更
@@ -345,6 +343,43 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const handleDuplicateCancel = () => {
     setShowDuplicateConfirm(false);
+  };
+
+  const scheduleDateForLink = schedule
+    ? formatDate((schedule as any).startDate || schedule.date)
+    : date;
+  const scheduleTitleForLink = schedule?.title || title || schedule?.activityDescription || '';
+  const goToWeeklyReport = () => {
+    const baseDate = scheduleDateForLink ? new Date(`${scheduleDateForLink}T00:00:00`) : new Date();
+    const params = new URLSearchParams({ week: getWeekString(baseDate) });
+    if (schedule?.userId) params.set('userId', schedule.userId);
+    navigate(`/reports/weekly?${params.toString()}`);
+    onClose();
+  };
+  const goToInspection = () => {
+    if (!schedule) return;
+    const params = new URLSearchParams({
+      scheduleId: schedule.id,
+      userId: schedule.userId,
+      date: scheduleDateForLink,
+      destination: schedule.locationText || scheduleTitleForLink,
+      purpose: scheduleTitleForLink,
+    });
+    if (schedule.projectId) params.set('projectId', schedule.projectId);
+    navigate(`/inspections?${params.toString()}`);
+    onClose();
+  };
+  const goToExpense = () => {
+    if (!schedule) return;
+    const params = new URLSearchParams({
+      scheduleId: schedule.id,
+      date: scheduleDateForLink,
+      description: scheduleTitleForLink,
+    });
+    if (schedule.projectId) params.set('projectId', schedule.projectId);
+    if (schedule.userId) params.set('userId', schedule.userId);
+    navigate(`/activity-expenses?${params.toString()}`);
+    onClose();
   };
 
   return (
@@ -390,6 +425,47 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4">
+          {schedule && (
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">この予定から作成・確認</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                    週次報告、復命書、活動経費に予定の日付・プロジェクトを引き継げます。
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={goToWeeklyReport}>
+                    <FileText className="h-4 w-4 mr-1" />
+                    週次
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={goToInspection}>
+                    <FileText className="h-4 w-4 mr-1" />
+                    復命書
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={goToExpense}>
+                    <ReceiptText className="h-4 w-4 mr-1" />
+                    経費
+                  </Button>
+                </div>
+              </div>
+              {((schedule.inspections?.length || 0) > 0 || (schedule.activityExpenseEntries?.length || 0) > 0) && (
+                <div className="mt-3 grid gap-2 text-xs text-gray-700 dark:text-gray-200 sm:grid-cols-2">
+                  {(schedule.inspections?.length || 0) > 0 && (
+                    <div>
+                      <span className="font-medium">関連復命書:</span> {schedule.inspections!.map((i) => i.destination).join('、')}
+                    </div>
+                  )}
+                  {(schedule.activityExpenseEntries?.length || 0) > 0 && (
+                    <div>
+                      <span className="font-medium">関連経費:</span>{' '}
+                      {schedule.activityExpenseEntries!.reduce((sum, e) => sum + e.amount, 0).toLocaleString()}円
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="開始日"

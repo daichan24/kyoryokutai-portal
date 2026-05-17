@@ -10,6 +10,7 @@ router.use(authenticate);
 
 // バリデーションスキーマ
 const createInspectionSchema = z.object({
+  userId: z.string().uuid().optional(),
   date: z.string(),
   destination: z.string().min(1),
   purpose: z.string().min(1),
@@ -19,6 +20,7 @@ const createInspectionSchema = z.object({
   reflection: z.string().default(''),
   futureAction: z.string().default(''),
   projectId: z.string().optional(),
+  scheduleId: z.string().uuid().optional().nullable(),
 });
 
 const approvalSchema = z.object({
@@ -63,12 +65,8 @@ router.get('/', async (req: AuthRequest, res) => {
             projectName: true,
           },
         },
-        approver: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
+        approver: { select: { id: true, name: true } },
       },
       orderBy: { date: 'desc' },
     });
@@ -97,6 +95,7 @@ router.get('/:id', async (req, res) => {
           },
         },
         project: true,
+        schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
         approver: { select: { id: true, name: true } },
       },
     });
@@ -116,10 +115,31 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req: AuthRequest, res) => {
   try {
     const data = createInspectionSchema.parse(req.body);
+    const canCreateForOthers = req.user!.role === 'MASTER' || req.user!.role === 'SUPPORT' || req.user!.role === 'GOVERNMENT';
+    const targetUserId = canCreateForOthers && data.userId ? data.userId : req.user!.id;
+
+    if (data.scheduleId) {
+      const schedule = await prisma.schedule.findFirst({
+        where: {
+          id: data.scheduleId,
+          OR: [
+            { userId: targetUserId },
+            { scheduleParticipants: { some: { userId: targetUserId, status: 'APPROVED' } } },
+          ],
+        },
+        select: { id: true, projectId: true },
+      });
+      if (!schedule) {
+        return res.status(400).json({ error: '紐づける予定が見つからないか、対象隊員の予定ではありません' });
+      }
+      if (data.projectId && schedule.projectId && data.projectId !== schedule.projectId) {
+        return res.status(400).json({ error: '予定と復命書のプロジェクトが一致していません' });
+      }
+    }
 
     const inspection = await prisma.inspection.create({
       data: {
-        userId: req.user!.id,
+        userId: targetUserId,
         date: new Date(data.date),
         destination: data.destination,
         purpose: data.purpose,
@@ -129,10 +149,12 @@ router.post('/', async (req: AuthRequest, res) => {
         reflection: data.reflection,
         futureAction: data.futureAction,
         projectId: data.projectId,
+        scheduleId: data.scheduleId || null,
       },
       include: {
         user: true,
         project: true,
+        schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
       },
     });
 
@@ -177,6 +199,30 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.reflection !== undefined) updateData.reflection = data.reflection;
     if (data.futureAction !== undefined) updateData.futureAction = data.futureAction;
     if (data.projectId !== undefined) updateData.projectId = data.projectId;
+    if (data.scheduleId !== undefined) {
+      if (data.scheduleId === null) {
+        updateData.scheduleId = null;
+      } else {
+        const schedule = await prisma.schedule.findFirst({
+          where: {
+            id: data.scheduleId,
+            OR: [
+              { userId: existingInspection.userId },
+              { scheduleParticipants: { some: { userId: existingInspection.userId, status: 'APPROVED' } } },
+            ],
+          },
+          select: { id: true, projectId: true },
+        });
+        if (!schedule) {
+          return res.status(400).json({ error: '紐づける予定が見つからないか、この復命書の作成者の予定ではありません' });
+        }
+        const nextProjectId = data.projectId !== undefined ? data.projectId : existingInspection.projectId;
+        if (nextProjectId && schedule.projectId && nextProjectId !== schedule.projectId) {
+          return res.status(400).json({ error: '予定と復命書のプロジェクトが一致していません' });
+        }
+        updateData.scheduleId = data.scheduleId;
+      }
+    }
     if (existingInspection.userId === req.user!.id) {
       updateData.approvalStatus = 'PENDING';
       updateData.approvalComment = null;
@@ -190,6 +236,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       include: {
         user: true,
         project: true,
+        schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
       },
     });
 
@@ -231,6 +278,7 @@ router.post('/:id/approve', async (req: AuthRequest, res) => {
       include: {
         user: { select: { id: true, name: true, avatarColor: true } },
         project: { select: { id: true, projectName: true } },
+        schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
         approver: { select: { id: true, name: true } },
       },
     });

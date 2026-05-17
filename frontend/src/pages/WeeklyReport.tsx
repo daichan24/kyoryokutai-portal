@@ -1,17 +1,19 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Plus, Trash2, Calendar, Eye } from 'lucide-react';
+import { Plus, Trash2, Eye } from 'lucide-react';
 import { api } from '../utils/api';
 import { WeeklyReport as WeeklyReportType } from '../types';
-import { formatDate, parseWeekString, getWeekString } from '../utils/date';
+import { formatDate, parseWeekString } from '../utils/date';
 import { format, startOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { WeeklyReportModal } from '../components/report/WeeklyReportModal';
 import { useAuthStore } from '../stores/authStore';
+import { useSearchParams } from 'react-router-dom';
 
 export const WeeklyReport: React.FC = () => {
   const { user } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState<WeeklyReportType[]>([]);
   const [allWeekReports, setAllWeekReports] = useState<WeeklyReportType[]>([]); // 選択した週の全員分の報告
   const [loading, setLoading] = useState(true);
@@ -24,6 +26,9 @@ export const WeeklyReport: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 月のフィルタ
   const [selectedWeek, setSelectedWeek] = useState<string>(''); // 週の選択（全員分表示用）
   const [viewMode, setViewMode] = useState<'individual' | 'weekly'>('individual'); // 表示モード
+  const weekFromQuery = searchParams.get('week') || '';
+  const userIdFromQuery = searchParams.get('userId') || '';
+  const openedWeekFromQueryRef = React.useRef<string | null>(null);
 
   // ユーザー一覧の取得（メンバー以外のみ）
   useEffect(() => {
@@ -60,6 +65,13 @@ export const WeeklyReport: React.FC = () => {
       setSelectedUserId(users[0].id);
     }
   }, [users, selectedUserId, user?.role]);
+
+  useEffect(() => {
+    if (user?.role !== 'MEMBER' && userIdFromQuery && selectedUserId !== userIdFromQuery) {
+      setSelectedUserId(userIdFromQuery);
+      setViewMode('individual');
+    }
+  }, [selectedUserId, user?.role, userIdFromQuery]);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -125,6 +137,12 @@ export const WeeklyReport: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedReport(null);
+    if (weekFromQuery) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('week');
+      next.delete('userId');
+      setSearchParams(next, { replace: true });
+    }
   };
 
   const handleSaved = () => {
@@ -138,6 +156,16 @@ export const WeeklyReport: React.FC = () => {
   // MEMBERのみ新規作成ボタンを表示（自分の報告のみ作成可能）
   const canCreate = user?.role === 'MEMBER';
   const canView = user?.role !== 'MEMBER'; // メンバー以外は閲覧のみ
+
+  useEffect(() => {
+    if (!weekFromQuery || loading || openedWeekFromQueryRef.current === weekFromQuery) return;
+    openedWeekFromQueryRef.current = weekFromQuery;
+    const existing = reports.find((report) => report.week === weekFromQuery) || null;
+    if (!existing && !canCreate) return;
+    setSelectedReport(existing);
+    setModalViewMode(existing && canView ? 'preview' : 'edit');
+    setIsModalOpen(true);
+  }, [canCreate, canView, loading, reports, weekFromQuery]);
 
   const approvalBadge = (report: WeeklyReportType) => {
     if (report.approvalStatus === 'APPROVED') {
@@ -650,6 +678,7 @@ export const WeeklyReport: React.FC = () => {
       {isModalOpen && (
         <WeeklyReportModal
           report={selectedReport}
+          initialWeek={weekFromQuery || undefined}
           onClose={handleCloseModal}
           onSaved={handleSaved}
           viewMode={modalViewMode}

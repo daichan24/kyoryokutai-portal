@@ -2,11 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* FullCalendar のスタイル */
-@import '@fullcalendar/core/main.css';
-@import '@fullcalendar/daygrid/main.css';
-@import '@fullcalendar/timegrid/main.css';
-
 @layer base {
   * {
     @apply border-border dark:border-gray-700;

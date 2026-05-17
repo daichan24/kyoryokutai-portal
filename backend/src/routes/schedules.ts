@@ -453,6 +453,23 @@ router.get('/', async (req: AuthRequest, res) => {
             linkKind: true,
           },
         },
+        inspections: {
+          select: {
+            id: true,
+            destination: true,
+            approvalStatus: true,
+            approvedAt: true,
+          },
+        },
+        activityExpenseEntries: {
+          select: {
+            id: true,
+            description: true,
+            amount: true,
+            status: true,
+            spentAt: true,
+          },
+        },
       },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });

@@ -11,23 +11,34 @@ interface Project {
 }
 
 interface InspectionModalProps {
+  initialData?: {
+    date?: string;
+    destination?: string;
+    purpose?: string;
+    inspectionPurpose?: string;
+    inspectionContent?: string;
+    projectId?: string;
+    scheduleId?: string;
+    userId?: string;
+  };
   onClose: () => void;
   onSaved: () => void;
 }
 
 export const InspectionModal: React.FC<InspectionModalProps> = ({
+  initialData,
   onClose,
   onSaved,
 }) => {
-  const [date, setDate] = useState(formatDate(new Date()));
-  const [destination, setDestination] = useState('');
-  const [purpose, setPurpose] = useState('');
+  const [date, setDate] = useState(initialData?.date || formatDate(new Date()));
+  const [destination, setDestination] = useState(initialData?.destination || '');
+  const [purpose, setPurpose] = useState(initialData?.purpose || '');
   const [participants, setParticipants] = useState('');
-  const [inspectionPurpose, setInspectionPurpose] = useState('');
-  const [inspectionContent, setInspectionContent] = useState('');
+  const [inspectionPurpose, setInspectionPurpose] = useState(initialData?.inspectionPurpose || '');
+  const [inspectionContent, setInspectionContent] = useState(initialData?.inspectionContent || '');
   const [reflection, setReflection] = useState('');
   const [futureAction, setFutureAction] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(initialData?.projectId || '');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +48,9 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get<Project[]>('/api/projects');
+      const response = await api.get<Project[]>('/api/projects', {
+        params: initialData?.userId ? { userId: initialData.userId } : undefined,
+      });
       setProjects(response.data || []);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
@@ -60,6 +73,8 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
         reflection,
         futureAction,
         projectId: projectId || undefined,
+        scheduleId: initialData?.scheduleId || undefined,
+        userId: initialData?.userId || undefined,
       };
 
       await api.post('/api/inspections', data);
@@ -89,6 +104,11 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {initialData?.scheduleId && (
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-200">
+              カレンダーの予定から作成中です。日付・視察先・目的・プロジェクトを引き継いでいます。
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="視察日"
@@ -211,4 +231,3 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
     </div>
   );
 };
-

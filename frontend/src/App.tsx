@@ -1,11 +1,11 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
-import { Layout } from './components/layout/Layout';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 
 /** 初回バンドル縮小のためページを遅延読み込み（ログイン後の各画面で分割チャンクを取得） */
+const Layout = lazy(() => import('./components/layout/Layout').then((m) => ({ default: m.Layout })));
 const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Schedule = lazy(() => import('./pages/Schedule').then((m) => ({ default: m.Schedule })));
@@ -34,11 +34,9 @@ const SupportRecords = lazy(() => import('./pages/SupportRecords').then((m) => (
 const InterviewMonthlySchedules = lazy(() =>
   import('./pages/InterviewMonthlySchedules').then((m) => ({ default: m.InterviewMonthlySchedules })),
 );
-const Consultations = lazy(() => import('./pages/Consultations').then((m) => ({ default: m.Consultations })));
 const ActivityExpenses = lazy(() => import('./pages/ActivityExpenses').then((m) => ({ default: m.ActivityExpenses })));
 const Announcements = lazy(() => import('./pages/Announcements').then((m) => ({ default: m.Announcements })));
 const Wishes = lazy(() => import('./pages/Wishes').then((m) => ({ default: m.Wishes })));
-const ReceptionBox = lazy(() => import('./pages/ReceptionBox').then((m) => ({ default: m.ReceptionBox })));
 const InboxPage = lazy(() => import('./pages/InboxPage').then((m) => ({ default: m.InboxPage })));
 const NotepadPage = lazy(() => import('./pages/NotepadPage').then((m) => ({ default: m.NotepadPage })));
 const LeaveManagement = lazy(() => import('./pages/LeaveManagement').then((m) => ({ default: m.LeaveManagement })));

@@ -44,7 +44,6 @@ interface TemplateSettings {
 
 export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ report }) => {
   const [templateSettings, setTemplateSettings] = useState<TemplateSettings | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
   const monthStr = report.month ? format(new Date(`${report.month}-01`), 'yyyy年M月', { locale: ja }) : '';
   const reportDate = report.submittedAt 
@@ -53,12 +52,6 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
   useEffect(() => {
     fetchTemplateSettings();
-    // ダークモードの検出
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDarkMode(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
   const fetchTemplateSettings = async () => {
@@ -109,7 +102,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
   return (
     <div className="space-y-4">
       {/* 表紙（1ページ目） */}
-      <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
+      <div className="bg-white text-gray-900" style={{
         width: '210mm', 
         minHeight: '297mm',
         padding: '20mm',
@@ -144,12 +137,12 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         </div>
 
         {/* タイトル */}
-        <h1 style={{ 
+        <h1 style={{
           textAlign: 'center', 
           fontSize: '18pt', 
           fontWeight: 'bold',
           marginBottom: '40px',
-          color: isDarkMode ? '#1f2937' : '#1F2937'
+          color: '#1F2937'
         }}>
           {title}
         </h1>
@@ -160,7 +153,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         </div>
 
         {/* 記 */}
-        <div style={{ 
+        <div style={{
           textAlign: 'center', 
           marginTop: '30px', 
           marginBottom: '30px',
@@ -171,7 +164,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         </div>
 
         {/* テキスト2 */}
-        <div style={{ 
+        <div style={{
           marginBottom: '30px',
           whiteSpace: 'pre-wrap',
           lineHeight: '1.8'
@@ -180,7 +173,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         </div>
 
         {/* 以上（右寄せ） */}
-        <div style={{ 
+        <div style={{
           textAlign: 'right',
           marginTop: '40px',
           marginBottom: '40px',
@@ -191,7 +184,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         </div>
 
         {/* 担当者情報 */}
-        <div style={{ 
+        <div style={{
           marginTop: '60px',
           textAlign: 'left',
           lineHeight: '1.8'
@@ -211,7 +204,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
           const dayNum = currentDate.getDate();
           
           return (
-            <div key={index} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
+            <div key={index} className="bg-white text-gray-900" style={{
               width: '210mm', 
               minHeight: '297mm',
               padding: '20mm',
@@ -234,19 +227,19 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
               {/* 氏名と月 */}
               <div style={{ marginBottom: '30px' }}>
                 <div style={{ fontSize: '14pt', fontWeight: 'bold', marginBottom: '10px' }}>
-                  氏名{sheet.userName || `隊員${index + 1}`}　{sheetDate}分
+                  氏名{sheet.userName || `隊員${index + 1}`}{'\u3000'}{sheetDate}分
                 </div>
                 <div>
-                  令和{reiwaYear}年　{monthNum}月　{dayNum}日
+                  令和{reiwaYear}年{'\u3000'}{monthNum}月{'\u3000'}{dayNum}日
                 </div>
               </div>
 
               {/* 今月の主な活動内容 */}
               <div style={{ marginBottom: '30px' }}>
-                <div style={{ 
+                <div style={{
                   fontWeight: 'bold', 
-                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-                  color: isDarkMode ? '#F9FAFB' : '#1F2937',
+                  backgroundColor: '#f0f0f0',
+                  color: '#1F2937',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -267,10 +260,10 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
               {/* 翌月以降の活動予定 */}
               <div style={{ marginBottom: '30px' }}>
-                <div style={{ 
+                <div style={{
                   fontWeight: 'bold', 
-                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-                  color: isDarkMode ? '#F9FAFB' : '#1F2937',
+                  backgroundColor: '#f0f0f0',
+                  color: '#1F2937',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -283,10 +276,10 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
               {/* 勤務に関する質問など */}
               <div style={{ marginBottom: '30px' }}>
-                <div style={{ 
+                <div style={{
                   fontWeight: 'bold', 
-                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-                  color: isDarkMode ? '#F9FAFB' : '#1F2937',
+                  backgroundColor: '#f0f0f0',
+                  color: '#1F2937',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -299,10 +292,10 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
 
               {/* 生活面の留意事項その他 */}
               <div style={{ marginBottom: '30px' }}>
-                <div style={{ 
+                <div style={{
                   fontWeight: 'bold', 
-                  backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-                  color: isDarkMode ? '#F9FAFB' : '#1F2937',
+                  backgroundColor: '#f0f0f0',
+                  color: '#1F2937',
                   padding: '8px',
                   marginBottom: '15px'
                 }}>
@@ -318,7 +311,7 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
       )}
 
       {/* 支援内容（最終ページ） */}
-      <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
+      <div className="bg-white text-gray-900" style={{
         width: '210mm', 
         minHeight: '297mm',
         padding: '20mm',
@@ -336,19 +329,19 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
           {currentDate}
         </div>
 
-        <h2 style={{ 
+        <h2 style={{
           textAlign: 'center', 
           fontSize: '16pt', 
           fontWeight: 'bold',
           marginBottom: '40px',
-          color: isDarkMode ? '#1f2937' : '#1F2937'
+          color: '#1F2937'
         }}>
           一般社団法人まおいのはこの支援内容（{monthStr}）
         </h2>
 
         <div style={{ marginLeft: '15px' }}>
           {report.supportRecords && report.supportRecords.length > 0 ? (
-            report.supportRecords.map((record, index) => (
+            report.supportRecords.map((record) => (
               <div key={record.id} style={{ marginBottom: '20px' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '13pt' }}>
                   【{record.user.name}】

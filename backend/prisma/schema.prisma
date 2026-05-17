@@ -192,6 +192,8 @@ model Schedule {
   scheduleProgress     ScheduleProgress[]
   suggestions          ScheduleSuggestion[]
   scheduleParticipants ScheduleParticipant[]
+  inspections          Inspection[]            @relation("InspectionSchedule")
+  activityExpenseEntries ActivityExpenseEntry[] @relation("ActivityExpenseEntrySchedule")
   compensatoryLeaves   CompensatoryLeave[]   @relation("CompensatoryLeaveSchedule")
   timeAdjustmentsAsSource TimeAdjustment[]   @relation("TimeAdjustmentSourceSchedule")
   paidLeaveEntries     PaidLeaveEntry[]      @relation("PaidLeaveEntrySchedule")
@@ -638,6 +640,8 @@ model ActivityExpenseEntry {
   user            User          @relation("ActivityExpenseEntryMember", fields: [userId], references: [id], onDelete: Cascade)
   projectId       String?
   project         Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  scheduleId      String?
+  schedule        Schedule?     @relation("ActivityExpenseEntrySchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
   spentAt         DateTime      @db.Date
   description     String        @db.VarChar(500)
   amount          Int // 円（支出）
@@ -652,6 +656,7 @@ model ActivityExpenseEntry {
 
   @@index([userId, spentAt])
   @@index([projectId])
+  @@index([scheduleId])
   @@index([status])
 }
 
@@ -1215,12 +1220,15 @@ model Inspection {
 
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  scheduleId String?
+  schedule   Schedule? @relation("InspectionSchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([date])
+  @@index([scheduleId])
   @@index([approvalStatus])
 }
 

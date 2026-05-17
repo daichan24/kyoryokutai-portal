@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Megaphone, Clock, Inbox, Check, X, Settings } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -9,19 +9,26 @@ import { formatDate, getWeekRange } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { DashboardCustomizeModal } from '../components/dashboard/DashboardCustomizeModal';
 import { SNSHistoryWidget } from '../components/dashboard/SNSHistoryWidget';
 import { ProjectsWidget } from '../components/dashboard/ProjectsWidget';
 import { GoalsWidget } from '../components/dashboard/GoalsWidget';
 import { TasksWidget } from '../components/dashboard/TasksWidget';
 import { EventsWidget } from '../components/dashboard/EventsWidget';
 import { SNSLinksWidget } from '../components/dashboard/SNSLinksWidget';
-import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
 import { ContactsWidget } from '../components/dashboard/ContactsWidget';
 import { EventParticipationWidget } from '../components/dashboard/EventParticipationWidget';
 import { NextWishWidget } from '../components/dashboard/NextWishWidget';
 import { WeeklyScheduleWidget } from '../components/dashboard/WeeklyScheduleWidget';
-import { ContactModal } from '../components/contact/ContactModal';
+
+const DashboardCustomizeModal = lazy(() =>
+  import('../components/dashboard/DashboardCustomizeModal').then((m) => ({ default: m.DashboardCustomizeModal })),
+);
+const SNSPostDetailModal = lazy(() =>
+  import('../components/sns/SNSPostDetailModal').then((m) => ({ default: m.SNSPostDetailModal })),
+);
+const ContactModal = lazy(() =>
+  import('../components/contact/ContactModal').then((m) => ({ default: m.ContactModal })),
+);
 
 interface InboxData {
   scheduleInvites: Array<{
@@ -546,34 +553,42 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* カスタマイズモーダル */}
-      <DashboardCustomizeModal
-        isOpen={isCustomizeModalOpen}
-        onClose={() => setIsCustomizeModalOpen(false)}
-      />
+      {isCustomizeModalOpen && (
+        <Suspense fallback={null}>
+          <DashboardCustomizeModal
+            isOpen={isCustomizeModalOpen}
+            onClose={() => setIsCustomizeModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* SNS投稿追加モーダル */}
       {isSNSPostModalOpen && (
-        <SNSPostDetailModal
-          isOpen={isSNSPostModalOpen}
-          onClose={() => setIsSNSPostModalOpen(false)}
-          onSaved={() => {
-            setIsSNSPostModalOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['sns-posts'] });
-            queryClient.invalidateQueries({ queryKey: ['sns-weekly-status'] });
-          }}
-        />
+        <Suspense fallback={null}>
+          <SNSPostDetailModal
+            isOpen={isSNSPostModalOpen}
+            onClose={() => setIsSNSPostModalOpen(false)}
+            onSaved={() => {
+              setIsSNSPostModalOpen(false);
+              queryClient.invalidateQueries({ queryKey: ['sns-posts'] });
+              queryClient.invalidateQueries({ queryKey: ['sns-weekly-status'] });
+            }}
+          />
+        </Suspense>
       )}
 
       {/* 町民データベース追加モーダル */}
       {isContactModalOpen && (
-        <ContactModal
-          contact={null}
-          onClose={() => setIsContactModalOpen(false)}
-          onSaved={() => {
-            setIsContactModalOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['contacts'] });
-          }}
-        />
+        <Suspense fallback={null}>
+          <ContactModal
+            contact={null}
+            onClose={() => setIsContactModalOpen(false)}
+            onSaved={() => {
+              setIsContactModalOpen(false);
+              queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

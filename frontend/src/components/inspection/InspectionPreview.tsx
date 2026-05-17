@@ -40,19 +40,12 @@ interface TemplateSettings {
 
 export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection }) => {
   const [templateSettings, setTemplateSettings] = useState<TemplateSettings | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
   const inspectionDate = format(new Date(inspection.date), 'yyyy年M月d日', { locale: ja });
   const inspectionTime = ''; // 時間情報があれば使用
 
   useEffect(() => {
     fetchTemplateSettings();
-    // ダークモードの検出
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setIsDarkMode(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
   const fetchTemplateSettings = async () => {
@@ -89,17 +82,17 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
   };
 
   // テンプレート設定から値を取得
-  const recipient = templateSettings?.inspection.recipient || '長沼町長　齋　藤　良　彦　様';
+  const recipient = templateSettings?.inspection.recipient || '長沼町長\u3000齋\u3000藤\u3000良\u3000彦\u3000様';
   const title = templateSettings?.inspection.title || '復命書';
   // ユーザーのdepartmentを使用、なければテンプレート設定のnamePrefixを使用
   const department = inspection.user.department || '';
   const namePrefixTemplate = templateSettings?.inspection.namePrefix || '〇〇課　地域おこし協力隊';
-  const namePrefix = department ? `${department}　地域おこし協力隊` : namePrefixTemplate;
-  const userName = `${namePrefix}　${inspection.user.name}`;
+  const namePrefix = department ? `${department}\u3000地域おこし協力隊` : namePrefixTemplate;
+  const userName = `${namePrefix}\u3000${inspection.user.name}`;
   const text1 = templateSettings?.inspection.text1 || '次の通り復命します。';
 
   return (
-    <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" style={{ 
+    <div className="bg-white text-gray-900" style={{
       width: '210mm', 
       minHeight: '297mm',
       padding: '20mm',
@@ -115,12 +108,12 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       </div>
 
       {/* タイトル */}
-      <h1 style={{ 
+      <h1 style={{
         textAlign: 'center', 
         fontSize: '18pt', 
         fontWeight: 'bold',
         marginBottom: '40px',
-        color: isDarkMode ? '#1f2937' : '#1F2937'
+        color: '#1F2937'
       }}>
         {title}
       </h1>
@@ -131,7 +124,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
           {recipient}
         </div>
         <div>
-          氏名　{userName}
+          氏名{'\u3000'}{userName}
         </div>
       </div>
 
@@ -141,7 +134,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       </div>
 
       {/* 記（中央揃え、前後に改行） */}
-      <div style={{ 
+      <div style={{
         textAlign: 'center', 
         marginTop: '30px', 
         marginBottom: '30px',
@@ -153,10 +146,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 1. 日時 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ 
+        <div style={{
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-          color: isDarkMode ? '#F9FAFB' : '#1F2937',
+          backgroundColor: '#f0f0f0',
+          color: '#1F2937',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -170,10 +163,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 2. 場所 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ 
+        <div style={{
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-          color: isDarkMode ? '#F9FAFB' : '#1F2937',
+          backgroundColor: '#f0f0f0',
+          color: '#1F2937',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -186,10 +179,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 3. 用務 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ 
+        <div style={{
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-          color: isDarkMode ? '#F9FAFB' : '#1F2937',
+          backgroundColor: '#f0f0f0',
+          color: '#1F2937',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -202,10 +195,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 4. 目的 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ 
+        <div style={{
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-          color: isDarkMode ? '#F9FAFB' : '#1F2937',
+          backgroundColor: '#f0f0f0',
+          color: '#1F2937',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -218,10 +211,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 5. 内容 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ 
+        <div style={{
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-          color: isDarkMode ? '#F9FAFB' : '#1F2937',
+          backgroundColor: '#f0f0f0',
+          color: '#1F2937',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -234,10 +227,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 6. 処理てん末 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ 
+        <div style={{
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-          color: isDarkMode ? '#F9FAFB' : '#1F2937',
+          backgroundColor: '#f0f0f0',
+          color: '#1F2937',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -250,10 +243,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 7. 所感・今後 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ 
+        <div style={{
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-          color: isDarkMode ? '#F9FAFB' : '#1F2937',
+          backgroundColor: '#f0f0f0',
+          color: '#1F2937',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -266,10 +259,10 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
 
       {/* 8. その他報告 */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ 
+        <div style={{
           fontWeight: 'bold', 
-          backgroundColor: isDarkMode ? '#374151' : '#f0f0f0',
-          color: isDarkMode ? '#F9FAFB' : '#1F2937',
+          backgroundColor: '#f0f0f0',
+          color: '#1F2937',
           padding: '8px',
           marginBottom: '10px'
         }}>
@@ -283,7 +276,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
       </div>
 
       {/* フッター */}
-      <div style={{ 
+      <div style={{
         marginTop: '60px',
         textAlign: 'right'
       }}>
@@ -297,5 +290,3 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
     </div>
   );
 };
-
-

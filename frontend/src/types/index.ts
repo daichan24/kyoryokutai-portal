@@ -55,6 +55,19 @@ export interface Schedule {
   isPending: boolean;
   projectId?: string;
   project?: Project;
+  inspections?: Array<{
+    id: string;
+    destination: string;
+    approvalStatus?: ApprovalStatus;
+    approvedAt?: string | null;
+  }>;
+  activityExpenseEntries?: Array<{
+    id: string;
+    description: string;
+    amount: number;
+    status?: string;
+    spentAt: string;
+  }>;
   taskId?: string;
   task?: Task;
   supportEventId?: string | null;
@@ -316,6 +329,8 @@ export interface Inspection {
   futureAction: string;
   projectId?: string;
   project?: Project;
+  scheduleId?: string | null;
+  schedule?: Pick<Schedule, 'id' | 'title' | 'startDate' | 'endDate' | 'startTime' | 'endTime' | 'locationText'> | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileDown, Edit2, Eye } from 'lucide-react';
+import { X, FileDown, Edit2 } from 'lucide-react';
 import { api } from '../../utils/api';
 import { fileNameFromContentDisposition } from '../../utils/contentDispositionFilename';
 import { format } from 'date-fns';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { Button } from '../common/Button';
-import { Input } from '../common/Input';
 import { useAuthStore } from '../../stores/authStore';
 import { InspectionPreview } from './InspectionPreview';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
@@ -22,6 +21,7 @@ interface Inspection {
   participants: string[];
   user: { id: string; name: string; department?: string | null; missionType?: 'FREE' | 'MISSION' | null };
   project?: { id: string; projectName: string };
+  schedule?: { id: string; title?: string | null; startDate?: string | null; locationText?: string | null } | null;
   approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   approvalComment?: string | null;
   approvedAt?: string | null;
@@ -48,7 +48,6 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showPDFConfirm, setShowPDFConfirm] = useState(false);
 
   // 編集用の状態
   const [inspectionPurpose, setInspectionPurpose] = useState('');
@@ -128,17 +127,15 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       link.click();
       window.URL.revokeObjectURL(url);
       link.remove();
-      setShowPDFConfirm(false);
     } catch (error: any) {
       console.error('PDF download failed:', error);
       const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
       alert(errorMessage);
-      setShowPDFConfirm(false);
     }
   };
 
   const handlePDFButtonClick = () => {
-    setShowPDFConfirm(true);
+    handleDownloadPDF();
   };
 
   if (loading) {
@@ -254,7 +251,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
 
         <div className="flex-1 overflow-y-auto">
           {viewMode === 'preview' && previewInspection ? (
-            <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
+            <div className="p-4 bg-gray-100 flex justify-center">
               <div className="shadow-lg">
                 <InspectionPreview inspection={previewInspection} />
               </div>
@@ -274,6 +271,15 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">関連プロジェクト</label>
                 <div className="text-gray-900 dark:text-gray-100">{inspection.project.projectName}</div>
+              </div>
+            )}
+            {inspection.schedule && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">関連予定</label>
+                <div className="text-blue-600 dark:text-blue-300">
+                  {inspection.schedule.title || inspection.schedule.locationText || '予定'}
+                  {inspection.schedule.startDate ? `（${format(new Date(inspection.schedule.startDate), 'M月d日')}）` : ''}
+                </div>
               </div>
             )}
             <div>
