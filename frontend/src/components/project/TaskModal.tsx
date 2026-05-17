@@ -6,6 +6,7 @@ import { Task, Project, Location, User, Schedule } from '../../types';
 import { api } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { formatDate } from '../../utils/date';
+import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface TaskModalProps {
   missionId?: string;
@@ -96,6 +97,14 @@ const DateInput: React.FC<{ label: string; value: string; onChange: (v: string) 
 };
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+const QUICK_TITLE_OPTIONS = ['打合せ', '作業', '移動', '資料作成', 'イベント'];
+const QUICK_DURATION_OPTIONS = [
+  { label: '30分', minutes: 30 },
+  { label: '1時間', minutes: 60 },
+  { label: '1.5時間', minutes: 90 },
+  { label: '2時間', minutes: 120 },
+  { label: '半日', minutes: 240 },
+];
 
 const RecurringScheduleModal: React.FC<{
   onClose: () => void; onSaved: () => void;
@@ -226,7 +235,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onClose, onSaved, onDuplicate, readOnly = false, suspendOutsidePointerClose = false,
 }) => {
   const { user: currentUser } = useAuthStore();
+  const isMobile = useIsMobileBreakpoint();
   const isScheduleMode = !!schedule && !task;
+  const isCalendarCreate = !task && !schedule && Boolean(defaultDate || defaultStartTime || defaultEndTime);
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -259,6 +270,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [isDuplicateMode, setIsDuplicateMode] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [hasEditedTime, setHasEditedTime] = useState(false);
+  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
 
   const toDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const effectiveLoc = locationText === '__OTHER__' ? locationOther : locationText;
@@ -314,7 +326,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setIsDayOff((schedule as any).isDayOff ?? false);
       setDayOffType((schedule as any).dayOffType ?? 'PAID');
     } else if (task) {
-    } else if (task) {
       setTitle(task.title);
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       setEndDate((task as any).endDate ? (task as any).endDate.split('T')[0] : (task.dueDate ? task.dueDate.split('T')[0] : ''));
@@ -338,6 +349,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setIsHolidayWork(false); setCompensatoryLeaveRequired(false); setCompensatoryLeaveType('FULL_DAY');
       setIsDayOff(false); setDayOffType('PAID');
       setHasEditedTime(false);
+      setShowAdvancedFields(false);
     }
   }, [task, schedule, missionId, defaultDate, defaultStartTime, defaultEndTime, defaultProjectId]);
 
@@ -453,6 +465,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
   };
 
+  const applyDuration = (minutes: number) => {
+    setEndTime(addHour(startTime, minutes));
+    setHasEditedTime(true);
+  };
+
+  const showAdvanced = !isMobile || showAdvancedFields || readOnly || Boolean(schedule || task);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { alert('タイトルを入力してください'); return; }
@@ -557,7 +576,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     catch { alert('削除に失敗しました'); }
   };
 
-  const modalTitle = isDuplicateMode ? '複製（新規作成）' : schedule ? 'タスク編集' : task ? 'タスク編集' : 'タスク追加';
+  const modalTitle = isDuplicateMode ? '複製（新規作成）' : schedule ? '予定編集' : task ? 'タスク編集' : isCalendarCreate ? '予定追加' : 'タスク追加';
 
   return (
     <>
@@ -569,14 +588,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     )}
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]"
       onClick={readOnly ? onClose : () => { if (showRecurringModal) return; if (title || memo || dueDate) setShowCloseConfirm(true); else onClose(); }}>
-      <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center px-6 py-4 border-b dark:border-gray-700 flex-shrink-0">
-          <h2 className="text-xl font-bold dark:text-gray-100">{modalTitle}</h2>
+      <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-none sm:rounded-lg shadow-xl max-w-2xl w-full h-[100dvh] sm:h-auto sm:m-4 sm:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4 border-b dark:border-gray-700 flex-shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold dark:text-gray-100">{modalTitle}</h2>
           <div className="flex items-center gap-2">
             {!readOnly && !isDuplicateMode && (
               <button type="button" onClick={() => setShowRecurringModal(true)}
                 className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <RefreshCw className="h-4 w-4" />繰り返し
+                <RefreshCw className="h-4 w-4" />
+                <span className="hidden sm:inline">繰り返し</span>
               </button>
             )}
             {task && !readOnly && onDuplicate && (
@@ -596,8 +616,22 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            <Input label="タイトル *" type="text" value={title} onChange={e => setTitle(e.target.value)} required placeholder="タスクのタイトルを入力" disabled={readOnly} readOnly={readOnly} />
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+            <Input label="タイトル *" type="text" value={title} onChange={e => setTitle(e.target.value)} required placeholder={isCalendarCreate || schedule ? '予定のタイトルを入力' : 'タスクのタイトルを入力'} disabled={readOnly} readOnly={readOnly} />
+            {!readOnly && !title.trim() && (
+              <div className="-mt-2 flex gap-2 overflow-x-auto pb-1">
+                {QUICK_TITLE_OPTIONS.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setTitle(label)}
+                    className="shrink-0 rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <DateInput label="開始日" value={dueDate} onChange={v => { setDueDate(v); if (!endDate || endDate < v) setEndDate(v); }} disabled={readOnly} />
               <DateInput label="終了日" value={endDate} min={dueDate} onChange={setEndDate} disabled={readOnly} />
@@ -612,6 +646,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly} />
               </div>
             </div>
+            {!readOnly && (
+              <div className="-mt-1 flex gap-2 overflow-x-auto pb-1">
+                {QUICK_DURATION_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => applyDuration(opt.minutes)}
+                    className="shrink-0 rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">場所 *</label>
               <select value={locationText} onChange={e => setLocationText(e.target.value)}
@@ -677,40 +725,52 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </div>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">メモ（任意）</label>
-              <textarea value={memo} onChange={e => setMemo(e.target.value)} rows={3}
-                className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
-                placeholder="活動内容・備考など" readOnly={readOnly} disabled={readOnly} />
-            </div>
-            {!readOnly && (
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">表示色（任意）</label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <input type="color" value={customColor || currentUser?.avatarColor || '#3B82F6'} onChange={e => setCustomColor(e.target.value)} className="h-8 w-12 rounded border border-border cursor-pointer" />
-                  {['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16'].map(c => (
-                    <button key={c} type="button" onClick={() => setCustomColor(c)}
-                      className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${customColor === c ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent'}`}
-                      style={{ backgroundColor: c }} />
-                  ))}
-                  {customColor && <button type="button" onClick={() => setCustomColor('')} className="text-xs text-gray-500 hover:text-gray-700 underline ml-1">リセット</button>}
-                </div>
-              </div>
+            {!readOnly && isMobile && (
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFields((v) => !v)}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/40 flex items-center justify-between"
+              >
+                <span>詳細設定</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${showAdvancedFields ? 'rotate-180' : ''}`} />
+              </button>
             )}
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={showSupportEvents} onChange={e => { setShowSupportEvents(e.target.checked); if (!e.target.checked) setSupportEventId(null); }} className="h-4 w-4 text-primary border-gray-300 rounded" disabled={readOnly} />
-                <span className="text-sm text-gray-700 dark:text-gray-300">オーガナイザーへの応援出勤（任意）</span>
-              </label>
-              {showSupportEvents && (
-                <select value={supportEventId || ''} onChange={e => setSupportEventId(e.target.value || null)}
-                  className="mt-2 w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" disabled={readOnly}>
-                  <option value="">イベントを選択</option>
-                  {supportEvents.map(ev => <option key={ev.id} value={ev.id}>{ev.eventName}（{ev.startDate?.slice(0, 10)}）</option>)}
-                </select>
-              )}
-            </div>
-            <div className="border-t dark:border-gray-700 pt-3 space-y-3">
+            {showAdvanced && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">メモ（任意）</label>
+                  <textarea value={memo} onChange={e => setMemo(e.target.value)} rows={3}
+                    className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                    placeholder="活動内容・備考など" readOnly={readOnly} disabled={readOnly} />
+                </div>
+                {!readOnly && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">表示色（任意）</label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <input type="color" value={customColor || currentUser?.avatarColor || '#3B82F6'} onChange={e => setCustomColor(e.target.value)} className="h-8 w-12 rounded border border-border cursor-pointer" />
+                      {['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16'].map(c => (
+                        <button key={c} type="button" onClick={() => setCustomColor(c)}
+                          className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${customColor === c ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent'}`}
+                          style={{ backgroundColor: c }} />
+                      ))}
+                      {customColor && <button type="button" onClick={() => setCustomColor('')} className="text-xs text-gray-500 hover:text-gray-700 underline ml-1">リセット</button>}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={showSupportEvents} onChange={e => { setShowSupportEvents(e.target.checked); if (!e.target.checked) setSupportEventId(null); }} className="h-4 w-4 text-primary border-gray-300 rounded" disabled={readOnly} />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">オーガナイザーへの応援出勤（任意）</span>
+                  </label>
+                  {showSupportEvents && (
+                    <select value={supportEventId || ''} onChange={e => setSupportEventId(e.target.value || null)}
+                      className="mt-2 w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" disabled={readOnly}>
+                      <option value="">イベントを選択</option>
+                      {supportEvents.map(ev => <option key={ev.id} value={ev.id}>{ev.eventName}（{ev.startDate?.slice(0, 10)}）</option>)}
+                    </select>
+                  )}
+                </div>
+                <div className="border-t dark:border-gray-700 pt-3 space-y-3">
               {/* 休日出勤 */}
               <div>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -801,7 +861,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </div>
               )}
               </div>
-            </div>
+                </div>
+              </>
+            )}
             {schedule?.scheduleParticipants && schedule.scheduleParticipants.length > 0 && readOnly && (
               <div className="border-t dark:border-gray-700 pt-3">
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">参加メンバー</p>
@@ -816,11 +878,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               </div>
             )}
           </div>
-          <div className="flex justify-between items-center px-6 py-4 border-t dark:border-gray-700 flex-shrink-0">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t dark:border-gray-700 flex-shrink-0">
             <div>{schedule && !readOnly && !isDuplicateMode && <Button type="button" variant="danger" onClick={handleDelete}>削除</Button>}</div>
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={onClose}>{readOnly ? '閉じる' : 'キャンセル'}</Button>
-              {!readOnly && <Button type="submit" disabled={loading}>{loading ? '保存中...' : '保存'}</Button>}
+            <div className="flex gap-3 w-full sm:w-auto">
+              <Button type="button" variant="outline" onClick={onClose} className="flex-1 sm:flex-none">{readOnly ? '閉じる' : 'キャンセル'}</Button>
+              {!readOnly && <Button type="submit" disabled={loading} className="flex-1 sm:flex-none">{loading ? '保存中...' : '保存'}</Button>}
             </div>
           </div>
         </form>

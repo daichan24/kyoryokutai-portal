@@ -13,6 +13,8 @@ function formatYen(n: number) {
   return `¥${n.toLocaleString('ja-JP')}`;
 }
 
+const QUICK_AMOUNT_OPTIONS = [500, 1000, 3000, 5000, 10000];
+
 interface ExpenseEntry {
   id: string;
   spentAt: string;
@@ -538,6 +540,18 @@ export const ActivityExpenses: React.FC = () => {
                   className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
                   placeholder="1000"
                 />
+                <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                  {QUICK_AMOUNT_OPTIONS.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setAmount(String(value))}
+                      className="shrink-0 rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+                    >
+                      {value.toLocaleString()}円
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -545,6 +559,7 @@ export const ActivityExpenses: React.FC = () => {
                 <>
                   <Button
                     type="button"
+                    className="w-full sm:w-auto"
                     onClick={() => {
                       if (!description.trim()) {
                         alert('内容を入力してください');
@@ -565,13 +580,14 @@ export const ActivityExpenses: React.FC = () => {
                   >
                     更新
                   </Button>
-                  <Button type="button" variant="outline" onClick={cancelEdit}>
+                  <Button type="button" variant="outline" onClick={cancelEdit} className="w-full sm:w-auto">
                     キャンセル
                   </Button>
                 </>
               ) : (
                 <Button
                   type="button"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     if (!description.trim()) {
                       alert('内容を入力してください');

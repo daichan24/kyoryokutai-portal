@@ -6,7 +6,6 @@ import { Schedule as ScheduleType, Project, Task, User } from '../types';
 import { formatDate, getWeekDates, getMonthDates, isSameDay, isHolidayDate, isSunday, isSaturday, formatTime } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { TaskModal } from '../components/project/TaskModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { GovernmentAttendanceCalendar } from '../components/schedule/GovernmentAttendanceCalendar';
@@ -14,7 +13,6 @@ import { GovernmentAttendanceModal } from '../components/schedule/GovernmentAtte
 import { DraggableCalendarView } from '../components/schedule/DraggableCalendarView';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
-import { format } from 'date-fns';
 import { useIsMobileBreakpoint } from '../hooks/useIsMobileBreakpoint';
 
 type ViewMode = 'week' | 'month' | 'day';
@@ -42,8 +40,8 @@ export const Schedule: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
-  const [calendarViewMode, setCalendarViewMode] = useState<'individual' | 'all'>('individual'); // カレンダー表示モード
-  const [useDraggable, setUseDraggable] = useState(true); // ドラッグ可能カレンダーを使用
+  const [calendarViewMode] = useState<'individual' | 'all'>('individual'); // カレンダー表示モード
+  const [useDraggable] = useState(true); // ドラッグ可能カレンダーを使用
   const [weekDates, setWeekDates] = useState<Date[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -61,19 +59,8 @@ export const Schedule: React.FC = () => {
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
   const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [visibleMemberIds, setVisibleMemberIds] = useState<Set<string>>(new Set());
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
-
-  // 行政出勤記録（行政カレンダーモーダル用のみ）
-  const govAttendanceFrom = '';
-  const govAttendanceTo = '';
-
-  useEffect(() => {
-    if (isStaff && workspaceMode === 'browse') {
-      setSelectedMemberId(null);
-    }
-  }, [isStaff, workspaceMode]);
 
   useEffect(() => {
     if (isMobile && viewMode === 'week') {
@@ -351,6 +338,25 @@ export const Schedule: React.FC = () => {
     setDefaultStartTime(startTime);
     setDefaultEndTime(endTime);
     setIsModalOpen(true);
+  };
+
+  const handleQuickCreateSchedule = () => {
+    const base = new Date(currentDate);
+    const now = new Date();
+    if (formatDate(base) === formatDate(now)) {
+      base.setHours(now.getHours(), now.getMinutes(), 0, 0);
+    }
+    const roundedMinutes = Math.ceil(base.getMinutes() / 15) * 15;
+    if (roundedMinutes === 60) {
+      base.setHours(base.getHours() + 1, 0, 0, 0);
+    } else {
+      base.setMinutes(roundedMinutes, 0, 0);
+    }
+    const start = `${String(base.getHours()).padStart(2, '0')}:${String(base.getMinutes()).padStart(2, '0')}`;
+    const endDate = new Date(base);
+    endDate.setHours(endDate.getHours() + 1);
+    const end = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+    handleCreateSchedule(base, start, end);
   };
 
   const handleEditSchedule = (schedule: ScheduleType) => {
@@ -843,8 +849,6 @@ export const Schedule: React.FC = () => {
                   return maxLane;
                 };
 
-                const overlayHeight = HEADER_HEIGHT + lanes.length * (BAR_HEIGHT + BAR_GAP);
-
                 return (
                   <div key={weekIndex} className="relative w-full" style={{ marginBottom: 0 }}>
                     {/* 日セルグリッド */}
@@ -945,7 +949,7 @@ export const Schedule: React.FC = () => {
                     {/* 複数日バーのオーバーレイ（週行の上に絶対配置） */}
                     {weekMultiDay.length > 0 && (
                       <div className="absolute inset-0 pointer-events-none" style={{ top: 0, left: 0, right: 0 }}>
-                        {barInfos.map((bar, barIdx) => {
+                        {barInfos.map((bar) => {
                           const laneIndex = lanes.findIndex((lane) => lane.some((b) => b.schedule.id === bar.schedule.id));
                           const color = getScheduleColor(bar.schedule);
                           const tc = getTextColor(color);
@@ -1259,6 +1263,15 @@ export const Schedule: React.FC = () => {
           isOpen={isGovernmentAttendanceModalOpen}
           onClose={() => setIsGovernmentAttendanceModalOpen(false)}
         />
+      )}
+      {isMobile && (
+        <button
+          type="button"
+          onClick={handleQuickCreateSchedule}
+          className="fixed bottom-4 right-4 z-30 inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/25 active:scale-95"
+        >
+          ＋ 予定
+        </button>
       )}
     </div>
   );
