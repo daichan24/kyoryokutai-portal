@@ -116,7 +116,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
   const bulkSaveMutation = useMutation({
     mutationFn: async (drafts: Record<string, DraftEntry | null>) => {
       const updates = Object.entries(drafts)
-        .filter(([_, val]) => val !== null)
+        .filter(([, val]) => val !== null)
         .map(([date, val]) => ({
           date,
           endDate: val!.endDate || null,
@@ -126,7 +126,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
           note: val!.note || null,
         }));
       const deletes = Object.entries(drafts)
-        .filter(([_, val]) => val === null)
+        .filter(([, val]) => val === null)
         .map(([date]) => date);
       await api.post('/api/government-attendance/bulk', { updates, deletes });
     },
@@ -268,9 +268,14 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
               <button onClick={handlePrevMonth} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                {format(currentDate, 'yyyy年M月', { locale: ja })}
-              </h3>
+              <div className="text-center">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  {format(currentDate, 'yyyy年M月', { locale: ja })}
+                </h3>
+                <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-300">
+                  今日 {format(new Date(), 'M/d（EEE）', { locale: ja })}
+                </p>
+              </div>
               <button onClick={handleNextMonth} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -302,7 +307,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                     key={day}
                     className={`h-20 p-1 relative transition-colors ${
                       isEditable ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'cursor-default'
-                    } ${isToday ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-800'} ${
+                    } ${isToday ? 'z-10 bg-blue-50 ring-2 ring-inset ring-blue-500 dark:bg-blue-900/30' : 'bg-white dark:bg-gray-800'} ${
                       hasDraft ? 'ring-2 ring-inset ring-yellow-400' : ''
                     }`}
                     onClick={() => {
@@ -314,10 +319,13 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                     }}
                   >
                     <div className="flex justify-between items-start">
-                      <span className={`text-xs font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                      <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                         {day}
                       </span>
-                      {hasDraft && <span className="text-[9px] text-yellow-600 font-bold">未保存</span>}
+                      <div className="flex flex-col items-end gap-0.5">
+                        {isToday && <span className="text-[9px] font-bold text-blue-600 dark:text-blue-300">今日</span>}
+                        {hasDraft && <span className="text-[9px] text-yellow-600 font-bold">未保存</span>}
+                      </div>
                     </div>
                     <div className="mt-0.5 space-y-0.5">
                       {dayAttendances.filter((a) => a.userId !== user?.id).map((a) => {
@@ -336,7 +344,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                             }`}
                             title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${formatTime(a.startTime)}〜${a.endTime ? formatTime(a.endTime) : ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
                           >
-                            <span className="truncate font-medium">{a.user.name.split(/[\s　]/)[0]}</span>
+                            <span className="truncate font-medium">{a.user.name.split(/[\s\u3000]/)[0]}</span>
                             {a.startTime && isStart && <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{formatTime(a.startTime)}</span>}
                           </div>
                         );
@@ -361,7 +369,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                             title={`${user?.name}: ${STATUS_LABELS[myAttendance.status]}${myAttendance.startTime ? ` ${formatTime(myAttendance.startTime)}〜${myAttendance.endTime ? formatTime(myAttendance.endTime) : ''}` : ''}${myAttendance.note ? ` (${myAttendance.note})` : ''}`}
                           >
                             {(myIsStart || !myIsMultiDay) && (
-                              <span className="truncate font-medium">{(user?.name || '').split(/[\s　]/)[0]}</span>
+                              <span className="truncate font-medium">{(user?.name || '').split(/[\s\u3000]/)[0]}</span>
                             )}
                             {myAttendance.startTime && myIsStart && (
                               <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{formatTime(myAttendance.startTime)}</span>

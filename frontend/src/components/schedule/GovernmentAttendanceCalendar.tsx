@@ -64,7 +64,6 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
   viewMode,
 }) => {
   const { user } = useAuthStore();
-  const queryClient = useQueryClient();
   const canEdit = user?.role === 'GOVERNMENT';
 
   const [popupDate, setPopupDate] = useState<string | null>(null);
@@ -74,6 +73,7 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
 
   const from = dates[0] ? format(dates[0], 'yyyy-MM-dd') : '';
   const to = dates[dates.length - 1] ? format(dates[dates.length - 1], 'yyyy-MM-dd') : '';
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   const { data: attendances = [] } = useQuery<GovernmentAttendance[]>({
     queryKey: ['government-attendance', from, to],
@@ -82,25 +82,6 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
       return res.data;
     },
     enabled: !!from && !!to,
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async ({ date, status, note }: { date: string; status: AttendanceStatus; note: string }) => {
-      await api.post('/api/government-attendance', { date, status, note: note.trim() || null });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['government-attendance'] });
-      setEditingDate(null);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/api/government-attendance/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['government-attendance'] });
-    },
   });
 
   const getAttendancesForDate = (date: Date): GovernmentAttendance[] => {
@@ -126,22 +107,53 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
   };
 
   if (viewMode === 'month') {
-    // 月表示: 日付ごとにドットで出勤状況を表示
+    // 月表示: 「今日」と日ごとの出勤状況をコンパクトに確認
     const uniqueDates = Array.from(new Set(dates.map(d => format(d, 'yyyy-MM-dd')))).sort();
-    const hasAnyAttendance = attendances.length > 0;
-    if (!hasAnyAttendance) return null;
+    const todayAttendances = attendances.filter((a) =>
+      isDateInRange(todayStr, a.date.slice(0, 10), a.endDate?.slice(0, 10))
+    );
 
     return (
       <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-        <div className="bg-gray-50 dark:bg-gray-800/80 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            🏢 行政出勤カレンダー
-            <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
-              （今日相談できるか確認できます）
-            </span>
-          </h3>
+        <div className="bg-gray-50 dark:bg-gray-800/80 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              行政出勤カレンダー
+              <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                今日相談できるか確認
+              </span>
+            </h3>
+          </div>
+          <span className="inline-flex w-fit items-center rounded-full bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
+            今日 {format(new Date(), 'M/d（EEE）', { locale: ja })}
+          </span>
         </div>
         <div className="p-3 bg-white dark:bg-gray-800">
+          <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/70 dark:bg-blue-900/20">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">今日の行政出勤</p>
+              <span className="text-[11px] text-blue-700 dark:text-blue-200">{todayAttendances.length}件</span>
+            </div>
+            {todayAttendances.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {todayAttendances.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setPopupDate(todayStr)}
+                    className={`rounded border px-2 py-1 text-xs ${STATUS_COLORS[a.status]}`}
+                    title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${formatTime(a.startTime)}〜${a.endTime ? formatTime(a.endTime) : ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
+                  >
+                    {a.user.name.split(/[\s\u3000]/)[0]}・{STATUS_LABELS[a.status]}
+                    {a.startTime ? ` ${formatTime(a.startTime)}` : ''}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-blue-800 dark:text-blue-100">今日の出勤記録はまだありません。</p>
+            )}
+          </div>
+
           {/* 凡例 */}
           <div className="flex flex-wrap gap-3 mb-3">
             {(Object.entries(STATUS_LABELS) as [AttendanceStatus, string][]).map(([status, label]) => (
@@ -151,6 +163,77 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
               </span>
             ))}
           </div>
+
+          <div className="mb-4 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-7 bg-gray-50 text-center text-[11px] font-semibold text-gray-500 dark:bg-gray-900/60 dark:text-gray-400">
+              {['日', '月', '火', '水', '木', '金', '土'].map((day, i) => (
+                <div key={day} className={`py-1.5 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : ''}`}>
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
+              {uniqueDates.map((dateStr) => {
+                const date = parseISO(dateStr);
+                const dayAttendances = attendances.filter((a) =>
+                  isDateInRange(dateStr, a.date.slice(0, 10), a.endDate?.slice(0, 10))
+                );
+                const isToday = dateStr === todayStr;
+                const maxVisible = 4;
+                return (
+                  <button
+                    key={dateStr}
+                    type="button"
+                    onClick={() => setPopupDate(dayAttendances.length > 0 ? dateStr : null)}
+                    className={`min-h-[54px] p-1.5 text-left transition-colors ${
+                      dayAttendances.length > 0 ? 'hover:bg-blue-50 dark:hover:bg-blue-900/20' : ''
+                    } ${isToday ? 'relative z-10 bg-blue-50 ring-2 ring-inset ring-blue-500 dark:bg-blue-900/30' : 'bg-white dark:bg-gray-800'}`}
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
+                        isToday ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300'
+                      }`}>
+                        {format(date, 'd')}
+                      </span>
+                      {isToday && <span className="text-[9px] font-semibold text-blue-600 dark:text-blue-300">今日</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-0.5">
+                      {dayAttendances.slice(0, maxVisible).map((a) => (
+                        <span key={a.id} className={`h-2 w-2 rounded-full ${STATUS_DOT[a.status]}`} title={`${a.user.name}: ${STATUS_LABELS[a.status]}`} />
+                      ))}
+                      {dayAttendances.length > maxVisible && (
+                        <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400">+{dayAttendances.length - maxVisible}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {popupDate && (
+            <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/40">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                  {format(parseISO(popupDate), 'M月d日（EEE）', { locale: ja })} の出勤状況
+                </p>
+                <button onClick={() => setPopupDate(null)} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <X className="h-3 w-3 text-gray-400" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {attendances
+                  .filter((a) => isDateInRange(popupDate, a.date.slice(0, 10), a.endDate?.slice(0, 10)))
+                  .map((a) => (
+                    <span key={a.id} className={`rounded border px-2 py-1 text-xs ${STATUS_COLORS[a.status]}`}>
+                      {a.user.name.split(/[\s\u3000]/)[0]}・{STATUS_LABELS[a.status]}
+                      {a.startTime ? ` ${formatTime(a.startTime)}` : ''}
+                    </span>
+                  ))}
+              </div>
+            </div>
+          )}
+
           {/* メンバーごとの出勤状況 */}
           {(() => {
             const memberMap = new Map<string, { user: GovernmentAttendance['user']; attendances: GovernmentAttendance[] }>();
@@ -158,7 +241,11 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
               if (!memberMap.has(a.userId)) memberMap.set(a.userId, { user: a.user, attendances: [] });
               memberMap.get(a.userId)!.attendances.push(a);
             });
-            return Array.from(memberMap.values()).map(({ user: member, attendances: memberAttendances }) => (
+            const members = Array.from(memberMap.values());
+            if (members.length === 0) {
+              return <p className="text-xs text-gray-500 dark:text-gray-400">この期間の出勤記録はありません。</p>;
+            }
+            return members.map(({ user: member, attendances: memberAttendances }) => (
               <div key={member.id} className="mb-2 last:mb-0">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
@@ -244,8 +331,16 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
             return (
               <div
                 key={i}
-                className={`p-1.5 min-h-[4rem] relative ${isToday ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-800'}`}
+                className={`p-1.5 min-h-[4.75rem] relative ${isToday ? 'bg-blue-50 ring-2 ring-inset ring-blue-500 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'}`}
               >
+                <div className="mb-1 flex items-center justify-between">
+                  <span className={`text-[11px] font-semibold ${isToday ? 'text-blue-700 dark:text-blue-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {format(date, 'M/d')}
+                  </span>
+                  {isToday && (
+                    <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-semibold text-white">今日</span>
+                  )}
+                </div>
                 {/* 出勤状況バッジ（複数日またがり対応） */}
                 <div className="space-y-0.5 mb-1">
                   {dayAttendances.map((a) => {
@@ -266,7 +361,7 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
                         title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${formatTime(a.startTime)}〜${a.endTime ? formatTime(a.endTime) : ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
                       >
                         {(isStart || !isMultiDay) && (
-                          <span className="truncate font-medium">{a.user.name.split(/[\s　]/)[0]}</span>
+                          <span className="truncate font-medium">{a.user.name.split(/[\s\u3000]/)[0]}</span>
                         )}
                         {a.startTime && isStart && (
                           <span className="text-[9px] opacity-75 ml-auto whitespace-nowrap">{formatTime(a.startTime)}</span>
