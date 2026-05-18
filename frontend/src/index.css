@@ -307,40 +307,61 @@
   }
 
   .fullcalendar-mobile .fc-daygrid-day-events {
-    margin: 0 2px 2px;
+    margin: 0 1px 2px 0;
+  }
+
+  .fullcalendar-mobile .fc-daygrid-event-harness {
+    margin-left: 0 !important;
+    margin-right: 1px !important;
   }
 
   .fullcalendar-mobile .fc-daygrid-event {
-    margin-top: 1px;
-    border-radius: 5px;
-    padding: 1px 1px;
+    margin-top: 1px !important;
+    margin-left: 0 !important;
+    margin-right: 1px !important;
+    border-radius: 0 4px 4px 0;
+    padding: 1px 0 1px 1px !important;
     min-height: 16px;
+    overflow: hidden;
+  }
+
+  .fullcalendar-mobile .fc-daygrid-event .fc-event-main {
+    display: block !important;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .fullcalendar-mobile .fc-daygrid-event .fc-event-title,
-  .fullcalendar-mobile .fc-daygrid-event .fc-event-main {
-    font-size: 9px;
-    line-height: 14px;
-    font-weight: 600;
+  .fullcalendar-mobile .fc-daygrid-event .fc-event-title-container {
+    display: block !important;
+    max-width: none !important;
+    font-size: 8px !important;
+    line-height: 14px !important;
+    font-weight: 600 !important;
     letter-spacing: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
   }
 
   .fullcalendar-mobile .fc-daygrid-more-link {
     display: block;
     width: 100%;
-    margin-top: 1px;
-    border-radius: 5px;
-    padding: 1px 1px;
+    margin-top: 1px !important;
+    margin-left: 0 !important;
+    margin-right: 1px !important;
+    border-radius: 0 4px 4px 0;
+    padding: 1px 0 1px 1px !important;
     min-height: 16px;
     background: rgb(243 244 246);
     color: rgb(55 65 81);
-    font-size: 9px;
-    line-height: 14px;
+    font-size: 8px !important;
+    line-height: 14px !important;
     font-weight: 700;
     text-align: left;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
   }
 
   .dark .fullcalendar-mobile .fc-daygrid-more-link {
@@ -370,8 +391,9 @@
     @apply text-base;
   }
   
-  .fc-event-title {
-    @apply text-xs;
+  .fullcalendar-mobile .fc-daygrid-event .fc-event-title {
+    font-size: 8px !important;
+    line-height: 14px !important;
   }
   
   .fc-event-time {
