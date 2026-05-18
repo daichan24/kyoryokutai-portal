@@ -665,8 +665,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         contentHeight={isMobile ? 'auto' : undefined}
         expandRows={true}
         stickyHeaderDates={true}
-        dayMaxEvents={isMobileMonth ? 4 : isMobile ? 3 : 3}
-        dayMaxEventRows={isMobileMonth ? 4 : isMobile ? 3 : 3}
+        dayMaxEvents={isMobileMonth ? 3 : isMobile ? 3 : 3}
+        dayMaxEventRows={isMobileMonth ? 3 : isMobile ? 3 : 3}
         moreLinkContent={(arg) => `${arg.num} more`}
         moreLinkClick={(arg) => {
           if (isMobileMonth && onMoreClick) {
