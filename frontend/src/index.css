@@ -314,7 +314,34 @@
     margin-top: 1px;
     border-radius: 5px;
     padding: 1px 3px;
-    min-height: 17px;
+    min-height: 16px;
+  }
+
+  .fullcalendar-mobile .fc-daygrid-event .fc-event-title,
+  .fullcalendar-mobile .fc-daygrid-event .fc-event-main {
+    font-size: 10px;
+    line-height: 14px;
+    font-weight: 600;
+  }
+
+  .fullcalendar-mobile .fc-daygrid-more-link {
+    display: block;
+    width: 100%;
+    margin-top: 1px;
+    border-radius: 5px;
+    padding: 1px 3px;
+    min-height: 16px;
+    background: rgb(243 244 246);
+    color: rgb(55 65 81);
+    font-size: 10px;
+    line-height: 14px;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .dark .fullcalendar-mobile .fc-daygrid-more-link {
+    background: rgb(55 65 81);
+    color: rgb(229 231 235);
   }
 
   .fullcalendar-mobile .fc-timegrid-slot {

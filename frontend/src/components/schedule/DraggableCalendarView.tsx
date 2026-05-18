@@ -25,6 +25,7 @@ interface DraggableCalendarViewProps {
   onScheduleClick: (schedule: ScheduleType) => void;
   onEventClick: (eventId: string) => void;
   onCreateSchedule: (date: Date, startTime?: string, endTime?: string) => void;
+  onMoreClick?: (date: Date) => void;
   onScheduleUpdate: () => void;
 }
 
@@ -38,6 +39,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   onScheduleClick,
   onEventClick,
   onCreateSchedule,
+  onMoreClick,
   onScheduleUpdate,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
@@ -663,8 +665,16 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         contentHeight={isMobile ? 'auto' : undefined}
         expandRows={true}
         stickyHeaderDates={true}
-        dayMaxEvents={isMobile ? 2 : 3}
-        dayMaxEventRows={isMobile ? 2 : 3}
+        dayMaxEvents={isMobileMonth ? 4 : isMobile ? 3 : 3}
+        dayMaxEventRows={isMobileMonth ? 4 : isMobile ? 3 : 3}
+        moreLinkContent={(arg) => `${arg.num} more`}
+        moreLinkClick={(arg) => {
+          if (isMobileMonth && onMoreClick) {
+            onMoreClick(arg.date);
+            return false;
+          }
+          return 'popover';
+        }}
         longPressDelay={180}
         selectLongPressDelay={180}
         eventLongPressDelay={250}

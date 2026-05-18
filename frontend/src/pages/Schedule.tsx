@@ -700,6 +700,10 @@ export const Schedule: React.FC = () => {
               }}
               onEventClick={handleEventClick}
               onCreateSchedule={handleCreateSchedule}
+              onMoreClick={(date) => {
+                setCurrentDate(date);
+                setViewMode('day');
+              }}
               onScheduleUpdate={fetchSchedules}
             />
             {/* 行政出勤カレンダー（週表示のみ） */}

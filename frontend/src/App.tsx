@@ -47,6 +47,13 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
+const getDefaultAuthenticatedPath = () => {
+  if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+    return '/schedule';
+  }
+  return '/dashboard';
+};
+
 const App: React.FC = () => {
   const { isLoading, fetchMe, user } = useAuthStore();
 
@@ -82,7 +89,7 @@ const App: React.FC = () => {
           path="/"
           element={
             <PrivateRoute>
-              <Navigate to="/dashboard" replace />
+              <Navigate to={getDefaultAuthenticatedPath()} replace />
             </PrivateRoute>
           }
         />

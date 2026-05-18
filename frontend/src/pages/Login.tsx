@@ -13,6 +13,13 @@ interface LoginHint {
   role: string;
 }
 
+const getDefaultAuthenticatedPath = () => {
+  if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+    return '/schedule';
+  }
+  return '/dashboard';
+};
+
 export const Login: React.FC = () => {
   const { login, isAuthenticated, isLoading } = useAuthStore();
   const [email, setEmail] = useState('');
@@ -68,7 +75,7 @@ export const Login: React.FC = () => {
   };
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getDefaultAuthenticatedPath()} replace />;
   }
 
   // roleの色分け
