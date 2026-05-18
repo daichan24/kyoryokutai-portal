@@ -521,6 +521,21 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           }
         }
       } else {
+        if (isCalendarCreate && !dueDate) {
+          alert('開始日を入力してください');
+          setLoading(false);
+          return;
+        }
+        if (isCalendarCreate && (!startTime || !endTime)) {
+          alert('開始時刻と終了時刻を入力してください');
+          setLoading(false);
+          return;
+        }
+        if (isCalendarCreate && attachMode === 'UNSET') {
+          alert('連携先を選択してください');
+          setLoading(false);
+          return;
+        }
         // ミッションの必須チェック（KYORYOKUTAI、YAKUBA、TRIAGE以外は必須）
         if (!effectiveMissionId && attachMode !== 'KYORYOKUTAI' && attachMode !== 'YAKUBA' && attachMode !== 'TRIAGE') { 
           alert('ミッションを選択してください'); 
@@ -633,16 +648,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <DateInput label="開始日" value={dueDate} onChange={v => { setDueDate(v); if (!endDate || endDate < v) setEndDate(v); }} disabled={readOnly} />
+              <DateInput label={isCalendarCreate ? '開始日 *' : '開始日'} value={dueDate} onChange={v => { setDueDate(v); if (!endDate || endDate < v) setEndDate(v); }} disabled={readOnly} />
               <DateInput label="終了日" value={endDate} min={dueDate} onChange={setEndDate} disabled={readOnly} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻 {isCalendarCreate && <span className="text-red-500">*</span>}</label>
                 <TimePicker value={startTime} onChange={v => { setStartTime(v); if (!task && !schedule && !hasEditedTime) { setEndTime(addHour(v, 60)); } setHasEditedTime(true); }} disabled={readOnly} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻 {isCalendarCreate && <span className="text-red-500">*</span>}</label>
                 <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly} />
               </div>
             </div>
@@ -676,7 +691,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               {locationText === '__OTHER__' && readOnly && locationOther && <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{locationOther}</p>}
             </div>
             <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30">
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">連携</p>
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                連携 {isCalendarCreate && <span className="text-red-500">*</span>}
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ミッション {!isScheduleMode && <span className="text-red-500">*</span>}</label>
@@ -713,7 +730,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                       className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700"
                       disabled={readOnly || !selectedMissionId}>
                       <option value="">
-                        {!selectedMissionId ? 'ミッションを先に選択' : '未設定'}
+                        {!selectedMissionId ? 'ミッションを先に選択' : isCalendarCreate ? '連携先を選択' : '未設定'}
                       </option>
                       {selectedMissionId && <option value="TRIAGE">あとで振り分け</option>}
                       {selectedMissionId && sortedFilteredProjects.map(p => <option key={p.id} value={p.id}>{p.projectName}</option>)}

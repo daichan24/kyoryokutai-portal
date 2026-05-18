@@ -685,6 +685,10 @@ export const Schedule: React.FC = () => {
               calendarViewMode="all"
               currentUserId={user?.id}
               onScheduleClick={(schedule) => {
+                if (isMobile && viewMode === 'month') {
+                  setSelectedDateForDetail(new Date((schedule as any).startDate || schedule.date));
+                  return;
+                }
                 // 他人のスケジュールは読み取り専用
                 const isOtherUser = schedule.userId !== user?.id;
                 if (isOtherUser) {
@@ -910,6 +914,10 @@ export const Schedule: React.FC = () => {
                                   <button key={schedule.id}
                                     onClick={(e) => { 
                                       e.stopPropagation(); 
+                                      if (isMobile) {
+                                        setSelectedDateForDetail(date);
+                                        return;
+                                      }
                                       if (isOtherUser) { 
                                         setSelectedSchedule(schedule); 
                                         setIsModalOpen(true); 
@@ -919,8 +927,10 @@ export const Schedule: React.FC = () => {
                                     }}
                                     className="w-full text-left px-1.5 py-0.5 rounded hover:opacity-90 transition-opacity truncate"
                                     style={{ backgroundColor: color, color: tc }}>
-                                    <span className="text-[10px] font-semibold" style={{ color: tc }}>{formatTime(schedule.startTime)}</span>
-                                    <span className="ml-1 text-xs truncate" style={{ color: tc }}>{(schedule as any).title || schedule.activityDescription}</span>
+                                    {!isMobile && (
+                                      <span className="text-[10px] font-semibold" style={{ color: tc }}>{formatTime(schedule.startTime)}</span>
+                                    )}
+                                    <span className={`${isMobile ? '' : 'ml-1'} text-xs truncate`} style={{ color: tc }}>{(schedule as any).title || schedule.activityDescription}</span>
                                   </button>
                                 );
                               })}
@@ -1171,10 +1181,11 @@ export const Schedule: React.FC = () => {
           : userGroups;
 
         return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedDateForDetail(null)}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full m-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-between items-center px-5 py-4 border-b dark:border-gray-700 flex-shrink-0">
-                <h2 className="text-lg font-bold dark:text-gray-100">
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50" onClick={() => setSelectedDateForDetail(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-lg shadow-xl max-w-2xl w-full sm:m-4 max-h-[88vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="sm:hidden mx-auto mt-2 h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
+              <div className="flex justify-between items-center px-4 sm:px-5 py-4 border-b dark:border-gray-700 flex-shrink-0">
+                <h2 className="text-base sm:text-lg font-bold dark:text-gray-100">
                   {formatDate(selectedDateForDetail, 'yyyy年M月d日')} のスケジュール
                 </h2>
                 <button onClick={() => setSelectedDateForDetail(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
@@ -1183,7 +1194,7 @@ export const Schedule: React.FC = () => {
               </div>
               {/* 人フィルター */}
               {userGroups.length > 1 && (
-                <div className="px-5 py-2 border-b dark:border-gray-700 flex-shrink-0">
+                <div className="px-4 sm:px-5 py-2 border-b dark:border-gray-700 flex-shrink-0">
                   <select
                     value={detailFilterUserId}
                     onChange={(e) => setDetailFilterUserId(e.target.value)}
@@ -1218,7 +1229,7 @@ export const Schedule: React.FC = () => {
                         <span className="text-xs text-gray-400">{userSchedules.length}件</span>
                       </div>
                       {/* そのユーザーのスケジュール（時間順） */}
-                      <div className="space-y-1.5 pl-9">
+                      <div className="space-y-2 sm:space-y-1.5 sm:pl-9">
                         {[...userSchedules]
                           .sort((a, b) => a.startTime.localeCompare(b.startTime))
                           .map((schedule) => {
@@ -1231,10 +1242,10 @@ export const Schedule: React.FC = () => {
                                   setSelectedSchedule(schedule);
                                   setIsModalOpen(true);
                                 }}
-                                className="w-full text-left px-3 py-2 rounded-lg border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800 transition-colors"
+                                className="w-full text-left px-3 py-2.5 sm:py-2 rounded-lg border border-border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800 transition-colors"
                                 style={{ borderLeftWidth: '3px', borderLeftColor: scheduleColor }}
                               >
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                                   <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                     {formatTime(schedule.startTime)}–{formatTime(schedule.endTime)}
                                   </span>

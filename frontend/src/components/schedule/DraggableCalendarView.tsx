@@ -43,6 +43,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   const calendarRef = useRef<FullCalendar>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const isMobile = useIsMobileBreakpoint();
+  const isMobileMonth = isMobile && viewMode === 'month';
 
   // デバッグ: スケジュール数を確認
   useEffect(() => {
@@ -284,7 +285,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       return;
     }
 
-    const { event, delta } = info;
+    const { event } = info;
     const extendedProps = event.extendedProps;
 
     // イベントタイプの場合は移動不可
@@ -539,12 +540,6 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         endTime = getJSTTimeString(newEnd);
       }
 
-      // 日付も JST で取得
-      const year = newStart.getFullYear();
-      const month = String(newStart.getMonth() + 1).padStart(2, '0');
-      const day = String(newStart.getDate()).padStart(2, '0');
-      const newDateStr = `${year}-${month}-${day}`;
-
       const updateData: any = {
         date: getJSTDateString(newStart),
         startTime,
@@ -691,7 +686,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         weekends={true}
         nowIndicator={true}
         eventDisplay="block"
-        displayEventTime={true}
+        displayEventTime={!isMobileMonth}
         displayEventEnd={false}
       />
     </div>
