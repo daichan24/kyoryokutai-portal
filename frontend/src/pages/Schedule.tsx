@@ -122,9 +122,9 @@ export const Schedule: React.FC = () => {
   const fetchMembers = async () => {
     try {
       const response = await api.get<User[]>('/api/users');
-      // メンバーのみを取得（表示順0番目を除く）
+      // メンバーのみを取得（新規追加メンバーも表示対象にする）
       const members = (response.data || []).filter(u => 
-        u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
+        u.role === 'MEMBER'
       );
       setAvailableMembers(members);
     } catch (error) {
@@ -220,7 +220,7 @@ export const Schedule: React.FC = () => {
           // まずメンバー一覧を取得して、自分のIDを除外
           const membersResponse = await api.get('/api/users');
           const members = (membersResponse.data || []).filter((u: any) => 
-            u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0 && u.id !== user?.id
+            u.role === 'MEMBER' && u.id !== user?.id
           );
           // メンバーがいる場合は、各メンバーのプロジェクトを取得して結合
           if (members.length > 0) {
@@ -610,7 +610,7 @@ export const Schedule: React.FC = () => {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-gray-100 text-center min-w-0 truncate">
-              {viewMode === 'day' && formatDate(currentDate, isMobile ? 'M月d日' : 'yyyy年M月d日')}
+              {viewMode === 'day' && formatDate(currentDate, isMobile ? 'M月d日(E)' : 'yyyy年M月d日(E)')}
               {viewMode === 'week' && weekDates[0] && weekDates[6] && (
                 <>
                   {formatDate(weekDates[0], isMobile ? 'M/d' : 'yyyy年M月d日')} -{' '}

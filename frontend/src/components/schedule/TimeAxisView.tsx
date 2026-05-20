@@ -105,7 +105,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const memberColumn = isMobile
     ? (memberCount <= 1 ? 'minmax(15rem, 1fr)' : '11.5rem')
     : (memberCount <= 1 ? 'minmax(16rem, 1fr)' : '14rem');
-  const weekColumn = isMobile ? '30vw' : 'minmax(8.5rem, 1fr)';
+  const weekColumn = isMobile ? '15vw' : 'minmax(8.5rem, 1fr)';
   const contentGridTemplate = isDayView
     ? `repeat(${memberCount}, ${memberColumn})`
     : `repeat(7, ${weekColumn})`;

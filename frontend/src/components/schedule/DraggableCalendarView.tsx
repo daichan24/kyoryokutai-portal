@@ -5,6 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Schedule as ScheduleType } from '../../types';
 import { api } from '../../utils/api';
+import { isHolidayDate, isSaturday, isSunday } from '../../utils/date';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface DraggableCalendarViewProps {
@@ -694,6 +695,16 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         dayCellContent={(arg) => {
           // 日付の数字のみを表示（「日」を削除）
           return arg.dayNumberText.replace('日', '');
+        }}
+        dayCellClassNames={(arg) => {
+          if (isHolidayDate(arg.date) || isSunday(arg.date)) return ['cb-calendar-day-holiday'];
+          if (isSaturday(arg.date)) return ['cb-calendar-day-saturday'];
+          return [];
+        }}
+        dayHeaderClassNames={(arg) => {
+          if (isHolidayDate(arg.date) || isSunday(arg.date)) return ['cb-calendar-day-holiday'];
+          if (isSaturday(arg.date)) return ['cb-calendar-day-saturday'];
+          return [];
         }}
         firstDay={firstDay}
         weekends={true}

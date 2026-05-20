@@ -358,13 +358,9 @@ router.get('/', async (req: AuthRequest, res) => {
     // allMembersがtrueの場合、全メンバーのスケジュールを取得
     else if (allMembers === 'true') {
       // 全メンバーのスケジュールを取得
-      // まず全メンバー（表示順0番目を除く）を取得
       const members = await prisma.user.findMany({
         where: {
           role: 'MEMBER',
-          displayOrder: {
-            not: 0, // 表示順0番目のユーザー（テストユーザー）を除外
-          },
         },
         select: { id: true },
       });

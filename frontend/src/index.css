@@ -141,6 +141,49 @@
   @apply bg-blue-900/20;
 }
 
+/* 土日祝の表示（日・週・月で共通） */
+.fc .cb-calendar-day-holiday,
+.fc .cb-calendar-day-holiday.fc-col-header-cell {
+  background: rgb(254 242 242) !important;
+}
+
+.fc .cb-calendar-day-saturday,
+.fc .cb-calendar-day-saturday.fc-col-header-cell {
+  background: rgb(240 249 255) !important;
+}
+
+.fc .cb-calendar-day-holiday .fc-daygrid-day-number,
+.fc .cb-calendar-day-holiday .fc-col-header-cell-cushion {
+  color: rgb(220 38 38) !important;
+  font-weight: 700;
+}
+
+.fc .cb-calendar-day-saturday .fc-daygrid-day-number,
+.fc .cb-calendar-day-saturday .fc-col-header-cell-cushion {
+  color: rgb(2 132 199) !important;
+  font-weight: 700;
+}
+
+.dark .fc .cb-calendar-day-holiday,
+.dark .fc .cb-calendar-day-holiday.fc-col-header-cell {
+  background: rgb(69 10 10 / 0.3) !important;
+}
+
+.dark .fc .cb-calendar-day-saturday,
+.dark .fc .cb-calendar-day-saturday.fc-col-header-cell {
+  background: rgb(8 47 73 / 0.3) !important;
+}
+
+.dark .fc .cb-calendar-day-holiday .fc-daygrid-day-number,
+.dark .fc .cb-calendar-day-holiday .fc-col-header-cell-cushion {
+  color: rgb(252 165 165) !important;
+}
+
+.dark .fc .cb-calendar-day-saturday .fc-daygrid-day-number,
+.dark .fc .cb-calendar-day-saturday .fc-col-header-cell-cushion {
+  color: rgb(125 211 252) !important;
+}
+
 /* 時間軸のスタイル */
 .fc-timegrid-slot-label {
   @apply text-xs text-gray-500;
