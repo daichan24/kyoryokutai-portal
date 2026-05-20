@@ -822,13 +822,26 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 <span className="truncate">{referenceUrl}</span>
               </a>
             ) : (
-              <Input
-                type="url"
-                value={referenceUrl}
-                onChange={(e) => setReferenceUrl(e.target.value)}
-                placeholder="https://example.com"
-                readOnly={readOnly}
-              />
+              <>
+                <Input
+                  type="url"
+                  value={referenceUrl}
+                  onChange={(e) => setReferenceUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  readOnly={readOnly}
+                />
+                {referenceUrl && (
+                  <a
+                    href={referenceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+                  >
+                    <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">リンクを開く</span>
+                  </a>
+                )}
+              </>
             )}
           </div>
 

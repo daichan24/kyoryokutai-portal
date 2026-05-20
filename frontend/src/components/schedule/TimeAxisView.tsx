@@ -105,7 +105,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const memberColumn = isMobile
     ? (memberCount <= 1 ? 'minmax(15rem, 1fr)' : '11.5rem')
     : (memberCount <= 1 ? 'minmax(16rem, 1fr)' : '14rem');
-  const weekColumn = isMobile ? '8.5rem' : 'minmax(8.5rem, 1fr)';
+  const weekColumn = isMobile ? '30vw' : 'minmax(8.5rem, 1fr)';
   const contentGridTemplate = isDayView
     ? `repeat(${memberCount}, ${memberColumn})`
     : `repeat(7, ${weekColumn})`;
@@ -219,7 +219,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
           {hours.map(h => (
             <div key={h} className="absolute w-full border-b border-gray-100 dark:border-gray-700" style={{ top: `${h * 4}rem`, height: '4rem' }} />
           ))}
-          {hours.map(h => (
+          {(!isMobile || isDayView) && hours.map(h => (
             <div key={`hh-${h}`} className="absolute w-full border-b border-gray-50 dark:border-gray-800/50" style={{ top: `${h * 4 + 2}rem` }} />
           ))}
           {todayCol && showNowLine && (
@@ -271,7 +271,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
               </button>
             );
           })}
-          {hours.map(h => Array.from({ length: 4 }, (_, bi) => {
+          {!isMobile && hours.map(h => Array.from({ length: 4 }, (_, bi) => {
             const bm = h * 60 + bi * 15;
             const bt = (bm / 60) * 4;
             return (
@@ -491,6 +491,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
             ref={bodyContentScrollRef}
             className="min-w-0 flex-1 overflow-x-auto overflow-y-visible"
             onScroll={(e) => syncHorizontalScroll(e.currentTarget.scrollLeft)}
+            style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <div className="grid" style={contentGridStyle}>
               {isDayView

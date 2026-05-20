@@ -248,6 +248,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const isMobile = useIsMobileBreakpoint();
   const isScheduleMode = !!schedule && !task;
   const isCalendarCreate = !task && !schedule && Boolean(defaultDate || defaultStartTime || defaultEndTime);
+  const isScheduleForm = isScheduleMode || isCalendarCreate;
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -559,7 +560,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           setLoading(false);
           return;
         }
-        if (isCalendarCreate && (!startTime || !endTime)) {
+        if (isCalendarCreate && !isAllDay && !isTimeUnspecified && (!startTime || !endTime)) {
           alert('開始時刻と終了時刻を入力してください');
           setLoading(false);
           return;
@@ -584,8 +585,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           title: title.trim(), description: memo.trim() || undefined,
           projectId: attachMode === 'PROJECT' ? projectId : null, linkKind,
           dueDate: dueDate || null, endDate: endDate || dueDate || null,
-          startTime, endTime, locationText: effectiveLoc.trim() || undefined,
+          startTime: isAllDay || isTimeUnspecified ? '00:00' : startTime,
+          endTime: isAllDay || isTimeUnspecified ? '23:59' : endTime,
+          locationText: effectiveLoc.trim() || undefined,
+          freeNote: memo.trim() || undefined,
+          referenceUrl: referenceUrl.trim() || null,
           customColor: customColor || undefined, supportEventId: supportEventId || undefined,
+          isAllDay: isCalendarCreate ? isAllDay : undefined,
+          isTimeUnspecified: isCalendarCreate ? isTimeUnspecified : undefined,
+          reportable: isCalendarCreate ? reportable : undefined,
           participantsUserIds: isCollaborative && selectedParticipantIds.length > 0 ? selectedParticipantIds : undefined,
         };
         if (task) { await api.put(`/api/missions/${targetMissionId}/tasks/${task.id}`, data); }
@@ -714,7 +722,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <DateInput label={isCalendarCreate ? '開始日 *' : '開始日'} value={dueDate} onChange={v => { setDueDate(v); if (!endDate || endDate < v) setEndDate(v); }} disabled={readOnly} />
               <DateInput label="終了日" value={endDate} min={dueDate} onChange={setEndDate} disabled={readOnly} />
             </div>
-            {isScheduleMode && (
+            {isScheduleForm && (
               <div className="flex flex-wrap gap-4">
                 <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <input
@@ -764,11 +772,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             )}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻 {isCalendarCreate && <span className="text-red-500">*</span>}</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻 {isCalendarCreate && !isAllDay && !isTimeUnspecified && <span className="text-red-500">*</span>}</label>
                 <TimePicker value={startTime} onChange={v => { setStartTime(v); if (!task && !schedule && !hasEditedTime) { setEndTime(addHour(v, 60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay || isTimeUnspecified} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻 {isCalendarCreate && <span className="text-red-500">*</span>}</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻 {isCalendarCreate && !isAllDay && !isTimeUnspecified && <span className="text-red-500">*</span>}</label>
                 <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay || isTimeUnspecified} />
               </div>
             </div>
@@ -801,6 +809,29 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               )}
               {locationText === '__OTHER__' && readOnly && locationOther && <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{locationOther}</p>}
             </div>
+            {isScheduleForm && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">参考URL（任意）</label>
+                {readOnly && referenceUrl ? (
+                  <a href={referenceUrl} target="_blank" rel="noreferrer"
+                    className="inline-flex max-w-full items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+                    <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{referenceUrl}</span>
+                  </a>
+                ) : (
+                  <>
+                    <Input type="url" value={referenceUrl} onChange={e => setReferenceUrl(e.target.value)} placeholder="https://example.com" readOnly={readOnly} disabled={readOnly} />
+                    {referenceUrl && (
+                      <a href={referenceUrl} target="_blank" rel="noreferrer"
+                        className="mt-1 inline-flex max-w-full items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200">
+                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">リンクを開く</span>
+                      </a>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
             <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30">
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                 連携 {isCalendarCreate && <span className="text-red-500">*</span>}
@@ -871,20 +902,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
                     placeholder="活動内容・備考など" readOnly={readOnly} disabled={readOnly} />
                 </div>
-                {isScheduleMode && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">参考URL（任意）</label>
-                    {readOnly && referenceUrl ? (
-                      <a href={referenceUrl} target="_blank" rel="noreferrer"
-                        className="inline-flex max-w-full items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
-                        <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{referenceUrl}</span>
-                      </a>
-                    ) : (
-                      <Input type="url" value={referenceUrl} onChange={e => setReferenceUrl(e.target.value)} placeholder="https://example.com" readOnly={readOnly} disabled={readOnly} />
-                    )}
-                  </div>
-                )}
                 {!readOnly && (
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">表示色（任意）</label>

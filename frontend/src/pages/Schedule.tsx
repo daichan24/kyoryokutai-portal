@@ -385,6 +385,31 @@ export const Schedule: React.FC = () => {
     });
   };
 
+  const getCalendarDateTone = (date: Date) => {
+    const isHoliday = isHolidayDate(date);
+    const isSun = isSunday(date);
+    const isSat = isSaturday(date);
+    if (isHoliday || isSun) {
+      return {
+        headerBg: 'bg-red-50 dark:bg-red-950/30',
+        cellBg: 'bg-red-50/35 dark:bg-red-950/10',
+        text: 'text-red-600 dark:text-red-300',
+      };
+    }
+    if (isSat) {
+      return {
+        headerBg: 'bg-sky-50 dark:bg-sky-950/30',
+        cellBg: 'bg-sky-50/35 dark:bg-sky-950/10',
+        text: 'text-sky-600 dark:text-sky-300',
+      };
+    }
+    return {
+      headerBg: 'bg-gray-50 dark:bg-gray-900',
+      cellBg: 'bg-white dark:bg-gray-800',
+      text: 'text-gray-600 dark:text-gray-400',
+    };
+  };
+
   const handleEventClick = (eventId: string) => {
     navigate(`/events/${eventId}`);
   };
@@ -769,14 +794,9 @@ export const Schedule: React.FC = () => {
             {/* 曜日ヘッダー */}
             <div className="grid grid-cols-7 gap-0 w-full min-w-0 mb-1 px-0">
               {weekDates.slice(0, 7).map((date, index) => {
-                const isHoliday = isHolidayDate(date);
-                const isSun = isSunday(date);
-                const isSat = isSaturday(date);
-                let dayLabelColor = 'text-gray-500 dark:text-gray-400';
-                if (isHoliday || isSun) dayLabelColor = 'text-red-500 dark:text-red-400';
-                else if (isSat) dayLabelColor = 'text-blue-500 dark:text-blue-400';
+                const tone = getCalendarDateTone(date);
                 return (
-                  <div key={`header-${index}`} className={`text-center text-[10px] sm:text-xs font-semibold py-1 ${dayLabelColor}`}>
+                  <div key={`header-${index}`} className={`text-center text-[10px] sm:text-xs font-semibold py-1 ${tone.headerBg} ${tone.text}`}>
                     {formatDate(date, 'E')}
                   </div>
                 );
@@ -883,12 +903,8 @@ export const Schedule: React.FC = () => {
                           return sd.getTime() === ed.getTime();
                         });
                         const isToday = formatDate(date) === formatDate(new Date());
-                        const isHoliday = isHolidayDate(date);
-                        const isSun = isSunday(date);
-                        const isSat = isSaturday(date);
-                        let dayTextColor = 'text-gray-900 dark:text-gray-100';
-                        if (isHoliday || isSun) dayTextColor = 'text-red-600 dark:text-red-400';
-                        else if (isSat) dayTextColor = 'text-blue-600 dark:text-blue-400';
+                        const tone = getCalendarDateTone(date);
+                        let dayTextColor = `${tone.text} font-semibold`;
                         if (isToday) dayTextColor = 'text-primary dark:text-blue-400 font-bold';
 
                         const isHighlightedByTask = hoveredTaskId != null && getSchedulesForDate(date).some((s) => s.taskId === hoveredTaskId);
@@ -905,7 +921,7 @@ export const Schedule: React.FC = () => {
                           <div key={dayIndex}
                             className={`border-r border-b border-border dark:border-gray-700 min-w-0 w-full flex flex-col p-1 ${
                               isHighlightedByTask ? 'ring-2 ring-blue-400 relative z-10' : ''
-                            } ${isToday ? 'bg-primary/10 dark:bg-primary/20' : 'bg-white dark:bg-gray-800'} ${
+                            } ${isToday ? 'bg-primary/10 dark:bg-primary/20' : tone.cellBg} ${
                               calendarViewMode !== 'all' ? 'cursor-pointer' : 'cursor-default'
                             }`}
                             style={{ minHeight: `${HEADER_HEIGHT + multiDayBarHeight + 40}px` }}

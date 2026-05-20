@@ -20,10 +20,20 @@ const taskSchema = z.object({
   // スケジュール連携フィールド
   locationText: z.string().optional(),
   freeNote: z.string().optional(),
+  referenceUrl: z.string().url('URL形式で入力してください').max(2000).optional().nullable().or(z.literal('')),
   customColor: z.string().max(20).optional().nullable(),
   supportEventId: z.string().uuid().optional().nullable(),
+  isAllDay: z.boolean().optional(),
+  isTimeUnspecified: z.boolean().optional(),
+  reportable: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),
 });
+
+function normalizeReferenceUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 function resolveTaskLinkKind(
   projectId: string | null | undefined,
@@ -212,8 +222,12 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
             activityDescription: data.description || data.title,
             locationText: data.locationText || null,
             freeNote: data.freeNote || null,
+            referenceUrl: normalizeReferenceUrl(data.referenceUrl),
             customColor: data.customColor || null,
             supportEventId: data.supportEventId || null,
+            isAllDay: data.isAllDay ?? false,
+            isTimeUnspecified: data.isTimeUnspecified ?? false,
+            reportable: data.reportable ?? true,
             isPending: false,
             taskId: task.id,
             projectId: data.projectId || null,
@@ -370,8 +384,12 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
               activityDescription: data.description || updated.description || updated.title,
               locationText: data.locationText || null,
               freeNote: data.freeNote || null,
+              referenceUrl: normalizeReferenceUrl(data.referenceUrl),
               customColor: data.customColor || null,
               supportEventId: data.supportEventId || null,
+              isAllDay: data.isAllDay ?? false,
+              isTimeUnspecified: data.isTimeUnspecified ?? false,
+              reportable: data.reportable ?? true,
               isPending: false,
               taskId: updated.id,
               projectId: updated.projectId || null,
@@ -407,8 +425,12 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
           if (data.endTime) updateData.endTime = data.endTime;
           if (data.locationText !== undefined) updateData.locationText = data.locationText || null;
           if (data.freeNote !== undefined) updateData.freeNote = data.freeNote || null;
+          if (data.referenceUrl !== undefined) updateData.referenceUrl = normalizeReferenceUrl(data.referenceUrl);
           if (data.customColor !== undefined) updateData.customColor = data.customColor || null;
           if (data.supportEventId !== undefined) updateData.supportEventId = data.supportEventId || null;
+          if (data.isAllDay !== undefined) updateData.isAllDay = data.isAllDay;
+          if (data.isTimeUnspecified !== undefined) updateData.isTimeUnspecified = data.isTimeUnspecified;
+          if (data.reportable !== undefined) updateData.reportable = data.reportable;
           await prisma.schedule.update({ where: { id: existingSchedule.id }, data: updateData });
         } catch (scheduleError) {
           console.error('Failed to update schedule for task:', scheduleError);
