@@ -49,7 +49,10 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   viewMode, calendarViewMode = 'individual', currentUserId, members = [],
 }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const allDayScrollRef = useRef<HTMLDivElement>(null);
+  const bodyContentScrollRef = useRef<HTMLDivElement>(null);
   const [nowMin, setNowMin] = useState(getNowMinutes());
   const isMobile = useIsMobileBreakpoint();
   const isToday = (d: Date) => formatDate(d) === formatDate(new Date());
@@ -60,8 +63,8 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = Math.max(0, Math.floor(nowMin / 60) - 1) * 4 * 16;
+    if (!bodyScrollRef.current) return;
+    bodyScrollRef.current.scrollTop = Math.max(0, Math.floor(nowMin / 60) - 1) * 4 * 16;
   }, [dates]);
 
   const getSchedulesForDate = (date: Date) =>
@@ -98,19 +101,44 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
     ? (memberCount <= 1 ? 'minmax(15rem, 1fr)' : '11.5rem')
     : (memberCount <= 1 ? 'minmax(16rem, 1fr)' : '14rem');
   const weekColumn = isMobile ? '10.5rem' : 'minmax(9rem, 1fr)';
-  const gridTemplate = isDayView
-    ? `${timeColumnWidth} repeat(${memberCount}, ${memberColumn})`
-    : `${timeColumnWidth} repeat(7, ${weekColumn})`;
-  const gridWidth = (isDayView && memberCount > 1) || (isMobile && !isDayView) ? 'max-content' : '100%';
-  const gridStyle: React.CSSProperties = {
-    gridTemplateColumns: gridTemplate,
-    width: gridWidth,
+  const contentGridTemplate = isDayView
+    ? `repeat(${memberCount}, ${memberColumn})`
+    : `repeat(7, ${weekColumn})`;
+  const contentWidth = (isDayView && memberCount > 1) || (isMobile && !isDayView) ? 'max-content' : '100%';
+  const contentGridStyle: React.CSSProperties = {
+    gridTemplateColumns: contentGridTemplate,
+    width: contentWidth,
     minWidth: '100%',
   };
-  const stripStyle: React.CSSProperties = {
-    width: gridWidth,
-    minWidth: '100%',
+  const timeColumnStyle: React.CSSProperties = {
+    width: timeColumnWidth,
+    minWidth: timeColumnWidth,
   };
+
+  const syncHorizontalScroll = (left: number) => {
+    if (headerScrollRef.current) headerScrollRef.current.scrollLeft = left;
+    if (allDayScrollRef.current) allDayScrollRef.current.scrollLeft = left;
+  };
+
+  useEffect(() => {
+    const scroller = bodyContentScrollRef.current;
+    if (!scroller) return;
+
+    if (!isDayView) {
+      const todayIndex = dates.findIndex((date) => isToday(date));
+      if (todayIndex >= 0) {
+        requestAnimationFrame(() => {
+          const columnWidth = (scroller.scrollWidth || 0) / Math.max(dates.length, 1);
+          const desiredLeft = Math.max(0, columnWidth * todayIndex - 12);
+          scroller.scrollLeft = desiredLeft;
+          syncHorizontalScroll(desiredLeft);
+        });
+        return;
+      }
+    }
+
+    syncHorizontalScroll(scroller.scrollLeft);
+  }, [dates, isDayView, isMobile, memberCount]);
 
   const multiDaySchedules = !isDayView ? schedules.filter((s) => {
     const sd = new Date((s as any).startDate || s.date);
@@ -241,25 +269,29 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto overflow-y-hidden bg-white dark:bg-gray-800 w-full min-w-0">
-      <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={gridStyle}>
-        <div className="sticky left-0 z-30 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" />
-        {isDayView ? members.map((m, i) => (
-          <div key={i} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-12 flex flex-col items-center justify-center px-1 bg-gray-50 dark:bg-gray-900">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium mb-0.5" style={{ backgroundColor: m.avatarColor }}>
-              {(m.avatarLetter || m.name || '').charAt(0)}
-            </div>
-            <p className="text-[10px] text-gray-700 dark:text-gray-300 truncate max-w-full text-center">{m.name}</p>
+    <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 w-full min-w-0">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" style={timeColumnStyle} />
+        <div ref={headerScrollRef} className="min-w-0 flex-1 overflow-x-hidden">
+          <div className="grid" style={contentGridStyle}>
+            {isDayView ? members.map((m, i) => (
+              <div key={i} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-12 flex flex-col items-center justify-center px-1 bg-gray-50 dark:bg-gray-900">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium mb-0.5" style={{ backgroundColor: m.avatarColor }}>
+                  {(m.avatarLetter || m.name || '').charAt(0)}
+                </div>
+                <p className="text-[10px] text-gray-700 dark:text-gray-300 truncate max-w-full text-center">{m.name}</p>
+              </div>
+            )) : dates.map((d, i) => {
+              const todayH = isToday(d);
+              return (
+                <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-[3.25rem] flex flex-col items-center justify-center px-1.5 py-1 ${todayH ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50 dark:bg-gray-900'}`}>
+                  <div className={`text-[10px] sm:text-xs leading-tight text-center ${todayH ? 'text-blue-700 dark:text-blue-300 font-semibold' : 'text-gray-600 dark:text-gray-400'}`}>{formatDate(d, 'E')}</div>
+                  <div className={`text-lg sm:text-xl leading-tight ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-900 dark:text-gray-100 font-semibold'}`}>{formatDate(d, 'd')}</div>
+                </div>
+              );
+            })}
           </div>
-        )) : dates.map((d, i) => {
-          const todayH = isToday(d);
-          return (
-            <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-[3.25rem] flex flex-col items-center justify-center px-1.5 py-1 ${todayH ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50 dark:bg-gray-900'}`}>
-              <div className={`text-[10px] sm:text-xs leading-tight text-center ${todayH ? 'text-blue-700 dark:text-blue-300 font-semibold' : 'text-gray-600 dark:text-gray-400'}`}>{formatDate(d, 'E')}</div>
-              <div className={`text-lg sm:text-xl leading-tight ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-900 dark:text-gray-100 font-semibold'}`}>{formatDate(d, 'd')}</div>
-            </div>
-          );
-        })}
+        </div>
       </div>
       {/* 複数日バナー（週表示のみ） - Googleカレンダー方式で横断バー表示 */}
       {!isDayView && multiDaySchedules.length > 0 && (() => {
@@ -298,12 +330,13 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         const bannerAreaHeight = rowCount * ROW_H + 4;
 
         return (
-          <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800"
-            style={{ ...gridStyle, minHeight: `${bannerAreaHeight}px` }}>
-            <div className="sticky left-0 z-30 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-start justify-end pr-1 pt-1 min-w-0">
+          <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800"
+            style={{ minHeight: `${bannerAreaHeight}px` }}>
+            <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-start justify-end pr-1 pt-1 min-w-0" style={timeColumnStyle}>
               <span className="text-[8px] text-gray-400">終日</span>
             </div>
-            <div className="relative min-w-0" style={{ gridColumn: `2 / span ${totalCols}` }}>
+            <div ref={allDayScrollRef} className="min-w-0 flex-1 overflow-x-hidden">
+            <div className="relative min-w-0" style={{ ...contentGridStyle, minHeight: `${bannerAreaHeight}px` }}>
               <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${totalCols}, minmax(0, 1fr))` }}>
                 {dates.map((_, di) => (
                   <div key={di} className="border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-full" />
@@ -340,14 +373,15 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                   </button>
                 );
               })}
+              </div>
             </div>
           </div>
         );
       })()}
 
-      <div ref={scrollRef} className="min-w-0 overflow-y-auto overflow-x-visible" style={{ ...stripStyle, maxHeight: '60vh' }}>
-        <div className="grid" style={gridStyle}>
-          <div className="sticky left-0 z-30 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0">
+      <div ref={bodyScrollRef} className="min-w-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: '60vh' }}>
+        <div className="flex min-w-0">
+          <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" style={timeColumnStyle}>
             <div className="relative" style={{ height: '96rem' }}>
               {hours.map(h => (
                 <div key={h} className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-0.5 sm:pr-2"
@@ -357,10 +391,18 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
               ))}
             </div>
           </div>
-          {isDayView
-            ? members.map((m, i) => renderDayCol(dayDate!, i, m.id))
-            : dates.map((d, i) => renderDayCol(d, i))
-          }
+          <div
+            ref={bodyContentScrollRef}
+            className="min-w-0 flex-1 overflow-x-auto overflow-y-visible"
+            onScroll={(e) => syncHorizontalScroll(e.currentTarget.scrollLeft)}
+          >
+            <div className="grid" style={contentGridStyle}>
+              {isDayView
+                ? members.map((m, i) => renderDayCol(dayDate!, i, m.id))
+                : dates.map((d, i) => renderDayCol(d, i))
+              }
+            </div>
+          </div>
         </div>
       </div>
     </div>
