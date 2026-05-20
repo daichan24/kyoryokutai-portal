@@ -28,6 +28,18 @@ const historySchema = z.object({
   projectId: z.string().optional(),
 });
 
+function sanitizeContactForViewer(contact: any, req: AuthRequest) {
+  if (req.user!.role !== 'MEMBER') return contact;
+  return {
+    ...contact,
+    histories: (contact.histories || []).map((history: any) => ({
+      ...history,
+      project: history.userId === req.user!.id ? history.project : null,
+      projectId: history.userId === req.user!.id ? history.projectId : null,
+    })),
+  };
+}
+
 // 町民一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -86,7 +98,7 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
-    res.json(contact);
+    res.json(sanitizeContactForViewer(contact, req));
   } catch (error) {
     console.error('Get contact error:', error);
     res.status(500).json({ error: 'Failed to get contact' });
@@ -177,6 +189,16 @@ router.post('/:id/histories', async (req: AuthRequest, res) => {
   try {
     const data = historySchema.parse(req.body);
 
+    if (data.projectId && req.user!.role === 'MEMBER') {
+      const project = await prisma.project.findFirst({
+        where: { id: data.projectId, userId: req.user!.id },
+        select: { id: true },
+      });
+      if (!project) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
+
     const history = await prisma.contactHistory.create({
       data: {
         contactId: req.params.id,
@@ -210,6 +232,7 @@ router.get('/:id/related-projects', async (req: AuthRequest, res) => {
     const projects = await prisma.project.findMany({
       where: {
         relatedContactIds: { has: id },
+        ...(req.user!.role === 'MEMBER' ? { userId: req.user!.id } : {}),
       },
       include: {
         user: { select: { id: true, name: true, avatarColor: true } },

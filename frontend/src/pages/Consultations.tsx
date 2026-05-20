@@ -6,7 +6,7 @@ import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
-import { X, MessageSquare, ShieldAlert, User as UserIcon } from 'lucide-react';
+import { X, MessageSquare, ShieldAlert } from 'lucide-react';
 import type { User } from '../types';
 
 type ConsultationAudience = 'ANY' | 'SUPPORT_ONLY' | 'GOVERNMENT_ONLY' | 'SPECIFIC_USER';
@@ -59,6 +59,7 @@ export const Consultations: React.FC = () => {
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
   const [resolveId, setResolveId] = useState<string | null>(null);
   const [resolutionNote, setResolutionNote] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export const Consultations: React.FC = () => {
         targetUserIds: audience === 'SPECIFIC_USER' ? targetUserIds : undefined,
         subject: subject.trim() || undefined,
         body: body.trim(),
+        sendEmail,
       });
     },
     onSuccess: () => {
@@ -123,6 +125,7 @@ export const Consultations: React.FC = () => {
       setSubject('');
       setTargetUserIds([]);
       setAudience('ANY');
+      setSendEmail(false);
     },
   });
 
@@ -241,6 +244,20 @@ export const Consultations: React.FC = () => {
                 placeholder="相談内容を具体的に書いてください"
               />
             </div>
+            <label className="flex items-start gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-3 text-sm">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">メールでも通知する</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  オフの場合は「後でも良い」扱いで、アプリ内通知・受付ボックスのみで共有されます。
+                </span>
+              </span>
+            </label>
             <Button
               type="button"
               onClick={() => {

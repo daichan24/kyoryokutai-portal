@@ -360,6 +360,10 @@ export const Tasks: React.FC = () => {
   const getMissionName = (task: Task): string | null => {
     // タスクに mission が含まれている場合はそれを使用
     if ((task as any).mission?.missionName) return (task as any).mission.missionName;
+    if (task.missionId) {
+      const directMission = missions.find(m => m.id === task.missionId);
+      if (directMission?.missionName) return directMission.missionName;
+    }
     // フォールバック: プロジェクト経由
     if (!task.projectId) return null;
     const project = projects.find(p => p.id === task.projectId);

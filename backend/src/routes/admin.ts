@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { createDefaultMissionsAndProjects, createDefaultMissionsAndProjectsForExistingMembers } from '../services/defaultMissionProjectService';
+import { queueEmail, sendPendingEmailJobs } from '../services/emailService';
 
 const router = Router();
 
@@ -24,6 +25,36 @@ const createUserSchema = z.object({
   termEnd: z.string().optional(),
   avatarColor: z.string().optional(),
 });
+
+const emailJobQuerySchema = z.object({
+  status: z.enum(['PENDING', 'SENDING', 'SENT', 'FAILED', 'CANCELLED']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
+const testEmailSchema = z.object({
+  recipientEmail: z.string().email('有効なメールアドレスを入力してください').optional(),
+});
+
+const cleanupEmailJobsSchema = z.object({
+  days: z.coerce.number().int().min(7).max(365).default(90),
+});
+
+function getEmailProviderStatus() {
+  const provider = (process.env.EMAIL_PROVIDER || 'console').toLowerCase();
+  const apiKeyConfigured =
+    provider === 'brevo'
+      ? Boolean(process.env.BREVO_API_KEY)
+      : provider === 'resend'
+        ? Boolean(process.env.RESEND_API_KEY)
+        : provider === 'console';
+
+  return {
+    enabled: process.env.EMAIL_ENABLED === 'true',
+    provider,
+    fromConfigured: Boolean(process.env.EMAIL_FROM),
+    apiKeyConfigured,
+  };
+}
 
 /**
  * POST /api/admin/users
@@ -108,6 +139,214 @@ router.post('/users', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, r
 
     // その他のエラー
     res.status(500).json({ error: 'ユーザーの作成に失敗しました' });
+  }
+});
+
+/**
+ * GET /api/admin/email-jobs/summary
+ * メール送信キューの状態を確認（MASTER / SUPPORT）
+ */
+router.get('/email-jobs/summary', authorize('MASTER', 'SUPPORT'), async (_req: AuthRequest, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [pending, sending, failed, sentToday, cancelled, total, emailDisabledUsers] = await Promise.all([
+      prisma.emailJob.count({ where: { status: 'PENDING' } }),
+      prisma.emailJob.count({ where: { status: 'SENDING' } }),
+      prisma.emailJob.count({ where: { status: 'FAILED' } }),
+      prisma.emailJob.count({ where: { status: 'SENT', sentAt: { gte: today } } }),
+      prisma.emailJob.count({ where: { status: 'CANCELLED' } }),
+      prisma.emailJob.count(),
+      prisma.user.count({ where: { emailNotificationsEnabled: false } }),
+    ]);
+
+    res.json({
+      counts: { pending, sending, failed, sentToday, cancelled, total, emailDisabledUsers },
+      settings: getEmailProviderStatus(),
+    });
+  } catch (error) {
+    console.error('❌ [API] Error fetching email job summary:', error);
+    res.status(500).json({ error: 'メール通知キューの集計に失敗しました' });
+  }
+});
+
+/**
+ * GET /api/admin/email-jobs
+ * メール送信キューの一覧を確認（MASTER / SUPPORT）
+ */
+router.get('/email-jobs', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, res) => {
+  try {
+    const query = emailJobQuerySchema.parse(req.query);
+
+    const jobs = await prisma.emailJob.findMany({
+      where: query.status ? { status: query.status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: query.limit,
+      select: {
+        id: true,
+        eventType: true,
+        status: true,
+        recipientEmail: true,
+        recipientName: true,
+        subject: true,
+        textBody: true,
+        link: true,
+        relatedType: true,
+        relatedId: true,
+        attempts: true,
+        lastError: true,
+        scheduledAt: true,
+        sentAt: true,
+        createdAt: true,
+        recipientUser: { select: { id: true, name: true, email: true, role: true } },
+        actorUser: { select: { id: true, name: true, email: true, role: true } },
+      },
+    });
+
+    res.json(jobs);
+  } catch (error) {
+    console.error('❌ [API] Error fetching email jobs:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: '検索条件に誤りがあります', details: error.errors });
+    }
+    res.status(500).json({ error: 'メール通知キューの取得に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/admin/email-jobs/process
+ * 手動で保留中メールの送信処理を実行（MASTER / SUPPORT）
+ */
+router.post('/email-jobs/process', authorize('MASTER', 'SUPPORT'), async (_req: AuthRequest, res) => {
+  try {
+    const result = await sendPendingEmailJobs(20);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ [API] Error processing email jobs:', error);
+    res.status(500).json({ error: 'メール通知キューの送信処理に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/admin/email-jobs/test
+ * 現在ログイン中の管理者向けにテストメールを作成（MASTER / SUPPORT）
+ */
+router.post('/email-jobs/test', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+
+    const body = testEmailSchema.parse(req.body || {});
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, name: true, email: true },
+    });
+
+    const recipientEmail = body.recipientEmail || currentUser?.email || req.user.email;
+    const recipientName = currentUser?.name || req.user.email;
+    const now = new Date();
+
+    const result = await queueEmail({
+      eventType: 'SYSTEM_TEST',
+      recipients: [{ id: currentUser?.id || req.user.id, email: recipientEmail, name: recipientName }],
+      actorUserId: req.user.id,
+      subject: '【テスト】地域おこし協力隊管理ツール メール通知',
+      textBody: [
+        'メール通知のテストです。',
+        '',
+        'このメールが届いていれば、外部メールサービスとの連携が動作しています。',
+        `作成日時: ${now.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}`,
+      ].join('\n'),
+      link: '/settings/email-jobs',
+      relatedType: 'system-test',
+      relatedId: req.user.id,
+      idempotencyKeyBase: `system-test:${req.user.id}:${now.getTime()}`,
+    });
+
+    res.status(201).json({ queued: result.count, recipientEmail });
+  } catch (error) {
+    console.error('❌ [API] Error creating test email job:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: '入力内容に誤りがあります', details: error.errors });
+    }
+    res.status(500).json({ error: 'テストメールの作成に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/admin/email-jobs/cleanup
+ * 古い送信済み・停止済みメール通知ログを削除（MASTERのみ）
+ */
+router.post('/email-jobs/cleanup', authorize('MASTER'), async (req: AuthRequest, res) => {
+  try {
+    const body = cleanupEmailJobsSchema.parse(req.body || {});
+    const cutoff = new Date(Date.now() - body.days * 24 * 60 * 60 * 1000);
+    const result = await prisma.emailJob.deleteMany({
+      where: {
+        status: { in: ['SENT', 'CANCELLED'] },
+        updatedAt: { lt: cutoff },
+      },
+    });
+
+    res.json({ deleted: result.count, days: body.days });
+  } catch (error) {
+    console.error('❌ [API] Error cleaning up email jobs:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: '入力内容に誤りがあります', details: error.errors });
+    }
+    res.status(500).json({ error: 'メール通知ログの削除に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/admin/email-jobs/:id/retry
+ * 失敗・停止したメール通知を再送キューへ戻す（MASTER / SUPPORT）
+ */
+router.post('/email-jobs/:id/retry', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, res) => {
+  try {
+    const job = await prisma.emailJob.findUnique({ where: { id: req.params.id } });
+    if (!job) return res.status(404).json({ error: 'メール通知ジョブが見つかりません' });
+    if (job.status === 'SENT') return res.status(400).json({ error: '送信済みのメールは再送キューに戻せません' });
+
+    const updated = await prisma.emailJob.update({
+      where: { id: job.id },
+      data: {
+        status: 'PENDING',
+        attempts: 0,
+        lastError: null,
+        scheduledAt: new Date(),
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('❌ [API] Error retrying email job:', error);
+    res.status(500).json({ error: 'メール通知ジョブの再送設定に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/admin/email-jobs/:id/cancel
+ * 未送信メール通知を停止（MASTER / SUPPORT）
+ */
+router.post('/email-jobs/:id/cancel', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, res) => {
+  try {
+    const job = await prisma.emailJob.findUnique({ where: { id: req.params.id } });
+    if (!job) return res.status(404).json({ error: 'メール通知ジョブが見つかりません' });
+    if (job.status === 'SENT') return res.status(400).json({ error: '送信済みのメールは停止できません' });
+
+    const updated = await prisma.emailJob.update({
+      where: { id: job.id },
+      data: {
+        status: 'CANCELLED',
+        lastError: null,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('❌ [API] Error cancelling email job:', error);
+    res.status(500).json({ error: 'メール通知ジョブの停止に失敗しました' });
   }
 });
 
@@ -204,4 +443,3 @@ router.post('/create-default-missions-projects', authorize('MASTER'), async (req
 });
 
 export default router;
-

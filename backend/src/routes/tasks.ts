@@ -90,6 +90,7 @@ router.get('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
           select: {
             id: true,
             projectName: true,
+            missionId: true,
             user: { select: { id: true, name: true, avatarColor: true } },
           },
         },
@@ -185,7 +186,11 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
           select: {
             id: true,
             projectName: true,
+            missionId: true,
           },
+        },
+        mission: {
+          select: { id: true, missionName: true, userId: true },
         },
       },
     });
@@ -330,10 +335,13 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
           select: {
             id: true,
             projectName: true,
+            missionId: true,
           },
         },
         mission: {
           select: {
+            id: true,
+            missionName: true,
             userId: true,
           },
         },

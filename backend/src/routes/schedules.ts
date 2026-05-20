@@ -9,6 +9,7 @@ import {
 } from '../services/notificationService';
 import { calculateMissionProgress, calculateProjectProgress } from '../services/progressCalculator';
 import { getActivityExpenseSummaryLite } from '../services/activityExpenseService';
+import { deleteScheduleFromGoogle, syncScheduleToGoogle } from '../services/googleCalendarService';
 
 const router = Router();
 
@@ -39,6 +40,31 @@ function overlapsCalendarMonth(
   const s = start != null ? ymd(new Date(start)) : '0000-01-01';
   const e = end != null ? ymd(new Date(end)) : '9999-12-31';
   return s <= endStr && e >= startStr;
+}
+
+function sanitizeScheduleForViewer(schedule: any, viewer: NonNullable<AuthRequest['user']>) {
+  const isOwnSchedule = schedule.userId === viewer.id;
+  const canSeeFullDetails = viewer.role !== 'MEMBER' || isOwnSchedule;
+
+  if (canSeeFullDetails) {
+    return schedule;
+  }
+
+  const { email: _email, ...user } = schedule.user || {};
+  return {
+    ...schedule,
+    user,
+    projectId: null,
+    taskId: null,
+    project: null,
+    task: null,
+    freeNote: null,
+    customColor: null,
+    inspections: [],
+    activityExpenseEntries: [],
+    googleCalendarEventLink: null,
+    scheduleParticipants: [],
+  };
 }
 
 router.use(authenticate);
@@ -77,6 +103,7 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
 
     const schedules = await prisma.schedule.findMany({
       where: {
+        deletedAt: null,
         isTemplate: false,
         OR: [
           { userId, ...monthOverlap },
@@ -291,6 +318,8 @@ const createScheduleSchema = z.object({
   taskId: z.string().optional().nullable(),
   supportEventId: z.string().uuid().optional().nullable(),
   customColor: z.string().max(20).optional().nullable(),
+  isAllDay: z.boolean().optional(),
+  reportable: z.boolean().optional(),
   compensatoryLeaveRequired: z.boolean().optional(),
   compensatoryLeaveType: z.enum(['FULL_DAY', 'TIME_ADJUST']).optional().nullable(),
   isHolidayWork: z.boolean().optional(),
@@ -302,7 +331,7 @@ const updateScheduleSchema = createScheduleSchema.partial();
 
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { userId, date, startDate, endDate, view, allMembers, userIds } = req.query;
+    const { userId, date, startDate, endDate, view, allMembers, userIds, reportable } = req.query;
     const currentUserId = req.user!.id;
 
     // 取得条件: 作成者であるか、承認済みの参加者である
@@ -395,6 +424,13 @@ router.get('/', async (req: AuthRequest, res) => {
       }
     }
 
+    where.deletedAt = null;
+    if (reportable === 'true') {
+      where.reportable = true;
+    } else if (reportable === 'false') {
+      where.reportable = false;
+    }
+
     // 作成者かどうかを判定（where条件から）
     // allMembersがtrueまたはuserIdsが指定されている場合は全メンバーのスケジュールを取得するため、isCreatorはfalse
     const isCreator = !userIds && allMembers !== 'true' && (where.userId === currentUserId || (where.OR && where.OR[0]?.userId === currentUserId));
@@ -470,11 +506,19 @@ router.get('/', async (req: AuthRequest, res) => {
             spentAt: true,
           },
         },
+        googleCalendarEventLink: {
+          select: {
+            origin: true,
+            syncStatus: true,
+            lastSyncedAt: true,
+            lastError: true,
+          },
+        },
       },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });
 
-    res.json(schedules);
+    res.json(schedules.map((schedule) => sanitizeScheduleForViewer(schedule, req.user!)));
   } catch (error) {
     console.error('Get schedules error:', error);
     res.status(500).json({ error: 'Failed to get schedules' });
@@ -545,6 +589,8 @@ router.post('/', async (req: AuthRequest, res) => {
         taskId: data.taskId || null,
         supportEventId: data.supportEventId || null,
         customColor: (data as any).customColor || null,
+        isAllDay: (data as any).isAllDay ?? false,
+        reportable: (data as any).reportable ?? true,
         compensatoryLeaveRequired: (data as any).compensatoryLeaveRequired ?? false,
         compensatoryLeaveType: (data as any).compensatoryLeaveType ?? null,
         isHolidayWork: (data as any).isHolidayWork ?? false,
@@ -588,6 +634,10 @@ router.post('/', async (req: AuthRequest, res) => {
           },
         },
       },
+    });
+
+    syncScheduleToGoogle(schedule.id).catch((syncError) => {
+      console.error(`Failed to sync created schedule ${schedule.id} to Google:`, syncError);
     });
 
     // 参加者へ通知を送信（エラーが発生してもスケジュール作成は成功とする）
@@ -762,6 +812,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.taskId !== undefined) updateData.taskId = data.taskId || null;
     if (data.supportEventId !== undefined) updateData.supportEventId = data.supportEventId || null;
     if ((data as any).customColor !== undefined) updateData.customColor = (data as any).customColor || null;
+    if ((data as any).isAllDay !== undefined) updateData.isAllDay = (data as any).isAllDay;
+    if ((data as any).reportable !== undefined) updateData.reportable = (data as any).reportable;
     if ((data as any).compensatoryLeaveRequired !== undefined) updateData.compensatoryLeaveRequired = (data as any).compensatoryLeaveRequired;
     if ((data as any).compensatoryLeaveType !== undefined) updateData.compensatoryLeaveType = (data as any).compensatoryLeaveType ?? null;
     if ((data as any).isHolidayWork !== undefined) updateData.isHolidayWork = (data as any).isHolidayWork;
@@ -803,6 +855,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
           },
         },
       },
+    });
+
+    syncScheduleToGoogle(schedule.id).catch((syncError) => {
+      console.error(`Failed to sync updated schedule ${schedule.id} to Google:`, syncError);
     });
 
     // 参加者の更新（participantsUserIdsが指定された場合）
@@ -869,8 +925,13 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Only the creator can delete this schedule' });
     }
 
-    await prisma.schedule.delete({
+    await prisma.schedule.update({
       where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    deleteScheduleFromGoogle(id, existingSchedule.userId).catch((syncError) => {
+      console.error(`Failed to delete Google event for schedule ${id}:`, syncError);
     });
 
     res.json({ message: 'Schedule deleted successfully' });

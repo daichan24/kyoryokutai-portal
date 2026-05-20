@@ -21,6 +21,9 @@ export interface User {
   displayOrder?: number;
   wishesEnabled?: boolean;
   notepadEnabled?: boolean;
+  emailNotificationsEnabled?: boolean;
+  scheduleWeekStartsOn?: 0 | 1;
+  scheduleHiddenLocationIds?: string[];
   /** MASTER のユーザー一覧 API のみ */
   passwordPlainForMaster?: string | null;
   passwordUpdatedAt?: string | null;
@@ -53,6 +56,9 @@ export interface Schedule {
   activityDescription: string;
   freeNote?: string;
   isPending: boolean;
+  isAllDay?: boolean;
+  reportable?: boolean;
+  deletedAt?: string | null;
   projectId?: string;
   project?: Project;
   inspections?: Array<{
@@ -79,8 +85,29 @@ export interface Schedule {
     supportSlotsNeeded?: number | null;
   };
   scheduleParticipants?: ScheduleParticipant[];
+  googleCalendarEventLink?: {
+    origin: 'CLEARBASE' | 'GOOGLE';
+    syncStatus: 'SYNCED' | 'PENDING' | 'ERROR' | 'CONFLICT_RESOLVED' | 'DELETED';
+    lastSyncedAt?: string | null;
+    lastError?: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface GoogleCalendarStatus {
+  connected: boolean;
+  connection: {
+    status: 'ACTIVE' | 'ERROR' | 'DISCONNECTED' | 'REAUTH_REQUIRED';
+    googleAccountEmail?: string | null;
+    calendarId?: string | null;
+    calendarSummary?: string | null;
+    lastSyncedAt?: string | null;
+    lastError?: string | null;
+    watchExpiration?: string | null;
+    syncEnabledAt?: string | null;
+    disconnectedAt?: string | null;
+  } | null;
 }
 
 export interface Location {

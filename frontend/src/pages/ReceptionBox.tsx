@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { formatTime } from '../utils/date';
@@ -66,7 +66,10 @@ interface ReceptionData {
     id: string;
     month: string;
     submittedAt: string;
+    approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    approvedAt?: string | null;
     creator: { id: string; name: string };
+    approver?: { id: string; name: string } | null;
   }>;
 }
 
@@ -324,7 +327,7 @@ export const ReceptionBox: React.FC = () => {
     data.expenses.filter(e => e.status === 'PENDING').length +
     data.weeklyReports.length +
     data.inspections.length +
-    data.monthlyReports.length;
+    data.monthlyReports.filter(m => m.approvalStatus !== 'APPROVED' && m.approvalStatus !== 'REJECTED').length;
 
   // 解決済み件数
   const resolvedCount =
@@ -409,7 +412,7 @@ export const ReceptionBox: React.FC = () => {
       ))}
 
       {/* 月次報告 */}
-      {!isMember && data.monthlyReports.map((m) => (
+      {!isMember && data.monthlyReports.filter(m => m.approvalStatus !== 'APPROVED' && m.approvalStatus !== 'REJECTED').map((m) => (
         <div key={m.id} className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -554,4 +557,3 @@ export const ReceptionBox: React.FC = () => {
     </div>
   );
 };
-

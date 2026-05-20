@@ -61,7 +61,9 @@ interface ReceptionData {
   expenses: Array<{ id: string; amount: number; description: string; spentAt: string; createdAt: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; rejectionReason?: string | null; user: { id: string; name: string }; project?: { id: string; projectName: string } | null; updatedBy?: { id: string; name: string } | null }>;
   weeklyReports: Array<{ id: string; week: string; submittedAt: string; approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
   inspections: Array<{ id: string; destination: string; date: string; createdAt: string; approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
-  monthlyReports: Array<{ id: string; month: string; submittedAt: string; creator: { id: string; name: string } }>;
+  monthlyReports: Array<{ id: string; month: string; submittedAt: string; approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; creator: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
+  compensatoryLeaves: Array<{ id: string; grantedAt: string; expiresAt: string; totalHours?: number | null; leaveType: 'FULL_DAY' | 'TIME_ADJUST'; note?: string | null; createdAt: string; confirmedAt?: string | null; user: { id: string; name: string }; confirmedBy?: { id: string; name: string } | null; schedule?: { id: string; title?: string | null; activityDescription?: string | null; startDate?: string | null } | null }>;
+  timeAdjustments: Array<{ id: string; adjustedAt: string; hours: number; note?: string | null; createdAt: string; confirmedAt?: string | null; user: { id: string; name: string }; confirmedBy?: { id: string; name: string } | null; sourceSchedule?: { id: string; title?: string | null; activityDescription?: string | null; startDate?: string | null } | null; compensatoryLeave?: { id: string; expiresAt: string } | null }>;
 }
 
 function audienceLabel(a: ConsultationAudience): string {
@@ -314,6 +316,7 @@ export const InboxPage: React.FC = () => {
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
 
   // スタッフ用: 受付ボックスデータ
   const { data: receptionData, isLoading: receptionLoading } = useQuery<ReceptionData>({
@@ -369,12 +372,13 @@ export const InboxPage: React.FC = () => {
         targetUserIds: audience === 'SPECIFIC_USER' ? targetUserIds : undefined,
         subject: subject.trim() || undefined,
         body: body.trim(),
+        sendEmail,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['consultations'] });
       queryClient.invalidateQueries({ queryKey: ['reception-box'] });
-      setBody(''); setSubject(''); setTargetUserIds([]); setAudience('ANY');
+      setBody(''); setSubject(''); setTargetUserIds([]); setAudience('ANY'); setSendEmail(false);
       setShowNewConsultation(false);
     },
   });
@@ -393,7 +397,7 @@ export const InboxPage: React.FC = () => {
   };
 
   const handleApprovalAction = async (
-    item: { id: string; type: 'weeklyReport' | 'inspection' | 'expense' },
+    item: { id: string; type: 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense' },
     approvalStatus: 'APPROVED' | 'REJECTED',
   ) => {
     setActionLoading(true);
@@ -413,6 +417,12 @@ export const InboxPage: React.FC = () => {
           comment: comment || null,
         });
         queryClient.invalidateQueries({ queryKey: ['inspections'] });
+      } else if (item.type === 'monthlyReport') {
+        await api.post(`/api/monthly-reports/${item.id}/approve`, {
+          approvalStatus,
+          comment: comment || null,
+        });
+        queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
       } else if (approvalStatus === 'APPROVED') {
         await api.post(`/api/activity-expenses/entries/${item.id}/approve`);
         queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
@@ -424,6 +434,7 @@ export const InboxPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
       if (item.type === 'weeklyReport') setSelectedWeekly(null);
       if (item.type === 'inspection') setSelectedInspectionId(null);
+      if (item.type === 'monthlyReport') setSelectedMonthlyReportId(null);
       if (item.type === 'expense') setSelectedExpense(null);
     } catch (e: any) {
       alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
@@ -454,6 +465,24 @@ export const InboxPage: React.FC = () => {
     }
   };
 
+  const handleLeaveConfirmAction = async (item: { id: string; type: 'compensatoryLeave' | 'timeAdjustment' }) => {
+    setActionLoading(true);
+    try {
+      if (item.type === 'compensatoryLeave') {
+        await api.post(`/api/leave/compensatory/${item.id}/confirm`);
+      } else {
+        await api.post(`/api/leave/time-adjustments/${item.id}/confirm`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['reception-box'] });
+      queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['leave-summary'] });
+    } catch (e: any) {
+      alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const isLoading = isStaff ? (receptionLoading || inboxLoading) : (myLoading || memberReceptionLoading);
   if (isLoading) return <div className="flex justify-center p-8"><LoadingSpinner /></div>;
 
@@ -462,7 +491,7 @@ export const InboxPage: React.FC = () => {
   // ============================================================
   type UnifiedItem = {
     id: string;
-    type: 'scheduleInvite' | 'consultation' | 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense';
+    type: 'scheduleInvite' | 'consultation' | 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense' | 'compensatoryLeave' | 'timeAdjustment';
     status: 'pending' | 'unapproved' | 'resolved';
     from: string; // 誰から
     label: string; // 何月分・内容
@@ -498,7 +527,8 @@ export const InboxPage: React.FC = () => {
       createdAt: i.createdAt, raw: i,
     })),
     ...(receptionData?.monthlyReports || []).map(m => ({
-      id: m.id, type: 'monthlyReport' as const, status: 'unapproved' as const,
+      id: m.id, type: 'monthlyReport' as const,
+      status: m.approvalStatus === 'APPROVED' || m.approvalStatus === 'REJECTED' ? 'resolved' as const : 'unapproved' as const,
       from: m.creator.name, label: `月次報告: ${m.month}`,
       createdAt: m.submittedAt, raw: m,
     })),
@@ -507,6 +537,20 @@ export const InboxPage: React.FC = () => {
       status: e.status === 'PENDING' ? 'unapproved' as const : 'resolved' as const,
       from: e.user.name, label: `活動経費: ${e.description} ¥${e.amount.toLocaleString()}`,
       createdAt: e.createdAt, raw: e,
+    })),
+    ...(receptionData?.compensatoryLeaves || []).map(l => ({
+      id: l.id, type: 'compensatoryLeave' as const,
+      status: l.confirmedAt ? 'resolved' as const : 'unapproved' as const,
+      from: l.user.name,
+      label: `${l.leaveType === 'TIME_ADJUST' ? '時間調整元' : '代休'}: ${format(new Date(l.grantedAt), 'M月d日', { locale: ja })}${l.totalHours ? ` ${l.totalHours}時間` : ''}`,
+      createdAt: l.createdAt, raw: l,
+    })),
+    ...(receptionData?.timeAdjustments || []).map(t => ({
+      id: t.id, type: 'timeAdjustment' as const,
+      status: t.confirmedAt ? 'resolved' as const : 'unapproved' as const,
+      from: t.user.name,
+      label: `時間調整: ${format(new Date(t.adjustedAt), 'M月d日', { locale: ja })} ${t.hours}時間`,
+      createdAt: t.createdAt, raw: t,
     })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [];
 
@@ -532,12 +576,16 @@ export const InboxPage: React.FC = () => {
     inspection: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200',
     monthlyReport: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200',
     expense: 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200',
+    compensatoryLeave: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-800 dark:text-cyan-200',
+    timeAdjustment: 'bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200',
   };
 
   const typeLabels: Record<string, string> = {
     scheduleInvite: 'スケジュール招待', consultation: '相談',
     weeklyReport: '週次報告', inspection: '復命書',
     monthlyReport: '月次報告', expense: '活動経費',
+    compensatoryLeave: '代休',
+    timeAdjustment: '時間調整',
   };
 
   const tabs: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
@@ -632,6 +680,30 @@ export const InboxPage: React.FC = () => {
                     対応: {item.raw.updatedBy.name}
                   </p>
                 )}
+                {item.status === 'resolved' && item.type === 'monthlyReport' && item.raw.approver && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                    対応: {item.raw.approver.name}
+                    {item.raw.approvedAt && ` — ${format(new Date(item.raw.approvedAt), 'M/d HH:mm', { locale: ja })}`}
+                  </p>
+                )}
+                {item.status === 'resolved' && (item.type === 'compensatoryLeave' || item.type === 'timeAdjustment') && item.raw.confirmedBy && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                    確認: {item.raw.confirmedBy.name}
+                    {item.raw.confirmedAt && ` — ${format(new Date(item.raw.confirmedAt), 'M/d HH:mm', { locale: ja })}`}
+                  </p>
+                )}
+                {item.type === 'compensatoryLeave' && item.raw.expiresAt && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    期限: {format(new Date(item.raw.expiresAt), 'M月d日', { locale: ja })}
+                    {item.raw.schedule && ` / 予定: ${item.raw.schedule.title || item.raw.schedule.activityDescription || '未設定'}`}
+                  </p>
+                )}
+                {item.type === 'timeAdjustment' && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {item.raw.compensatoryLeave?.expiresAt && `期限: ${format(new Date(item.raw.compensatoryLeave.expiresAt), 'M月d日', { locale: ja })}`}
+                    {item.raw.sourceSchedule && ` / 予定: ${item.raw.sourceSchedule.title || item.raw.sourceSchedule.activityDescription || '未設定'}`}
+                  </p>
+                )}
               </div>
               <div className="flex gap-2 flex-shrink-0">
                 {item.type === 'scheduleInvite' && item.status === 'unapproved' && (
@@ -645,7 +717,7 @@ export const InboxPage: React.FC = () => {
                     {item.status === 'pending' ? '確認・対応' : '詳細'}
                   </Button>
                 )}
-                {(item.type === 'weeklyReport' || item.type === 'inspection' || item.type === 'expense') && item.status === 'unapproved' && (
+                {(item.type === 'weeklyReport' || item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'expense') && item.status === 'unapproved' && (
                   <>
                     <Button size="sm" onClick={() => handleApprovalAction(item, 'APPROVED')} disabled={actionLoading}>
                       承認
@@ -654,6 +726,11 @@ export const InboxPage: React.FC = () => {
                       差し戻し
                     </Button>
                   </>
+                )}
+                {(item.type === 'compensatoryLeave' || item.type === 'timeAdjustment') && item.status === 'unapproved' && (
+                  <Button size="sm" onClick={() => handleLeaveConfirmAction(item)} disabled={actionLoading}>
+                    確認済み
+                  </Button>
                 )}
                 {item.status === 'resolved' && item.type === 'inspection' && item.raw.approver?.id === user?.id && (
                   <Button size="sm" variant="outline" onClick={() => handleReopenAction({ id: item.id, type: 'inspection' })} disabled={actionLoading}>
@@ -777,6 +854,20 @@ export const InboxPage: React.FC = () => {
                 className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
                 placeholder="相談内容を具体的に書いてください" />
             </div>
+            <label className="flex items-start gap-3 rounded-md border border-gray-200 dark:border-gray-700 p-3 text-sm">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">メールでも通知する</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  オフの場合は後でも良い相談として、アプリ内通知・受付ボックスのみで共有されます。
+                </span>
+              </span>
+            </label>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowNewConsultation(false)}>キャンセル</Button>
               <Button onClick={() => { if (!body.trim()) { alert('内容を入力してください'); return; } createMut.mutate(); }} disabled={createMut.isPending}>

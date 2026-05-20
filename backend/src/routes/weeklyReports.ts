@@ -4,6 +4,7 @@ import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateWeeklyReportPDF } from '../services/pdfGenerator';
 import { generateWeeklyReportDraft } from '../services/weeklyReportGenerator';
+import { notifyWeeklyReportResult, notifyWeeklyReportSubmitted } from '../services/approvalEmailService';
 
 const router = Router();
 
@@ -149,6 +150,12 @@ router.post('/', async (req: AuthRequest, res) => {
       },
     });
 
+    if (report.submittedAt) {
+      notifyWeeklyReportSubmitted(report.id).catch((error) => {
+        console.error('Queue weekly report submitted email failed:', error);
+      });
+    }
+
     res.status(201).json(report);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -201,6 +208,12 @@ router.put('/:id', async (req: AuthRequest, res) => {
         },
       },
     });
+
+    if (data.submittedAt) {
+      notifyWeeklyReportSubmitted(report.id).catch((error) => {
+        console.error('Queue weekly report submitted email failed:', error);
+      });
+    }
 
     res.json(report);
   } catch (error) {
@@ -257,6 +270,10 @@ router.post('/:id/approve', async (req: AuthRequest, res) => {
           },
         },
       },
+    });
+
+    notifyWeeklyReportResult(report.id).catch((error) => {
+      console.error('Queue weekly report result email failed:', error);
     });
 
     res.json(report);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Copy, RefreshCw, ChevronUp, ChevronDown, CalendarCheck, AlertCircle } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Task, Project, Location, User, Schedule } from '../../types';
@@ -83,6 +83,11 @@ const TimePicker: React.FC<{ value: string; onChange: (v: string) => void; disab
   );
 };
 
+const getVisibleLocations = (locations: Location[], hiddenLocationIds: string[] | undefined, currentLocationText?: string) => {
+  const hidden = new Set(hiddenLocationIds || []);
+  return locations.filter((location) => !hidden.has(location.id) || location.name === currentLocationText);
+};
+
 const DateInput: React.FC<{ label: string; value: string; onChange: (v: string) => void; min?: string; disabled?: boolean }> = ({ label, value, onChange, min, disabled }) => {
   const ref = useRef<HTMLInputElement>(null);
   return (
@@ -123,6 +128,11 @@ const RecurringScheduleModal: React.FC<{
   const [projects, setProjects] = useState<Project[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
+  const { user: currentUser } = useAuthStore();
+  const visibleLocations = React.useMemo(
+    () => getVisibleLocations(locations, currentUser?.scheduleHiddenLocationIds, locationText),
+    [locations, currentUser?.scheduleHiddenLocationIds, locationText],
+  );
 
   useEffect(() => {
     Promise.all([api.get('/api/projects'), api.get('/api/locations')]).then(([pr, lr]) => {
@@ -174,7 +184,7 @@ const RecurringScheduleModal: React.FC<{
             <select value={locationText} onChange={e => setLocationText(e.target.value)}
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm">
               <option value="">選択してください</option>
-              {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+              {visibleLocations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
               <option value="__OTHER__">その他</option>
             </select>
             {locationText === '__OTHER__' && (
@@ -250,6 +260,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'YAKUBA' | 'TRIAGE'>('UNSET');
   const [memo, setMemo] = useState('');
   const [customColor, setCustomColor] = useState('');
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [reportable, setReportable] = useState(true);
   const [supportEventId, setSupportEventId] = useState<string | null>(null);
   const [showSupportEvents, setShowSupportEvents] = useState(false);
   const [isCollaborative, setIsCollaborative] = useState(false);
@@ -271,6 +283,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const [hasEditedTime, setHasEditedTime] = useState(false);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const visibleLocations = React.useMemo(
+    () => getVisibleLocations(locations, currentUser?.scheduleHiddenLocationIds, locationText),
+    [locations, currentUser?.scheduleHiddenLocationIds, locationText],
+  );
 
   const toDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const effectiveLoc = locationText === '__OTHER__' ? locationOther : locationText;
@@ -314,6 +330,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       // その他の設定
       setMemo(schedule.freeNote || '');
       setCustomColor((schedule as any).customColor || '');
+      setIsAllDay(!!schedule.isAllDay);
+      setReportable(schedule.reportable !== false);
       setSupportEventId(schedule.supportEventId || null);
       setShowSupportEvents(!!schedule.supportEventId);
       setIsCollaborative(!!(schedule.scheduleParticipants?.length));
@@ -338,6 +356,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setMemo([(task as any).description, (task as any).freeNote].filter(Boolean).join('\n'));
       setCustomColor((task as any).customColor || '');
       setSupportEventId((task as any).supportEventId || null);
+      setIsAllDay(false);
+      setReportable(true);
       setShowSupportEvents(!!(task as any).supportEventId);
     } else {
       setTitle(''); setDueDate(defaultDate ? toDateStr(defaultDate) : ''); setEndDate(defaultDate ? toDateStr(defaultDate) : '');
@@ -345,6 +365,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setLocationText(''); setLocationOther('');
       setProjectId(defaultProjectId || null); setAttachMode(defaultProjectId ? 'PROJECT' : 'UNSET');
       setMemo(''); setCustomColor(''); setSupportEventId(null); setShowSupportEvents(false);
+      setIsAllDay(false); setReportable(true);
       setIsCollaborative(false); setSelectedParticipantIds([]);
       setIsHolidayWork(false); setCompensatoryLeaveRequired(false); setCompensatoryLeaveType('FULL_DAY');
       setIsDayOff(false); setDayOffType('PAID');
@@ -484,13 +505,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         const data: any = {
           date: dueDate,
           endDate: endDate && endDate !== dueDate ? endDate : undefined,
-          startTime, endTime,
+          startTime: isAllDay ? '00:00' : startTime,
+          endTime: isAllDay ? '23:59' : endTime,
           title: title.trim(),
           activityDescription: memo.trim() || title.trim(),
           locationText: effectiveLoc.trim() || undefined,
           customColor: customColor || null,
           supportEventId: supportEventId || null,
           projectId: attachMode === 'PROJECT' ? projectId : null,
+          isAllDay,
+          reportable,
           isHolidayWork,
           compensatoryLeaveRequired,
           compensatoryLeaveType: compensatoryLeaveRequired ? compensatoryLeaveType : null,
@@ -632,6 +656,36 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+            {schedule?.googleCalendarEventLink && (
+              <div className={`rounded-lg border p-3 ${
+                schedule.googleCalendarEventLink.syncStatus === 'ERROR'
+                  ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200'
+                  : 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-200'
+              }`}>
+                <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                  {schedule.googleCalendarEventLink.syncStatus === 'ERROR' ? (
+                    <AlertCircle className="h-4 w-4" />
+                  ) : (
+                    <CalendarCheck className="h-4 w-4" />
+                  )}
+                  <span>Google同期</span>
+                  <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs dark:bg-gray-900/40">
+                    {schedule.googleCalendarEventLink.origin === 'GOOGLE' ? 'Googleから取込' : 'クリアベースから同期'}
+                  </span>
+                  <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs dark:bg-gray-900/40">
+                    {schedule.googleCalendarEventLink.syncStatus}
+                  </span>
+                  {schedule.googleCalendarEventLink.origin === 'GOOGLE' && !schedule.projectId && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                      プロジェクト未設定
+                    </span>
+                  )}
+                </div>
+                {schedule.googleCalendarEventLink.lastError && (
+                  <p className="mt-2 text-xs">{schedule.googleCalendarEventLink.lastError}</p>
+                )}
+              </div>
+            )}
             <Input label="タイトル *" type="text" value={title} onChange={e => setTitle(e.target.value)} required placeholder={isCalendarCreate || schedule ? '予定のタイトルを入力' : 'タスクのタイトルを入力'} disabled={readOnly} readOnly={readOnly} />
             {!readOnly && !title.trim() && (
               <div className="-mt-2 flex gap-2 overflow-x-auto pb-1">
@@ -651,14 +705,44 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <DateInput label={isCalendarCreate ? '開始日 *' : '開始日'} value={dueDate} onChange={v => { setDueDate(v); if (!endDate || endDate < v) setEndDate(v); }} disabled={readOnly} />
               <DateInput label="終了日" value={endDate} min={dueDate} onChange={setEndDate} disabled={readOnly} />
             </div>
+            {isScheduleMode && (
+              <div className="flex flex-wrap gap-4">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={isAllDay}
+                    onChange={(e) => {
+                      setIsAllDay(e.target.checked);
+                      if (e.target.checked) {
+                        setStartTime('00:00');
+                        setEndTime('23:59');
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary"
+                    disabled={readOnly}
+                  />
+                  終日予定
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={reportable}
+                    onChange={(e) => setReportable(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-primary"
+                    disabled={readOnly}
+                  />
+                  週次報告の自動取得対象
+                </label>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻 {isCalendarCreate && <span className="text-red-500">*</span>}</label>
-                <TimePicker value={startTime} onChange={v => { setStartTime(v); if (!task && !schedule && !hasEditedTime) { setEndTime(addHour(v, 60)); } setHasEditedTime(true); }} disabled={readOnly} />
+                <TimePicker value={startTime} onChange={v => { setStartTime(v); if (!task && !schedule && !hasEditedTime) { setEndTime(addHour(v, 60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻 {isCalendarCreate && <span className="text-red-500">*</span>}</label>
-                <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly} />
+                <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay} />
               </div>
             </div>
             {!readOnly && (
@@ -680,7 +764,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <select value={locationText} onChange={e => setLocationText(e.target.value)}
                 className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" disabled={readOnly}>
                 <option value="">選択してください</option>
-                {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                {visibleLocations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
                 <option value="__OTHER__">その他</option>
               </select>
               {locationText === '__OTHER__' && !readOnly && (

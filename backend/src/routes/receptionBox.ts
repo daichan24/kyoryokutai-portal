@@ -98,11 +98,20 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
       const monthlyReportCount = await prisma.monthlyReport.count({
         where: {
           submittedAt: { not: null },
-          creator: { role: 'MEMBER' },
+          approvalStatus: 'PENDING',
+          creator: { role: { in: ['SUPPORT', 'MASTER'] } },
         },
       });
 
-      count += scheduleCount + consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount;
+      // ⑦ 代休・時間調整の確認依頼
+      const compensatoryLeaveCount = await prisma.compensatoryLeave.count({
+        where: { confirmedAt: null, user: { role: 'MEMBER' } },
+      });
+      const timeAdjustmentCount = await prisma.timeAdjustment.count({
+        where: { confirmedAt: null, user: { role: 'MEMBER' } },
+      });
+
+      count += scheduleCount + consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount + compensatoryLeaveCount + timeAdjustmentCount;
     }
 
     res.json({ count });
@@ -124,6 +133,8 @@ router.get('/', async (req: AuthRequest, res) => {
     const weeklyReports: any[] = [];
     const inspections: any[] = [];
     const monthlyReports: any[] = [];
+    const compensatoryLeaves: any[] = [];
+    const timeAdjustments: any[] = [];
 
     if (role === 'MEMBER') {
       const invites = await prisma.scheduleParticipant.findMany({
@@ -198,11 +209,37 @@ router.get('/', async (req: AuthRequest, res) => {
       inspections.push(...insp);
 
       const monthly = await prisma.monthlyReport.findMany({
-        where: { submittedAt: { not: null }, creator: { role: 'MEMBER' } },
-        include: { creator: { select: { id: true, name: true, avatarColor: true } } },
+        where: { submittedAt: { not: null }, creator: { role: { in: ['SUPPORT', 'MASTER'] } } },
+        include: {
+          creator: { select: { id: true, name: true, avatarColor: true } },
+          approver: { select: { id: true, name: true } },
+        },
         orderBy: { submittedAt: 'desc' },
       });
       monthlyReports.push(...monthly);
+
+      const compLeaves = await prisma.compensatoryLeave.findMany({
+        where: { user: { role: 'MEMBER' } },
+        include: {
+          user: { select: { id: true, name: true, avatarColor: true } },
+          schedule: { select: { id: true, title: true, activityDescription: true, startDate: true } },
+          confirmedBy: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      compensatoryLeaves.push(...compLeaves);
+
+      const adjustments = await prisma.timeAdjustment.findMany({
+        where: { user: { role: 'MEMBER' } },
+        include: {
+          user: { select: { id: true, name: true, avatarColor: true } },
+          sourceSchedule: { select: { id: true, title: true, activityDescription: true, startDate: true } },
+          compensatoryLeave: { select: { id: true, expiresAt: true } },
+          confirmedBy: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      timeAdjustments.push(...adjustments);
     }
 
     res.json({
@@ -212,6 +249,8 @@ router.get('/', async (req: AuthRequest, res) => {
       weeklyReports,
       inspections,
       monthlyReports,
+      compensatoryLeaves,
+      timeAdjustments,
     });
   } catch (error) {
     console.error('Get reception box list error:', error);

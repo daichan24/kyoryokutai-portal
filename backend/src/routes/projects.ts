@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { notifyProjectResult } from '../services/approvalEmailService';
 
 const router = Router();
 router.use(authenticate);
@@ -24,11 +25,25 @@ router.get('/', async (req: AuthRequest, res) => {
     const { userId, phase, approvalStatus, missionId } = req.query;
     const where: any = {};
 
-    if (userId) {
-      where.userId = userId;
-    } else if (req.user!.role === 'MEMBER' && !missionId) {
-      // missionId指定時はミッションに紐づく全プロジェクトを返す（他ユーザー作成分も含む）
+    if (req.user!.role === 'MEMBER') {
+      if (typeof userId === 'string' && userId !== req.user!.id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      if (typeof missionId === 'string') {
+        const mission = await prisma.mission.findUnique({
+          where: { id: missionId },
+          select: { userId: true },
+        });
+        if (!mission) {
+          return res.status(404).json({ error: 'Mission not found' });
+        }
+        if (mission.userId !== req.user!.id) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
+      }
       where.userId = req.user!.id;
+    } else if (userId) {
+      where.userId = userId;
     }
 
     if (missionId) {
@@ -58,7 +73,7 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 // プロジェクト詳細取得
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: AuthRequest, res) => {
   try {
     const project = await prisma.project.findUnique({
       where: { id: req.params.id },
@@ -74,6 +89,10 @@ router.get('/:id', async (req, res) => {
 
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
+    }
+
+    if (req.user!.role === 'MEMBER' && project.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     // プロジェクトに関連するタスクの進捗率を計算
@@ -106,11 +125,14 @@ router.post('/', async (req: AuthRequest, res) => {
     if (missionId) {
       const mission = await prisma.mission.findUnique({
         where: { id: missionId },
-        select: { id: true },
+        select: { id: true, userId: true },
       });
 
       if (!mission) {
         return res.status(400).json({ error: '指定されたミッションが見つかりません' });
+      }
+      if (mission.userId !== req.user!.id) {
+        return res.status(403).json({ error: 'Forbidden' });
       }
     }
 
@@ -206,11 +228,14 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (missionId) {
       const mission = await prisma.mission.findUnique({
         where: { id: missionId },
-        select: { id: true },
+        select: { id: true, userId: true },
       });
 
       if (!mission) {
         return res.status(400).json({ error: '指定されたミッションが見つかりません' });
+      }
+      if (mission.userId !== existing.userId) {
+        return res.status(403).json({ error: 'Forbidden' });
       }
     }
 
@@ -313,6 +338,9 @@ router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequ
       },
       include: { user: true },
     });
+    await notifyProjectResult(project.id).catch((error) =>
+      console.error('project result email failed:', error),
+    );
 
     res.json(project);
   } catch (error) {

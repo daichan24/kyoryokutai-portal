@@ -6,6 +6,7 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Plus, X } from 'lucide-react';
+import type { Location } from '../../types';
 
 interface SNSLink {
   platform: string;
@@ -25,6 +26,9 @@ export const ProfileSettings: React.FC = () => {
   const [missionType, setMissionType] = useState<'FREE' | 'MISSION' | ''>('');
   const [wishesEnabled, setWishesEnabled] = useState(false);
   const [notepadEnabled, setNotepadEnabled] = useState(true);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+  const [scheduleWeekStartsOn, setScheduleWeekStartsOn] = useState<0 | 1>(0);
+  const [scheduleHiddenLocationIds, setScheduleHiddenLocationIds] = useState<string[]>([]);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -38,6 +42,9 @@ export const ProfileSettings: React.FC = () => {
       setMissionType(user.missionType || '');
       setWishesEnabled(user.wishesEnabled === true);
       setNotepadEnabled(user.notepadEnabled !== false);
+      setEmailNotificationsEnabled(user.emailNotificationsEnabled !== false);
+      setScheduleWeekStartsOn(user.scheduleWeekStartsOn === 1 ? 1 : 0);
+      setScheduleHiddenLocationIds(Array.isArray(user.scheduleHiddenLocationIds) ? user.scheduleHiddenLocationIds : []);
     }
   }, [user]);
 
@@ -49,6 +56,14 @@ export const ProfileSettings: React.FC = () => {
     },
   });
 
+  const { data: locations = [], isLoading: isLocationsLoading } = useQuery<Location[]>({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const response = await api.get('/api/locations');
+      return response.data || [];
+    },
+  });
+
   useEffect(() => {
     if (currentLinks) {
       setSnsLinks(currentLinks.length > 0 ? [...currentLinks] : [{ platform: '', url: '' }]);
@@ -56,7 +71,7 @@ export const ProfileSettings: React.FC = () => {
   }, [currentLinks]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean }) => {
+    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[] }) => {
       const response = await api.put('/api/me/profile', data);
       return response.data;
     },
@@ -134,7 +149,16 @@ export const ProfileSettings: React.FC = () => {
       missionType: missionType === '' ? null : missionType as 'FREE' | 'MISSION',
       wishesEnabled: wishesEnabled,
       notepadEnabled: notepadEnabled,
+      emailNotificationsEnabled: emailNotificationsEnabled,
+      scheduleWeekStartsOn,
+      scheduleHiddenLocationIds,
     });
+  };
+
+  const toggleScheduleLocation = (locationId: string) => {
+    setScheduleHiddenLocationIds((prev) =>
+      prev.includes(locationId) ? prev.filter((id) => id !== locationId) : [...prev, locationId],
+    );
   };
 
   const handleSave = () => {
@@ -147,7 +171,7 @@ export const ProfileSettings: React.FC = () => {
     saveMutation.mutate(validLinks);
   };
 
-  if (isLoading) {
+  if (isLoading || isLocationsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
@@ -312,6 +336,102 @@ export const ProfileSettings: React.FC = () => {
               <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{notepadEnabled ? 'ON' : 'OFF'}</span>
             </label>
           </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">メール通知</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">承認結果や期限リマインドなどのメールを受け取る</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={emailNotificationsEnabled}
+                onChange={(e) => setEmailNotificationsEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{emailNotificationsEnabled ? 'ON' : 'OFF'}</span>
+            </label>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">スケジュールの週始まり</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">週表示・月表示の曜日並びに反映されます</p>
+            </div>
+            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-0.5 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setScheduleWeekStartsOn(0)}
+                className={`h-8 px-3 rounded-md text-sm transition ${
+                  scheduleWeekStartsOn === 0
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800'
+                }`}
+              >
+                日曜始まり
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleWeekStartsOn(1)}
+                className={`h-8 px-3 rounded-md text-sm transition ${
+                  scheduleWeekStartsOn === 1
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800'
+                }`}
+              >
+                月曜始まり
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">スケジュール入力で使う活動場所</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">チェックした場所だけがスケジュール作成・編集時の候補に表示されます</p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setScheduleHiddenLocationIds([])}
+                  className="h-8 rounded-md border border-gray-200 dark:border-gray-700 px-3 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  全て表示
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleHiddenLocationIds(locations.map((location) => location.id))}
+                  className="h-8 rounded-md border border-gray-200 dark:border-gray-700 px-3 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  全て非表示
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {locations.map((location) => {
+                const visible = !scheduleHiddenLocationIds.includes(location.id);
+                return (
+                  <label
+                    key={location.id}
+                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer ${
+                      visible
+                        ? 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-100'
+                        : 'border-gray-200 bg-white text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={visible}
+                      onChange={() => toggleScheduleLocation(location.id)}
+                      className="rounded border-gray-300 dark:border-gray-600"
+                    />
+                    <span className="truncate">{location.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -422,4 +542,3 @@ export const ProfileSettings: React.FC = () => {
     </div>
   );
 };
-

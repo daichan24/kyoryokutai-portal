@@ -34,6 +34,7 @@ export const UsersSettings: React.FC = () => {
   const [pwTarget, setPwTarget] = useState<User | null>(null);
   const [pwNew, setPwNew] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
+  const [emailToggleId, setEmailToggleId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -149,6 +150,31 @@ export const UsersSettings: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleEmailNotificationToggle = async (targetUser: User) => {
+    const next = targetUser.emailNotificationsEnabled === false;
+    setEmailToggleId(targetUser.id);
+
+    const patchLocal = (list: User[]) =>
+      list.map((item) =>
+        item.id === targetUser.id ? { ...item, emailNotificationsEnabled: next } : item,
+      );
+    const previousUsers = users;
+    const previousAllUsers = allUsers;
+    setUsers(patchLocal(users));
+    setAllUsers(patchLocal(allUsers));
+
+    try {
+      await api.put(`/api/users/${targetUser.id}`, { emailNotificationsEnabled: next });
+    } catch (error) {
+      console.error('Failed to update email notification setting:', error);
+      setUsers(previousUsers);
+      setAllUsers(previousAllUsers);
+      alert('メール通知設定の更新に失敗しました');
+    } finally {
+      setEmailToggleId(null);
+    }
+  };
+
   // 管理者（MASTER / SUPPORT）のみが新規作成ボタンを表示
   const canCreateUser = currentUser?.role === 'MASTER' || currentUser?.role === 'SUPPORT';
   
@@ -248,6 +274,11 @@ export const UsersSettings: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   Instagram
                 </th>
+                {(currentUser?.role === 'MASTER' || currentUser?.role === 'SUPPORT') && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    メール通知
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                   登録日
                 </th>
@@ -394,6 +425,26 @@ export const UsersSettings: React.FC = () => {
                       );
                     })()}
                   </td>
+                  {(currentUser?.role === 'MASTER' || currentUser?.role === 'SUPPORT') && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => handleEmailNotificationToggle(user)}
+                        disabled={emailToggleId === user.id}
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
+                          user.emailNotificationsEnabled === false
+                            ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                        }`}
+                      >
+                        {emailToggleId === user.id
+                          ? '更新中'
+                          : user.emailNotificationsEnabled === false
+                            ? 'OFF'
+                            : 'ON'}
+                      </button>
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(user.createdAt, 'yyyy/M/d')}
                   </td>

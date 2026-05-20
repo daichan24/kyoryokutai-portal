@@ -17,6 +17,10 @@ const ProfileSettings = lazy(() => import('./pages/Settings/Profile').then((m) =
 const DocumentTemplatesSettings = lazy(() =>
   import('./pages/Settings/DocumentTemplates').then((m) => ({ default: m.DocumentTemplatesSettings })),
 );
+const EmailJobsSettings = lazy(() => import('./pages/Settings/EmailJobs').then((m) => ({ default: m.EmailJobsSettings })));
+const GoogleCalendarSettings = lazy(() =>
+  import('./pages/Settings/GoogleCalendar').then((m) => ({ default: m.GoogleCalendarSettings })),
+);
 const Nudges = lazy(() => import('./pages/Nudges').then((m) => ({ default: m.Nudges })));
 const Projects = lazy(() => import('./pages/Projects').then((m) => ({ default: m.Projects })));
 const Events = lazy(() => import('./pages/Events').then((m) => ({ default: m.Events })));
@@ -177,6 +181,28 @@ const App: React.FC = () => {
             <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
               <Layout>
                 <DocumentTemplatesSettings />
+              </Layout>
+            </RoleProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings/google-calendar"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <GoogleCalendarSettings />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/settings/email-jobs"
+          element={
+            <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
+              <Layout>
+                <EmailJobsSettings />
               </Layout>
             </RoleProtectedRoute>
           }

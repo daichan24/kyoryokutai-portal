@@ -10,6 +10,7 @@ import {
 import {
   recalculateMidGoalWeights,
 } from '../services/weightCalculator';
+import { notifyMissionResult } from '../services/approvalEmailService';
 
 const router = Router();
 router.use(authenticate);
@@ -56,10 +57,13 @@ router.get('/', async (req: AuthRequest, res) => {
     const { userId } = req.query;
 
     const where: any = {};
-    if (userId) {
-      where.userId = userId;
-    } else if (req.user!.role === 'MEMBER') {
+    if (req.user!.role === 'MEMBER') {
+      if (typeof userId === 'string' && userId !== req.user!.id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
       where.userId = req.user!.id;
+    } else if (userId) {
+      where.userId = userId;
     }
 
     const missions = await prisma.mission.findMany({
@@ -103,9 +107,19 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 // ミッション詳細取得（進捗計算済み）
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const mission = await prisma.mission.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission not found' });
+    }
+    if (req.user!.role === 'MEMBER' && mission.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const missionData = await getMissionProgressData(id);
     res.json(missionData);
   } catch (error) {
@@ -229,6 +243,9 @@ router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequ
         approvedAt: approvalStatus === 'APPROVED' ? new Date() : null,
       },
     });
+    await notifyMissionResult(mission.id).catch((error) =>
+      console.error('mission result email failed:', error),
+    );
 
     res.json(mission);
   } catch (error) {

@@ -13,14 +13,16 @@ export const formatTime = (time: string): string => {
   return `${parseInt(h, 10)}:${m}`;
 };
 
-export const getWeekRange = (date: Date = new Date()): { start: Date; end: Date } => {
-  const start = startOfWeek(date, { weekStartsOn: 0 }); // 日曜始まり
-  const end = endOfWeek(date, { weekStartsOn: 0 });
+export type WeekStartsOn = 0 | 1;
+
+export const getWeekRange = (date: Date = new Date(), weekStartsOn: WeekStartsOn = 0): { start: Date; end: Date } => {
+  const start = startOfWeek(date, { weekStartsOn });
+  const end = endOfWeek(date, { weekStartsOn });
   return { start, end };
 };
 
-export const getWeekDates = (date: Date = new Date()): Date[] => {
-  const { start } = getWeekRange(date);
+export const getWeekDates = (date: Date = new Date(), weekStartsOn: WeekStartsOn = 0): Date[] => {
+  const { start } = getWeekRange(date, weekStartsOn);
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 };
 
@@ -97,15 +99,15 @@ export const isSameDay = (date1: Date | string, date2: Date | string): boolean =
   );
 };
 
-export const getMonthDates = (date: Date = new Date()): Date[] => {
+export const getMonthDates = (date: Date = new Date(), weekStartsOn: WeekStartsOn = 0): Date[] => {
   const start = startOfMonth(date);
   const end = endOfMonth(date);
   
-  // 月の最初の日が日曜日になるように調整
-  const firstDayOfWeek = start.getDay(); // 0=日曜, 1=月曜, ...
+  // 月の最初の日が設定した開始曜日になるように調整
+  const firstDayOfWeek = (start.getDay() - weekStartsOn + 7) % 7;
   const monthDays = eachDayOfInterval({ start, end });
   
-  // 月の最初の日より前の日を追加（日曜始まり）
+  // 月の最初の日より前の日を追加
   const daysBeforeMonth: Date[] = [];
   for (let i = firstDayOfWeek - 1; i >= 0; i--) {
     const prevDate = new Date(start);
@@ -114,7 +116,7 @@ export const getMonthDates = (date: Date = new Date()): Date[] => {
   }
   
   // 月の最後の日より後の日を追加（最後の週を7日にする）
-  const lastDayOfWeek = end.getDay(); // 0=日曜, 1=月曜, ...
+  const lastDayOfWeek = (end.getDay() - weekStartsOn + 7) % 7;
   const daysAfterMonth: Date[] = [];
   for (let i = 1; i <= (6 - lastDayOfWeek); i++) {
     const nextDate = new Date(end);

@@ -129,17 +129,16 @@ router.get('/summary/year', async (req: AuthRequest, res) => {
   }
 });
 
-/** GET /api/mandated-team-events/matrix?year=2026 — イベント×隊員の参加マトリクス */
+/** GET /api/mandated-team-events/matrix?year=2026 — 年度ごとのイベント×隊員の参加マトリクス */
 router.get('/matrix', async (req: AuthRequest, res) => {
   try {
     const year = parseInt(String(req.query.year || new Date().getFullYear()), 10);
     if (Number.isNaN(year)) return res.status(400).json({ error: 'year が不正です' });
 
-    const yearStart = new Date(year, 0, 1);
-    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
+    const { start: fyStart, end: fyEnd } = fiscalYearRange(year);
 
     const events = await prisma.mandatedTeamEvent.findMany({
-      where: { AND: [{ startDate: { lte: yearEnd } }, { endDate: { gte: yearStart } }] },
+      where: { AND: [{ startDate: { lte: fyEnd } }, { endDate: { gte: fyStart } }] },
       orderBy: [{ startDate: 'asc' }, { title: 'asc' }],
       select: {
         id: true,
@@ -172,20 +171,11 @@ router.get('/matrix', async (req: AuthRequest, res) => {
       }
     }
 
-    const { start: fyStart, end: fyEnd } = fiscalYearRange(year);
-    const fyEvents = await prisma.mandatedTeamEvent.findMany({
-      where: { AND: [{ startDate: { lte: fyEnd } }, { endDate: { gte: fyStart } }] },
-      select: { id: true },
-    });
-    const fyEventIds = fyEvents.map((e) => e.id);
-    for (const eid of fyEventIds) {
-      await ensureAttendanceRows(eid);
-    }
     const fyAttendances = await prisma.mandatedTeamEventAttendance.findMany({
       where: {
         attended: true,
         userId: { in: [...visibleIds] },
-        eventId: { in: fyEventIds },
+        eventId: { in: events.map((e) => e.id) },
       },
       select: { userId: true },
     });
@@ -275,12 +265,11 @@ router.get('/', async (req: AuthRequest, res) => {
   try {
     const yearQ = req.query.year;
     const year = yearQ ? parseInt(String(yearQ), 10) : null;
-    const yearStart = year != null && !Number.isNaN(year) ? new Date(year, 0, 1) : null;
-    const yearEnd = year != null && !Number.isNaN(year) ? new Date(year, 11, 31, 23, 59, 59, 999) : null;
+    const fy = year != null && !Number.isNaN(year) ? fiscalYearRange(year) : null;
 
     const where =
-      yearStart && yearEnd
-        ? { AND: [{ startDate: { lte: yearEnd } }, { endDate: { gte: yearStart } }] }
+      fy
+        ? { AND: [{ startDate: { lte: fy.end } }, { endDate: { gte: fy.start } }] }
         : {};
 
     const rows = await prisma.mandatedTeamEvent.findMany({

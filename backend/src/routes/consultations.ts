@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { notifyConsultationCreated, notifyConsultationResolved } from '../services/approvalEmailService';
 
 const router = Router();
 router.use(authenticate);
@@ -12,6 +13,7 @@ const createSchema = z.object({
   targetUserIds: z.array(z.string().uuid()).optional(),
   subject: z.string().max(400).optional().nullable(),
   body: z.string().min(1).max(20000),
+  sendEmail: z.boolean().optional().default(false),
 });
 
 function canSeeInbox(userRole: string) {
@@ -70,6 +72,7 @@ router.post('/', authorize('MEMBER'), async (req: AuthRequest, res) => {
           audience: data.audience,
           subject: data.subject?.trim() || null,
           body: data.body.trim(),
+          emailRequested: data.sendEmail,
           assignedUsers: {
             connect: targetUserIds.map((id) => ({ id })),
           },
@@ -78,6 +81,9 @@ router.post('/', authorize('MEMBER'), async (req: AuthRequest, res) => {
           member: { select: { id: true, name: true, avatarColor: true } },
           assignedUsers: { select: { id: true, name: true, role: true, avatarColor: true } },
         },
+      });
+      notifyConsultationCreated(row.id).catch((error) => {
+        console.error('Queue consultation created email failed:', error);
       });
       return res.status(201).json(row);
     } else {
@@ -89,11 +95,15 @@ router.post('/', authorize('MEMBER'), async (req: AuthRequest, res) => {
           targetUserId: null,
           subject: data.subject?.trim() || null,
           body: data.body.trim(),
+          emailRequested: data.sendEmail,
         },
         include: {
           member: { select: { id: true, name: true, avatarColor: true } },
           targetUser: { select: { id: true, name: true, role: true, avatarColor: true } },
         },
+      });
+      notifyConsultationCreated(row.id).catch((error) => {
+        console.error('Queue consultation created email failed:', error);
       });
       return res.status(201).json(row);
     }
@@ -191,6 +201,10 @@ router.patch('/:id/resolve', async (req: AuthRequest, res) => {
         targetUser: { select: { id: true, name: true, role: true } },
         resolvedBy: { select: { id: true, name: true } },
       },
+    });
+
+    notifyConsultationResolved(updated.id).catch((error) => {
+      console.error('Queue consultation resolved email failed:', error);
     });
 
     res.json(updated);

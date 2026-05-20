@@ -34,11 +34,17 @@ router.get('/', async (req: AuthRequest, res) => {
       where.approvalStatus = status;
     }
 
-    if (requestedTo) {
+    if (req.user!.role === 'MEMBER') {
+      if (typeof requestedTo === 'string' && requestedTo !== req.user!.id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      if (requestedTo) {
+        where.requestedTo = req.user!.id;
+      } else {
+        where.OR = [{ requestedTo: req.user!.id }, { requestedBy: req.user!.id }];
+      }
+    } else if (requestedTo) {
       where.requestedTo = requestedTo;
-    } else if (req.user!.role === 'MEMBER') {
-      // 協力隊員は自分宛の依頼のみ
-      where.requestedTo = req.user!.id;
     }
 
     const requests = await prisma.request.findMany({
@@ -84,7 +90,7 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 // 依頼詳細取得
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: AuthRequest, res) => {
   try {
     const request = await prisma.request.findUnique({
       where: { id: req.params.id },
@@ -98,6 +104,14 @@ router.get('/:id', async (req, res) => {
 
     if (!request) {
       return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (
+      req.user!.role === 'MEMBER' &&
+      request.requestedBy !== req.user!.id &&
+      request.requestedTo !== req.user!.id
+    ) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     res.json(request);
@@ -124,6 +138,16 @@ router.post('/', async (req: AuthRequest, res) => {
     console.log(`✅ [AUTH] POST /api/requests: User ${req.user.email} (${req.user.role}) is allowed`);
 
     const data = createRequestSchema.parse(req.body);
+
+    if (data.projectId && req.user.role === 'MEMBER') {
+      const project = await prisma.project.findFirst({
+        where: { id: data.projectId, userId: req.user.id },
+        select: { id: true },
+      });
+      if (!project) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
 
     const request = await prisma.request.create({
       data: {
@@ -227,4 +251,3 @@ router.post('/:id/respond', async (req: AuthRequest, res) => {
 });
 
 export default router;
-

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, ReceiptText, X } from 'lucide-react';
+import { AlertCircle, CalendarCheck, FileText, ReceiptText, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
 import { Schedule, Location, User } from '../../types';
@@ -40,6 +40,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [title, setTitle] = useState(''); // タイトル（短い説明）
   const [activityDescription, setActivityDescription] = useState(''); // 活動内容（詳細）
   const [freeNote, setFreeNote] = useState('');
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [reportable, setReportable] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [supportEventId, setSupportEventId] = useState<string | null>(null);
   const [supportEvents, setSupportEvents] = useState<Array<{ id: string; eventName: string; startDate: string }>>([]);
@@ -53,6 +55,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   const { user: currentUser } = useAuthStore();
   const navigate = useNavigate();
+  const visibleLocations = React.useMemo(() => {
+    const hidden = new Set(currentUser?.scheduleHiddenLocationIds || []);
+    return locations.filter((location) => !hidden.has(location.id) || location.name === locationText);
+  }, [locations, currentUser?.scheduleHiddenLocationIds, locationText]);
 
   useEffect(() => {
     fetchLocations();
@@ -76,6 +82,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setTitle(schedule.title || '');
       setActivityDescription(schedule.activityDescription);
       setFreeNote(schedule.freeNote || '');
+      setIsAllDay(!!schedule.isAllDay);
+      setReportable(schedule.reportable !== false);
       setSelectedProjectId(schedule.projectId || null);
       setSupportEventId(schedule.supportEventId || null);
       setCustomColor((schedule as any).customColor || '');
@@ -113,6 +121,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       }
       setSupportEventId(null);
       setCustomColor('');
+      setIsAllDay(false);
+      setReportable(true);
     }
   }, [schedule, defaultDate, defaultStartTime, defaultEndTime, defaultProjectId, defaultActivityDescription]);
 
@@ -222,10 +232,12 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       const data: any = {
         date,
         endDate: endDate !== date ? endDate : undefined, // 終了日が開始日と異なる場合のみ送信
-        startTime,
-        endTime,
+        startTime: isAllDay ? '00:00' : startTime,
+        endTime: isAllDay ? '23:59' : endTime,
         title: title.trim(),
         activityDescription: activityDescription.trim() || undefined, // 空の場合はundefined
+        isAllDay,
+        reportable,
       };
       if (locationText && locationText.trim()) {
         data.locationText = locationText.trim();
@@ -466,6 +478,36 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               )}
             </div>
           )}
+          {schedule?.googleCalendarEventLink && (
+            <div className={`rounded-lg border p-3 ${
+              schedule.googleCalendarEventLink.syncStatus === 'ERROR'
+                ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200'
+                : 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-200'
+            }`}>
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                {schedule.googleCalendarEventLink.syncStatus === 'ERROR' ? (
+                  <AlertCircle className="h-4 w-4" />
+                ) : (
+                  <CalendarCheck className="h-4 w-4" />
+                )}
+                <span>Google同期</span>
+                <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs dark:bg-gray-900/40">
+                  {schedule.googleCalendarEventLink.origin === 'GOOGLE' ? 'Googleから取込' : 'クリアベースから同期'}
+                </span>
+                <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs dark:bg-gray-900/40">
+                  {schedule.googleCalendarEventLink.syncStatus}
+                </span>
+                {schedule.googleCalendarEventLink.origin === 'GOOGLE' && !schedule.projectId && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                    プロジェクト未設定
+                  </span>
+                )}
+              </div>
+              {schedule.googleCalendarEventLink.lastError && (
+                <p className="mt-2 text-xs">{schedule.googleCalendarEventLink.lastError}</p>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="開始日"
@@ -492,6 +534,35 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             />
           </div>
 
+          <div className="flex flex-wrap gap-4">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={isAllDay}
+                onChange={(e) => {
+                  setIsAllDay(e.target.checked);
+                  if (e.target.checked) {
+                    setStartTime('00:00');
+                    setEndTime('23:59');
+                  }
+                }}
+                className="h-4 w-4 rounded border-gray-300 text-primary"
+                disabled={readOnly}
+              />
+              終日予定
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={reportable}
+                onChange={(e) => setReportable(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary"
+                disabled={readOnly}
+              />
+              週次報告の自動取得対象
+            </label>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="w-full">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -502,7 +573,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 onChange={(e) => setStartTime(e.target.value)}
                 className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
-                disabled={readOnly}
+                disabled={readOnly || isAllDay}
               >
                 {Array.from({ length: 24 * 4 }, (_, i) => {
                   const hour = Math.floor(i / 4);
@@ -526,7 +597,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 onChange={(e) => setEndTime(e.target.value)}
                 className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
-                disabled={readOnly}
+                disabled={readOnly || isAllDay}
               >
                 {Array.from({ length: 24 * 4 }, (_, i) => {
                   const hour = Math.floor(i / 4);
@@ -554,7 +625,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               disabled={readOnly}
             >
               <option value="">選択してください</option>
-              {locations.map((loc) => (
+              {visibleLocations.map((loc) => (
                 <option key={loc.id} value={loc.name}>
                   {loc.name}
                 </option>

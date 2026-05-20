@@ -613,9 +613,27 @@ router.post('/:id/respond', async (req: AuthRequest, res) => {
 router.get('/participation-summary', async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
+    const year = req.query.year ? parseInt(String(req.query.year), 10) : null;
+    const period =
+      year != null && !Number.isNaN(year)
+        ? {
+            start: new Date(year, 3, 1),
+            end: new Date(year + 1, 2, 31, 23, 59, 59, 999),
+          }
+        : null;
 
     const mandatedCount = await prisma.mandatedTeamEventAttendance.count({
-      where: { userId, attended: true },
+      where: {
+        userId,
+        attended: true,
+        ...(period
+          ? {
+              event: {
+                AND: [{ startDate: { lte: period.end } }, { endDate: { gte: period.start } }],
+              },
+            }
+          : {}),
+      },
     });
 
     const memberHostedEventCount = await prisma.eventParticipation.count({
@@ -626,6 +644,7 @@ router.get('/participation-summary', async (req: AuthRequest, res) => {
         event: {
           creator: { role: 'MEMBER' },
           NOT: { createdBy: userId },
+          ...(period ? { AND: [{ startDate: { lte: period.end } }, { endDate: { gte: period.start } }] } : {}),
         },
       },
     });

@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateInspectionPDF } from '../services/pdfGenerator';
+import { notifyInspectionResult, notifyInspectionSubmitted } from '../services/approvalEmailService';
 
 const router = Router();
 router.use(authenticate);
@@ -39,10 +40,13 @@ router.get('/', async (req: AuthRequest, res) => {
 
     const where: any = {};
 
-    if (userId) {
-      where.userId = userId;
-    } else if (req.user!.role === 'MEMBER') {
+    if (req.user!.role === 'MEMBER') {
+      if (typeof userId === 'string' && userId !== req.user!.id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
       where.userId = req.user!.id;
+    } else if (userId) {
+      where.userId = userId;
     }
 
     if (projectId) {
@@ -79,7 +83,7 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 // 視察詳細取得
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -103,6 +107,9 @@ router.get('/:id', async (req, res) => {
     if (!inspection) {
       return res.status(404).json({ error: 'Inspection not found' });
     }
+    if (req.user!.role === 'MEMBER' && inspection.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     res.json(inspection);
   } catch (error) {
@@ -117,6 +124,16 @@ router.post('/', async (req: AuthRequest, res) => {
     const data = createInspectionSchema.parse(req.body);
     const canCreateForOthers = req.user!.role === 'MASTER' || req.user!.role === 'SUPPORT' || req.user!.role === 'GOVERNMENT';
     const targetUserId = canCreateForOthers && data.userId ? data.userId : req.user!.id;
+
+    if (data.projectId) {
+      const project = await prisma.project.findFirst({
+        where: { id: data.projectId, userId: targetUserId },
+        select: { id: true },
+      });
+      if (!project) {
+        return res.status(400).json({ error: 'プロジェクトが見つからないか、この隊員のプロジェクトではありません' });
+      }
+    }
 
     if (data.scheduleId) {
       const schedule = await prisma.schedule.findFirst({
@@ -156,6 +173,10 @@ router.post('/', async (req: AuthRequest, res) => {
         project: true,
         schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
       },
+    });
+
+    notifyInspectionSubmitted(inspection.id).catch((error) => {
+      console.error('Queue inspection submitted email failed:', error);
     });
 
     res.status(201).json(inspection);
@@ -199,6 +220,15 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.reflection !== undefined) updateData.reflection = data.reflection;
     if (data.futureAction !== undefined) updateData.futureAction = data.futureAction;
     if (data.projectId !== undefined) updateData.projectId = data.projectId;
+    if (data.projectId) {
+      const project = await prisma.project.findFirst({
+        where: { id: data.projectId, userId: existingInspection.userId },
+        select: { id: true },
+      });
+      if (!project) {
+        return res.status(400).json({ error: 'プロジェクトが見つからないか、この隊員のプロジェクトではありません' });
+      }
+    }
     if (data.scheduleId !== undefined) {
       if (data.scheduleId === null) {
         updateData.scheduleId = null;
@@ -239,6 +269,12 @@ router.put('/:id', async (req: AuthRequest, res) => {
         schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
       },
     });
+
+    if (inspection.approvalStatus === 'PENDING') {
+      notifyInspectionSubmitted(inspection.id).catch((error) => {
+        console.error('Queue inspection submitted email failed:', error);
+      });
+    }
 
     res.json(inspection);
   } catch (error) {
@@ -281,6 +317,10 @@ router.post('/:id/approve', async (req: AuthRequest, res) => {
         schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
         approver: { select: { id: true, name: true } },
       },
+    });
+
+    notifyInspectionResult(updated.id).catch((error) => {
+      console.error('Queue inspection result email failed:', error);
     });
 
     res.json(updated);
@@ -360,7 +400,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
 });
 
 // 復命書PDF出力
-router.get('/:id/pdf', async (req, res) => {
+router.get('/:id/pdf', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -368,6 +408,12 @@ router.get('/:id/pdf', async (req, res) => {
       where: { id },
       include: { user: { select: { name: true } } },
     });
+    if (!row) {
+      return res.status(404).json({ error: 'Inspection not found' });
+    }
+    if (req.user!.role === 'MEMBER' && row.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const displayName = row?.user?.name?.trim() || 'user';
     const asciiSafe = displayName.replace(/[^\w.-]+/g, '_').slice(0, 60) || 'user';
     const dateStr = format(new Date(), 'yyyyMMdd');

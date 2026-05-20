@@ -10,6 +10,7 @@ import {
   Target,
   FolderKanban,
   CalendarDays,
+  CalendarCheck,
   Share2,
   UserCheck,
   Eye,
@@ -26,6 +27,7 @@ import {
   ChevronRight,
   CalendarClock,
   FolderOpen,
+  Mail,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -234,6 +236,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       icon: FileText,
       label: 'テンプレート設定',
     });
+    userMenuItems.push({
+      to: '/settings/email-jobs',
+      icon: Mail,
+      label: 'メール通知キュー',
+    });
   }
 
   if (user?.role === 'MASTER' || user?.role === 'MEMBER' || user?.role === 'SUPPORT' || user?.role === 'GOVERNMENT') {
@@ -257,6 +264,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       label: '協力隊細則',
     });
   }
+
+  userMenuItems.push({
+    to: '/settings/google-calendar',
+    icon: CalendarCheck,
+    label: 'Googleカレンダー',
+  });
 
   userMenuItems.push({
     to: '/settings/drive-links',

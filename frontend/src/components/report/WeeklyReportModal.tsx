@@ -3,7 +3,7 @@ import { X, FileDown } from 'lucide-react';
 import { api } from '../../utils/api';
 import { WeeklyReport, Schedule } from '../../types';
 import { getWeekString, parseWeekString, formatDate, formatTime } from '../../utils/date';
-import { endOfWeek, addWeeks, subWeeks, format } from 'date-fns';
+import { endOfWeek, addWeeks, format } from 'date-fns';
 import { ja } from 'date-fns/locale/ja';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
@@ -37,12 +37,41 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   const [currentReport, setCurrentReport] = useState<WeeklyReport | null>(report || null);
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [unlinkedGoogleSchedulesCount, setUnlinkedGoogleSchedulesCount] = useState(0);
   const [showPDFConfirm, setShowPDFConfirm] = useState(false);
   const { user } = useAuthStore();
   const isMobile = useIsMobileBreakpoint();
 
   // 作成者のみ編集可能
   const canEdit = !report || (user && report.user?.id === user.id);
+
+  const formatScheduleForActivity = (schedule: Schedule) => {
+    const dateValue = schedule.startDate || schedule.date;
+    const date = formatDate(new Date(dateValue), 'M月d日');
+    const time = schedule.startTime && schedule.endTime
+      ? `${formatTime(schedule.startTime)}〜${formatTime(schedule.endTime)}`
+      : schedule.startTime ? formatTime(schedule.startTime) : '';
+    const title = schedule.title || schedule.activityDescription || '予定';
+    const location = schedule.location?.name || schedule.locationText || '';
+    const projectName = schedule.project?.projectName;
+    const taskTitle = schedule.task?.title;
+    const participants = schedule.scheduleParticipants
+      ?.filter(p => p.status === 'APPROVED')
+      .map(p => p.user?.name)
+      .filter(Boolean)
+      .join('、') || '';
+
+    const parts = [
+      `${date}${time ? ` ${time}` : ''}`,
+      projectName ? `プロジェクト: ${projectName}` : null,
+      taskTitle ? `タスク: ${taskTitle}` : null,
+      location ? `場所: ${location}` : null,
+      `内容: ${title}`,
+      participants ? `共同: ${participants}` : null,
+    ].filter(Boolean);
+
+    return parts.join(' / ');
+  };
 
   const handleDownloadPDF = async () => {
     if (!report || !user) return;
@@ -68,9 +97,13 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       window.URL.revokeObjectURL(url);
       link.remove();
       setShowPDFConfirm(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('PDF download failed:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
+      const apiError = error as { response?: { data?: { error?: string } } };
+      const errorMessage =
+        apiError.response?.data?.error ||
+        (error instanceof Error ? error.message : null) ||
+        'PDF出力に失敗しました';
       alert(errorMessage);
       setShowPDFConfirm(false);
     }
@@ -110,57 +143,38 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       
       // 対象週の開始日と終了日を取得
       const weekStart = parseWeekString(week);
-      // 先週（振り返り用）
-      const lastWeekStart = subWeeks(weekStart, 1);
-      const lastWeekEnd = endOfWeek(lastWeekStart, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
       
       // 来週（予定用）
       const nextWeekStart = addWeeks(weekStart, 1);
       const nextWeekEnd = endOfWeek(nextWeekStart, { weekStartsOn: 1 });
       
-      // 先週のスケジュールを取得（活動内容）
-      const lastWeekResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(lastWeekStart, 'yyyy-MM-dd')}&endDate=${format(lastWeekEnd, 'yyyy-MM-dd')}`);
-      const lastWeekSchedules = lastWeekResponse.data || [];
+      // 対象週のスケジュールを取得（活動内容）
+      const weekResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(weekStart, 'yyyy-MM-dd')}&endDate=${format(weekEnd, 'yyyy-MM-dd')}&reportable=true`);
+      const weekSchedules = weekResponse.data || [];
+
+      const unlinkedResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(weekStart, 'yyyy-MM-dd')}&endDate=${format(weekEnd, 'yyyy-MM-dd')}&reportable=false`);
+      setUnlinkedGoogleSchedulesCount((unlinkedResponse.data || []).filter((schedule) =>
+        schedule.googleCalendarEventLink?.origin === 'GOOGLE' && !schedule.projectId
+      ).length);
       
       // 来週のスケジュールを取得（予定）
-      const nextWeekResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(nextWeekStart, 'yyyy-MM-dd')}&endDate=${format(nextWeekEnd, 'yyyy-MM-dd')}`);
+      const nextWeekResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(nextWeekStart, 'yyyy-MM-dd')}&endDate=${format(nextWeekEnd, 'yyyy-MM-dd')}&reportable=true`);
       const nextWeekSchedules = nextWeekResponse.data || [];
       
-      // 先週の活動内容をフォーマット（when/where/what/who）
-      if (lastWeekSchedules.length > 0 && activities.length === 1 && !activities[0].date && !activities[0].activity) {
-        const formattedActivities = lastWeekSchedules.map(schedule => {
-          const date = formatDate(new Date(schedule.date), 'M月d日');
-          const location = schedule.location?.name || schedule.locationText || '';
-          const activity = schedule.activityDescription;
-          const participants = schedule.scheduleParticipants?.filter(p => p.status === 'APPROVED').map(p => p.user?.name).filter(Boolean).join('、') || '';
-          
-          // 「◯月◯日/場所/何をした/誰と」の形式
-          let activityText = `${date}`;
-          if (location) activityText += `/${location}`;
-          activityText += `/${activity}`;
-          if (participants) activityText += `/${participants}`;
-          
-          return {
-            date: formatDate(new Date(schedule.date), 'yyyy-MM-dd'),
-            activity: activityText
-          };
-        });
+      // 対象週の活動内容をフォーマット
+      if (weekSchedules.length > 0 && activities.length === 1 && !activities[0].date && !activities[0].activity) {
+        const formattedActivities = weekSchedules.map(schedule => ({
+          date: formatDate(new Date(schedule.startDate || schedule.date), 'yyyy-MM-dd'),
+          activity: formatScheduleForActivity(schedule),
+        }));
         
         setActivities(formattedActivities.length > 0 ? formattedActivities : [{ date: '', activity: '' }]);
       }
       
       // 来週の予定をフォーマット
       if (nextWeekSchedules.length > 0 && !nextWeekPlan) {
-        const formattedPlan = nextWeekSchedules.map(schedule => {
-          const date = formatDate(new Date(schedule.date), 'M月d日');
-          const time = schedule.startTime && schedule.endTime 
-            ? `${formatTime(schedule.startTime)}〜${formatTime(schedule.endTime)}`
-            : schedule.startTime ? formatTime(schedule.startTime) : '';
-          const location = schedule.location?.name || schedule.locationText || '';
-          const activity = schedule.activityDescription;
-          
-          return `${date}${time ? ` ${time}` : ''}${location ? ` @${location}` : ''} ${activity}`;
-        }).join('\n');
+        const formattedPlan = nextWeekSchedules.map(formatScheduleForActivity).join('\n');
         
         setNextWeekPlan(formattedPlan);
       }
@@ -297,6 +311,11 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
               {loadingSchedules && (
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
                   スケジュールから活動内容と予定を自動取得中...
+                </div>
+              )}
+              {unlinkedGoogleSchedulesCount > 0 && (
+                <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-lg text-sm">
+                  Googleから取り込まれた未紐づけ予定が{unlinkedGoogleSchedulesCount}件あります。スケジュール画面でプロジェクトや報告対象を設定すると週次報告に利用できます。
                 </div>
               )}
               {!report && initialWeek && (

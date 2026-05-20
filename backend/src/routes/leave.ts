@@ -2,6 +2,12 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import {
+  notifyCompensatoryLeaveConfirmed,
+  notifyCompensatoryLeaveSubmitted,
+  notifyTimeAdjustmentConfirmed,
+  notifyTimeAdjustmentSubmitted,
+} from '../services/approvalEmailService';
 
 const router = Router();
 router.use(authenticate);
@@ -421,6 +427,11 @@ router.post('/compensatory', async (req: AuthRequest, res) => {
         confirmedBy: { select: { id: true, name: true } },
       },
     });
+    if (req.user!.role === 'MEMBER') {
+      await notifyCompensatoryLeaveSubmitted(leave.id).catch((error) =>
+        console.error('compensatory leave submitted email failed:', error),
+      );
+    }
     res.json(leave);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
@@ -472,6 +483,9 @@ router.post('/compensatory/:id/confirm', async (req: AuthRequest, res) => {
       data: { confirmedById: req.user!.id, confirmedAt: new Date() },
       include: { confirmedBy: { select: { id: true, name: true } } },
     });
+    await notifyCompensatoryLeaveConfirmed(updated.id).catch((error) =>
+      console.error('compensatory leave confirmed email failed:', error),
+    );
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -617,6 +631,11 @@ router.post('/time-adjustments', async (req: AuthRequest, res) => {
         confirmedBy: { select: { id: true, name: true } },
       },
     });
+    if (req.user!.role === 'MEMBER') {
+      await notifyTimeAdjustmentSubmitted(entry.id).catch((error) =>
+        console.error('time adjustment submitted email failed:', error),
+      );
+    }
     res.json(entry);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
@@ -693,6 +712,9 @@ router.post('/time-adjustments/:id/confirm', async (req: AuthRequest, res) => {
       data: { confirmedById: req.user!.id, confirmedAt: new Date() },
       include: { confirmedBy: { select: { id: true, name: true } } },
     });
+    await notifyTimeAdjustmentConfirmed(updated.id).catch((error) =>
+      console.error('time adjustment confirmed email failed:', error),
+    );
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -755,6 +777,11 @@ router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
         data: { userId: targetId, grantedAt: grantedDate, expiresAt, scheduleId: body.scheduleId, totalHours: workHours, leaveType: body.leaveType, note: body.note ?? null },
         include: { schedule: { select: { id: true, title: true, activityDescription: true, startDate: true } }, usages: true, confirmedBy: { select: { id: true, name: true } } },
       });
+      if (req.user!.role === 'MEMBER') {
+        await notifyCompensatoryLeaveSubmitted(leave.id).catch((error) =>
+          console.error('compensatory leave from schedule email failed:', error),
+        );
+      }
     }
 
     // TIME_ADJUSTの場合は時間調整レコードも作成
@@ -768,9 +795,14 @@ router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
           data: { compensatoryLeaveId: leave.id, adjustedAt: grantedDate, hours: workHours },
         });
       } else {
-        await prisma.timeAdjustment.create({
+        const adjustment = await prisma.timeAdjustment.create({
           data: { userId: targetId, compensatoryLeaveId: leave.id, adjustedAt: grantedDate, hours: workHours, sourceScheduleId: body.scheduleId },
         });
+        if (req.user!.role === 'MEMBER') {
+          await notifyTimeAdjustmentSubmitted(adjustment.id).catch((error) =>
+            console.error('time adjustment from schedule email failed:', error),
+          );
+        }
       }
     }
 

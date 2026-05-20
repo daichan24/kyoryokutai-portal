@@ -14,6 +14,9 @@ const updateProfileSchema = z.object({
   missionType: z.enum(['FREE', 'MISSION']).optional().nullable(),
   wishesEnabled: z.boolean().optional(),
   notepadEnabled: z.boolean().optional(),
+  emailNotificationsEnabled: z.boolean().optional(),
+  scheduleWeekStartsOn: z.union([z.literal(0), z.literal(1)]).optional(),
+  scheduleHiddenLocationIds: z.array(z.string()).optional(),
 });
 
 /**
@@ -31,7 +34,7 @@ router.put('/', async (req: AuthRequest, res) => {
     }
     const data = raw.data;
 
-    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean } = {};
+    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[] } = {};
     if (data.avatarColor !== undefined) updateData.avatarColor = data.avatarColor;
     if (data.avatarLetter !== undefined) {
       updateData.avatarLetter = (data.avatarLetter === '' || data.avatarLetter === null || data.avatarLetter === undefined) ? null : String(data.avatarLetter).slice(0, 1);
@@ -41,6 +44,9 @@ router.put('/', async (req: AuthRequest, res) => {
     if (data.missionType !== undefined) updateData.missionType = data.missionType;
     if (data.wishesEnabled !== undefined) updateData.wishesEnabled = data.wishesEnabled;
     if (data.notepadEnabled !== undefined) updateData.notepadEnabled = data.notepadEnabled;
+    if (data.emailNotificationsEnabled !== undefined) updateData.emailNotificationsEnabled = data.emailNotificationsEnabled;
+    if (data.scheduleWeekStartsOn !== undefined) updateData.scheduleWeekStartsOn = data.scheduleWeekStartsOn;
+    if (data.scheduleHiddenLocationIds !== undefined) updateData.scheduleHiddenLocationIds = [...new Set(data.scheduleHiddenLocationIds)];
 
     console.log('[API] Update data:', updateData);
 
@@ -55,6 +61,9 @@ router.put('/', async (req: AuthRequest, res) => {
         missionType: true,
         wishesEnabled: true,
         notepadEnabled: true,
+        emailNotificationsEnabled: true,
+        scheduleWeekStartsOn: true,
+        scheduleHiddenLocationIds: true,
       },
     });
 
@@ -67,4 +76,3 @@ router.put('/', async (req: AuthRequest, res) => {
 });
 
 export default router;
-

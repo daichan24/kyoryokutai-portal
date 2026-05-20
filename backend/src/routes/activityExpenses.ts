@@ -4,6 +4,7 @@ import { ExpenseStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getActivityExpenseSummary } from '../services/activityExpenseService';
+import { notifyExpenseResult, notifyExpenseSubmitted } from '../services/approvalEmailService';
 
 const router = Router();
 router.use(authenticate);
@@ -209,6 +210,9 @@ router.post('/entries', async (req: AuthRequest, res) => {
     });
 
     const summary = await getActivityExpenseSummary(targetUserId, 500);
+    notifyExpenseSubmitted(row.id).catch((error) => {
+      console.error('Queue activity expense submitted email failed:', error);
+    });
     res.status(201).json({ entry: row, summary });
   } catch (e) {
     if (e instanceof z.ZodError) {
@@ -295,6 +299,9 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
     });
 
     const summary = await getActivityExpenseSummary(row.userId, 500);
+    notifyExpenseSubmitted(row.id).catch((error) => {
+      console.error('Queue activity expense submitted email failed:', error);
+    });
     res.json({ entry: row, summary });
   } catch (e: unknown) {
     const err = e as Error & { status?: number };
@@ -336,6 +343,9 @@ router.post('/entries/:id/approve', async (req: AuthRequest, res) => {
       where: { id },
       data: { status: ExpenseStatus.APPROVED, rejectionReason: null, updatedById: req.user!.id },
     });
+    notifyExpenseResult(row.id).catch((error) => {
+      console.error('Queue activity expense result email failed:', error);
+    });
     res.json({ entry: row });
   } catch (e) {
     console.error('activity-expenses approve entry:', e);
@@ -356,6 +366,9 @@ router.post('/entries/:id/reject', async (req: AuthRequest, res) => {
     const row = await prisma.activityExpenseEntry.update({
       where: { id },
       data: { status: ExpenseStatus.REJECTED, rejectionReason: reason || null, updatedById: req.user!.id },
+    });
+    notifyExpenseResult(row.id).catch((error) => {
+      console.error('Queue activity expense result email failed:', error);
     });
     res.json({ entry: row });
   } catch (e) {

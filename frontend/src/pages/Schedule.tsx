@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType, Project, Task, User } from '../types';
 import { formatDate, getWeekDates, getMonthDates, isSameDay, isHolidayDate, isSunday, isSaturday, formatTime } from '../utils/date';
+import type { WeekStartsOn } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskModal } from '../components/project/TaskModal';
@@ -61,12 +62,7 @@ export const Schedule: React.FC = () => {
   const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
   const [visibleMemberIds, setVisibleMemberIds] = useState<Set<string>>(new Set());
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
-
-  useEffect(() => {
-    if (isMobile && viewMode === 'week') {
-      setViewMode('day');
-    }
-  }, [isMobile, viewMode]);
+  const scheduleWeekStartsOn: WeekStartsOn = user?.scheduleWeekStartsOn === 1 ? 1 : 0;
 
   useEffect(() => {
     setDetailFilterUserId('');
@@ -74,13 +70,13 @@ export const Schedule: React.FC = () => {
 
   useEffect(() => {
     if (viewMode === 'week') {
-      setWeekDates(getWeekDates(currentDate));
+      setWeekDates(getWeekDates(currentDate, scheduleWeekStartsOn));
     } else if (viewMode === 'month') {
-      setWeekDates(getMonthDates(currentDate));
+      setWeekDates(getMonthDates(currentDate, scheduleWeekStartsOn));
     } else if (viewMode === 'day') {
       setWeekDates([currentDate]);
     }
-  }, [currentDate, viewMode]);
+  }, [currentDate, viewMode, scheduleWeekStartsOn]);
 
   useEffect(() => {
     if (weekDates.length > 0) {
@@ -426,6 +422,20 @@ export const Schedule: React.FC = () => {
     setVisibleMemberIds(new Set());
   };
 
+  const selectedCalendarMembers = React.useMemo(() => {
+    const byId = new Map<string, User>();
+    if (user) byId.set(user.id, user as User);
+    for (const member of availableMembers) byId.set(member.id, member);
+    return [...visibleMemberIds]
+      .map((id) => byId.get(id))
+      .filter((member): member is User => !!member)
+      .sort((a, b) => {
+        if (a.id === user?.id) return -1;
+        if (b.id === user?.id) return 1;
+        return (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.name.localeCompare(b.name, 'ja');
+      });
+  }, [availableMembers, user, visibleMemberIds]);
+
   return (
     <div className="space-y-4 sm:space-y-6 -mx-3 sm:-mx-4 md:-mx-6">
       {/* スマホ: タイトルとボタンを別カラムに配置 */}
@@ -705,6 +715,7 @@ export const Schedule: React.FC = () => {
                 setViewMode('day');
               }}
               onScheduleUpdate={fetchSchedules}
+              firstDay={scheduleWeekStartsOn}
             />
             {/* 行政出勤カレンダー（週表示のみ） */}
             {viewMode === 'week' && (
@@ -743,9 +754,9 @@ export const Schedule: React.FC = () => {
               onEventClick={handleEventClick}
               onCreateSchedule={handleCreateSchedule}
               viewMode={viewMode === 'day' ? 'day' : 'week'}
-              calendarViewMode={calendarViewMode}
+              calendarViewMode={viewMode === 'day' && selectedCalendarMembers.length > 1 ? 'all' : calendarViewMode}
               currentUserId={user?.id}
-              members={viewMode === 'day' ? availableMembers.filter(m => (m.displayOrder ?? 0) !== 0).sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)) : undefined}
+              members={viewMode === 'day' ? selectedCalendarMembers : undefined}
             />
             {/* 行政出勤カレンダー（週表示） */}
             <GovernmentAttendanceCalendar
@@ -790,8 +801,10 @@ export const Schedule: React.FC = () => {
               });
 
               const getScheduleColor = (schedule: ScheduleType) => {
-                if (calendarViewMode === 'all') return schedule.user?.avatarColor || '#6B7280';
-                return (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+                if (schedule.userId === user?.id) {
+                  return (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+                }
+                return schedule.user?.avatarColor || '#6B7280';
               };
 
               const getTextColor = (bg: string) => {

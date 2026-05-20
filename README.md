@@ -203,10 +203,22 @@ DATABASE_URL=postgresql://postgres:postgres@database:5432/kyoryokutai
 JWT_SECRET=your-secret-key-change-in-production
 NODE_ENV=development
 PORT=3001
+APP_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
+
+# Email notifications
+# console はログ出力のみ、brevo/resend は外部配信
+EMAIL_ENABLED=false
+EMAIL_PROVIDER=console
+EMAIL_FROM=noreply@example.com
+BREVO_API_KEY=
+RESEND_API_KEY=
 
 # Frontend
 VITE_API_URL=http://localhost:3001
 ```
+
+メール通知は `EMAIL_ENABLED=true` にすると送信処理が有効になります。外部サービスを設定する前でも、管理画面の `管理 > メール通知キュー` で通知ジョブの作成状況とテストメール作成を確認できます。
 
 ### 3. Docker Composeで起動
 

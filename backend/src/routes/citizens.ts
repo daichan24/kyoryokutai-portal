@@ -26,6 +26,18 @@ function addStatus(contact: any) {
   return { ...contact, status };
 }
 
+function sanitizeCitizenForViewer(contact: any, req: AuthRequest) {
+  if (req.user!.role !== 'MEMBER') return contact;
+  return {
+    ...contact,
+    histories: (contact.histories || []).map((history: any) => ({
+      ...history,
+      project: history.userId === req.user!.id ? history.project : null,
+      projectId: history.userId === req.user!.id ? history.projectId : null,
+    })),
+  };
+}
+
 // 一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -66,7 +78,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
       },
     });
     if (!contact) return res.status(404).json({ error: '町民情報が見つかりません' });
-    res.json(addStatus(contact));
+    res.json(addStatus(sanitizeCitizenForViewer(contact, req)));
   } catch (error: any) {
     console.error('Get citizen error:', error);
     res.status(500).json({ error: '町民情報の取得に失敗しました', details: error?.message });

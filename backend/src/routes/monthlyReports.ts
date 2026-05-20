@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { generateMonthlyReport } from '../services/monthlyReportGenerator';
+import { notifyMonthlyReportResult, notifyMonthlyReportSubmitted } from '../services/approvalEmailService';
 
 const router = Router();
 router.use(authenticate);
@@ -19,6 +20,11 @@ const updateMonthlyReportSchema = z.object({
   reason: z.string().optional(), // 変更理由（MASTERのみ）
 });
 
+const approvalSchema = z.object({
+  approvalStatus: z.enum(['APPROVED', 'REJECTED']),
+  comment: z.string().max(5000).optional().nullable(),
+});
+
 /**
  * 【API定義】月次報告一覧取得
  * エンドポイント: GET /api/monthly-reports
@@ -28,6 +34,7 @@ router.get('/', async (req: AuthRequest, res) => {
     const reports = await prisma.monthlyReport.findMany({
       include: {
         creator: { select: { id: true, name: true } },
+        approver: { select: { id: true, name: true } },
         supportRecords: {
           include: { user: { select: { id: true, name: true } } },
         },
@@ -106,6 +113,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
         where: { id },
         include: {
           creator: { select: { id: true, name: true } },
+          approver: { select: { id: true, name: true } },
           supportRecords: {
             include: {
               user: { select: { id: true, name: true } },
@@ -170,8 +178,12 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
       coverRecipient: existingReport.coverRecipient,
       coverSender: existingReport.coverSender,
       memberSheets: existingReport.memberSheets,
-      submittedAt: existingReport.submittedAt,
-    };
+        submittedAt: existingReport.submittedAt,
+        approvalStatus: existingReport.approvalStatus,
+        approvalComment: existingReport.approvalComment,
+        approvedBy: existingReport.approvedBy,
+        approvedAt: existingReport.approvedAt,
+      };
 
     // 更新データを準備
     const updateData: any = {};
@@ -180,6 +192,14 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
     if (data.memberSheets !== undefined) updateData.memberSheets = data.memberSheets;
     if (data.submittedAt !== undefined) {
       updateData.submittedAt = data.submittedAt ? new Date(data.submittedAt) : null;
+      if (data.submittedAt) {
+        updateData.approvalStatus = 'PENDING';
+        updateData.approvalComment = null;
+        updateData.approvedBy = null;
+        updateData.approvedAt = null;
+      } else {
+        updateData.approvalStatus = 'DRAFT';
+      }
     }
 
     // 月次報告を更新
@@ -188,6 +208,7 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
       data: updateData,
       include: {
         creator: { select: { id: true, name: true } },
+        approver: { select: { id: true, name: true } },
         supportRecords: {
           include: {
             user: { select: { id: true, name: true } },
@@ -203,6 +224,12 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
       },
     });
 
+    if (!existingReport.submittedAt && updatedReport.submittedAt) {
+      notifyMonthlyReportSubmitted(updatedReport.id).catch((error) => {
+        console.error('Queue monthly report submitted email failed:', error);
+      });
+    }
+
     // 変更履歴を保存（MASTERが提出済みを編集した場合のみ）
     if (existingReport.submittedAt && req.user!.role === 'MASTER') {
       const changes: any = {};
@@ -217,6 +244,9 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
       }
       if (data.submittedAt !== undefined && data.submittedAt !== (oldData.submittedAt?.toISOString() || null)) {
         changes.submittedAt = { from: oldData.submittedAt, to: data.submittedAt };
+      }
+      if (updatedReport.approvalStatus !== oldData.approvalStatus) {
+        changes.approvalStatus = { from: oldData.approvalStatus, to: updatedReport.approvalStatus };
       }
 
       if (Object.keys(changes).length > 0) {
@@ -238,6 +268,58 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
     }
     console.error('Update monthly report error:', error);
     res.status(500).json({ error: '月次報告の更新に失敗しました' });
+  }
+});
+
+router.post('/:id/approve', authorize('GOVERNMENT', 'MASTER'), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const data = approvalSchema.parse(req.body);
+
+    const existingReport = await prisma.monthlyReport.findUnique({
+      where: { id },
+      select: { id: true, submittedAt: true, createdBy: true },
+    });
+
+    if (!existingReport) {
+      return res.status(404).json({ error: '月次報告が見つかりません' });
+    }
+    if (!existingReport.submittedAt) {
+      return res.status(400).json({ error: '未提出の月次報告は承認できません' });
+    }
+    if (existingReport.createdBy === req.user!.id) {
+      return res.status(400).json({ error: '自分が作成した月次報告は承認できません' });
+    }
+
+    const report = await prisma.monthlyReport.update({
+      where: { id },
+      data: {
+        approvalStatus: data.approvalStatus,
+        approvalComment: data.comment?.trim() || null,
+        approvedBy: req.user!.id,
+        approvedAt: new Date(),
+      },
+      include: {
+        creator: { select: { id: true, name: true } },
+        approver: { select: { id: true, name: true } },
+        supportRecords: {
+          include: {
+            user: { select: { id: true, name: true } },
+          },
+          orderBy: { supportDate: 'asc' },
+        },
+      },
+    });
+
+    notifyMonthlyReportResult(report.id).catch((error) => {
+      console.error('Queue monthly report result email failed:', error);
+    });
+
+    res.json(report);
+  } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    console.error('Approve monthly report error:', error);
+    res.status(500).json({ error: '月次報告の承認処理に失敗しました' });
   }
 });
 
@@ -291,4 +373,3 @@ router.get('/:id/pdf', async (req: AuthRequest, res) => {
 });
 
 export default router;
-

@@ -74,9 +74,9 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const getEventsForDate = (d: Date) => events.filter((e) => isSameDay(new Date(e.date), d));
 
   const getColor = (s: ScheduleType) =>
-    calendarViewMode === 'all'
-      ? s.user?.avatarColor || '#6B7280'
-      : (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
+    s.userId === currentUserId
+      ? (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280'
+      : s.user?.avatarColor || '#6B7280';
 
   const getTextColor = (bg: string): string => {
     const hex = bg.replace('#', '');
@@ -92,8 +92,8 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const dayDate = isDayView ? dates[0] : null;
   const memberCount = Math.max(members.length, 1);
   const gridTemplate = isDayView
-    ? `minmax(2rem, 3.5rem) repeat(${memberCount}, minmax(0, 1fr))`
-    : 'minmax(2rem, 3.5rem) repeat(7, minmax(0, 1fr))';
+    ? `minmax(2.75rem, 3.5rem) repeat(${memberCount}, minmax(12rem, 16rem))`
+    : 'minmax(2.75rem, 3.5rem) repeat(7, minmax(7.5rem, 1fr))';
 
   const multiDaySchedules = !isDayView ? schedules.filter((s) => {
     const sd = new Date((s as any).startDate || s.date);
@@ -104,6 +104,14 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
 
   const showNowLine = dates.some(d => isToday(d));
   const nowTop = `${(nowMin / 60) * 4}rem`;
+
+  if (isDayView && members.length === 0) {
+    return (
+      <div className="flex min-h-[12rem] items-center justify-center rounded-lg border border-gray-200 bg-white text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+        表示するメンバーを選択してください
+      </div>
+    );
+  }
 
   const renderDayCol = (date: Date, colIdx: number, memberId?: string) => {
     const singleDay = memberId
@@ -139,6 +147,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
             const pos = calcPos(s.startTime, s.endTime);
             const color = getColor(s);
             const isRecurring = (s as any).createdBy === 'RECURRENCE';
+            const isGoogle = !!s.googleCalendarEventLink;
             const pCount = s.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
             return (
               <button key={s.id} onClick={() => onScheduleClick(s)}
@@ -152,6 +161,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                     {calendarViewMode === 'all' && s.user && <p className="text-[10px] text-white/70 truncate">{s.user.name}</p>}
                   </div>
                   <div className="flex items-center gap-0.5 flex-shrink-0 ml-0.5">
+                    {isGoogle && <span className="text-[10px] bg-white/80 text-gray-700 px-0.5 rounded">G</span>}
                     {pCount > 0 && <span className="text-[10px] bg-white/20 px-0.5 rounded">+{pCount}</span>}
                     {isRecurring && <span title="繰り返し"><RefreshCw className="h-2.5 w-2.5 text-white/80" /></span>}
                   </div>
@@ -214,8 +224,8 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 w-full min-w-0">
-      <div className="grid w-full min-w-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ gridTemplateColumns: gridTemplate }}>
+    <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto overflow-y-hidden bg-white dark:bg-gray-800 w-full min-w-0">
+      <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ gridTemplateColumns: gridTemplate, width: 'max-content', minWidth: '100%' }}>
         <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" />
         {isDayView ? members.map((m, i) => (
           <div key={i} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-12 flex flex-col items-center justify-center px-1 bg-gray-50 dark:bg-gray-900">
@@ -284,9 +294,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                 ))}
               </div>
               {banners.map(({ s, sc, ec, rowIdx, startsInWeek, endsInWeek }) => {
-                const color = calendarViewMode === 'all'
-                  ? s.user?.avatarColor || '#6B7280'
-                  : (s as any).customColor || s.project?.themeColor || s.user?.avatarColor || '#6B7280';
+                const color = getColor(s);
                 const textColor = getTextColor(color);
                 const isRecurring = (s as any).createdBy === 'RECURRENCE';
                 const leftPct = (sc / totalCols) * 100;
@@ -321,8 +329,8 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         );
       })()}
 
-      <div ref={scrollRef} className="w-full min-w-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: '60vh' }}>
-        <div className="grid w-full min-w-0" style={{ gridTemplateColumns: gridTemplate }}>
+      <div ref={scrollRef} className="w-full min-w-0 overflow-y-auto overflow-x-visible" style={{ maxHeight: '60vh' }}>
+        <div className="grid" style={{ gridTemplateColumns: gridTemplate, width: 'max-content', minWidth: '100%' }}>
           <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0">
             <div className="relative" style={{ height: '96rem' }}>
               {hours.map(h => (

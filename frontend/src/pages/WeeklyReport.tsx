@@ -11,6 +11,14 @@ import { WeeklyReportModal } from '../components/report/WeeklyReportModal';
 import { useAuthStore } from '../stores/authStore';
 import { useSearchParams } from 'react-router-dom';
 
+type MemberUserOption = {
+  id: string;
+  name: string;
+  role: string;
+  avatarColor?: string;
+  displayOrder?: number;
+};
+
 export const WeeklyReport: React.FC = () => {
   const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,7 +30,7 @@ export const WeeklyReport: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<WeeklyReportType | null>(null);
   const [modalViewMode, setModalViewMode] = useState<'edit' | 'preview'>('edit');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string; avatarColor?: string }>>([]);
+  const [users, setUsers] = useState<MemberUserOption[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 月のフィルタ
   const [selectedWeek, setSelectedWeek] = useState<string>(''); // 週の選択（全員分表示用）
   const [viewMode, setViewMode] = useState<'individual' | 'weekly'>('individual'); // 表示モード
@@ -39,10 +47,10 @@ export const WeeklyReport: React.FC = () => {
       }
       
       try {
-        const response = await api.get('/api/users');
-        const memberUsers = response.data.filter((u: any) => 
+        const response = await api.get<MemberUserOption[]>('/api/users');
+        const memberUsers = response.data.filter((u) =>
           u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
-        ).sort((a: any, b: any) => {
+        ).sort((a, b) => {
           // displayOrderでソート（小さい順）、同じ場合は名前でソート
           if (a.displayOrder !== b.displayOrder) {
             return (a.displayOrder || 0) - (b.displayOrder || 0);
@@ -276,6 +284,18 @@ export const WeeklyReport: React.FC = () => {
     return map;
   }, [users, allWeekReports]);
 
+  const weeklySummary = useMemo(() => {
+    const reportsForMembers = Array.from(memberReportMap.values());
+    return {
+      total: reportsForMembers.length,
+      submitted: reportsForMembers.filter(report => report?.submittedAt).length,
+      pending: reportsForMembers.filter(report => report?.submittedAt && report.approvalStatus !== 'APPROVED' && report.approvalStatus !== 'REJECTED').length,
+      approved: reportsForMembers.filter(report => report?.approvalStatus === 'APPROVED').length,
+      rejected: reportsForMembers.filter(report => report?.approvalStatus === 'REJECTED').length,
+      missing: reportsForMembers.filter(report => !report || !report.submittedAt).length,
+    };
+  }, [memberReportMap]);
+
   // 現在の週を取得（デフォルト選択用）
   useEffect(() => {
     if (viewMode === 'weekly' && !selectedWeek && availableWeeks.length > 0) {
@@ -321,9 +341,10 @@ export const WeeklyReport: React.FC = () => {
                   const response = await api.post('/api/weekly-reports/draft', { week });
                   setSelectedReport(response.data);
                   setIsModalOpen(true);
-                } catch (error: any) {
+                } catch (error: unknown) {
                   console.error('Failed to generate draft:', error);
-                  alert(error?.response?.data?.error || '自動作成に失敗しました');
+                  const apiError = error as { response?: { data?: { error?: string } } };
+                  alert(apiError.response?.data?.error || '自動作成に失敗しました');
                 }
               }}
               variant="outline"
@@ -540,32 +561,54 @@ export const WeeklyReport: React.FC = () => {
         <>
           {/* 週別表示（全員分） */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              対象週を選択
-            </label>
-            <select
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(e.target.value)}
-              className="w-full md:w-64 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">週を選択してください</option>
-              {availableWeeks.map(week => {
-                try {
-                  const weekStart = parseWeekString(week);
-                  return (
-                    <option key={week} value={week}>
-                      {formatDate(weekStart, 'yyyy年M月d日週')}
-                    </option>
-                  );
-                } catch (error) {
-                  return (
-                    <option key={week} value={week}>
-                      {week}
-                    </option>
-                  );
-                }
-              })}
-            </select>
+            <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  対象週を選択
+                </label>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="w-full md:w-64 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">週を選択してください</option>
+                  {availableWeeks.map(week => {
+                    try {
+                      const weekStart = parseWeekString(week);
+                      return (
+                        <option key={week} value={week}>
+                          {formatDate(weekStart, 'yyyy年M月d日週')}
+                        </option>
+                      );
+                    } catch (error) {
+                      return (
+                        <option key={week} value={week}>
+                          {week}
+                        </option>
+                      );
+                    }
+                  })}
+                </select>
+              </div>
+
+              {selectedWeek && (
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1">
+                  {[
+                    { label: '対象', value: weeklySummary.total, className: 'bg-gray-50 text-gray-700 dark:bg-gray-700/60 dark:text-gray-200' },
+                    { label: '提出済み', value: weeklySummary.submitted, className: 'bg-blue-50 text-blue-700 dark:bg-blue-900/25 dark:text-blue-300' },
+                    { label: '承認待ち', value: weeklySummary.pending, className: 'bg-amber-50 text-amber-700 dark:bg-amber-900/25 dark:text-amber-300' },
+                    { label: '承認済み', value: weeklySummary.approved, className: 'bg-green-50 text-green-700 dark:bg-green-900/25 dark:text-green-300' },
+                    { label: '差し戻し', value: weeklySummary.rejected, className: 'bg-red-50 text-red-700 dark:bg-red-900/25 dark:text-red-300' },
+                    { label: '未提出', value: weeklySummary.missing, className: 'bg-slate-50 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300' },
+                  ].map(item => (
+                    <div key={item.label} className={`rounded-md px-3 py-2 ${item.className}`}>
+                      <div className="text-[11px] font-medium">{item.label}</div>
+                      <div className="text-lg font-bold leading-tight">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {loadingWeekView ? (
@@ -590,9 +633,15 @@ export const WeeklyReport: React.FC = () => {
                 return (
                   <div
                     key={userId}
+                    onClick={() => {
+                      if (!report) return;
+                      setSelectedReport(report);
+                      setModalViewMode('preview');
+                      setIsModalOpen(true);
+                    }}
                     className={`bg-white dark:bg-gray-800 rounded-lg shadow border p-6 ${
                       report 
-                        ? 'border-border dark:border-gray-700 hover:shadow-lg transition-shadow'
+                        ? 'border-border dark:border-gray-700 hover:shadow-lg transition-shadow cursor-pointer'
                         : 'border-red-300 dark:border-red-700 border-2'
                     }`}
                   >
@@ -657,6 +706,23 @@ export const WeeklyReport: React.FC = () => {
                               </p>
                             </div>
                           )}
+
+                          <div className="pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedReport(report);
+                                setModalViewMode('preview');
+                                setIsModalOpen(true);
+                              }}
+                              className="w-full"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              内容を確認
+                            </Button>
+                          </div>
                         </div>
                       </>
                     ) : (

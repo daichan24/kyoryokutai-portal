@@ -91,9 +91,9 @@ export const EventParticipationSummary: React.FC = () => {
   const [formSlots, setFormSlots] = useState(1);
 
   const { data: summary, isLoading: summaryLoading } = useQuery<ParticipationSummary>({
-    queryKey: ['event-participation-summary'],
+    queryKey: ['event-participation-summary', year],
     queryFn: async () => {
-      const response = await api.get('/api/events/participation-summary');
+      const response = await api.get(`/api/events/participation-summary?year=${year}`);
       return response.data;
     },
   });
@@ -236,7 +236,7 @@ export const EventParticipationSummary: React.FC = () => {
       <div>
         <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">イベント参加状況</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          役場・スタッフが登録する隊員参加枠はマトリクスで管理します。累計参加回数は「隊員参加枠でのチェック」と「他メンバーのイベント主催への参加（承認済み）」の内訳で表示します。
+          役場・スタッフが登録する隊員参加枠はマトリクスで管理します。参加回数は選択した年度の「隊員参加枠でのチェック」と「他メンバーのイベント主催への参加（承認済み）」の内訳で表示します。
         </p>
       </div>
 
@@ -281,7 +281,7 @@ export const EventParticipationSummary: React.FC = () => {
               <div className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-5">
                 <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
                   <Users className="h-4 w-4" />
-                  累計（合計）
+                  {year}年度 合計
                 </div>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {summary?.totalCumulative ?? 0}
@@ -313,7 +313,7 @@ export const EventParticipationSummary: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              表示年
+              表示年度
               <select
                 value={year}
                 onChange={(e) => {
@@ -324,7 +324,7 @@ export const EventParticipationSummary: React.FC = () => {
               >
                 {[yearNow + 1, yearNow, yearNow - 1, yearNow - 2].map((y) => (
                   <option key={y} value={y}>
-                    {y}年
+                    {y}年度
                   </option>
                 ))}
               </select>
@@ -357,12 +357,12 @@ export const EventParticipationSummary: React.FC = () => {
             <LoadingSpinner />
           ) : matrix.events.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {year}年に該当する隊員参加枠のイベントがありません。管理者は「参加枠イベントの登録」から追加してください。
+              {year}年度に該当する隊員参加枠のイベントがありません。管理者は「参加枠イベントの登録」から追加してください。
             </p>
           ) : (
             <div className="space-y-1">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                隊員名の下の数字は「{matrix.fiscalYearLabel ?? year}年度」（4月〜翌3月）の隊員参加枠への参加回数です。表の列は表示年（暦年）で絞り込んだイベントです。
+                隊員名の下の数字は「{matrix.fiscalYearLabel ?? year}年度」（4月〜翌3月）の隊員参加枠への参加回数です。
               </p>
               <div className="overflow-x-auto rounded-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800 shadow-sm">
               <table className="text-xs border-collapse min-w-max">
@@ -603,7 +603,7 @@ export const EventParticipationSummary: React.FC = () => {
 
           <section className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-              {year}年の登録一覧
+              {year}年度の登録一覧
             </h2>
             {mandatedList.length === 0 ? (
               <p className="text-sm text-gray-500">該当がありません。</p>

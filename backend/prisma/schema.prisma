@@ -31,6 +31,9 @@ model User {
   displayOrder  Int     @default(0) // 表示順（メンバー以外が設定可能）
   wishesEnabled Boolean @default(false) // やりたいこと100（プロフィールでON、Wishが1件以上あるユーザーは移行でON）
   notepadEnabled Boolean @default(true) // メモ帳機能の表示（デフォルトON）
+  emailNotificationsEnabled Boolean @default(true) // メール通知の受信
+  scheduleWeekStartsOn Int @default(0) // スケジュール週表示の開始曜日（0=日曜, 1=月曜）
+  scheduleHiddenLocationIds String[] @default([]) // スケジュール入力で非表示にする活動場所ID
 
   // Phase 1 Relations
   schedules             Schedule[]
@@ -47,6 +50,7 @@ model User {
   eventParticipations    EventParticipation[]
   snsPosts               SNSPost[]
   monthlyReports         MonthlyReport[]         @relation("MonthlyReportCreator")
+  monthlyReportsApproved MonthlyReport[]         @relation("MonthlyReportApprover")
   monthlyReportRevisions MonthlyReportRevision[] @relation("MonthlyReportRevisionChanger")
   supportRecords         SupportRecord[]
   contacts               Contact[]
@@ -66,6 +70,8 @@ model User {
   personalProjects     PersonalProject[]
   personalSchedules    PersonalSchedule[]
   notifications        Notification[]
+  emailJobsReceived    EmailJob[]             @relation("EmailJobRecipient")
+  emailJobsTriggered   EmailJob[]             @relation("EmailJobActor")
   scheduleParticipants ScheduleParticipant[]
 
   // ダッシュボード設定（JSON）
@@ -114,6 +120,10 @@ model User {
   mandatedTeamEventAttendances  MandatedTeamEventAttendance[]
   mandatedAttendanceAuditAsMember MandatedAttendanceAuditLog[] @relation("MandatedAttendanceMember")
   mandatedAttendanceAuditAsStaff  MandatedAttendanceAuditLog[] @relation("MandatedAttendanceChangedBy")
+
+  googleCalendarConnection GoogleCalendarConnection?
+  googleCalendarEventLinks GoogleCalendarEventLink[]
+  googleCalendarSyncJobs   GoogleCalendarSyncJob[]
 
   governmentAttendances GovernmentAttendance[]
   notepads              Notepad[]
@@ -177,6 +187,9 @@ model Schedule {
   recurrenceRule  Json? // { type: 'daily|weekly|monthly', interval: 1, endDate: Date }
   isPending       Boolean @default(false)
   isAutoExtracted Boolean @default(false) // 月次報告自動抽出フラグ
+  isAllDay        Boolean @default(false)
+  reportable      Boolean @default(true)
+  deletedAt       DateTime?
 
   // 代休・時間調整
   compensatoryLeaveRequired Boolean               @default(false) // 代休が必要か
@@ -200,15 +213,154 @@ model Schedule {
   unpaidLeaveEntries   UnpaidLeaveEntry[]    @relation("UnpaidLeaveEntrySchedule")
   compensatoryLeaveUsages CompensatoryLeaveUsage[] @relation("CompensatoryLeaveUsageSchedule")
   timeAdjustmentsAsUsed TimeAdjustment[]      @relation("TimeAdjustmentUsedSchedule")
+  googleCalendarEventLink GoogleCalendarEventLink?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId, date])
+  @@index([userId, deletedAt])
+  @@index([reportable])
   @@index([projectId])
   @@index([taskId])
   @@index([locationId])
   @@index([supportEventId])
+}
+
+model GoogleCalendarConnection {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  googleAccountEmail String?
+  googleSubject      String?
+  accessToken        String? @db.Text
+  refreshToken       String? @db.Text
+  tokenExpiry        DateTime?
+  scope              String? @db.Text
+
+  calendarId      String?
+  calendarSummary String? @default("クリアベース｜活動予定")
+  syncToken       String? @db.Text
+
+  watchChannelId  String?
+  watchResourceId String?
+  watchExpiration DateTime?
+  watchTokenHash  String?
+
+  status         GoogleCalendarConnectionStatus @default(ACTIVE)
+  lastSyncedAt   DateTime?
+  lastError      String? @db.Text
+  syncEnabledAt  DateTime?
+  disconnectedAt DateTime?
+
+  eventLinks GoogleCalendarEventLink[]
+  syncJobs   GoogleCalendarSyncJob[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([watchChannelId])
+  @@index([watchExpiration])
+}
+
+model GoogleCalendarEventLink {
+  id         String   @id @default(uuid())
+  scheduleId String   @unique
+  schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId String
+  connection   GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  googleCalendarId String
+  googleEventId    String
+  googleEtag       String?
+  googleUpdatedAt  DateTime?
+  origin           GoogleCalendarEventOrigin @default(CLEARBASE)
+
+  lastSyncedAt     DateTime?
+  lastPushedAt     DateTime?
+  lastPulledAt     DateTime?
+  lastSyncDirection GoogleCalendarSyncDirection?
+  syncStatus       GoogleCalendarSyncStatus @default(SYNCED)
+  lastError        String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([googleCalendarId, googleEventId])
+  @@index([userId])
+  @@index([connectionId])
+  @@index([syncStatus])
+}
+
+model GoogleCalendarSyncJob {
+  id           String @id @default(uuid())
+  userId       String?
+  user         User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  connectionId String?
+  connection   GoogleCalendarConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+
+  jobType   GoogleCalendarSyncJobType
+  status    GoogleCalendarSyncJobStatus @default(PENDING)
+  payload   Json?
+  attempts  Int @default(0)
+  lastError String? @db.Text
+  scheduledAt DateTime @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([connectionId, createdAt])
+  @@index([jobType, createdAt])
+}
+
+enum GoogleCalendarConnectionStatus {
+  ACTIVE
+  ERROR
+  DISCONNECTED
+  REAUTH_REQUIRED
+}
+
+enum GoogleCalendarEventOrigin {
+  CLEARBASE
+  GOOGLE
+}
+
+enum GoogleCalendarSyncDirection {
+  PUSH
+  PULL
+}
+
+enum GoogleCalendarSyncStatus {
+  SYNCED
+  PENDING
+  ERROR
+  CONFLICT_RESOLVED
+  DELETED
+}
+
+enum GoogleCalendarSyncJobType {
+  INITIAL
+  MANUAL
+  WEBHOOK
+  POLL
+  WATCH_RENEWAL
+  PUSH
+  PULL
+}
+
+enum GoogleCalendarSyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 enum CreatedBy {
@@ -533,6 +685,7 @@ model Consultation {
 
   subject String? @db.VarChar(400)
   body    String  @db.Text
+  emailRequested Boolean @default(false)
 
   status ConsultationStatus @default(OPEN)
 
@@ -976,6 +1129,11 @@ model MonthlyReport {
   memberSheets Json
 
   submittedAt DateTime?
+  approvalStatus  ApprovalStatus @default(DRAFT)
+  approvalComment String?        @db.Text
+  approvedBy      String?
+  approver        User?          @relation("MonthlyReportApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
 
   supportRecords SupportRecord[]
   revisions      MonthlyReportRevision[]
@@ -1327,6 +1485,80 @@ enum NotificationType {
   SCHEDULE_INVITE
   SCHEDULE_INVITE_APPROVED
   SCHEDULE_INVITE_REJECTED
+}
+
+model EmailJob {
+  id     String @id @default(uuid())
+
+  eventType EmailEventType
+  status    EmailJobStatus @default(PENDING)
+
+  recipientUserId String?
+  recipientUser   User?   @relation("EmailJobRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  recipientEmail  String
+  recipientName   String?
+
+  actorUserId String?
+  actorUser   User?   @relation("EmailJobActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  subject  String @db.VarChar(300)
+  textBody String @db.Text
+  htmlBody String? @db.Text
+  link     String?
+
+  relatedType String? @db.VarChar(80)
+  relatedId   String?
+  idempotencyKey String? @unique
+
+  attempts  Int @default(0)
+  lastError String? @db.Text
+  scheduledAt DateTime @default(now())
+  sentAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([recipientUserId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([relatedType, relatedId])
+}
+
+enum EmailJobStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum EmailEventType {
+  SYSTEM_TEST
+  WEEKLY_REPORT_SUBMITTED
+  WEEKLY_REPORT_APPROVED
+  WEEKLY_REPORT_REJECTED
+  INSPECTION_SUBMITTED
+  INSPECTION_APPROVED
+  INSPECTION_REJECTED
+  MONTHLY_REPORT_SUBMITTED
+  MONTHLY_REPORT_APPROVED
+  MONTHLY_REPORT_REJECTED
+  ACTIVITY_EXPENSE_SUBMITTED
+  ACTIVITY_EXPENSE_APPROVED
+  ACTIVITY_EXPENSE_REJECTED
+  CONSULTATION_CREATED
+  CONSULTATION_RESOLVED
+  COMPENSATORY_LEAVE_SUBMITTED
+  COMPENSATORY_LEAVE_CONFIRMED
+  TIME_ADJUSTMENT_SUBMITTED
+  TIME_ADJUSTMENT_CONFIRMED
+  MISSION_APPROVED
+  MISSION_REJECTED
+  PROJECT_APPROVED
+  PROJECT_REJECTED
+  LEAVE_EXPIRY_REMINDER
+  TIME_ADJUSTMENT_EXPIRY_REMINDER
+  SNS_WEEKLY_SUMMARY
 }
 
 // ========================================

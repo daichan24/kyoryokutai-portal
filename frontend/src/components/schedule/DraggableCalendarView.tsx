@@ -27,6 +27,7 @@ interface DraggableCalendarViewProps {
   onCreateSchedule: (date: Date, startTime?: string, endTime?: string) => void;
   onMoreClick?: (date: Date) => void;
   onScheduleUpdate: () => void;
+  firstDay?: 0 | 1;
 }
 
 export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
@@ -41,6 +42,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   onCreateSchedule,
   onMoreClick,
   onScheduleUpdate,
+  firstDay = 0,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -127,9 +129,9 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             endDate = startDate;
           }
 
-          const color = calendarViewMode === 'all'
-            ? schedule.user?.avatarColor || '#6B7280'
-            : (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280';
+          const color = schedule.userId === currentUserId
+            ? (schedule as any).customColor || schedule.project?.themeColor || schedule.user?.avatarColor || '#6B7280'
+            : schedule.user?.avatarColor || '#6B7280';
 
           // テキスト色を自動調整
           const textColor = getTextColor(color);
@@ -140,6 +142,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           // FullCalendar に渡す時刻を作成
           // timeZone: 'Asia/Tokyo' を設定しているため、タイムゾーン情報なしで渡す
           // FullCalendarが自動的にJSTとして解釈する
+          const isAllDay = !!schedule.isAllDay || isMultiDay;
           const startDateTime = `${startDate}T${schedule.startTime}:00`;
           const endDateTime = isMultiDay 
             ? `${endDate}T${schedule.endTime}:00`
@@ -151,9 +154,9 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           const event = {
             id: schedule.id,
             title: (schedule as any).title || schedule.activityDescription || '(タイトルなし)',
-            start: isMultiDay ? startDate : startDateTime,
+            start: isAllDay ? startDate : startDateTime,
             // allDay イベントの end は exclusive（終了日の翌日）なので +1日
-            end: isMultiDay ? (() => {
+            end: isAllDay ? (() => {
               const d = new Date(endDate + 'T00:00:00');
               d.setDate(d.getDate() + 1);
               return d.toISOString().slice(0, 10);
@@ -161,7 +164,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             backgroundColor: color,
             borderColor: color,
             textColor: textColor,
-            allDay: isMultiDay,
+            allDay: isAllDay,
             editable: isEditable && !isMultiDay,
             extendedProps: {
               type: 'schedule',
@@ -663,6 +666,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         dateClick={handleDateClick}
         height={isMobile ? 'calc(100dvh - 220px)' : 'auto'}
         contentHeight={isMobile ? 'auto' : undefined}
+        dayMinWidth={isMobile && viewMode === 'week' ? 120 : undefined}
         expandRows={true}
         stickyHeaderDates={true}
         dayMaxEvents={isMobileMonth ? 3 : isMobile ? 3 : 3}
@@ -692,12 +696,32 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           // 日付の数字のみを表示（「日」を削除）
           return arg.dayNumberText.replace('日', '');
         }}
-        firstDay={0}
+        firstDay={firstDay}
         weekends={true}
         nowIndicator={true}
         eventDisplay="block"
         displayEventTime={!isMobileMonth}
         displayEventEnd={false}
+        eventContent={(arg) => {
+          const schedule = arg.event.extendedProps?.schedule as ScheduleType | undefined;
+          const isGoogle = !!schedule?.googleCalendarEventLink;
+          const needsProject = schedule?.googleCalendarEventLink?.origin === 'GOOGLE' && !schedule.projectId;
+          return (
+            <div className="min-w-0 overflow-hidden">
+              <div className="flex min-w-0 items-center gap-1">
+                {isGoogle && (
+                  <span className="shrink-0 rounded bg-white/80 px-1 text-[9px] font-bold leading-4 text-gray-700">
+                    G
+                  </span>
+                )}
+                <span className="truncate">{arg.event.title}</span>
+              </div>
+              {needsProject && !isMobileMonth && (
+                <div className="truncate text-[10px] opacity-90">プロジェクト未設定</div>
+              )}
+            </div>
+          );
+        }}
       />
     </div>
   );
