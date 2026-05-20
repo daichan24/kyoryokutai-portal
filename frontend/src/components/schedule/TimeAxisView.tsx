@@ -97,13 +97,18 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const memberColumn = isMobile
     ? (memberCount <= 1 ? 'minmax(15rem, 1fr)' : '11.5rem')
     : (memberCount <= 1 ? 'minmax(16rem, 1fr)' : '14rem');
-  const weekColumn = isMobile ? '7.75rem' : 'minmax(0, 1fr)';
+  const weekColumn = isMobile ? '9.25rem' : 'minmax(0, 1fr)';
   const gridTemplate = isDayView
     ? `${timeColumnWidth} repeat(${memberCount}, ${memberColumn})`
     : `${timeColumnWidth} repeat(7, ${weekColumn})`;
+  const gridWidth = (isDayView && memberCount > 1) || (isMobile && !isDayView) ? 'max-content' : '100%';
   const gridStyle: React.CSSProperties = {
     gridTemplateColumns: gridTemplate,
-    width: (isDayView && memberCount > 1) || (isMobile && !isDayView) ? 'max-content' : '100%',
+    width: gridWidth,
+    minWidth: '100%',
+  };
+  const stripStyle: React.CSSProperties = {
+    width: gridWidth,
     minWidth: '100%',
   };
 
@@ -163,12 +168,14 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
             const pCount = s.scheduleParticipants?.filter(p => p.status === 'APPROVED').length || 0;
             return (
               <button key={s.id} onClick={() => onScheduleClick(s)}
-                className="absolute left-0.5 right-0.5 rounded text-xs p-1 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden"
+                className="absolute left-0.5 right-0.5 rounded text-xs p-1.5 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden text-left"
                 style={{ top: pos.top, height: pos.height, backgroundColor: color, minHeight: '1.5rem' }}
                 title={`${(s as any).title || s.activityDescription} (${formatTime(s.startTime)}-${formatTime(s.endTime)})`}>
-                <div className="flex items-start justify-between h-full">
+                <div className="flex items-start justify-between h-full gap-1">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate text-white leading-tight text-[11px]">{(s as any).title || s.activityDescription}</p>
+                    <p className={`${isDayView ? 'truncate' : 'line-clamp-2 break-words'} font-medium text-white leading-tight text-[11px]`}>
+                      {(s as any).title || s.activityDescription}
+                    </p>
                     <p className="text-[10px] text-white/80 truncate">{formatTime(s.startTime)}-{formatTime(s.endTime)}</p>
                     {calendarViewMode === 'all' && s.user && <p className="text-[10px] text-white/70 truncate">{s.user.name}</p>}
                   </div>
@@ -238,7 +245,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   return (
     <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto overflow-y-hidden bg-white dark:bg-gray-800 w-full min-w-0">
       <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={gridStyle}>
-        <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" />
+        <div className="sticky left-0 z-30 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" />
         {isDayView ? members.map((m, i) => (
           <div key={i} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-12 flex flex-col items-center justify-center px-1 bg-gray-50 dark:bg-gray-900">
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium mb-0.5" style={{ backgroundColor: m.avatarColor }}>
@@ -249,9 +256,9 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         )) : dates.map((d, i) => {
           const todayH = isToday(d);
           return (
-            <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-11 sm:h-12 flex flex-col items-center justify-center px-0.5 ${todayH ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50 dark:bg-gray-900'}`}>
-              <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 leading-none truncate text-center">{formatDate(d, 'E')}</div>
-              <div className={`text-sm sm:text-lg leading-tight mt-0.5 ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-900 dark:text-gray-100'}`}>{formatDate(d, 'd')}</div>
+            <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-12 flex flex-col items-center justify-center px-1 ${todayH ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50 dark:bg-gray-900'}`}>
+              <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 leading-tight text-center">{formatDate(d, 'E')}</div>
+              <div className={`text-base sm:text-lg leading-tight ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-900 dark:text-gray-100'}`}>{formatDate(d, 'd')}</div>
             </div>
           );
         })}
@@ -295,7 +302,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         return (
           <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800"
             style={{ ...gridStyle, minHeight: `${bannerAreaHeight}px` }}>
-            <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-start justify-end pr-1 pt-1 min-w-0">
+            <div className="sticky left-0 z-30 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-start justify-end pr-1 pt-1 min-w-0">
               <span className="text-[8px] text-gray-400">終日</span>
             </div>
             <div className="relative min-w-0" style={{ gridColumn: `2 / span ${totalCols}` }}>
@@ -340,9 +347,9 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         );
       })()}
 
-      <div ref={scrollRef} className="w-full min-w-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: '60vh' }}>
+      <div ref={scrollRef} className="min-w-0 overflow-y-auto overflow-x-visible" style={{ ...stripStyle, maxHeight: '60vh' }}>
         <div className="grid" style={gridStyle}>
-          <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0">
+          <div className="sticky left-0 z-30 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0">
             <div className="relative" style={{ height: '96rem' }}>
               {hours.map(h => (
                 <div key={h} className="absolute border-b border-gray-200 dark:border-gray-700 flex items-start justify-end pr-0.5 sm:pr-2"
