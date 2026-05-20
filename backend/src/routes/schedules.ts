@@ -59,12 +59,19 @@ function sanitizeScheduleForViewer(schedule: any, viewer: NonNullable<AuthReques
     project: null,
     task: null,
     freeNote: null,
+    referenceUrl: null,
     customColor: null,
     inspections: [],
     activityExpenseEntries: [],
     googleCalendarEventLink: null,
     scheduleParticipants: [],
   };
+}
+
+function normalizeReferenceUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 router.use(authenticate);
@@ -312,6 +319,7 @@ const createScheduleSchema = z.object({
   title: z.string().max(200).min(1, 'タイトルを入力してください'),
   activityDescription: z.string().optional(),
   freeNote: z.string().optional(),
+  referenceUrl: z.string().url('URL形式で入力してください').max(2000).optional().nullable().or(z.literal('')),
   isPending: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),
   projectId: z.string().optional().nullable(),
@@ -319,6 +327,7 @@ const createScheduleSchema = z.object({
   supportEventId: z.string().uuid().optional().nullable(),
   customColor: z.string().max(20).optional().nullable(),
   isAllDay: z.boolean().optional(),
+  isTimeUnspecified: z.boolean().optional(),
   reportable: z.boolean().optional(),
   compensatoryLeaveRequired: z.boolean().optional(),
   compensatoryLeaveType: z.enum(['FULL_DAY', 'TIME_ADJUST']).optional().nullable(),
@@ -584,12 +593,14 @@ router.post('/', async (req: AuthRequest, res) => {
         title: data.title,
         activityDescription: data.activityDescription || '',
         freeNote: data.freeNote || null,
+        referenceUrl: normalizeReferenceUrl((data as any).referenceUrl),
         isPending: data.isPending || false,
         projectId: data.projectId || null,
         taskId: data.taskId || null,
         supportEventId: data.supportEventId || null,
         customColor: (data as any).customColor || null,
         isAllDay: (data as any).isAllDay ?? false,
+        isTimeUnspecified: (data as any).isTimeUnspecified ?? false,
         reportable: (data as any).reportable ?? true,
         compensatoryLeaveRequired: (data as any).compensatoryLeaveRequired ?? false,
         compensatoryLeaveType: (data as any).compensatoryLeaveType ?? null,
@@ -805,6 +816,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.locationText !== undefined) updateData.locationText = data.locationText || null;
     if (data.activityDescription !== undefined) updateData.activityDescription = data.activityDescription;
     if (data.freeNote !== undefined) updateData.freeNote = data.freeNote || null;
+    if ((data as any).referenceUrl !== undefined) updateData.referenceUrl = normalizeReferenceUrl((data as any).referenceUrl);
     if (data.isPending !== undefined) updateData.isPending = data.isPending;
 
     // 関連フィールド（nullも許可）
@@ -813,6 +825,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.supportEventId !== undefined) updateData.supportEventId = data.supportEventId || null;
     if ((data as any).customColor !== undefined) updateData.customColor = (data as any).customColor || null;
     if ((data as any).isAllDay !== undefined) updateData.isAllDay = (data as any).isAllDay;
+    if ((data as any).isTimeUnspecified !== undefined) updateData.isTimeUnspecified = (data as any).isTimeUnspecified;
     if ((data as any).reportable !== undefined) updateData.reportable = (data as any).reportable;
     if ((data as any).compensatoryLeaveRequired !== undefined) updateData.compensatoryLeaveRequired = (data as any).compensatoryLeaveRequired;
     if ((data as any).compensatoryLeaveType !== undefined) updateData.compensatoryLeaveType = (data as any).compensatoryLeaveType ?? null;

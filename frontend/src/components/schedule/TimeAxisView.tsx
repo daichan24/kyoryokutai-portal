@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Schedule as ScheduleType, User } from '../../types';
-import { formatDate, isSameDay, formatTime } from '../../utils/date';
+import { formatDate, isHolidayDate, isSameDay, isSaturday, isSunday, formatTime } from '../../utils/date';
 import { CalendarDays, RefreshCw } from 'lucide-react';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
@@ -51,11 +51,13 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const headerScrollRef = useRef<HTMLDivElement>(null);
+  const floatingScrollRef = useRef<HTMLDivElement>(null);
   const allDayScrollRef = useRef<HTMLDivElement>(null);
   const bodyContentScrollRef = useRef<HTMLDivElement>(null);
   const [nowMin, setNowMin] = useState(getNowMinutes());
   const isMobile = useIsMobileBreakpoint();
   const isToday = (d: Date) => formatDate(d) === formatDate(new Date());
+  const isFloatingSchedule = (s: ScheduleType) => !!s.isTimeUnspecified;
 
   useEffect(() => {
     const t = setInterval(() => setNowMin(getNowMinutes()), 60_000);
@@ -77,6 +79,9 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
     });
 
   const getEventsForDate = (d: Date) => events.filter((e) => isSameDay(new Date(e.date), d));
+
+  const getFloatingSchedulesForDate = (date: Date, memberId?: string) =>
+    getSchedulesForDate(date).filter((s) => isFloatingSchedule(s) && (!memberId || s.userId === memberId));
 
   const getColor = (s: ScheduleType) =>
     s.userId === currentUserId
@@ -100,7 +105,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const memberColumn = isMobile
     ? (memberCount <= 1 ? 'minmax(15rem, 1fr)' : '11.5rem')
     : (memberCount <= 1 ? 'minmax(16rem, 1fr)' : '14rem');
-  const weekColumn = isMobile ? '10.5rem' : 'minmax(9rem, 1fr)';
+  const weekColumn = isMobile ? '8.5rem' : 'minmax(8.5rem, 1fr)';
   const contentGridTemplate = isDayView
     ? `repeat(${memberCount}, ${memberColumn})`
     : `repeat(7, ${weekColumn})`;
@@ -117,6 +122,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
 
   const syncHorizontalScroll = (left: number) => {
     if (headerScrollRef.current) headerScrollRef.current.scrollLeft = left;
+    if (floatingScrollRef.current) floatingScrollRef.current.scrollLeft = left;
     if (allDayScrollRef.current) allDayScrollRef.current.scrollLeft = left;
   };
 
@@ -141,6 +147,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   }, [dates, isDayView, isMobile, memberCount]);
 
   const multiDaySchedules = !isDayView ? schedules.filter((s) => {
+    if (isFloatingSchedule(s)) return false;
     const sd = new Date((s as any).startDate || s.date);
     const ed = new Date((s as any).endDate || s.date);
     sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
@@ -149,6 +156,39 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
 
   const showNowLine = dates.some(d => isToday(d));
   const nowTop = `${(nowMin / 60) * 4}rem`;
+  const hasFloatingSchedules = dates.some((date) =>
+    isDayView
+      ? members.some((member) => getFloatingSchedulesForDate(date, member.id).length > 0)
+      : getFloatingSchedulesForDate(date).length > 0,
+  );
+
+  const getDateTone = (date: Date) => {
+    const holiday = isHolidayDate(date);
+    const sunday = isSunday(date);
+    const saturday = isSaturday(date);
+    if (holiday || sunday) {
+      return {
+        header: 'bg-red-50 dark:bg-red-950/30',
+        todayHeader: 'bg-blue-100 dark:bg-blue-900/30',
+        text: 'text-red-600 dark:text-red-300',
+        column: 'bg-red-50/35 dark:bg-red-950/10',
+      };
+    }
+    if (saturday) {
+      return {
+        header: 'bg-sky-50 dark:bg-sky-950/30',
+        todayHeader: 'bg-blue-100 dark:bg-blue-900/30',
+        text: 'text-sky-600 dark:text-sky-300',
+        column: 'bg-sky-50/35 dark:bg-sky-950/10',
+      };
+    }
+    return {
+      header: 'bg-gray-50 dark:bg-gray-900',
+      todayHeader: 'bg-blue-100 dark:bg-blue-900/30',
+      text: 'text-gray-600 dark:text-gray-400',
+      column: 'bg-white dark:bg-gray-800',
+    };
+  };
 
   if (isDayView && members.length === 0) {
     return (
@@ -160,8 +200,9 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
 
   const renderDayCol = (date: Date, colIdx: number, memberId?: string) => {
     const singleDay = memberId
-      ? getSchedulesForDate(date).filter(s => s.userId === memberId)
+      ? getSchedulesForDate(date).filter(s => s.userId === memberId && !isFloatingSchedule(s))
       : getSchedulesForDate(date).filter((s) => {
+          if (isFloatingSchedule(s)) return false;
           const sd = new Date((s as any).startDate || s.date);
           const ed = new Date((s as any).endDate || s.date);
           sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
@@ -169,10 +210,11 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         });
     const dayEvents = getEventsForDate(date);
     const todayCol = isToday(date);
+    const tone = getDateTone(date);
 
     return (
       <div key={colIdx}
-        className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${todayCol ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'}`}>
+        className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${todayCol ? 'bg-blue-50 dark:bg-blue-900/20' : tone.column}`}>
         <div className="relative" style={{ height: '96rem' }}>
           {hours.map(h => (
             <div key={h} className="absolute w-full border-b border-gray-100 dark:border-gray-700" style={{ top: `${h * 4}rem`, height: '4rem' }} />
@@ -268,6 +310,45 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
     );
   };
 
+  const renderFloatingColumn = (date: Date, colIdx: number, memberId?: string) => {
+    const items = getFloatingSchedulesForDate(date, memberId);
+    const tone = getDateTone(date);
+    return (
+      <div
+        key={`${formatDate(date)}-${memberId || 'all'}-${colIdx}`}
+        className={`min-w-0 border-r border-gray-200 px-1.5 py-1.5 dark:border-gray-700 last:border-r-0 ${isToday(date) ? 'bg-blue-50 dark:bg-blue-900/15' : tone.column}`}
+      >
+        {items.length === 0 ? (
+          <div className="h-7 rounded border border-dashed border-gray-200 dark:border-gray-700" />
+        ) : (
+          <div className="flex flex-col gap-1">
+            {items.map((s) => {
+              const color = getColor(s);
+              const textColor = getTextColor(color);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onScheduleClick(s)}
+                  className="min-h-8 rounded px-2 py-1 text-left text-[11px] leading-snug shadow-sm hover:opacity-90"
+                  style={{ backgroundColor: color, color: textColor }}
+                  title={`時間未定: ${(s as any).title || s.activityDescription}`}
+                >
+                  <span className="block whitespace-normal break-words font-medium">
+                    {(s as any).title || s.activityDescription}
+                  </span>
+                  <span className="block truncate text-[10px] opacity-80">
+                    {s.locationText || '場所未設定'}{calendarViewMode === 'all' && s.user ? ` / ${s.user.name}` : ''}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 w-full min-w-0">
       <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -283,16 +364,31 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
               </div>
             )) : dates.map((d, i) => {
               const todayH = isToday(d);
+              const tone = getDateTone(d);
               return (
-                <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-[3.25rem] flex flex-col items-center justify-center px-1.5 py-1 ${todayH ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50 dark:bg-gray-900'}`}>
-                  <div className={`text-[10px] sm:text-xs leading-tight text-center ${todayH ? 'text-blue-700 dark:text-blue-300 font-semibold' : 'text-gray-600 dark:text-gray-400'}`}>{formatDate(d, 'E')}</div>
-                  <div className={`text-lg sm:text-xl leading-tight ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-900 dark:text-gray-100 font-semibold'}`}>{formatDate(d, 'd')}</div>
+                <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-[3.25rem] flex flex-col items-center justify-center px-1.5 py-1 ${todayH ? tone.todayHeader : tone.header}`}>
+                  <div className={`text-[10px] sm:text-xs leading-tight text-center ${todayH ? 'text-blue-700 dark:text-blue-300 font-semibold' : tone.text}`}>{formatDate(d, 'E')}</div>
+                  <div className={`text-lg sm:text-xl leading-tight ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : `${tone.text} font-semibold`}`}>{formatDate(d, 'd')}</div>
                 </div>
               );
             })}
           </div>
         </div>
       </div>
+      {hasFloatingSchedules && (
+        <div className="flex flex-shrink-0 border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex items-start justify-end border-r border-gray-200 bg-amber-50 px-1 pt-2 dark:border-gray-700 dark:bg-amber-950/20" style={timeColumnStyle}>
+            <span className="text-[8px] font-semibold leading-tight text-amber-700 dark:text-amber-300">時間<br />未定</span>
+          </div>
+          <div ref={floatingScrollRef} className="min-w-0 flex-1 overflow-x-hidden">
+            <div className="grid" style={contentGridStyle}>
+              {isDayView
+                ? members.map((m, i) => renderFloatingColumn(dayDate!, i, m.id))
+                : dates.map((d, i) => renderFloatingColumn(d, i))}
+            </div>
+          </div>
+        </div>
+      )}
       {/* 複数日バナー（週表示のみ） - Googleカレンダー方式で横断バー表示 */}
       {!isDayView && multiDaySchedules.length > 0 && (() => {
         const weekStart = new Date(dates[0]); weekStart.setHours(0, 0, 0, 0);

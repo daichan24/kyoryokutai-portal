@@ -793,6 +793,7 @@ export const Schedule: React.FC = () => {
 
               // 複数日スケジュールを抽出
               const multiDaySchedules = schedules.filter((s) => {
+                if (s.isTimeUnspecified) return false;
                 const sd = new Date((s as any).startDate || s.date);
                 const ed = new Date((s as any).endDate || s.date);
                 sd.setHours(0, 0, 0, 0);
@@ -945,7 +946,9 @@ export const Schedule: React.FC = () => {
                                     className="w-full text-left px-1.5 py-0.5 rounded hover:opacity-90 transition-opacity truncate"
                                     style={{ backgroundColor: color, color: tc }}>
                                     {!isMobile && (
-                                      <span className="text-[10px] font-semibold" style={{ color: tc }}>{formatTime(schedule.startTime)}</span>
+                                      <span className="text-[10px] font-semibold" style={{ color: tc }}>
+                                        {schedule.isTimeUnspecified ? '時間未定' : formatTime(schedule.startTime)}
+                                      </span>
                                     )}
                                     <span className={`${isMobile ? '' : 'ml-1'} text-xs truncate`} style={{ color: tc }}>{(schedule as any).title || schedule.activityDescription}</span>
                                   </button>
@@ -1264,7 +1267,7 @@ export const Schedule: React.FC = () => {
                               >
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                                   <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                                    {formatTime(schedule.startTime)}–{formatTime(schedule.endTime)}
+                                    {schedule.isTimeUnspecified ? '時間未定' : `${formatTime(schedule.startTime)}–${formatTime(schedule.endTime)}`}
                                   </span>
                                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                     {(schedule as any).title || schedule.activityDescription}

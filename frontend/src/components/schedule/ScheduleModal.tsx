@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CalendarCheck, FileText, ReceiptText, X } from 'lucide-react';
+import { AlertCircle, CalendarCheck, ExternalLink, FileText, ReceiptText, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
 import { Schedule, Location, User } from '../../types';
@@ -40,7 +40,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [title, setTitle] = useState(''); // タイトル（短い説明）
   const [activityDescription, setActivityDescription] = useState(''); // 活動内容（詳細）
   const [freeNote, setFreeNote] = useState('');
+  const [referenceUrl, setReferenceUrl] = useState('');
   const [isAllDay, setIsAllDay] = useState(false);
+  const [isTimeUnspecified, setIsTimeUnspecified] = useState(false);
   const [reportable, setReportable] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [supportEventId, setSupportEventId] = useState<string | null>(null);
@@ -82,7 +84,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setTitle(schedule.title || '');
       setActivityDescription(schedule.activityDescription);
       setFreeNote(schedule.freeNote || '');
+      setReferenceUrl(schedule.referenceUrl || '');
       setIsAllDay(!!schedule.isAllDay);
+      setIsTimeUnspecified(!!schedule.isTimeUnspecified);
       setReportable(schedule.reportable !== false);
       setSelectedProjectId(schedule.projectId || null);
       setSupportEventId(schedule.supportEventId || null);
@@ -122,6 +126,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       setSupportEventId(null);
       setCustomColor('');
       setIsAllDay(false);
+      setIsTimeUnspecified(false);
+      setReferenceUrl('');
       setReportable(true);
     }
   }, [schedule, defaultDate, defaultStartTime, defaultEndTime, defaultProjectId, defaultActivityDescription]);
@@ -232,11 +238,12 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       const data: any = {
         date,
         endDate: endDate !== date ? endDate : undefined, // 終了日が開始日と異なる場合のみ送信
-        startTime: isAllDay ? '00:00' : startTime,
-        endTime: isAllDay ? '23:59' : endTime,
+        startTime: isAllDay || isTimeUnspecified ? '00:00' : startTime,
+        endTime: isAllDay || isTimeUnspecified ? '23:59' : endTime,
         title: title.trim(),
         activityDescription: activityDescription.trim() || undefined, // 空の場合はundefined
         isAllDay,
+        isTimeUnspecified,
         reportable,
       };
       if (locationText && locationText.trim()) {
@@ -245,6 +252,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       if (freeNote && freeNote.trim()) {
         data.freeNote = freeNote.trim();
       }
+      data.referenceUrl = referenceUrl.trim() || null;
       if (customColor) {
         data.customColor = customColor;
       } else {
@@ -542,6 +550,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 onChange={(e) => {
                   setIsAllDay(e.target.checked);
                   if (e.target.checked) {
+                    setIsTimeUnspecified(false);
                     setStartTime('00:00');
                     setEndTime('23:59');
                   }
@@ -550,6 +559,23 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 disabled={readOnly}
               />
               終日予定
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={isTimeUnspecified}
+                onChange={(e) => {
+                  setIsTimeUnspecified(e.target.checked);
+                  if (e.target.checked) {
+                    setIsAllDay(false);
+                    setStartTime('00:00');
+                    setEndTime('23:59');
+                  }
+                }}
+                className="h-4 w-4 rounded border-gray-300 text-primary"
+                disabled={readOnly}
+              />
+              時間未定
             </label>
             <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
@@ -573,7 +599,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 onChange={(e) => setStartTime(e.target.value)}
                 className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
-                disabled={readOnly || isAllDay}
+                disabled={readOnly || isAllDay || isTimeUnspecified}
               >
                 {Array.from({ length: 24 * 4 }, (_, i) => {
                   const hour = Math.floor(i / 4);
@@ -597,7 +623,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 onChange={(e) => setEndTime(e.target.value)}
                 className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 required
-                disabled={readOnly || isAllDay}
+                disabled={readOnly || isAllDay || isTimeUnspecified}
               >
                 {Array.from({ length: 24 * 4 }, (_, i) => {
                   const hour = Math.floor(i / 4);
@@ -779,6 +805,31 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               readOnly={readOnly}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              参考URL（任意）
+            </label>
+            {readOnly && referenceUrl ? (
+              <a
+                href={referenceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex max-w-full items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200"
+              >
+                <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">{referenceUrl}</span>
+              </a>
+            ) : (
+              <Input
+                type="url"
+                value={referenceUrl}
+                onChange={(e) => setReferenceUrl(e.target.value)}
+                placeholder="https://example.com"
+                readOnly={readOnly}
+              />
+            )}
           </div>
 
           {/* 起票者表示（編集時・詳細表示時） */}

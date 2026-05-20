@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, RefreshCw, ChevronUp, ChevronDown, CalendarCheck, AlertCircle } from 'lucide-react';
+import { X, Copy, RefreshCw, ChevronUp, ChevronDown, CalendarCheck, AlertCircle, ExternalLink } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Task, Project, Location, User, Schedule } from '../../types';
@@ -259,8 +259,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [projectId, setProjectId] = useState<string | null>(defaultProjectId || null);
   const [attachMode, setAttachMode] = useState<'PROJECT' | 'UNSET' | 'KYORYOKUTAI' | 'YAKUBA' | 'TRIAGE'>('UNSET');
   const [memo, setMemo] = useState('');
+  const [referenceUrl, setReferenceUrl] = useState('');
   const [customColor, setCustomColor] = useState('');
   const [isAllDay, setIsAllDay] = useState(false);
+  const [isTimeUnspecified, setIsTimeUnspecified] = useState(false);
   const [reportable, setReportable] = useState(true);
   const [supportEventId, setSupportEventId] = useState<string | null>(null);
   const [showSupportEvents, setShowSupportEvents] = useState(false);
@@ -329,8 +331,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       
       // その他の設定
       setMemo(schedule.freeNote || '');
+      setReferenceUrl(schedule.referenceUrl || '');
       setCustomColor((schedule as any).customColor || '');
       setIsAllDay(!!schedule.isAllDay);
+      setIsTimeUnspecified(!!schedule.isTimeUnspecified);
       setReportable(schedule.reportable !== false);
       setSupportEventId(schedule.supportEventId || null);
       setShowSupportEvents(!!schedule.supportEventId);
@@ -354,9 +358,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       const taskLinkKind = task.linkKind === 'KYORYOKUTAI_WORK' ? 'KYORYOKUTAI' : task.linkKind === 'YAKUBA_WORK' ? 'YAKUBA' : task.linkKind === 'TRIAGE_PENDING' ? 'TRIAGE' : task.projectId ? 'PROJECT' : 'UNSET';
       setAttachMode(taskLinkKind);
       setMemo([(task as any).description, (task as any).freeNote].filter(Boolean).join('\n'));
+      setReferenceUrl('');
       setCustomColor((task as any).customColor || '');
       setSupportEventId((task as any).supportEventId || null);
       setIsAllDay(false);
+      setIsTimeUnspecified(false);
       setReportable(true);
       setShowSupportEvents(!!(task as any).supportEventId);
     } else {
@@ -364,8 +370,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setStartTime(defaultStartTime || '09:00'); setEndTime(defaultEndTime || '17:30');
       setLocationText(''); setLocationOther('');
       setProjectId(defaultProjectId || null); setAttachMode(defaultProjectId ? 'PROJECT' : 'UNSET');
-      setMemo(''); setCustomColor(''); setSupportEventId(null); setShowSupportEvents(false);
-      setIsAllDay(false); setReportable(true);
+      setMemo(''); setReferenceUrl(''); setCustomColor(''); setSupportEventId(null); setShowSupportEvents(false);
+      setIsAllDay(false); setIsTimeUnspecified(false); setReportable(true);
       setIsCollaborative(false); setSelectedParticipantIds([]);
       setIsHolidayWork(false); setCompensatoryLeaveRequired(false); setCompensatoryLeaveType('FULL_DAY');
       setIsDayOff(false); setDayOffType('PAID');
@@ -505,15 +511,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         const data: any = {
           date: dueDate,
           endDate: endDate && endDate !== dueDate ? endDate : undefined,
-          startTime: isAllDay ? '00:00' : startTime,
-          endTime: isAllDay ? '23:59' : endTime,
+          startTime: isAllDay || isTimeUnspecified ? '00:00' : startTime,
+          endTime: isAllDay || isTimeUnspecified ? '23:59' : endTime,
           title: title.trim(),
           activityDescription: memo.trim() || title.trim(),
+          freeNote: memo.trim() || null,
+          referenceUrl: referenceUrl.trim() || null,
           locationText: effectiveLoc.trim() || undefined,
           customColor: customColor || null,
           supportEventId: supportEventId || null,
           projectId: attachMode === 'PROJECT' ? projectId : null,
           isAllDay,
+          isTimeUnspecified,
           reportable,
           isHolidayWork,
           compensatoryLeaveRequired,
@@ -714,6 +723,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     onChange={(e) => {
                       setIsAllDay(e.target.checked);
                       if (e.target.checked) {
+                        setIsTimeUnspecified(false);
                         setStartTime('00:00');
                         setEndTime('23:59');
                       }
@@ -722,6 +732,23 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     disabled={readOnly}
                   />
                   終日予定
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={isTimeUnspecified}
+                    onChange={(e) => {
+                      setIsTimeUnspecified(e.target.checked);
+                      if (e.target.checked) {
+                        setIsAllDay(false);
+                        setStartTime('00:00');
+                        setEndTime('23:59');
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary"
+                    disabled={readOnly}
+                  />
+                  時間未定
                 </label>
                 <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <input
@@ -738,11 +765,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">開始時刻 {isCalendarCreate && <span className="text-red-500">*</span>}</label>
-                <TimePicker value={startTime} onChange={v => { setStartTime(v); if (!task && !schedule && !hasEditedTime) { setEndTime(addHour(v, 60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay} />
+                <TimePicker value={startTime} onChange={v => { setStartTime(v); if (!task && !schedule && !hasEditedTime) { setEndTime(addHour(v, 60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay || isTimeUnspecified} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">終了時刻 {isCalendarCreate && <span className="text-red-500">*</span>}</label>
-                <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay} />
+                <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay || isTimeUnspecified} />
               </div>
             </div>
             {!readOnly && (
@@ -844,6 +871,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
                     placeholder="活動内容・備考など" readOnly={readOnly} disabled={readOnly} />
                 </div>
+                {isScheduleMode && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">参考URL（任意）</label>
+                    {readOnly && referenceUrl ? (
+                      <a href={referenceUrl} target="_blank" rel="noreferrer"
+                        className="inline-flex max-w-full items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+                        <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{referenceUrl}</span>
+                      </a>
+                    ) : (
+                      <Input type="url" value={referenceUrl} onChange={e => setReferenceUrl(e.target.value)} placeholder="https://example.com" readOnly={readOnly} disabled={readOnly} />
+                    )}
+                  </div>
+                )}
                 {!readOnly && (
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">表示色（任意）</label>

@@ -283,6 +283,7 @@ async function createDedicatedCalendar(connection: CalendarConnection) {
 function scheduleToGoogleEvent(schedule: any, connection: CalendarConnection) {
   const startDate = ymd(schedule.startDate || schedule.date);
   const endDate = ymd(schedule.endDate || schedule.startDate || schedule.date);
+  const description = [schedule.freeNote, schedule.referenceUrl].filter(Boolean).join('\n') || undefined;
   const privateProps = {
     clearbaseScheduleId: schedule.id,
     origin: 'CLEARBASE',
@@ -290,11 +291,11 @@ function scheduleToGoogleEvent(schedule: any, connection: CalendarConnection) {
     lastSyncedBy: 'clearbase',
   };
 
-  if (schedule.isAllDay) {
+  if (schedule.isAllDay || schedule.isTimeUnspecified) {
     return {
       summary: schedule.title || schedule.activityDescription || '予定',
       location: schedule.locationText || undefined,
-      description: schedule.freeNote || undefined,
+      description,
       start: { date: startDate },
       end: { date: addDays(endDate, 1) },
       extendedProperties: { private: privateProps },
@@ -304,7 +305,7 @@ function scheduleToGoogleEvent(schedule: any, connection: CalendarConnection) {
   return {
     summary: schedule.title || schedule.activityDescription || '予定',
     location: schedule.locationText || undefined,
-    description: schedule.freeNote || undefined,
+    description,
     start: { dateTime: `${startDate}T${schedule.startTime}:00`, timeZone: GOOGLE_TIME_ZONE },
     end: { dateTime: `${endDate}T${schedule.endTime}:00`, timeZone: GOOGLE_TIME_ZONE },
     extendedProperties: { private: privateProps },

@@ -55,8 +55,10 @@ export interface Schedule {
   title?: string;
   activityDescription: string;
   freeNote?: string;
+  referenceUrl?: string | null;
   isPending: boolean;
   isAllDay?: boolean;
+  isTimeUnspecified?: boolean;
   reportable?: boolean;
   deletedAt?: string | null;
   projectId?: string;
