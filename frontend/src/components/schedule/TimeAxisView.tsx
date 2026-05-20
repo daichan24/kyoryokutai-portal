@@ -97,7 +97,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const memberColumn = isMobile
     ? (memberCount <= 1 ? 'minmax(15rem, 1fr)' : '11.5rem')
     : (memberCount <= 1 ? 'minmax(16rem, 1fr)' : '14rem');
-  const weekColumn = isMobile ? '9.25rem' : 'minmax(0, 1fr)';
+  const weekColumn = isMobile ? '10.5rem' : 'minmax(9rem, 1fr)';
   const gridTemplate = isDayView
     ? `${timeColumnWidth} repeat(${memberCount}, ${memberColumn})`
     : `${timeColumnWidth} repeat(7, ${weekColumn})`;
@@ -171,17 +171,15 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
                 className="absolute left-0.5 right-0.5 rounded text-xs p-1.5 text-white hover:opacity-90 transition-opacity z-10 overflow-hidden text-left"
                 style={{ top: pos.top, height: pos.height, backgroundColor: color, minHeight: '1.5rem' }}
                 title={`${(s as any).title || s.activityDescription} (${formatTime(s.startTime)}-${formatTime(s.endTime)})`}>
-                <div className="flex items-start justify-between h-full gap-1">
-                  <div className="flex-1 min-w-0">
-                    <p className={`${isDayView ? 'truncate' : 'line-clamp-2 break-words'} font-medium text-white leading-tight text-[11px]`}>
-                      {(s as any).title || s.activityDescription}
-                    </p>
-                    <p className="text-[10px] text-white/80 truncate">{formatTime(s.startTime)}-{formatTime(s.endTime)}</p>
-                    {calendarViewMode === 'all' && s.user && <p className="text-[10px] text-white/70 truncate">{s.user.name}</p>}
-                  </div>
-                  <div className="flex items-center gap-0.5 flex-shrink-0 ml-0.5">
-                    {isGoogle && <span className="text-[10px] bg-white/80 text-gray-700 px-0.5 rounded">G</span>}
-                    {pCount > 0 && <span className="text-[10px] bg-white/20 px-0.5 rounded">+{pCount}</span>}
+                <div className="relative h-full min-w-0 overflow-hidden pr-5">
+                  <p className={`${isDayView ? 'truncate' : 'whitespace-normal break-words'} font-medium text-white leading-snug text-[11px]`}>
+                    {(s as any).title || s.activityDescription}
+                  </p>
+                  <p className="text-[10px] text-white/80 truncate leading-tight">{formatTime(s.startTime)}-{formatTime(s.endTime)}</p>
+                  {calendarViewMode === 'all' && s.user && <p className="text-[10px] text-white/70 truncate leading-tight">{s.user.name}</p>}
+                  <div className="absolute right-0 top-0 flex items-center gap-0.5">
+                    {isGoogle && <span className="text-[9px] bg-white/80 text-gray-700 px-0.5 rounded leading-3">G</span>}
+                    {pCount > 0 && <span className="text-[9px] bg-white/20 px-0.5 rounded leading-3">+{pCount}</span>}
                     {isRecurring && <span title="繰り返し"><RefreshCw className="h-2.5 w-2.5 text-white/80" /></span>}
                   </div>
                 </div>
@@ -256,9 +254,9 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         )) : dates.map((d, i) => {
           const todayH = isToday(d);
           return (
-            <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-12 flex flex-col items-center justify-center px-1 ${todayH ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50 dark:bg-gray-900'}`}>
-              <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 leading-tight text-center">{formatDate(d, 'E')}</div>
-              <div className={`text-base sm:text-lg leading-tight ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-900 dark:text-gray-100'}`}>{formatDate(d, 'd')}</div>
+            <div key={i} className={`min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-[3.25rem] flex flex-col items-center justify-center px-1.5 py-1 ${todayH ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50 dark:bg-gray-900'}`}>
+              <div className={`text-[10px] sm:text-xs leading-tight text-center ${todayH ? 'text-blue-700 dark:text-blue-300 font-semibold' : 'text-gray-600 dark:text-gray-400'}`}>{formatDate(d, 'E')}</div>
+              <div className={`text-lg sm:text-xl leading-tight ${todayH ? 'text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-900 dark:text-gray-100 font-semibold'}`}>{formatDate(d, 'd')}</div>
             </div>
           );
         })}
