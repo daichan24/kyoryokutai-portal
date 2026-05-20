@@ -685,7 +685,7 @@ export const Schedule: React.FC = () => {
 
         {loading ? (
           <LoadingSpinner />
-        ) : useDraggable && viewMode !== 'day' ? (
+        ) : useDraggable && viewMode === 'month' ? (
           <>
             <DraggableCalendarView
               schedules={schedules}
