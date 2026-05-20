@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Schedule as ScheduleType, User } from '../../types';
 import { formatDate, isSameDay, formatTime } from '../../utils/date';
 import { CalendarDays, RefreshCw } from 'lucide-react';
+import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface TimeAxisViewProps {
   dates: Date[];
@@ -50,6 +51,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [nowMin, setNowMin] = useState(getNowMinutes());
+  const isMobile = useIsMobileBreakpoint();
   const isToday = (d: Date) => formatDate(d) === formatDate(new Date());
 
   useEffect(() => {
@@ -91,9 +93,19 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
   const isDayView = viewMode === 'day';
   const dayDate = isDayView ? dates[0] : null;
   const memberCount = Math.max(members.length, 1);
+  const timeColumnWidth = isMobile ? '3.25rem' : '3.5rem';
+  const memberColumn = isMobile
+    ? (memberCount <= 1 ? 'minmax(15rem, 1fr)' : '11.5rem')
+    : (memberCount <= 1 ? 'minmax(16rem, 1fr)' : '14rem');
+  const weekColumn = isMobile ? '7.75rem' : 'minmax(0, 1fr)';
   const gridTemplate = isDayView
-    ? `minmax(2.75rem, 3.5rem) repeat(${memberCount}, minmax(12rem, 16rem))`
-    : 'minmax(2.75rem, 3.5rem) repeat(7, minmax(7.5rem, 1fr))';
+    ? `${timeColumnWidth} repeat(${memberCount}, ${memberColumn})`
+    : `${timeColumnWidth} repeat(7, ${weekColumn})`;
+  const gridStyle: React.CSSProperties = {
+    gridTemplateColumns: gridTemplate,
+    width: (isDayView && memberCount > 1) || (isMobile && !isDayView) ? 'max-content' : '100%',
+    minWidth: '100%',
+  };
 
   const multiDaySchedules = !isDayView ? schedules.filter((s) => {
     const sd = new Date((s as any).startDate || s.date);
@@ -225,7 +237,7 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
 
   return (
     <div className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto overflow-y-hidden bg-white dark:bg-gray-800 w-full min-w-0">
-      <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={{ gridTemplateColumns: gridTemplate, width: 'max-content', minWidth: '100%' }}>
+      <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0" style={gridStyle}>
         <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0" />
         {isDayView ? members.map((m, i) => (
           <div key={i} className="min-w-0 border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-12 flex flex-col items-center justify-center px-1 bg-gray-50 dark:bg-gray-900">
@@ -281,13 +293,12 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         const bannerAreaHeight = rowCount * ROW_H + 4;
 
         return (
-          <div className="border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800 flex"
-            style={{ minHeight: `${bannerAreaHeight}px` }}>
-            <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-start justify-end pr-1 pt-1 flex-shrink-0"
-              style={{ minWidth: '2rem', maxWidth: '3.5rem' }}>
+          <div className="grid border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800"
+            style={{ ...gridStyle, minHeight: `${bannerAreaHeight}px` }}>
+            <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-start justify-end pr-1 pt-1 min-w-0">
               <span className="text-[8px] text-gray-400">終日</span>
             </div>
-            <div className="relative flex-1 min-w-0">
+            <div className="relative min-w-0" style={{ gridColumn: `2 / span ${totalCols}` }}>
               <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${totalCols}, minmax(0, 1fr))` }}>
                 {dates.map((_, di) => (
                   <div key={di} className="border-r border-gray-200 dark:border-gray-700 last:border-r-0 h-full" />
@@ -329,8 +340,8 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
         );
       })()}
 
-      <div ref={scrollRef} className="w-full min-w-0 overflow-y-auto overflow-x-visible" style={{ maxHeight: '60vh' }}>
-        <div className="grid" style={{ gridTemplateColumns: gridTemplate, width: 'max-content', minWidth: '100%' }}>
+      <div ref={scrollRef} className="w-full min-w-0 overflow-y-auto overflow-x-hidden" style={{ maxHeight: '60vh' }}>
+        <div className="grid" style={gridStyle}>
           <div className="border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 min-w-0">
             <div className="relative" style={{ height: '96rem' }}>
               {hours.map(h => (

@@ -239,7 +239,7 @@ const ItemPopup: React.FC<{
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg min-w-0 max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b dark:border-gray-700">
@@ -248,7 +248,7 @@ const ItemPopup: React.FC<{
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
-        <div className="p-5">
+        <div className="p-4 sm:p-5 min-w-0 break-words">
           {renderContent()}
         </div>
       </div>
@@ -338,12 +338,12 @@ export const ReceptionBox: React.FC = () => {
   const renderPending = () => (
     <div className="space-y-4">
       {data.consultations.filter(c => c.status === 'OPEN').map((c) => (
-        <div key={c.id} className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
+        <div key={c.id} className="w-full min-w-0 bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">相談</span>
             </div>
-            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{c.member.name}さん: {c.subject || '（件名なし）'}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm break-words">{c.member.name}さん: {c.subject || '（件名なし）'}</p>
             <p className="text-xs text-gray-500 mt-0.5">{format(new Date(c.createdAt), 'M月d日 HH:mm', { locale: ja })}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'consultation', data: c })}>
@@ -365,12 +365,12 @@ export const ReceptionBox: React.FC = () => {
     <div className="space-y-4">
       {/* スケジュール招待 */}
       {data.scheduleInvites.filter(s => s.status === 'PENDING').map((s) => (
-        <div key={s.id} className="bg-white dark:bg-gray-800 border border-teal-200 dark:border-teal-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
+        <div key={s.id} className="w-full min-w-0 bg-white dark:bg-gray-800 border border-teal-200 dark:border-teal-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-200">スケジュール招待</span>
             </div>
-            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{s.schedule.user.name}さんから: {s.schedule.activityDescription}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm break-words">{s.schedule.user.name}さんから: {s.schedule.activityDescription}</p>
             <p className="text-xs text-gray-500 mt-0.5">{format(new Date(s.schedule.date), 'M月d日', { locale: ja })} {formatTime(s.schedule.startTime)}〜{formatTime(s.schedule.endTime)}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'scheduleInvite', data: s })}>
@@ -381,12 +381,12 @@ export const ReceptionBox: React.FC = () => {
 
       {/* 週次報告 */}
       {!isMember && data.weeklyReports.map((r) => (
-        <div key={r.id} className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
+        <div key={r.id} className="w-full min-w-0 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200">週次報告</span>
             </div>
-            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{r.user.name}さん — {r.week}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm break-words">{r.user.name}さん — {r.week}</p>
             <p className="text-xs text-gray-500 mt-0.5">提出: {format(new Date(r.submittedAt), 'M月d日 HH:mm', { locale: ja })}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'weeklyReport', data: r })}>
@@ -397,12 +397,12 @@ export const ReceptionBox: React.FC = () => {
 
       {/* 復命書 */}
       {!isMember && data.inspections.map((i) => (
-        <div key={i.id} className="bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
+        <div key={i.id} className="w-full min-w-0 bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">復命書</span>
             </div>
-            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{i.user.name}さん — {i.destination || '視察先未記入'}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm break-words">{i.user.name}さん — {i.destination || '視察先未記入'}</p>
             <p className="text-xs text-gray-500 mt-0.5">{format(new Date(i.date), 'M月d日', { locale: ja })}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'inspection', data: i })}>
@@ -413,12 +413,12 @@ export const ReceptionBox: React.FC = () => {
 
       {/* 月次報告 */}
       {!isMember && data.monthlyReports.filter(m => m.approvalStatus !== 'APPROVED' && m.approvalStatus !== 'REJECTED').map((m) => (
-        <div key={m.id} className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
+        <div key={m.id} className="w-full min-w-0 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200">月次報告</span>
             </div>
-            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{m.creator.name}さん — {m.month}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm break-words">{m.creator.name}さん — {m.month}</p>
             <p className="text-xs text-gray-500 mt-0.5">提出: {format(new Date(m.submittedAt), 'M月d日 HH:mm', { locale: ja })}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'monthlyReport', data: m })}>
@@ -429,13 +429,13 @@ export const ReceptionBox: React.FC = () => {
 
       {/* 活動経費（PENDING） */}
       {!isMember && data.expenses.filter(e => e.status === 'PENDING').map((e) => (
-        <div key={e.id} className="bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
+        <div key={e.id} className="w-full min-w-0 bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200">活動経費</span>
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200">承認待ち</span>
             </div>
-            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{e.user.name}さん: {e.description} — ¥{e.amount.toLocaleString()}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm break-words">{e.user.name}さん: {e.description} — ¥{e.amount.toLocaleString()}</p>
             <p className="text-xs text-gray-500 mt-0.5">支出日: {format(new Date(e.spentAt), 'M月d日', { locale: ja })}</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPopupItem({ type: 'expense', data: e })}>
@@ -457,34 +457,34 @@ export const ReceptionBox: React.FC = () => {
   const renderResolved = () => (
     <div className="space-y-4">
       {data.consultations.filter(c => c.status === 'RESOLVED').map((c) => (
-        <div key={c.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div className="flex items-start justify-between gap-3">
+        <div key={c.id} className="w-full min-w-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">相談（解決済み）</span>
               </div>
-              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{c.member.name}さん: {c.subject || '（件名なし）'}</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm break-words">{c.member.name}さん: {c.subject || '（件名なし）'}</p>
               {c.resolvedBy && (
                 <p className="text-xs text-gray-500 mt-1">
                   対応: {c.resolvedBy.name}{c.resolvedAt && ` — ${format(new Date(c.resolvedAt), 'M月d日 HH:mm', { locale: ja })}`}
                 </p>
               )}
-              {c.resolutionNote && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1">{c.resolutionNote}</p>}
+              {c.resolutionNote && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1 break-words">{c.resolutionNote}</p>}
             </div>
             <button onClick={() => setPopupItem({ type: 'consultation', data: c })} className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">詳細</button>
           </div>
         </div>
       ))}
       {data.expenses.filter(e => e.status === 'APPROVED' || e.status === 'REJECTED').map((e) => (
-        <div key={e.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <div className="flex items-start justify-between gap-3">
+        <div key={e.id} className="w-full min-w-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${e.status === 'APPROVED' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'}`}>
                   活動経費（{e.status === 'APPROVED' ? '承認済み' : '差し戻し'}）
                 </span>
               </div>
-              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{e.user.name}さん: {e.description}</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm break-words">{e.user.name}さん: {e.description}</p>
               <p className="text-xs text-gray-500 mt-1">支出日: {format(new Date(e.spentAt), 'M月d日', { locale: ja })} — ¥{e.amount.toLocaleString()}</p>
             </div>
             <button onClick={() => setPopupItem({ type: 'expense', data: e })} className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">詳細</button>
@@ -500,7 +500,7 @@ export const ReceptionBox: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto min-w-0">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">受付ボックス</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -509,7 +509,7 @@ export const ReceptionBox: React.FC = () => {
       </div>
 
       {/* タブ */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
         {/* 未対応タブ（スタッフのみ） */}
         {!isMember && (
           <button
