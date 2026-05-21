@@ -14,6 +14,9 @@ function formatYen(n: number) {
 }
 
 const QUICK_AMOUNT_OPTIONS = [500, 1000, 3000, 5000, 10000];
+type ExpenseStatus = 'PLANNED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+type ExpenseStatusFilter = 'ALL' | ExpenseStatus;
+type EntryMode = 'PENDING' | 'PLANNED';
 
 interface ExpenseEntry {
   id: string;
@@ -25,7 +28,7 @@ interface ExpenseEntry {
   scheduleId?: string | null;
   schedule?: { id: string; title?: string | null; startDate?: string | null; endDate?: string | null; startTime?: string | null; endTime?: string | null } | null;
   createdAt: string;
-  status?: string;
+  status?: ExpenseStatus;
   rejectionReason?: string | null;
   createdBy?: { id: string; name: string } | null;
   updatedBy?: { id: string; name: string } | null;
@@ -60,9 +63,10 @@ export const ActivityExpenses: React.FC = () => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [entryMode, setEntryMode] = useState<EntryMode>('PENDING');
   const [projectIdForEntry, setProjectIdForEntry] = useState('');
   const [scheduleIdForEntry, setScheduleIdForEntry] = useState('');
-  const [expenseStatusFilter, setExpenseStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState<ExpenseStatusFilter>('ALL');
   const scheduleIdFromQuery = searchParams.get('scheduleId') || '';
   const appliedScheduleParamsRef = React.useRef<string | null>(null);
 
@@ -158,6 +162,7 @@ export const ActivityExpenses: React.FC = () => {
         spentAt,
         description: description.trim(),
         amount: n,
+        status: entryMode,
       });
     },
     onSuccess: () => {
@@ -166,6 +171,7 @@ export const ActivityExpenses: React.FC = () => {
       setAmount('');
       setProjectIdForEntry('');
       setScheduleIdForEntry('');
+      setEntryMode('PENDING');
       setSpentAt(format(new Date(), 'yyyy-MM-dd'));
       clearScheduleParams();
     },
@@ -179,6 +185,7 @@ export const ActivityExpenses: React.FC = () => {
         spentAt,
         description: description.trim(),
         amount: n,
+        status: entryMode,
       };
       if (projectIdForEntry) body.projectId = projectIdForEntry;
       body.scheduleId = scheduleIdForEntry || null;
@@ -191,6 +198,7 @@ export const ActivityExpenses: React.FC = () => {
       setAmount('');
       setProjectIdForEntry('');
       setScheduleIdForEntry('');
+      setEntryMode('PENDING');
     },
   });
 
@@ -215,6 +223,7 @@ export const ActivityExpenses: React.FC = () => {
     setAmount(String(e.amount));
     setProjectIdForEntry(e.projectId || '');
     setScheduleIdForEntry(e.scheduleId || '');
+    setEntryMode(e.status === 'PLANNED' ? 'PLANNED' : 'PENDING');
   };
 
   const cancelEdit = () => {
@@ -223,6 +232,7 @@ export const ActivityExpenses: React.FC = () => {
     setAmount('');
     setProjectIdForEntry('');
     setScheduleIdForEntry('');
+    setEntryMode('PENDING');
     setSpentAt(format(new Date(), 'yyyy-MM-dd'));
     clearScheduleParams();
   };
@@ -237,6 +247,7 @@ export const ActivityExpenses: React.FC = () => {
     const entries = summary?.entries || [];
     return {
       ALL: entries.length,
+      PLANNED: entries.filter((entry) => entry.status === 'PLANNED').length,
       PENDING: entries.filter((entry) => (entry.status || 'PENDING') === 'PENDING').length,
       APPROVED: entries.filter((entry) => entry.status === 'APPROVED').length,
       REJECTED: entries.filter((entry) => entry.status === 'REJECTED').length,
@@ -408,12 +419,12 @@ export const ActivityExpenses: React.FC = () => {
               </p>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">使用累計</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">使用・予定累計</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                 {formatYen(summary.totalSpent)}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                未承認・差し戻しを含む提出額
+                予定・未承認・承認済みの合計（差し戻しは除外）
               </p>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -482,7 +493,7 @@ export const ActivityExpenses: React.FC = () => {
 
           <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              {editingId ? '支出の修正' : '支出を追加'}
+              {editingId ? '支出・予定の修正' : '支出・予定を追加'}
             </h2>
             {scheduleIdForEntry && (
               <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-200">
@@ -498,6 +509,33 @@ export const ActivityExpenses: React.FC = () => {
                   onChange={(e) => setSpentAt(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">登録方法</label>
+                <div className="grid grid-cols-2 rounded-md border border-gray-300 dark:border-gray-600 p-1 bg-gray-50 dark:bg-gray-900/40">
+                  {[
+                    ['PENDING', '申請する'],
+                    ['PLANNED', '予定として控える'],
+                  ].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setEntryMode(mode as EntryMode)}
+                      className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                        entryMode === mode
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {entryMode === 'PLANNED' && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    承認申請は送らず、残額計算にだけ反映します。
+                  </p>
+                )}
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium mb-1">紐づくプロジェクト（必須）</label>
@@ -618,6 +656,7 @@ export const ActivityExpenses: React.FC = () => {
               <div className="flex flex-wrap gap-1 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-900/40">
                 {[
                   ['ALL', `すべて ${statusCounts.ALL}`],
+                  ['PLANNED', `予定 ${statusCounts.PLANNED}`],
                   ['PENDING', `未承認 ${statusCounts.PENDING}`],
                   ['APPROVED', `承認済み ${statusCounts.APPROVED}`],
                   ['REJECTED', `差し戻し ${statusCounts.REJECTED}`],
@@ -679,7 +718,9 @@ export const ActivityExpenses: React.FC = () => {
                             )}
                           </td>
                           <td className="px-3 py-2 text-center">
-                            {row.status === 'APPROVED' ? (
+                            {row.status === 'PLANNED' ? (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">予定</span>
+                            ) : row.status === 'APPROVED' ? (
                               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">承認済</span>
                             ) : row.status === 'REJECTED' ? (
                               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">差戻し</span>
@@ -733,7 +774,9 @@ export const ActivityExpenses: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-500 dark:text-gray-400 tabular-nums mb-0.5">
                             {format(parseISO(row.spentAt), 'M/d', { locale: ja })}
-                            {row.status === 'APPROVED' ? (
+                            {row.status === 'PLANNED' ? (
+                              <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">予定</span>
+                            ) : row.status === 'APPROVED' ? (
                               <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">承認済</span>
                             ) : row.status === 'REJECTED' ? (
                               <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">差戻し</span>

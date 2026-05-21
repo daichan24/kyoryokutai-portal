@@ -1,4 +1,11 @@
+import { ExpenseStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
+
+const budgetConsumingStatuses: ExpenseStatus[] = [
+  ExpenseStatus.PLANNED,
+  ExpenseStatus.PENDING,
+  ExpenseStatus.APPROVED,
+];
 
 export async function getActivityExpenseSummary(userId: string, recentLimit = 100) {
   const budget = await prisma.activityExpenseBudget.findUnique({
@@ -21,11 +28,11 @@ export async function getActivityExpenseSummary(userId: string, recentLimit = 10
   });
 
   const agg = await prisma.activityExpenseEntry.aggregate({
-    where: { userId },
+    where: { userId, status: { in: budgetConsumingStatuses } },
     _sum: { amount: true },
   });
 
-  const totalSpent = agg._sum.amount ?? 0;
+  const totalSpent = agg._sum?.amount ?? 0;
   const allocatedAmount = budget?.allocatedAmount ?? 0;
 
   return {
@@ -71,11 +78,11 @@ export async function getActivityExpenseSummaryLite(userId: string) {
   });
 
   const agg = await prisma.activityExpenseEntry.aggregate({
-    where: { userId },
+    where: { userId, status: { in: budgetConsumingStatuses } },
     _sum: { amount: true },
   });
 
-  const totalSpent = agg._sum.amount ?? 0;
+  const totalSpent = agg._sum?.amount ?? 0;
   const allocatedAmount = budget?.allocatedAmount ?? 0;
 
   return {
@@ -89,6 +96,7 @@ export async function getActivityExpenseSummaryLite(userId: string) {
       spentAt: e.spentAt.toISOString(),
       description: e.description,
       amount: e.amount,
+      status: e.status,
       project: e.project,
       scheduleId: e.scheduleId,
       schedule: e.schedule,

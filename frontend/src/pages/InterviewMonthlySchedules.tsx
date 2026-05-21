@@ -93,6 +93,7 @@ interface ActivityExpenseSummaryLite {
     spentAt: string;
     description: string;
     amount: number;
+    status?: 'PLANNED' | 'PENDING' | 'APPROVED' | 'REJECTED';
     project?: { id: string; projectName: string; themeColor: string | null } | null;
   }>;
 }
@@ -619,7 +620,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
                   <p className="text-lg font-bold tabular-nums">{formatYenInterview(expenseSummary.allocatedAmount)}</p>
                 </div>
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80">
-                  <p className="text-xs text-gray-500">使用累計額</p>
+                  <p className="text-xs text-gray-500">使用・予定累計額</p>
                   <p className="text-lg font-bold tabular-nums">{formatYenInterview(expenseSummary.totalSpent)}</p>
                 </div>
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/80">
@@ -981,7 +982,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">使用累計額</span>
+                  <span className="text-gray-600 dark:text-gray-400">使用・予定累計額</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                     {formatYenInterview(expenseSummary.totalSpent)}
                   </span>

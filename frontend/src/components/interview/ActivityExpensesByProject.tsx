@@ -7,6 +7,7 @@ interface ActivityExpenseEntry {
   spentAt: string;
   description: string;
   amount: number;
+  status?: 'PLANNED' | 'PENDING' | 'APPROVED' | 'REJECTED';
   project?: { id: string; projectName: string; themeColor: string | null } | null;
 }
 
@@ -22,15 +23,17 @@ export const ActivityExpensesByProject: React.FC<ActivityExpensesByProjectProps>
   const byProject = useMemo(() => {
     const map = new Map<string, { project: { id: string; projectName: string; themeColor: string | null } | null; entries: ActivityExpenseEntry[]; total: number }>();
     
-    entries.forEach((entry) => {
-      const key = entry.project?.id || '__none__';
-      if (!map.has(key)) {
-        map.set(key, { project: entry.project || null, entries: [], total: 0 });
-      }
-      const group = map.get(key)!;
-      group.entries.push(entry);
-      group.total += entry.amount;
-    });
+    entries
+      .filter((entry) => entry.status !== 'REJECTED')
+      .forEach((entry) => {
+        const key = entry.project?.id || '__none__';
+        if (!map.has(key)) {
+          map.set(key, { project: entry.project || null, entries: [], total: 0 });
+        }
+        const group = map.get(key)!;
+        group.entries.push(entry);
+        group.total += entry.amount;
+      });
 
     return Array.from(map.entries())
       .sort(([a], [b]) => {
@@ -40,7 +43,7 @@ export const ActivityExpensesByProject: React.FC<ActivityExpensesByProjectProps>
       });
   }, [entries]);
 
-  if (entries.length === 0) {
+  if (entries.filter((entry) => entry.status !== 'REJECTED').length === 0) {
     return <p className="text-sm text-gray-500 dark:text-gray-400">支出記録がありません</p>;
   }
 
@@ -63,6 +66,11 @@ export const ActivityExpensesByProject: React.FC<ActivityExpensesByProjectProps>
                     {format(parseISO(entry.spentAt.slice(0, 10)), 'M月d日', { locale: ja })}
                   </span>
                   <span className="text-gray-800 dark:text-gray-200">{entry.description}</span>
+                  {entry.status === 'PLANNED' && (
+                    <span className="ml-2 rounded-sm bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                      予定
+                    </span>
+                  )}
                 </div>
                 <span className="font-medium tabular-nums text-gray-900 dark:text-gray-100 ml-3">
                   {formatYen(entry.amount)}

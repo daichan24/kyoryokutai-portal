@@ -52,6 +52,7 @@ const entryCreateSchema = z.object({
   spentAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   description: z.string().min(1).max(500),
   amount: z.number().int().min(1).max(50_000_000),
+  status: z.enum(['PENDING', 'PLANNED']).optional(),
 });
 
 const entryUpdateSchema = z.object({
@@ -60,6 +61,7 @@ const entryUpdateSchema = z.object({
   spentAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   description: z.string().min(1).max(500).optional(),
   amount: z.number().int().min(1).max(50_000_000).optional(),
+  status: z.enum(['PENDING', 'PLANNED']).optional(),
 });
 
 const guidancePutSchema = z.object({
@@ -194,6 +196,7 @@ router.post('/entries', async (req: AuthRequest, res) => {
     }
 
     const spentAt = new Date(`${data.spentAt}T12:00:00.000Z`);
+    const status = data.status === 'PLANNED' ? ExpenseStatus.PLANNED : ExpenseStatus.PENDING;
     const row = await prisma.activityExpenseEntry.create({
       data: {
         userId: targetUserId,
@@ -202,6 +205,7 @@ router.post('/entries', async (req: AuthRequest, res) => {
         spentAt,
         description: data.description.trim(),
         amount: data.amount,
+        status,
         createdById: req.user!.id,
       },
       include: {
@@ -210,9 +214,11 @@ router.post('/entries', async (req: AuthRequest, res) => {
     });
 
     const summary = await getActivityExpenseSummary(targetUserId, 500);
-    notifyExpenseSubmitted(row.id).catch((error) => {
-      console.error('Queue activity expense submitted email failed:', error);
-    });
+    if (status === ExpenseStatus.PENDING) {
+      notifyExpenseSubmitted(row.id).catch((error) => {
+        console.error('Queue activity expense submitted email failed:', error);
+      });
+    }
     res.status(201).json({ entry: row, summary });
   } catch (e) {
     if (e instanceof z.ZodError) {
@@ -234,7 +240,7 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
 
     const entryUser = await prisma.activityExpenseEntry.findUnique({
       where: { id },
-      select: { userId: true },
+      select: { userId: true, status: true },
     });
     if (!entryUser) {
       return res.status(404).json({ error: '見つかりません' });
@@ -289,19 +295,29 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
       }
     }
 
+    const nextStatus = data.status === 'PLANNED'
+      ? ExpenseStatus.PLANNED
+      : data.status === 'PENDING'
+        ? ExpenseStatus.PENDING
+        : entryUser.status === ExpenseStatus.PLANNED
+          ? ExpenseStatus.PLANNED
+          : ExpenseStatus.PENDING;
+
     const row = await prisma.activityExpenseEntry.update({
       where: { id },
       data: {
         ...update,
-        status: ExpenseStatus.PENDING,
+        status: nextStatus,
         rejectionReason: null,
       },
     });
 
     const summary = await getActivityExpenseSummary(row.userId, 500);
-    notifyExpenseSubmitted(row.id).catch((error) => {
-      console.error('Queue activity expense submitted email failed:', error);
-    });
+    if (nextStatus === ExpenseStatus.PENDING) {
+      notifyExpenseSubmitted(row.id).catch((error) => {
+        console.error('Queue activity expense submitted email failed:', error);
+      });
+    }
     res.json({ entry: row, summary });
   } catch (e: unknown) {
     const err = e as Error & { status?: number };
@@ -338,6 +354,9 @@ router.post('/entries/:id/approve', async (req: AuthRequest, res) => {
     }
     const entry = await prisma.activityExpenseEntry.findUnique({ where: { id } });
     if (!entry) return res.status(404).json({ error: '見つかりません' });
+    if (entry.status === ExpenseStatus.PLANNED) {
+      return res.status(400).json({ error: '予定メモは申請されていないため承認できません' });
+    }
 
     const row = await prisma.activityExpenseEntry.update({
       where: { id },
@@ -362,6 +381,9 @@ router.post('/entries/:id/reject', async (req: AuthRequest, res) => {
     const { reason } = req.body;
     const entry = await prisma.activityExpenseEntry.findUnique({ where: { id } });
     if (!entry) return res.status(404).json({ error: '見つかりません' });
+    if (entry.status === ExpenseStatus.PLANNED) {
+      return res.status(400).json({ error: '予定メモは申請されていないため差し戻しできません' });
+    }
 
     const row = await prisma.activityExpenseEntry.update({
       where: { id },
