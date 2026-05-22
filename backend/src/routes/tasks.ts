@@ -431,6 +431,7 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
           if (data.isAllDay !== undefined) updateData.isAllDay = data.isAllDay;
           if (data.isTimeUnspecified !== undefined) updateData.isTimeUnspecified = data.isTimeUnspecified;
           if (data.reportable !== undefined) updateData.reportable = data.reportable;
+          if (data.projectId !== undefined) updateData.projectId = updated.projectId || null;
           await prisma.schedule.update({ where: { id: existingSchedule.id }, data: updateData });
         } catch (scheduleError) {
           console.error('Failed to update schedule for task:', scheduleError);

@@ -308,7 +308,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       if ((schedule as any).task) {
         const scheduleTask = (schedule as any).task;
         setSelectedMissionId(scheduleTask.missionId || '');
-        setProjectId(scheduleTask.projectId || null);
+        const initialProjectId = scheduleTask.projectId || schedule.projectId || null;
+        setProjectId(initialProjectId);
         
         // linkKindからattachModeを設定
         const taskLinkKind = scheduleTask.linkKind;
@@ -318,7 +319,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           setAttachMode('YAKUBA');
         } else if (taskLinkKind === 'TRIAGE_PENDING') {
           setAttachMode('TRIAGE');
-        } else if (scheduleTask.projectId) {
+        } else if (initialProjectId) {
           setAttachMode('PROJECT');
         } else {
           setAttachMode('UNSET');

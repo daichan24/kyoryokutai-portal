@@ -871,6 +871,17 @@ router.put('/:id', async (req: AuthRequest, res) => {
       },
     });
 
+    if (existingSchedule.taskId && data.projectId !== undefined) {
+      const nextProjectId = data.projectId || null;
+      await prisma.task.update({
+        where: { id: existingSchedule.taskId },
+        data: {
+          projectId: nextProjectId,
+          ...(nextProjectId ? { linkKind: 'PROJECT' as const } : {}),
+        },
+      });
+    }
+
     syncScheduleToGoogle(schedule.id).catch((syncError) => {
       console.error(`Failed to sync updated schedule ${schedule.id} to Google:`, syncError);
     });
