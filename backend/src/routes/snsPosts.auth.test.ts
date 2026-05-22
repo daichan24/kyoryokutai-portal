@@ -25,6 +25,10 @@ function isStaffRole(role: Role): boolean {
   return ['MASTER', 'SUPPORT', 'GOVERNMENT'].includes(role);
 }
 
+function canUseAccountForPost(accountUserId: string | undefined, requestUserId: string): boolean {
+  return accountUserId === requestUserId;
+}
+
 describe('Authorization Checks', () => {
   describe('13.1 投稿の編集・削除権限テスト', () => {
     test('MEMBER should be able to modify own post', () => {
@@ -145,6 +149,11 @@ describe('Authorization Checks', () => {
       expect(statusCode).toBe(403);
     });
 
+    test('MEMBER userId query should be constrained to own records', () => {
+      const targetUserId = canViewPosts('member-1', 'MEMBER', 'member-2');
+      expect(targetUserId).toBe('member-1');
+    });
+
     test('Staff should access staff-only endpoints', () => {
       const staffRoles: Role[] = ['MASTER', 'SUPPORT', 'GOVERNMENT'];
       staffRoles.forEach((role) => {
@@ -156,6 +165,12 @@ describe('Authorization Checks', () => {
   });
 
   describe('Authorization edge cases', () => {
+    test('should only allow posts to be linked to accounts owned by requester', () => {
+      expect(canUseAccountForPost('user-1', 'user-1')).toBe(true);
+      expect(canUseAccountForPost('user-2', 'user-1')).toBe(false);
+      expect(canUseAccountForPost(undefined, 'user-1')).toBe(false);
+    });
+
     test('should handle empty userId correctly', () => {
       expect(canModifyPost('', 'MEMBER', 'user-1')).toBe(false);
       expect(canModifyPost('', 'MEMBER', '')).toBe(true);

@@ -4,10 +4,71 @@ import prisma from '../lib/prisma';
 import { PostType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getCurrentWeekBoundary, getWeekBoundaryForDate, jstWallToUtcDate } from '../utils/weekBoundary';
-import { followerCountField, snsPostCreateSchema, snsPostUpdateSchema, parsePostedAtInput } from '../utils/snsValidation';
+import { snsPostCreateSchema, snsPostUpdateSchema, parsePostedAtInput } from '../utils/snsValidation';
 
 const router = Router();
 router.use(authenticate);
+
+const STAFF_ROLES = ['MASTER', 'SUPPORT', 'GOVERNMENT'];
+
+const isStaffRole = (role: string) => STAFF_ROLES.includes(role);
+
+const normalizeOptionalString = (value: unknown) => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+};
+
+const buildPostListWhere = (req: AuthRequest) => {
+  const { userId, accountId, week, from, to } = req.query;
+  const where: any = {};
+  const isStaff = isStaffRole(req.user!.role);
+  const requestedUserId = normalizeOptionalString(userId);
+  const requestedAccountId = normalizeOptionalString(accountId);
+  const requestedWeek = normalizeOptionalString(week);
+  const requestedFrom = normalizeOptionalString(from);
+  const requestedTo = normalizeOptionalString(to);
+
+  if (isStaff) {
+    if (requestedUserId) where.userId = requestedUserId;
+  } else {
+    where.userId = req.user!.id;
+  }
+
+  if (requestedAccountId) {
+    where.accountId = requestedAccountId;
+  }
+
+  // 期間指定（優先）
+  if (requestedFrom || requestedTo) {
+    const pa: Record<string, unknown> = { not: null };
+    if (requestedFrom) pa.gte = new Date(requestedFrom);
+    if (requestedTo) {
+      const toDate = new Date(requestedTo);
+      toDate.setHours(23, 59, 59, 999);
+      pa.lte = toDate;
+    }
+    where.postedAt = pa;
+  } else if (requestedWeek) {
+    where.week = requestedWeek;
+  }
+
+  return where;
+};
+
+const ensureAccountBelongsToUser = async (accountId: string | null, userId: string) => {
+  if (!accountId) return;
+  const account = await prisma.sNSAccount.findUnique({
+    where: { id: accountId },
+    select: { id: true, userId: true },
+  });
+
+  if (!account || account.userId !== userId) {
+    const error = new Error('指定されたSNSアカウントを利用できません');
+    (error as any).statusCode = 400;
+    throw error;
+  }
+};
 
 /**
  * GET /api/sns-posts
@@ -21,32 +82,22 @@ router.use(authenticate);
  */
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { userId, week, from, to } = req.query;
-    const where: any = {};
-
-    if (userId) {
-      where.userId = userId;
-    } else if (req.user!.role === 'MEMBER') {
-      where.userId = req.user!.id;
-    }
-
-    // 期間指定（優先）
-    if (from || to) {
-      const pa: Record<string, unknown> = { not: null };
-      if (from) pa.gte = new Date(from as string);
-      if (to) {
-        const toDate = new Date(to as string);
-        toDate.setHours(23, 59, 59, 999);
-        pa.lte = toDate;
-      }
-      where.postedAt = pa;
-    } else if (week) {
-      where.week = week;
-    }
+    const where = buildPostListWhere(req);
 
     const posts = await prisma.sNSPost.findMany({
       where,
-      include: { user: { select: { id: true, name: true } } },
+      include: {
+        user: { select: { id: true, name: true } },
+        account: {
+          select: {
+            id: true,
+            platform: true,
+            accountName: true,
+            displayName: true,
+            url: true,
+          },
+        },
+      },
       orderBy: { postedAt: 'desc' },
     });
 
@@ -138,6 +189,7 @@ router.post('/', async (req: AuthRequest, res) => {
     const followerCount = data.followerCount ?? null;
 
     console.log('[API] weekKey:', weekKey, 'postType:', postType, 'userId:', userId, 'accountId:', accountId);
+    await ensureAccountBelongsToUser(accountId, userId);
 
     // 既存レコードをIDで検索（accountIdも含めて検索）
     const existing = await prisma.sNSPost.findFirst({
@@ -166,7 +218,7 @@ router.post('/', async (req: AuthRequest, res) => {
           // 競合: 再検索してupdate
           console.log('[API] P2002 on create, constraint:', JSON.stringify(createErr?.meta), '- retrying update');
           const retry = await prisma.sNSPost.findFirst({
-            where: { userId, week: weekKey, postType },
+            where: { userId, week: weekKey, postType, accountId },
           });
           if (retry) {
             post = await prisma.sNSPost.update({
@@ -198,7 +250,7 @@ router.post('/', async (req: AuthRequest, res) => {
                 END $fix$;
               `);
               post = await prisma.sNSPost.create({
-                data: { userId, week: weekKey, postedAt, postType, url, note, followerCount },
+                data: { userId, week: weekKey, postedAt, postType, accountId, url, note, followerCount },
                 include: { user: true },
               });
             } catch (fixErr: any) {
@@ -225,6 +277,9 @@ router.post('/', async (req: AuthRequest, res) => {
       code: error?.code,
       meta: error?.meta,
     });
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     res.status(500).json({
       error: 'Failed to create SNS post',
       details: error?.message,

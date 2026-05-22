@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { format } from 'date-fns';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -69,14 +70,14 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
   useEffect(() => {
     if (post) {
       const date = new Date(post.postedAt);
-      setPostedAt(date.toISOString().split('T')[0]);
+      setPostedAt(format(date, 'yyyy-MM-dd'));
       setPostType(post.postType);
       setUrl(post.url || '');
       setNote(post.note || '');
       setFollowerCount(post.followerCount != null ? String(post.followerCount) : '');
     } else {
       const now = new Date();
-      setPostedAt(defaultPostedDate || now.toISOString().split('T')[0]);
+      setPostedAt(defaultPostedDate || format(now, 'yyyy-MM-dd'));
       setPostType(defaultPostType);
       setUrl('');
       setNote('');

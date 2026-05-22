@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { format, addDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
-import { Plus, Trash2, ExternalLink, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, CalendarDays, ChevronDown, ChevronUp, Plus, Settings, Trash2, Users } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { WeeklyStatusAlert } from '../components/sns/WeeklyStatusAlert';
@@ -13,6 +13,7 @@ import { SNSPostDetailModal } from '../components/sns/SNSPostDetailModal';
 import { SNSAccountModal, getPostTypeLabels } from '../components/sns/SNSAccountModal';
 import { FollowerGraph } from '../components/sns/FollowerGraph';
 import { getWeekMetaForDate, getRecentWeekRows } from '../utils/snsWeek';
+import { useSearchParams } from 'react-router-dom';
 
 interface SNSPost {
   id: string;
@@ -25,6 +26,13 @@ interface SNSPost {
   userId: string;
   accountId?: string | null;
   user?: { id: string; name: string };
+  account?: {
+    id: string;
+    platform: string;
+    accountName: string;
+    displayName?: string | null;
+    url?: string | null;
+  } | null;
 }
 
 interface SNSAccount {
@@ -51,6 +59,7 @@ export const SNSPosts: React.FC = () => {
   const { user } = useAuthStore();
   const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addModalDefaultType, setAddModalDefaultType] = useState<'STORY' | 'FEED'>('STORY');
   const [addModalDefaultDate, setAddModalDefaultDate] = useState<string | undefined>(undefined);
@@ -71,6 +80,17 @@ export const SNSPosts: React.FC = () => {
 
   const { weekStart, weekEnd } = getWeekMetaForDate(new Date());
   const personalWeekRows = useMemo(() => getRecentWeekRows(12), []);
+
+  useEffect(() => {
+    if (searchParams.get('add') === 'true' && viewMode === 'personal') {
+      setAddModalDefaultType('STORY');
+      setAddModalDefaultDate(undefined);
+      setIsAddModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('add');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, viewMode]);
 
   // 自分のSNSアカウント一覧
   const { data: myAccounts = [] } = useQuery<SNSAccount[]>({
@@ -156,13 +176,13 @@ export const SNSPosts: React.FC = () => {
     const list = (personalPosts || []).filter((p) => p.followerCount != null);
 
     // 週別: 各週の最新フォロワー数
-    const weekMap = new Map<string, { count: number; weekStart: Date }>();
+    const weekMap = new Map<string, { count: number; weekStart: Date; postedAt: string }>();
     list.forEach((p) => {
       const row = personalWeekRows.find(r => r.weekKey === p.week);
       const ws = row ? row.weekStart : new Date(p.postedAt);
       const existing = weekMap.get(p.week);
-      if (!existing || new Date(p.postedAt).getTime() > new Date(existing.count).getTime()) {
-        weekMap.set(p.week, { count: p.followerCount!, weekStart: ws });
+      if (!existing || new Date(p.postedAt).getTime() > new Date(existing.postedAt).getTime()) {
+        weekMap.set(p.week, { count: p.followerCount!, weekStart: ws, postedAt: p.postedAt });
       }
     });
     const byWeek = Array.from(weekMap.entries())
@@ -217,6 +237,36 @@ export const SNSPosts: React.FC = () => {
     [allPosts]
   );
 
+  const selectedAccountPosts = useMemo(() => {
+    const list = personalPosts || [];
+    return selectedAccountId ? list.filter((p) => p.accountId === selectedAccountId) : list;
+  }, [personalPosts, selectedAccountId]);
+
+  const personalSummary = useMemo(() => {
+    const list = selectedAccountPosts;
+    const weekPosts = list.filter((p) => p.postedAt && new Date(p.postedAt) >= weekStart && new Date(p.postedAt) < weekEnd);
+    const latestFollower = [...list]
+      .filter((p) => p.followerCount != null)
+      .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime())[0]?.followerCount ?? null;
+
+    return {
+      weekStory: weekPosts.some((p) => p.postType === 'STORY'),
+      weekFeed: weekPosts.some((p) => p.postType === 'FEED'),
+      monthCount: list.filter((p) => p.postedAt && new Date(p.postedAt).getTime() >= currentMonthStart.getTime() && new Date(p.postedAt).getTime() <= currentMonthEnd.getTime()).length,
+      latestFollower,
+    };
+  }, [selectedAccountPosts, weekStart, weekEnd, currentMonthStart, currentMonthEnd]);
+
+  const staffSummary = useMemo(() => {
+    const statuses = currentWeekStatus;
+    const complete = statuses.filter((s) => s.hasFeed && s.hasStory).length;
+    return {
+      totalMembers: statuses.length,
+      complete,
+      incomplete: Math.max(statuses.length - complete, 0),
+    };
+  }, [currentWeekStatus]);
+
   const deleteMutation = useMutation({
     mutationFn: async (postId: string) => api.delete(`/api/sns-posts/${postId}`),
     onSuccess: () => {
@@ -255,7 +305,12 @@ export const SNSPosts: React.FC = () => {
     <div className="space-y-6">
       {/* ヘッダー */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">SNS投稿管理</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">SNS記録</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {viewMode === 'personal' ? '投稿実績とフォロワー数を記録します。' : 'メンバーが入力した投稿実績を確認します。'}
+          </p>
+        </div>
         {viewMode === 'personal' && (
           <div className="flex gap-2">
             <Button
@@ -310,18 +365,29 @@ export const SNSPosts: React.FC = () => {
       {viewMode === 'personal' && (
         <div className="space-y-2">
           <WeeklyStatusAlert />
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            <span className="font-medium text-gray-700 dark:text-gray-300">{format(today, 'M月', { locale: ja })}の記録:</span>
-            <span>ストーリーズ:{' '}
-              <span className={currentMonthSnsStatus.story ? 'text-green-600 dark:text-green-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
-                {currentMonthSnsStatus.story ? '✓ あり' : '未記録'}
-              </span>
-            </span>
-            <span>フィード:{' '}
-              <span className={currentMonthSnsStatus.feed ? 'text-green-600 dark:text-green-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
-                {currentMonthSnsStatus.feed ? '✓ あり' : '未記録'}
-              </span>
-            </span>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><CalendarDays className="h-4 w-4" />今週</div>
+              <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                <span className={personalSummary.weekStory ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>{personalSummary.weekStory ? 'ストーリーズ済' : 'ストーリーズ未'}</span>
+                <span className={personalSummary.weekFeed ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>{personalSummary.weekFeed ? 'フィード済' : 'フィード未'}</span>
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">{format(today, 'M月', { locale: ja })}の完了状況</div>
+              <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                <span className={currentMonthSnsStatus.story ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>{currentMonthSnsStatus.story ? 'ストーリーズあり' : 'ストーリーズ未記録'}</span>
+                <span className={currentMonthSnsStatus.feed ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>{currentMonthSnsStatus.feed ? 'フィードあり' : 'フィード未記録'}</span>
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">今月の記録数</div>
+              <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{personalSummary.monthCount}<span className="ml-1 text-sm font-normal text-gray-500">件</span></div>
+            </div>
+            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">最新フォロワー数</div>
+              <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{personalSummary.latestFollower == null ? '-' : personalSummary.latestFollower.toLocaleString()}<span className="ml-1 text-sm font-normal text-gray-500">人</span></div>
+            </div>
           </div>
         </div>
       )}
@@ -329,6 +395,21 @@ export const SNSPosts: React.FC = () => {
       {viewMode === 'view' ? (
         <>
           {/* 閲覧モード: フィルタ */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><Users className="h-4 w-4" />今週の対象</div>
+              <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{staffSummary.totalMembers}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
+            </div>
+            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><CheckCircle2 className="h-4 w-4" />今週完了</div>
+              <div className="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400">{staffSummary.complete}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
+            </div>
+            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><AlertTriangle className="h-4 w-4" />未完了</div>
+              <div className="mt-1 text-2xl font-semibold text-amber-600 dark:text-amber-400">{staffSummary.incomplete}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
+            </div>
+          </div>
+
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
