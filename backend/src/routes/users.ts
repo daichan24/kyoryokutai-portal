@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { ensureDefaultInstagramAccount } from '../services/defaultSnsAccountService';
 
 const router = Router();
 
@@ -245,6 +246,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
           : {}),
       },
     });
+
+    if (user.role === 'MEMBER') {
+      await ensureDefaultInstagramAccount(user.id);
+    }
 
     res.json(user);
   } catch (error) {

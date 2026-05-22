@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { createDefaultMissionsAndProjects, createDefaultMissionsAndProjectsForExistingMembers } from '../services/defaultMissionProjectService';
+import { ensureDefaultInstagramAccount } from '../services/defaultSnsAccountService';
 import { queueEmail, sendPendingEmailJobs } from '../services/emailService';
 
 const router = Router();
@@ -116,6 +117,13 @@ router.post('/users', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, r
 
     // メンバーの場合、デフォルトのミッションとプロジェクトを作成
     if (user.role === 'MEMBER') {
+      try {
+        await ensureDefaultInstagramAccount(user.id);
+        console.log('✅ [API] デフォルトInstagramアカウント作成成功');
+      } catch (error) {
+        console.error('⚠️ [API] デフォルトInstagramアカウント作成失敗:', error);
+      }
+
       try {
         await createDefaultMissionsAndProjects(user.id);
         console.log('✅ [API] デフォルトミッション・プロジェクト作成成功');

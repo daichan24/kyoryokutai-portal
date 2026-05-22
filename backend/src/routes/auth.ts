@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { ensureDefaultInstagramAccount } from '../services/defaultSnsAccountService';
 
 const router = Router();
 
@@ -71,6 +72,10 @@ router.post('/register', async (req, res) => {
         createdAt: true,
       },
     });
+
+    if (user.role === 'MEMBER') {
+      await ensureDefaultInstagramAccount(user.id);
+    }
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
