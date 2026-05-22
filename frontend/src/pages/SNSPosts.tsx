@@ -439,7 +439,9 @@ export const SNSPosts: React.FC = () => {
                     ({format(weekStart, 'M月d日', { locale: ja })} 〜 {format(addDays(weekEnd, -1), 'M月d日', { locale: ja })})
                   </span>
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">1分ごとに自動更新</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  「未完了」は今週のストーリーズとフィードのどちらか、または両方が未記録の状態です。登録済みSNSアカウントがあるメンバーはアカウント別に表示します。
+                </p>
               </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
                 {currentWeekStatus.map((status) => {
@@ -453,6 +455,11 @@ export const SNSPosts: React.FC = () => {
                         <span className={`text-xs px-2 py-0.5 rounded-full ${status.hasFeed && status.hasStory ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'}`}>
                           {status.hasFeed && status.hasStory ? '✓ 完了' : '未完了'}
                         </span>
+                        {memberAccounts.length > 0 ? (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">登録アカウント {memberAccounts.length}件</span>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-gray-500">登録アカウントなし</span>
+                        )}
                       </div>
                       {memberAccounts.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -502,9 +509,12 @@ export const SNSPosts: React.FC = () => {
                         </div>
                       ) : (
                         // アカウント未登録の場合は従来の表示
-                        <div className="flex gap-4 text-sm">
-                          <span>フィード: {status.hasFeed ? <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span> : <span className="text-gray-400">未投稿</span>}</span>
-                          <span>ストーリーズ: {status.hasStory ? <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span> : <span className="text-gray-400">未投稿</span>}</span>
+                        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-900/30">
+                          <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">SNSアカウント未登録のため、メンバー単位の記録だけを表示しています。</div>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1">
+                            <span>ストーリーズ: {status.hasStory ? <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span> : <span className="text-gray-400">未投稿</span>}</span>
+                            <span>フィード: {status.hasFeed ? <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span> : <span className="text-gray-400">未投稿</span>}</span>
+                          </div>
                         </div>
                       )}
                     </div>
