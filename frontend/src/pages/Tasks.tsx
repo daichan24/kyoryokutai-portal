@@ -155,6 +155,14 @@ export const Tasks: React.FC = () => {
     refetchOnWindowFocus: false,
   });
 
+  const projectById = React.useMemo(() => {
+    return new Map(projects.map((project) => [project.id, project]));
+  }, [projects]);
+
+  const getTaskProject = React.useCallback((task: Task): Project | undefined => {
+    return task.projectId ? projectById.get(task.projectId) || task.project : task.project;
+  }, [projectById]);
+
   // フィルタリング・ソート
   const filteredAndSortedTasks = React.useMemo(() => {
     let filtered = allTasks.filter(task => {
@@ -166,21 +174,21 @@ export const Tasks: React.FC = () => {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'project':
-          return (a.project?.projectName || '').localeCompare(b.project?.projectName || '');
+          return (getTaskProject(a)?.projectName || '').localeCompare(getTaskProject(b)?.projectName || '');
         case 'created':
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         case 'deadline':
         default:
           // 期限がない場合は最後に
-          if (!a.project?.endDate && !b.project?.endDate) return 0;
-          if (!a.project?.endDate) return 1;
-          if (!b.project?.endDate) return -1;
-          return new Date(a.project.endDate).getTime() - new Date(b.project.endDate).getTime();
+          if (!getTaskProject(a)?.endDate && !getTaskProject(b)?.endDate) return 0;
+          if (!getTaskProject(a)?.endDate) return 1;
+          if (!getTaskProject(b)?.endDate) return -1;
+          return new Date(getTaskProject(a)!.endDate!).getTime() - new Date(getTaskProject(b)!.endDate!).getTime();
       }
     });
 
     return filtered;
-  }, [allTasks, filterProject, sortBy]);
+  }, [allTasks, filterProject, sortBy, getTaskProject]);
 
   const handleCreateTask = (projectId?: string) => {
     setSelectedTask(null);
@@ -495,6 +503,7 @@ export const Tasks: React.FC = () => {
                   >
                     {filteredAndSortedTasks.map((task, index) => {
                       const missionName = getMissionName(task);
+                      const taskProject = getTaskProject(task);
                       return (
                         <Draggable key={task.id} draggableId={task.id} index={index}>
                           {(provided, snapshot) => (
@@ -555,13 +564,13 @@ export const Tasks: React.FC = () => {
                                     )}
 
                                     {/* プロジェクト情報 */}
-                                    {task.project && (
+                                    {taskProject && (
                                       <div className="mb-2">
                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                           プロジェクト: 
                                         </span>
                                         <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
-                                          {task.project.projectName}
+                                          {taskProject.projectName}
                                         </span>
                                       </div>
                                     )}
@@ -589,13 +598,13 @@ export const Tasks: React.FC = () => {
                                     )}
 
                                     {/* 担当者情報（メンバー以外の時のみ表示） */}
-                                    {isNonMember && task.project?.user && (
+                                    {isNonMember && taskProject?.user && (
                                       <div className="mb-2">
                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                           担当者: 
                                         </span>
                                         <span className="text-sm text-gray-900 dark:text-gray-100 ml-1">
-                                          {task.project.user.name}
+                                          {taskProject.user.name}
                                         </span>
                                       </div>
                                     )}
@@ -657,6 +666,7 @@ export const Tasks: React.FC = () => {
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {filteredAndSortedTasks.map((task, index) => {
                           const missionName = getMissionName(task);
+                          const taskProject = getTaskProject(task);
                           return (
                             <Draggable key={task.id} draggableId={task.id} index={index}>
                               {(provided, snapshot) => (
@@ -680,14 +690,14 @@ export const Tasks: React.FC = () => {
                                     )}
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {task.project?.projectName || 'プロジェクトなし'}
+                                    {taskProject?.projectName || 'プロジェクトなし'}
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                     {missionName || '-'}
                                   </td>
                                   {viewMode === 'view' && isNonMember && (
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                      {task.project?.user?.name || '-'}
+                                      {taskProject?.user?.name || '-'}
                                     </td>
                                   )}
                                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -715,7 +725,9 @@ export const Tasks: React.FC = () => {
         </>
 
       {/* タスクプレビューモーダル */}
-      {previewTask && (
+      {previewTask && (() => {
+        const previewProject = getTaskProject(previewTask);
+        return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setPreviewTask(null)}>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
@@ -749,10 +761,10 @@ export const Tasks: React.FC = () => {
                   <span className="text-gray-900 dark:text-gray-100">{(previewTask as any).locationText}</span>
                 </div>
               )}
-              {previewTask.project && (
+              {previewProject && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-16 flex-shrink-0">プロジェクト</span>
-                  <span className="text-gray-900 dark:text-gray-100">{previewTask.project.projectName}</span>
+                  <span className="text-gray-900 dark:text-gray-100">{previewProject.projectName}</span>
                 </div>
               )}
               {(() => {
@@ -783,7 +795,8 @@ export const Tasks: React.FC = () => {
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* タスクモーダル */}
       {isModalOpen && (
