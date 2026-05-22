@@ -41,6 +41,7 @@ import notepadRoutes from './routes/notepad';
 import leaveRoutes from './routes/leave';
 import handoverRoutes from './routes/handover';
 import googleCalendarRoutes from './routes/googleCalendar';
+import interviewNotesRoutes from './routes/interviewNotes';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 
@@ -162,6 +163,7 @@ app.use('/api/me/notepad', notepadRoutes);
 app.use('/api/leave', leaveRoutes);
 app.use('/api/handover', handoverRoutes);
 app.use('/api/integrations/google-calendar', googleCalendarRoutes);
+app.use('/api/interview-notes', interviewNotesRoutes);
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');

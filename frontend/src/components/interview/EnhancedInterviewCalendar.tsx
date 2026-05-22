@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addMonths, subMonths, startOfWeek, endOfWeek, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { SchedulePreviewModal } from './SchedulePreviewModal';
+import { getJapaneseHolidays } from '../../utils/japaneseHolidays';
 
 interface InterviewParticipantUser {
   id: string;
@@ -55,15 +56,25 @@ export const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps>
   const calendarStart = useMemo(() => startOfWeek(monthStart, { weekStartsOn: 0 }), [monthStart]);
   const calendarEnd = useMemo(() => endOfWeek(monthEnd, { weekStartsOn: 0 }), [monthEnd]);
   const calendarDays = useMemo(() => eachDayOfInterval({ start: calendarStart, end: calendarEnd }), [calendarStart, calendarEnd]);
+  const holidays = useMemo(() => {
+    const map = new Map<string, string>();
+    [currentMonth.getFullYear() - 1, currentMonth.getFullYear(), currentMonth.getFullYear() + 1].forEach((year) => {
+      getJapaneseHolidays(year).forEach((name, key) => map.set(key, name));
+    });
+    return map;
+  }, [currentMonth]);
 
   const schedulesByDate = useMemo(() => {
     const map = new Map<string, InterviewSchedule[]>();
     schedules.forEach((s) => {
-      const dateKey = format(parseISO(s.startDate), 'yyyy-MM-dd');
-      if (!map.has(dateKey)) {
-        map.set(dateKey, []);
+      const days = eachDayOfInterval({ start: parseISO(s.startDate), end: parseISO(s.endDate) });
+      for (const day of days) {
+        const dateKey = format(day, 'yyyy-MM-dd');
+        if (!map.has(dateKey)) {
+          map.set(dateKey, []);
+        }
+        map.get(dateKey)!.push(s);
       }
-      map.get(dateKey)!.push(s);
     });
     return map;
   }, [schedules]);
@@ -151,23 +162,38 @@ export const EnhancedInterviewCalendar: React.FC<EnhancedInterviewCalendarProps>
             const isSelected = selectedDate && isSameDay(day, selectedDate);
             const isToday = isSameDay(day, new Date());
             const isOtherMonth = !isCurrentMonth(day);
+            const holidayName = holidays.get(dateKey);
+            const weekday = getDay(day);
+            const isSundayOrHoliday = weekday === 0 || Boolean(holidayName);
+            const isSaturday = weekday === 6;
 
             return (
               <button
                 key={dateKey}
                 onClick={() => handleDateClick(day)}
-                className={`min-h-[80px] p-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors text-left ${
+                className={`min-h-[92px] p-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors text-left ${
                   isSelected ? 'ring-2 ring-blue-500 ring-inset' : ''
-                } ${isOtherMonth ? 'opacity-40' : ''}`}
+                } ${isOtherMonth ? 'opacity-40' : ''} ${isSundayOrHoliday ? 'bg-red-50/60 dark:bg-red-950/20' : isSaturday ? 'bg-blue-50/60 dark:bg-blue-950/20' : ''}`}
               >
-                <div className={`text-sm font-medium mb-1 ${
-                  isToday
-                    ? 'inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white'
-                    : isOtherMonth
-                    ? 'text-gray-400 dark:text-gray-600'
-                    : 'text-gray-900 dark:text-gray-100'
-                }`}>
-                  {format(day, 'd')}
+                <div className="mb-1 flex min-h-[32px] flex-col items-center justify-start">
+                  <span className={`text-sm font-medium ${
+                    isToday
+                      ? 'inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-white'
+                      : isOtherMonth
+                      ? 'text-gray-400 dark:text-gray-600'
+                      : isSundayOrHoliday
+                      ? 'text-red-600 dark:text-red-300'
+                      : isSaturday
+                      ? 'text-blue-600 dark:text-blue-300'
+                      : 'text-gray-900 dark:text-gray-100'
+                  }`}>
+                    {format(day, 'd')}
+                  </span>
+                  {holidayName && (
+                    <span className="mt-0.5 max-w-full truncate text-[10px] leading-none text-red-600 dark:text-red-300">
+                      {holidayName}
+                    </span>
+                  )}
                 </div>
                 {daySchedules.length > 0 && (
                   <div className="space-y-1">

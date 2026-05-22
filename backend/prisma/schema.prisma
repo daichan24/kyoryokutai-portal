@@ -128,6 +128,8 @@ model User {
   governmentAttendances GovernmentAttendance[]
   notepads              Notepad[]
   snsAccounts           SNSAccount[]
+  interviewNotesAsMember InterviewNote[] @relation("InterviewNoteMember")
+  interviewNotesUpdated  InterviewNote[] @relation("InterviewNoteUpdatedBy")
 
   handoverDocumentsCreated HandoverDocument[] @relation("HandoverDocumentCreator")
   handoverDocumentsUpdated HandoverDocument[] @relation("HandoverDocumentUpdater")
@@ -1738,6 +1740,31 @@ model Notepad {
   updatedAt DateTime @updatedAt
 
   @@index([userId, order])
+}
+
+// ========================================
+// 面談メモ
+// ========================================
+
+model InterviewNote {
+  id        String   @id @default(uuid())
+  memberId  String
+  member    User     @relation("InterviewNoteMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  month     String   @db.VarChar(7) // YYYY-MM
+  memo      String?  @db.Text
+  snsNote   String?  @db.Text
+  snsCheckedAt DateTime?
+  snsSnapshot Json?
+
+  updatedById String?
+  updatedBy   User?   @relation("InterviewNoteUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([memberId, month])
+  @@index([memberId, month])
 }
 
 // ========================================

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { addMonths, format, parseISO, subMonths } from 'date-fns';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { addMonths, format, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../utils/api';
 import type { User } from '../types';
@@ -110,6 +110,37 @@ interface InterviewMonthResponse {
   activityExpenseSummary?: ActivityExpenseSummaryLite;
 }
 
+interface InterviewNoteRecord {
+  id: string;
+  memberId: string;
+  month: string;
+  memo: string | null;
+  snsNote: string | null;
+  snsCheckedAt: string | null;
+  updatedAt: string;
+  updatedBy?: { id: string; name: string } | null;
+}
+
+interface InterviewSnsAccountSummary {
+  id: string;
+  platform: string;
+  accountName: string;
+  displayName: string | null;
+  url: string | null;
+  isDefault: boolean;
+  latestFollowerCount: number | null;
+  latestFollowerAt: string | null;
+  monthFollowerCount: number | null;
+  monthPostCount: number;
+  hasStoryThisMonth: boolean;
+  hasFeedThisMonth: boolean;
+}
+
+interface InterviewNoteResponse {
+  note: InterviewNoteRecord | null;
+  snsAccounts: InterviewSnsAccountSummary[];
+}
+
 function schedulePeople(s: InterviewSchedule): InterviewParticipantUser[] {
   const m = new Map<string, InterviewParticipantUser>();
   for (const p of s.scheduleParticipants || []) {
@@ -148,8 +179,6 @@ function summarizeThisWeek(json: unknown): string {
   return JSON.stringify(json);
 }
 
-const UNLINKED_KEY = '__none__';
-
 function progressBarColor(progress: number) {
   if (progress >= 80) return 'bg-green-500';
   if (progress >= 50) return 'bg-blue-500';
@@ -181,6 +210,228 @@ function formatYenInterview(n: number) {
   return `¥${n.toLocaleString('ja-JP')}`;
 }
 
+function formatFollowerCount(n: number | null) {
+  return n == null ? '未記録' : n.toLocaleString('ja-JP');
+}
+
+function MissionProjectCompact({
+  missions,
+  projects,
+}: {
+  missions: MissionKpiRow[];
+  projects: ProjectKpiRow[];
+}) {
+  const [openMissionIds, setOpenMissionIds] = useState<Set<string>>(() => new Set());
+  const unlinkedProjects = projects.filter((p) => !p.mission);
+
+  if (missions.length === 0 && projects.length === 0) {
+    return <p className="text-sm text-gray-500 dark:text-gray-400">該当するミッション・プロジェクトはありません。</p>;
+  }
+
+  const toggleMission = (id: string) => {
+    setOpenMissionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      {missions.map((mission) => {
+        const relatedProjects = projects.filter((p) => p.mission?.id === mission.id);
+        const isOpen = openMissionIds.has(mission.id);
+        return (
+          <div key={mission.id} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+            <button
+              type="button"
+              onClick={() => toggleMission(mission.id)}
+              className="w-full text-left"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{mission.missionName}</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    タスク {mission.goalTasks.completed + mission.standaloneTasks.completed}/
+                    {mission.goalTasks.total + mission.standaloneTasks.total}・プロジェクト {relatedProjects.length}件
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100">{mission.progress}%</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <div className={`h-full ${progressBarColor(mission.progress)}`} style={{ width: `${Math.min(100, mission.progress)}%` }} />
+              </div>
+              {relatedProjects.length > 0 && (
+                <p className="mt-2 text-xs text-blue-600 dark:text-blue-300">
+                  {isOpen ? 'プロジェクトを閉じる' : 'プロジェクトを開く'}
+                </p>
+              )}
+            </button>
+            {isOpen && relatedProjects.length > 0 && (
+              <div className="mt-3 space-y-2 border-t border-gray-100 pt-3 dark:border-gray-700">
+                {relatedProjects.map((project) => (
+                  <div key={project.id} className="rounded-md bg-gray-50 p-2 dark:bg-gray-900/40">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: project.themeColor || '#6366f1' }} />
+                        <span className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">{project.projectName}</span>
+                      </div>
+                      <span className="text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-200">{project.progress}%</span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
+                      <span>{phaseLabelJa(project.phase)}</span>
+                      <span>関連 {project.relatedTasks.completed}/{project.relatedTasks.total}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {unlinkedProjects.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+          <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">ミッション未設定のプロジェクト</p>
+          <div className="space-y-2">
+            {unlinkedProjects.map((project) => (
+              <div key={project.id} className="flex items-center justify-between gap-2 rounded-md bg-gray-50 p-2 dark:bg-gray-900/40">
+                <span className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">{project.projectName}</span>
+                <span className="text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-200">{project.progress}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3 text-xs">
+        <Link to="/goals" className="text-blue-600 hover:underline dark:text-blue-400">ミッションを開く</Link>
+        <Link to="/projects" className="text-blue-600 hover:underline dark:text-blue-400">プロジェクトを開く</Link>
+      </div>
+    </div>
+  );
+}
+
+function InterviewMemoPanel({
+  memberId,
+  month,
+  noteData,
+}: {
+  memberId: string;
+  month: string;
+  noteData?: InterviewNoteResponse;
+}) {
+  const queryClient = useQueryClient();
+  const [memo, setMemo] = useState('');
+  const [snsNote, setSnsNote] = useState('');
+  const [snsChecked, setSnsChecked] = useState(false);
+
+  React.useEffect(() => {
+    setMemo(noteData?.note?.memo || '');
+    setSnsNote(noteData?.note?.snsNote || '');
+    setSnsChecked(Boolean(noteData?.note?.snsCheckedAt));
+  }, [noteData?.note?.id, noteData?.note?.memo, noteData?.note?.snsNote, noteData?.note?.snsCheckedAt]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.put('/api/interview-notes', {
+        memberId,
+        month,
+        memo,
+        snsNote,
+        snsChecked,
+        snsSnapshot: noteData?.snsAccounts || [],
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['interview-note', memberId, month] });
+    },
+  });
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow dark:border-gray-700 dark:bg-gray-800">
+      <div className="mb-3 flex items-center justify-between gap-2 border-b border-gray-200 pb-2 dark:border-gray-700">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">面談メモ</h3>
+        <button
+          type="button"
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending}
+          className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        >
+          {saveMutation.isPending ? '保存中' : '保存'}
+        </button>
+      </div>
+      <textarea
+        value={memo}
+        onChange={(e) => setMemo(e.target.value)}
+        rows={8}
+        className="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+        placeholder="面談しながら確認事項、決定事項、次回までの宿題を記録"
+      />
+
+      <div className="mt-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">SNS人数確認</h4>
+          <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+            <input type="checkbox" checked={snsChecked} onChange={(e) => setSnsChecked(e.target.checked)} />
+            確認済み
+          </label>
+        </div>
+        {(noteData?.snsAccounts || []).length === 0 ? (
+          <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+            SNSアカウントが見つかりません。
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {(noteData?.snsAccounts || []).map((account) => (
+              <div key={account.id} className="rounded-md border border-gray-200 p-2 dark:border-gray-700">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">
+                      {account.displayName || account.accountName}
+                      {account.isDefault && <span className="ml-1 text-[10px] text-blue-600 dark:text-blue-300">標準</span>}
+                    </p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">{account.platform} · {account.accountName}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100">
+                    {formatFollowerCount(account.monthFollowerCount ?? account.latestFollowerCount)}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1 text-[11px]">
+                  <span className={`rounded px-1.5 py-0.5 ${account.hasStoryThisMonth ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>
+                    {account.hasStoryThisMonth ? 'ストーリーズあり' : 'ストーリーズ未記録'}
+                  </span>
+                  <span className={`rounded px-1.5 py-0.5 ${account.hasFeedThisMonth ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'}`}>
+                    {account.hasFeedThisMonth ? 'フィードあり' : 'フィード未記録'}
+                  </span>
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                    月内 {account.monthPostCount}件
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <textarea
+          value={snsNote}
+          onChange={(e) => setSnsNote(e.target.value)}
+          rows={3}
+          className="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+          placeholder="SNS人数や投稿状況についての補足"
+        />
+        {noteData?.note?.updatedAt && (
+          <p className="text-[11px] text-gray-400">
+            最終保存 {format(new Date(noteData.note.updatedAt), 'M/d HH:mm', { locale: ja })}
+            {noteData.note.updatedBy && ` · ${noteData.note.updatedBy.name}`}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export const InterviewMonthlySchedules: React.FC = () => {
   /** デフォルトは今日の月 */
   const defaultMonth = format(new Date(), 'yyyy-MM');
@@ -208,8 +459,6 @@ export const InterviewMonthlySchedules: React.FC = () => {
       const response = await api.get<InterviewMonthResponse>('/api/schedules/for-interview-month', {
         params: { userId: memberId, month },
       });
-      console.log('🔍 [API Response] projectsKpi:', response.data.projectsKpi);
-      console.log('🔍 [API Response] projectsKpi.length:', response.data.projectsKpi?.length);
       return response.data;
     },
     enabled: Boolean(memberId && month),
@@ -261,22 +510,23 @@ export const InterviewMonthlySchedules: React.FC = () => {
     enabled: Boolean(memberId),
   });
 
+  const { data: interviewNoteData } = useQuery<InterviewNoteResponse>({
+    queryKey: ['interview-note', memberId, month],
+    queryFn: async () => {
+      const response = await api.get<InterviewNoteResponse>('/api/interview-notes', {
+        params: { memberId, month },
+      });
+      return response.data;
+    },
+    enabled: Boolean(memberId && month),
+  });
+
   const schedules = useMemo(() => data?.schedules ?? [], [data]);
   const nextMonthSchedules = useMemo(() => nextMonthData?.schedules ?? [], [nextMonthData]);
   const consultations = useMemo(() => data?.consultations ?? [], [data]);
   const expenseSummary = data?.activityExpenseSummary;
   const missionsKpi = useMemo(() => data?.missionsKpi ?? [], [data]);
   const projectsKpi = useMemo(() => data?.projectsKpi ?? [], [data]);
-
-  const byProject = useMemo(() => {
-    const map = new Map<string, InterviewSchedule[]>();
-    for (const s of schedules) {
-      const key = s.project?.id ?? UNLINKED_KEY;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(s);
-    }
-    return map;
-  }, [schedules]);
 
   const byPerson = useMemo(() => {
     const map = new Map<string, { user: InterviewParticipantUser; schedules: InterviewSchedule[] }>();
@@ -404,152 +654,6 @@ export const InterviewMonthlySchedules: React.FC = () => {
                 />
               </section>
 
-          <section id="missions-projects" className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-              ミッション・プロジェクトの達成状況
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              対象月と期間が重なるミッション・プロジェクトの進捗状況です。ミッションとプロジェクトの関連性を確認できます。
-            </p>
-
-            {/* ミッション別にプロジェクトをグループ化 */}
-            {missionsKpi.length === 0 && projectsKpi.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">該当するミッション・プロジェクトはありません。</p>
-            ) : (
-              <div className="space-y-6">
-                {missionsKpi.map((mi) => {
-                  const relatedProjects = projectsKpi.filter((p) => p.mission?.id === mi.id);
-                  return (
-                    <div key={mi.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80">
-                      {/* ミッション情報 */}
-                      <div className="mb-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-lg text-gray-900 dark:text-gray-100">{mi.missionName}</span>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200">
-                              {mi.missionType === 'PRIMARY' ? '主目標' : '副目標'}
-                            </span>
-                          </div>
-                          <span className="text-2xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
-                            {mi.progress}%
-                          </span>
-                        </div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-2">
-                          <div
-                            className={`h-full transition-all ${progressBarColor(mi.progress)}`}
-                            style={{ width: `${Math.min(100, mi.progress)}%` }}
-                          />
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
-                          <span>
-                            目標ツリー内タスク: {mi.goalTasks.completed}/{mi.goalTasks.total} 完了
-                            {mi.goalTasks.total > 0 && (
-                              <span className="text-gray-400 ml-1">
-                                （{Math.round((mi.goalTasks.completed / mi.goalTasks.total) * 100)}%）
-                              </span>
-                            )}
-                          </span>
-                          <span>
-                            ミッション直下タスク: {mi.standaloneTasks.completed}/{mi.standaloneTasks.total} 完了
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 関連プロジェクト */}
-                      {relatedProjects.length > 0 && (
-                        <div className="ml-4 space-y-2 border-l-2 border-gray-300 dark:border-gray-600 pl-4">
-                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">関連プロジェクト</p>
-                          {relatedProjects.map((p) => (
-                            <div key={p.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/40">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <span
-                                  className="inline-block w-2 h-2 rounded-full shrink-0"
-                                  style={{ backgroundColor: p.themeColor || '#6366f1' }}
-                                />
-                                <span className="font-medium text-gray-900 dark:text-gray-100">{p.projectName}</span>
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-                                  {phaseLabelJa(p.phase)}
-                                </span>
-                                <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums ml-auto">
-                                  {p.progress}%
-                                </span>
-                              </div>
-                              <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-2">
-                                <div
-                                  className={`h-full transition-all ${progressBarColor(p.progress)}`}
-                                  style={{ width: `${Math.min(100, p.progress)}%` }}
-                                />
-                              </div>
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
-                                <span>
-                                  プロジェクトタスク: {p.projectTasks.completed}/{p.projectTasks.total}
-                                </span>
-                                <span>
-                                  関連タスク: {p.relatedTasks.completed}/{p.relatedTasks.total} 完了
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* ミッションに紐づかないプロジェクト */}
-                {projectsKpi.filter((p) => !p.mission).length > 0 && (
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80">
-                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3">ミッション未設定のプロジェクト</p>
-                    <div className="space-y-2">
-                      {projectsKpi
-                        .filter((p) => !p.mission)
-                        .map((p) => (
-                          <div key={p.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/40">
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <span
-                                className="inline-block w-2 h-2 rounded-full shrink-0"
-                                style={{ backgroundColor: p.themeColor || '#6366f1' }}
-                              />
-                              <span className="font-medium text-gray-900 dark:text-gray-100">{p.projectName}</span>
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-                                {phaseLabelJa(p.phase)}
-                              </span>
-                              <span className="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums ml-auto">
-                                {p.progress}%
-                              </span>
-                            </div>
-                            <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-2">
-                              <div
-                                className={`h-full transition-all ${progressBarColor(p.progress)}`}
-                                style={{ width: `${Math.min(100, p.progress)}%` }}
-                              />
-                            </div>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
-                              <span>
-                                プロジェクトタスク: {p.projectTasks.completed}/{p.projectTasks.total}
-                              </span>
-                              <span>
-                                関連タスク: {p.relatedTasks.completed}/{p.relatedTasks.total} 完了
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3 text-sm">
-              <Link to="/goals" className="text-blue-600 dark:text-blue-400 hover:underline">
-                ミッション（目標）を開く →
-              </Link>
-              <Link to="/projects" className="text-blue-600 dark:text-blue-400 hover:underline">
-                プロジェクトを開く →
-              </Link>
-            </div>
-          </section>
-
           <section id="consultations" className="space-y-3">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
               相談（この隊員・対象月に関係なく一覧）
@@ -664,18 +768,12 @@ export const InterviewMonthlySchedules: React.FC = () => {
               全てのプロジェクトを表示します。スケジュールがないプロジェクトも表示され、なぜ実行されなかったかを確認できます。
             </p>
             {(() => {
-              // デバッグ: projectsKpi の内容を確認
-              console.log('🔍 [InterviewMonthlySchedules] projectsKpi:', projectsKpi);
-              console.log('🔍 [InterviewMonthlySchedules] projectsKpi.length:', projectsKpi.length);
-              
               // 全プロジェクトのリストを作成（projectsKpi から）
               const allProjects = projectsKpi.map(p => ({
                 id: p.id,
                 name: p.projectName,
                 color: p.themeColor || '#6366f1',
               }));
-              
-              console.log('🔍 [InterviewMonthlySchedules] allProjects:', allProjects);
 
               // プロジェクトごとのスケジュールをマップ
               const projectSchedulesMap = new Map<string, InterviewSchedule[]>();
@@ -873,6 +971,8 @@ export const InterviewMonthlySchedules: React.FC = () => {
         {/* 右カラム（サマリー情報） */}
         <div className="lg:col-span-1 space-y-6">
           <div className="sticky top-4 space-y-6">
+            <InterviewMemoPanel memberId={memberId} month={month} noteData={interviewNoteData} />
+
             {/* 統計サマリー */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -1012,6 +1112,13 @@ export const InterviewMonthlySchedules: React.FC = () => {
               </a>
             </div>
           )}
+
+          <div id="missions-projects" className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+              ミッション・プロジェクト
+            </h3>
+            <MissionProjectCompact missions={missionsKpi} projects={projectsKpi} />
+          </div>
         </div>
       </div>
     </div>
