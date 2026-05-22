@@ -284,6 +284,21 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     return `${hours}:${minutes}`;
   };
 
+  const formatScheduleUpdateError = (error: any): string => {
+    const data = error.response?.data;
+    if (!data) return error.message || '不明なエラー';
+    if (typeof data === 'string') return data;
+    if (data.details) return `${data.error || '入力内容を確認してください'}: ${data.details}`;
+    return data.error || data.message || error.message || '不明なエラー';
+  };
+
+  const addPreservedScheduleFields = (updateData: any, schedule: ScheduleType) => {
+    updateData.title = (schedule as any).title || schedule.activityDescription;
+    updateData.activityDescription = schedule.activityDescription;
+    const locationText = schedule.locationText?.trim();
+    if (locationText) updateData.locationText = locationText;
+  };
+
   // イベントドロップ（移動）処理
   const handleEventDrop = async (info: any) => {
     if (isUpdating) {
@@ -349,11 +364,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           date: newDateStr,
           startTime: oldStartTime,
           endTime: oldEndTime,
-          // 既存のフィールドを保持
-          title: (schedule as any).title || schedule.activityDescription,
-          activityDescription: schedule.activityDescription,
-          locationText: schedule.locationText || '',
         };
+        addPreservedScheduleFields(updateData, schedule);
 
         // 複数日スケジュールの場合
         if (daysDiff > 0) {
@@ -409,11 +421,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           date: newDateStr,
           startTime: newStartTime,
           endTime: newEndTime,
-          // 既存のフィールドを保持
-          title: (schedule as any).title || schedule.activityDescription,
-          activityDescription: schedule.activityDescription,
-          locationText: schedule.locationText || '',
         };
+        addPreservedScheduleFields(updateData, schedule);
 
         // 複数日スケジュールの場合
         if (newStart.toDateString() !== newEnd.toDateString()) {
@@ -444,7 +453,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     } catch (error: any) {
       console.error('Failed to update schedule:', error);
       console.error('Error response:', error.response?.data);
-      alert(`スケジュールの更新に失敗しました: ${error.response?.data?.error || error.message}`);
+      alert(`スケジュールの更新に失敗しました: ${formatScheduleUpdateError(error)}`);
       info.revert();
     } finally {
       setIsUpdating(false);
@@ -550,11 +559,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         date: getJSTDateString(newStart),
         startTime,
         endTime,
-        // 既存のフィールドを保持
-        title: (schedule as any).title || schedule.activityDescription,
-        activityDescription: schedule.activityDescription,
-        locationText: schedule.locationText || '',
       };
+      addPreservedScheduleFields(updateData, schedule);
 
       // 複数日スケジュールの場合
       if (newStart.toDateString() !== newEnd.toDateString()) {
@@ -576,7 +582,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     } catch (error: any) {
       console.error('Failed to resize schedule:', error);
       console.error('Error response:', error.response?.data);
-      alert(`スケジュールのリサイズに失敗しました: ${error.response?.data?.error || error.message}`);
+      alert(`スケジュールのリサイズに失敗しました: ${formatScheduleUpdateError(error)}`);
       info.revert();
     } finally {
       setIsUpdating(false);

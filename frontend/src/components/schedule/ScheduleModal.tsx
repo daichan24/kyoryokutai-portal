@@ -96,7 +96,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       // 既存の参加者を選択状態にする
       if (schedule.scheduleParticipants) {
         const existingParticipantIds = schedule.scheduleParticipants
-          .filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId)
+          .filter(p => p.status !== 'REJECTED' && p.userId !== schedule.userId)
           .map(p => p.userId);
         setSelectedParticipantIds(existingParticipantIds);
       }
@@ -355,7 +355,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     if (schedule.scheduleParticipants && schedule.scheduleParticipants.length > 0) {
       setIsCollaborative(true);
       const existingParticipantIds = schedule.scheduleParticipants
-        .filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId)
+        .filter(p => p.status !== 'REJECTED' && p.userId !== schedule.userId)
         .map(p => p.userId);
       setSelectedParticipantIds(existingParticipantIds);
     }

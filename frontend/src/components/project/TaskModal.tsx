@@ -341,7 +341,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setShowSupportEvents(!!schedule.supportEventId);
       setIsCollaborative(!!(schedule.scheduleParticipants?.length));
       if (schedule.scheduleParticipants) {
-        setSelectedParticipantIds(schedule.scheduleParticipants.filter(p => p.status === 'APPROVED' && p.userId !== schedule.userId).map(p => p.userId));
+        setSelectedParticipantIds(schedule.scheduleParticipants.filter(p => p.status !== 'REJECTED' && p.userId !== schedule.userId).map(p => p.userId));
       }
       setIsHolidayWork((schedule as any).isHolidayWork ?? false);
       setCompensatoryLeaveRequired((schedule as any).compensatoryLeaveRequired ?? false);
@@ -406,12 +406,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   // 場所データ読み込み後、既存の場所が「その他」かどうかを判定
   useEffect(() => {
     if (locations.length === 0) return; // 場所データがまだ読み込まれていない
-    
+
     const existingLoc = schedule?.locationText || (task as any)?.locationText;
     if (!existingLoc) return; // 既存の場所がない
-    
-    // 既に設定済みの場合はスキップ
-    if (locationText) return;
     
     const isInList = locations.some((l: Location) => l.name === existingLoc);
     if (!isInList) {
@@ -423,7 +420,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setLocationText(existingLoc);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locations.length]); // locationsの長さが変わったとき（読み込み完了時）のみ実行
+  }, [locations, schedule?.id, schedule?.locationText, task?.id, (task as any)?.locationText]);
 
   useEffect(() => {
     if (readOnly || suspendOutsidePointerClose) return;
@@ -518,7 +515,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           activityDescription: memo.trim() || title.trim(),
           freeNote: memo.trim() || null,
           referenceUrl: referenceUrl.trim() || null,
-          locationText: effectiveLoc.trim() || undefined,
+          locationText: effectiveLoc.trim(),
           customColor: customColor || null,
           supportEventId: supportEventId || null,
           projectId: attachMode === 'PROJECT' ? projectId : null,
@@ -531,7 +528,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           isDayOff,
           dayOffType: isDayOff ? dayOffType : null,
         };
-        if (isCollaborative && selectedParticipantIds.length > 0) data.participantsUserIds = selectedParticipantIds;
+        data.participantsUserIds = isCollaborative ? selectedParticipantIds : [];
         let savedScheduleId = schedule.id;
         if (isDuplicateMode) {
           const res = await api.post('/api/schedules', data);
@@ -607,6 +604,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       if (err.response?.data) {
         if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
+        } else if (err.response.data.details) {
+          errorMessage = `${err.response.data.error || '入力内容を確認してください'}\n${err.response.data.details}`;
         } else if (err.response.data.error) {
           errorMessage = err.response.data.error;
         } else if (err.response.data.message) {

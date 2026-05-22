@@ -74,6 +74,8 @@ function normalizeReferenceUrl(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+const emptyStringToNull = (value: unknown) => (value === '' ? null : value);
+
 router.use(authenticate);
 
 // マスター・役場・サポート向け：面談で月次スケジュールを振り返る用
@@ -315,17 +317,20 @@ const createScheduleSchema = z.object({
   endDate: z.string().optional(),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
-  locationText: z.string().min(1, '場所を入力してください'),
+  locationText: z.string().trim().min(1, '場所を入力してください'),
   title: z.string().max(200).min(1, 'タイトルを入力してください'),
   activityDescription: z.string().optional(),
   freeNote: z.string().optional(),
-  referenceUrl: z.string().url('URL形式で入力してください').max(2000).optional().nullable().or(z.literal('')),
+  referenceUrl: z.preprocess(
+    emptyStringToNull,
+    z.string().trim().url('URL形式で入力してください').max(2000).nullable().optional(),
+  ),
   isPending: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),
-  projectId: z.string().optional().nullable(),
-  taskId: z.string().optional().nullable(),
-  supportEventId: z.string().uuid().optional().nullable(),
-  customColor: z.string().max(20).optional().nullable(),
+  projectId: z.preprocess(emptyStringToNull, z.string().optional().nullable()),
+  taskId: z.preprocess(emptyStringToNull, z.string().optional().nullable()),
+  supportEventId: z.preprocess(emptyStringToNull, z.string().uuid().optional().nullable()),
+  customColor: z.preprocess(emptyStringToNull, z.string().max(20).optional().nullable()),
   isAllDay: z.boolean().optional(),
   isTimeUnspecified: z.boolean().optional(),
   reportable: z.boolean().optional(),
@@ -875,11 +880,24 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (participantsUserIds !== undefined) {
       const creatorId = req.user!.id;
       const newParticipantIds = participantsUserIds.filter((uid) => uid !== creatorId);
-      // 既存の参加者を削除して再作成
-      await prisma.scheduleParticipant.deleteMany({ where: { scheduleId: id } });
-      if (newParticipantIds.length > 0) {
+      const existingParticipants = await prisma.scheduleParticipant.findMany({
+        where: { scheduleId: id },
+        select: { userId: true },
+      });
+      const existingParticipantIds = new Set(existingParticipants.map((p) => p.userId));
+      const desiredParticipantIds = new Set(newParticipantIds);
+
+      await prisma.scheduleParticipant.deleteMany({
+        where: {
+          scheduleId: id,
+          userId: { notIn: newParticipantIds },
+        },
+      });
+
+      const participantsToCreate = [...desiredParticipantIds].filter((userId) => !existingParticipantIds.has(userId));
+      if (participantsToCreate.length > 0) {
         await prisma.scheduleParticipant.createMany({
-          data: newParticipantIds.map((userId) => ({
+          data: participantsToCreate.map((userId) => ({
             scheduleId: id,
             userId,
             status: 'PENDING',
