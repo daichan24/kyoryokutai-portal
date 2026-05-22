@@ -520,6 +520,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           customColor: customColor || null,
           supportEventId: supportEventId || null,
           projectId: attachMode === 'PROJECT' ? projectId : null,
+          linkKind: attachMode === 'PROJECT' ? 'PROJECT' : attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI_WORK' : attachMode === 'YAKUBA' ? 'YAKUBA_WORK' : attachMode === 'TRIAGE' ? 'TRIAGE_PENDING' : 'UNSET',
           isAllDay,
           isTimeUnspecified,
           reportable,

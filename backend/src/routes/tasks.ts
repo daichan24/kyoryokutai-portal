@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { ensureDefaultWorkMissionProject, isDefaultWorkLinkKind } from '../services/defaultWorkProjectService';
 
 const router = Router();
 router.use(authenticate);
@@ -152,10 +153,18 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: '権限がありません' });
     }
 
+    let effectiveMissionId = missionId;
+    let effectiveProjectId = data.projectId || null;
+    if (!effectiveProjectId && isDefaultWorkLinkKind(data.linkKind)) {
+      const resolved = await ensureDefaultWorkMissionProject(mission.userId, data.linkKind);
+      effectiveMissionId = resolved.mission.id;
+      effectiveProjectId = resolved.project.id;
+    }
+
     // projectId が指定されている場合、そのプロジェクトが同じミッションに属しているか確認
-    if (data.projectId) {
+    if (effectiveProjectId) {
       const project = await prisma.project.findUnique({
-        where: { id: data.projectId },
+        where: { id: effectiveProjectId },
         select: { id: true, missionId: true },
       });
 
@@ -163,7 +172,7 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
         return res.status(404).json({ error: 'プロジェクトが見つかりません' });
       }
 
-      if (project.missionId !== missionId) {
+      if (project.missionId !== effectiveMissionId) {
         return res.status(400).json({ error: 'プロジェクトがこのミッションに属していません' });
       }
     }
@@ -172,18 +181,18 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
     let order = data.order;
     if (order === undefined) {
       const lastTask = await prisma.task.findFirst({
-        where: { missionId },
+        where: { missionId: effectiveMissionId },
         orderBy: { order: 'desc' },
       });
       order = lastTask ? lastTask.order + 1 : 0;
     }
 
-    const linkKind = resolveTaskLinkKind(data.projectId || null, data.linkKind);
+    const linkKind = resolveTaskLinkKind(effectiveProjectId, data.linkKind);
 
     const task = await prisma.task.create({
       data: {
-        missionId,
-        projectId: data.projectId || null,
+        missionId: effectiveMissionId,
+        projectId: effectiveProjectId,
         title: data.title,
         description: data.description || null,
         status: data.status || 'NOT_STARTED',
@@ -230,7 +239,7 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
             reportable: data.reportable ?? true,
             isPending: false,
             taskId: task.id,
-            projectId: data.projectId || null,
+            projectId: effectiveProjectId,
           },
         });
         // 参加者を追加
@@ -302,10 +311,22 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: '権限がありません' });
     }
 
+    let effectiveMissionId = missionId;
+    let effectiveProjectId =
+      data.projectId !== undefined ? data.projectId || null : task.projectId;
+    const requestedLinkKind = data.linkKind;
+    const shouldResolveDefaultWorkProject =
+      !effectiveProjectId && isDefaultWorkLinkKind(requestedLinkKind);
+    if (shouldResolveDefaultWorkProject && isDefaultWorkLinkKind(requestedLinkKind)) {
+      const resolved = await ensureDefaultWorkMissionProject(task.mission.userId, requestedLinkKind);
+      effectiveMissionId = resolved.mission.id;
+      effectiveProjectId = resolved.project.id;
+    }
+
     // projectId が変更される場合、そのプロジェクトが同じミッションに属しているか確認
-    if (data.projectId !== undefined && data.projectId !== null) {
+    if (effectiveProjectId) {
       const project = await prisma.project.findUnique({
-        where: { id: data.projectId },
+        where: { id: effectiveProjectId },
         select: { id: true, missionId: true },
       });
 
@@ -313,23 +334,26 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
         return res.status(404).json({ error: 'プロジェクトが見つかりません' });
       }
 
-      if (project.missionId !== missionId) {
+      if (project.missionId !== effectiveMissionId) {
         return res.status(400).json({ error: 'プロジェクトがこのミッションに属していません' });
       }
     }
 
-    const mergedProjectId =
-      data.projectId !== undefined ? data.projectId || null : task.projectId;
+    const mergedProjectId = effectiveProjectId;
 
     const updateData: any = {
+      missionId: effectiveMissionId !== task.missionId ? effectiveMissionId : undefined,
       title: data.title,
       description: data.description !== undefined ? (data.description || null) : undefined,
       status: data.status,
-      projectId: data.projectId !== undefined ? (data.projectId || null) : undefined,
+      projectId:
+        data.projectId !== undefined || shouldResolveDefaultWorkProject
+          ? effectiveProjectId
+          : undefined,
       order: data.order,
     };
 
-    if (data.projectId !== undefined || data.linkKind !== undefined) {
+    if (data.projectId !== undefined || data.linkKind !== undefined || shouldResolveDefaultWorkProject) {
       updateData.linkKind = resolveTaskLinkKindOnUpdate(
         mergedProjectId,
         data.linkKind,
@@ -431,12 +455,19 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
           if (data.isAllDay !== undefined) updateData.isAllDay = data.isAllDay;
           if (data.isTimeUnspecified !== undefined) updateData.isTimeUnspecified = data.isTimeUnspecified;
           if (data.reportable !== undefined) updateData.reportable = data.reportable;
-          if (data.projectId !== undefined) updateData.projectId = updated.projectId || null;
+          if (data.projectId !== undefined || shouldResolveDefaultWorkProject) updateData.projectId = updated.projectId || null;
           await prisma.schedule.update({ where: { id: existingSchedule.id }, data: updateData });
         } catch (scheduleError) {
           console.error('Failed to update schedule for task:', scheduleError);
         }
       }
+    }
+
+    if (data.projectId !== undefined || shouldResolveDefaultWorkProject) {
+      await prisma.schedule.updateMany({
+        where: { taskId: id },
+        data: { projectId: updated.projectId || null },
+      });
     }
 
     res.json(updated);

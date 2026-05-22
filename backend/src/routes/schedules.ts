@@ -10,6 +10,7 @@ import {
 import { calculateMissionProgress, calculateProjectProgress } from '../services/progressCalculator';
 import { getActivityExpenseSummaryLite } from '../services/activityExpenseService';
 import { deleteScheduleFromGoogle, syncScheduleToGoogle } from '../services/googleCalendarService';
+import { ensureDefaultWorkMissionProject, isDefaultWorkLinkKind } from '../services/defaultWorkProjectService';
 
 const router = Router();
 
@@ -323,6 +324,7 @@ const createScheduleSchema = z.object({
   isPending: z.boolean().optional(),
   participantsUserIds: z.array(z.string()).optional(),
   projectId: z.preprocess(emptyStringToNull, z.string().optional().nullable()),
+  linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK', 'YAKUBA_WORK', 'TRIAGE_PENDING']).optional(),
   taskId: z.preprocess(emptyStringToNull, z.string().optional().nullable()),
   supportEventId: z.preprocess(emptyStringToNull, z.string().uuid().optional().nullable()),
   customColor: z.preprocess(emptyStringToNull, z.string().max(20).optional().nullable()),
@@ -562,6 +564,12 @@ router.post('/', async (req: AuthRequest, res) => {
     if (isNaN(endDate.getTime())) {
       return res.status(400).json({ error: 'Invalid end date format' });
     }
+
+    let effectiveProjectId = data.projectId || null;
+    if (!effectiveProjectId && isDefaultWorkLinkKind(data.linkKind)) {
+      const resolved = await ensureDefaultWorkMissionProject(creatorId, data.linkKind);
+      effectiveProjectId = resolved.project.id;
+    }
     
     console.log('Creating schedule with:', {
       inputDate: data.date,
@@ -591,7 +599,7 @@ router.post('/', async (req: AuthRequest, res) => {
         freeNote: data.freeNote || null,
         referenceUrl: normalizeReferenceUrl((data as any).referenceUrl),
         isPending: data.isPending || false,
-        projectId: data.projectId || null,
+        projectId: effectiveProjectId,
         taskId: data.taskId || null,
         supportEventId: data.supportEventId || null,
         customColor: (data as any).customColor || null,
@@ -735,6 +743,15 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     // 安全に updateData を構築（スプレッドではなく明示的にフィールドを設定）
     const updateData: any = {};
+    let effectiveProjectId =
+      data.projectId !== undefined ? data.projectId || null : existingSchedule.projectId;
+    const requestedLinkKind = data.linkKind;
+    const shouldResolveDefaultWorkProject =
+      !effectiveProjectId && isDefaultWorkLinkKind(requestedLinkKind);
+    if (shouldResolveDefaultWorkProject && isDefaultWorkLinkKind(requestedLinkKind)) {
+      const resolved = await ensureDefaultWorkMissionProject(existingSchedule.userId, requestedLinkKind);
+      effectiveProjectId = resolved.project.id;
+    }
 
     // 日付フィールドの処理
     // YYYY-MM-DD 形式の文字列を Date オブジェクトに変換
@@ -816,7 +833,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.isPending !== undefined) updateData.isPending = data.isPending;
 
     // 関連フィールド（nullも許可）
-    if (data.projectId !== undefined) updateData.projectId = data.projectId || null;
+    if (data.projectId !== undefined || shouldResolveDefaultWorkProject) updateData.projectId = effectiveProjectId;
     if (data.taskId !== undefined) updateData.taskId = data.taskId || null;
     if (data.supportEventId !== undefined) updateData.supportEventId = data.supportEventId || null;
     if ((data as any).customColor !== undefined) updateData.customColor = (data as any).customColor || null;
@@ -866,8 +883,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
       },
     });
 
-    if (existingSchedule.taskId && data.projectId !== undefined) {
-      const nextProjectId = data.projectId || null;
+    if (existingSchedule.taskId && (data.projectId !== undefined || shouldResolveDefaultWorkProject)) {
+      const nextProjectId = effectiveProjectId;
       await prisma.task.update({
         where: { id: existingSchedule.taskId },
         data: {
