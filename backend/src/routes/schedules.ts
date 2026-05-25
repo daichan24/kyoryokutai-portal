@@ -76,6 +76,7 @@ function normalizeReferenceUrl(value: unknown): string | null {
 }
 
 const emptyStringToNull = (value: unknown) => (value === '' ? null : value);
+const emptyStringToUndefined = (value: unknown) => (value === '' ? undefined : value);
 
 router.use(authenticate);
 
@@ -315,8 +316,14 @@ const createScheduleSchema = z.object({
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   locationText: z.string().trim().min(1, '場所を入力してください'),
   title: z.string().max(200).min(1, 'タイトルを入力してください'),
-  activityDescription: z.string().optional(),
-  freeNote: z.string().optional(),
+  activityDescription: z.preprocess(
+    emptyStringToUndefined,
+    z.string().optional().nullable(),
+  ),
+  freeNote: z.preprocess(
+    emptyStringToNull,
+    z.string().optional().nullable(),
+  ),
   referenceUrl: z.preprocess(
     emptyStringToNull,
     z.string().trim().url('URL形式で入力してください').max(2000).nullable().optional(),
@@ -595,7 +602,7 @@ router.post('/', async (req: AuthRequest, res) => {
         endTime: data.endTime,
         locationText: data.locationText || null,
         title: data.title,
-        activityDescription: data.activityDescription || '',
+        activityDescription: data.activityDescription ?? '',
         freeNote: data.freeNote || null,
         referenceUrl: normalizeReferenceUrl((data as any).referenceUrl),
         isPending: data.isPending || false,
@@ -827,7 +834,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (data.startTime !== undefined) updateData.startTime = data.startTime;
     if (data.endTime !== undefined) updateData.endTime = data.endTime;
     if (data.locationText !== undefined) updateData.locationText = data.locationText || null;
-    if (data.activityDescription !== undefined) updateData.activityDescription = data.activityDescription;
+    if (data.activityDescription !== undefined) updateData.activityDescription = data.activityDescription ?? '';
     if (data.freeNote !== undefined) updateData.freeNote = data.freeNote || null;
     if ((data as any).referenceUrl !== undefined) updateData.referenceUrl = normalizeReferenceUrl((data as any).referenceUrl);
     if (data.isPending !== undefined) updateData.isPending = data.isPending;

@@ -56,6 +56,7 @@ export interface Schedule {
   activityDescription: string;
   freeNote?: string;
   referenceUrl?: string | null;
+  customColor?: string | null;
   isPending: boolean;
   isAllDay?: boolean;
   isTimeUnspecified?: boolean;
