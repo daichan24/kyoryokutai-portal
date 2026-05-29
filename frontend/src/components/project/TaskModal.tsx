@@ -297,7 +297,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   useEffect(() => {
     if (schedule) {
       // タイトルと日付の設定
-      setTitle(schedule.title || '');
+      setTitle(schedule.title || schedule.activityDescription || '');
       const sd = formatDate(schedule.date);
       setDueDate(sd);
       setEndDate((schedule as any).endDate ? formatDate(new Date((schedule as any).endDate)) : sd);
@@ -501,7 +501,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { alert('タイトルを入力してください'); return; }
-    if (!locationText) { alert('場所を選択してください'); return; }
+    if (!isScheduleMode && !locationText) { alert('場所を選択してください'); return; }
     if (locationText === '__OTHER__' && !locationOther.trim()) { alert('場所を入力してください'); return; }
     setLoading(true);
     try {
@@ -516,7 +516,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           activityDescription: memo.trim() || title.trim(),
           freeNote: memo.trim() || null,
           referenceUrl: referenceUrl.trim() || null,
-          locationText: effectiveLoc.trim(),
           customColor: customColor || null,
           supportEventId: supportEventId || null,
           projectId: attachMode === 'PROJECT' ? projectId : null,
@@ -530,6 +529,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           isDayOff,
           dayOffType: isDayOff ? dayOffType : null,
         };
+        if (effectiveLoc.trim()) {
+          data.locationText = effectiveLoc.trim();
+        }
         data.participantsUserIds = isCollaborative ? selectedParticipantIds : [];
         let savedScheduleId = schedule.id;
         if (isDuplicateMode) {

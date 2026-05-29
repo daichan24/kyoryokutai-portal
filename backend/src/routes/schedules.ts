@@ -77,6 +77,9 @@ function normalizeReferenceUrl(value: unknown): string | null {
 
 const emptyStringToNull = (value: unknown) => (value === '' ? null : value);
 const emptyStringToUndefined = (value: unknown) => (value === '' ? undefined : value);
+const nullOrEmptyStringToUndefined = (value: unknown) => (
+  value === null || value === '' ? undefined : value
+);
 
 router.use(authenticate);
 
@@ -345,7 +348,20 @@ const createScheduleSchema = z.object({
   dayOffType: z.enum(['PAID', 'UNPAID', 'COMPENSATORY', 'TIME_ADJUST']).optional().nullable(),
 });
 
-const updateScheduleSchema = createScheduleSchema.partial();
+const updateScheduleSchema = createScheduleSchema.partial().extend({
+  date: z.preprocess(nullOrEmptyStringToUndefined, z.string().optional()),
+  endDate: z.preprocess(nullOrEmptyStringToUndefined, z.string().optional()),
+  startTime: z.preprocess(nullOrEmptyStringToUndefined, z.string().regex(/^\d{2}:\d{2}$/).optional()),
+  endTime: z.preprocess(nullOrEmptyStringToUndefined, z.string().regex(/^\d{2}:\d{2}$/).optional()),
+  locationText: z.preprocess(
+    nullOrEmptyStringToUndefined,
+    z.string().trim().min(1, '場所を入力してください').optional(),
+  ),
+  title: z.preprocess(
+    nullOrEmptyStringToUndefined,
+    z.string().max(200).min(1, 'タイトルを入力してください').optional(),
+  ),
+});
 
 router.get('/', async (req: AuthRequest, res) => {
   try {
