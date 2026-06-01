@@ -710,14 +710,14 @@ export const Schedule: React.FC = () => {
 
         {loading ? (
           <LoadingSpinner />
-        ) : useDraggable && viewMode === 'month' ? (
+        ) : useDraggable ? (
           <>
             <DraggableCalendarView
               schedules={schedules}
               events={events}
               viewMode={viewMode}
               currentDate={currentDate}
-              calendarViewMode="all"
+              calendarViewMode={viewMode === 'month' ? 'all' : calendarViewMode}
               currentUserId={user?.id}
               onScheduleClick={(schedule) => {
                 if (isMobile && viewMode === 'month') {
@@ -742,7 +742,7 @@ export const Schedule: React.FC = () => {
               onScheduleUpdate={fetchSchedules}
               firstDay={scheduleWeekStartsOn}
             />
-            {/* 行政出勤カレンダー（週表示のみ） */}
+            {/* 行政出勤カレンダー */}
             {viewMode === 'week' && (
               <div className="mt-4">
                 <GovernmentAttendanceCalendar

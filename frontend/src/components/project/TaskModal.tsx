@@ -29,6 +29,15 @@ const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
   const m = (i % 4) * 15;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 });
+const normalizeTimeValue = (value?: string | null, fallback = '09:00') => {
+  if (!value) return fallback;
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return fallback;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return fallback;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
 const ITEM_H = 36;
 const VISIBLE = 7;
 
@@ -301,8 +310,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       const sd = formatDate(schedule.date);
       setDueDate(sd);
       setEndDate((schedule as any).endDate ? formatDate(new Date((schedule as any).endDate)) : sd);
-      setStartTime(schedule.startTime); 
-      setEndTime(schedule.endTime);
+      setStartTime(normalizeTimeValue(schedule.startTime)); 
+      setEndTime(normalizeTimeValue(schedule.endTime, '17:30'));
       
       // ミッションとプロジェクトの設定（タスク情報から取得）
       if ((schedule as any).task) {
@@ -353,7 +362,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle(task.title);
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       setEndDate((task as any).endDate ? (task as any).endDate.split('T')[0] : (task.dueDate ? task.dueDate.split('T')[0] : ''));
-      setStartTime((task as any).startTime || '09:00'); setEndTime((task as any).endTime || '17:30');
+      setStartTime(normalizeTimeValue((task as any).startTime)); setEndTime(normalizeTimeValue((task as any).endTime, '17:30'));
       // ミッションとプロジェクトを設定
       setSelectedMissionId(task.missionId || '');
       setProjectId(task.projectId || null);
@@ -510,8 +519,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         const data: any = {
           date: dueDate,
           endDate: endDate && endDate !== dueDate ? endDate : undefined,
-          startTime: isAllDay || isTimeUnspecified ? '00:00' : startTime,
-          endTime: isAllDay || isTimeUnspecified ? '23:59' : endTime,
+          startTime: isAllDay || isTimeUnspecified ? '00:00' : normalizeTimeValue(startTime),
+          endTime: isAllDay || isTimeUnspecified ? '23:59' : normalizeTimeValue(endTime, '17:30'),
           title: title.trim(),
           activityDescription: memo.trim() || title.trim(),
           freeNote: memo.trim() || null,
@@ -546,8 +555,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             await api.post('/api/leave/compensatory/from-schedule', {
               scheduleId: savedScheduleId,
               grantedAt: dueDate,
-              startTime,
-              endTime,
+              startTime: normalizeTimeValue(startTime),
+              endTime: normalizeTimeValue(endTime, '17:30'),
               leaveType: compensatoryLeaveType,
               note: null,
             });
@@ -586,8 +595,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           title: title.trim(), description: memo.trim() || undefined,
           projectId: attachMode === 'PROJECT' ? projectId : null, linkKind,
           dueDate: dueDate || null, endDate: endDate || dueDate || null,
-          startTime: isAllDay || isTimeUnspecified ? '00:00' : startTime,
-          endTime: isAllDay || isTimeUnspecified ? '23:59' : endTime,
+          startTime: isAllDay || isTimeUnspecified ? '00:00' : normalizeTimeValue(startTime),
+          endTime: isAllDay || isTimeUnspecified ? '23:59' : normalizeTimeValue(endTime, '17:30'),
           locationText: effectiveLoc.trim() || undefined,
           freeNote: memo.trim() || undefined,
           referenceUrl: referenceUrl.trim() || null,

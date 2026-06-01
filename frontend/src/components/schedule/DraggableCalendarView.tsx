@@ -31,6 +31,16 @@ interface DraggableCalendarViewProps {
   firstDay?: 0 | 1;
 }
 
+const normalizeTimeValue = (value?: string | null, fallback = '00:00') => {
+  if (!value) return fallback;
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return fallback;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return fallback;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
 export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   schedules,
   events,
@@ -144,10 +154,12 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           // timeZone: 'Asia/Tokyo' を設定しているため、タイムゾーン情報なしで渡す
           // FullCalendarが自動的にJSTとして解釈する
           const isAllDay = !!schedule.isAllDay || isMultiDay;
-          const startDateTime = `${startDate}T${schedule.startTime}:00`;
+          const scheduleStartTime = normalizeTimeValue(schedule.startTime);
+          const scheduleEndTime = normalizeTimeValue(schedule.endTime, '23:59');
+          const startDateTime = `${startDate}T${scheduleStartTime}:00`;
           const endDateTime = isMultiDay 
-            ? `${endDate}T${schedule.endTime}:00`
-            : `${startDate}T${schedule.endTime}:00`;
+            ? `${endDate}T${scheduleEndTime}:00`
+            : `${startDate}T${scheduleEndTime}:00`;
 
           // 他人のスケジュールは編集不可
           const isEditable = !currentUserId || schedule.userId === currentUserId;
@@ -211,8 +223,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           return {
             id: `event-${event.id}`,
             title: event.eventName,
-            start: event.startTime ? `${dateStr}T${event.startTime}:00` : dateStr,
-            end: event.endTime ? `${dateStr}T${event.endTime}:00` : undefined,
+            start: event.startTime ? `${dateStr}T${normalizeTimeValue(event.startTime)}:00` : dateStr,
+            end: event.endTime ? `${dateStr}T${normalizeTimeValue(event.endTime, '23:59')}:00` : undefined,
             backgroundColor: colorClass,
             borderColor: colorClass,
             textColor: textColor,
@@ -400,14 +412,14 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         console.log('計算された newStartTime:', newStartTime);
         console.log('元の schedule.startTime:', schedule.startTime);
         
-        // 新しい終了時刻 = 新しい開始時刻 + 元の所要時間
-        // newStartTime から分数を計算（JST基準）
-        const [startHours, startMinutes] = newStartTime.split(':').map(Number);
-        const newStartMinutes = startHours * 60 + startMinutes;
-        const newEndMinutes = newStartMinutes + duration;
-        const newEndHours = Math.floor(newEndMinutes / 60);
-        const newEndMins = newEndMinutes % 60;
-        const newEndTime = `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}`;
+        const newEndTime = newEnd ? getJSTTimeString(newEnd) : (() => {
+          const [startHours, startMinutes] = newStartTime.split(':').map(Number);
+          const newStartMinutes = startHours * 60 + startMinutes;
+          const newEndMinutes = newStartMinutes + duration;
+          const newEndHours = Math.floor(newEndMinutes / 60) % 24;
+          const newEndMins = newEndMinutes % 60;
+          return `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}`;
+        })();
         
         console.log('計算された newEndTime:', newEndTime);
         console.log('元の schedule.endTime:', schedule.endTime);
@@ -424,8 +436,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         };
         addPreservedScheduleFields(updateData, schedule);
 
-        // 複数日スケジュールの場合
-        if (newStart.toDateString() !== newEnd.toDateString()) {
+        if (newEnd && newStart.toDateString() !== newEnd.toDateString()) {
           const newEndDateStr = getJSTDateString(newEnd);
           updateData.endDate = newEndDateStr;
         }
@@ -665,7 +676,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         events={calendarEvents}
         editable={true}
         droppable={true}
-        eventResizableFromStart={true}
+        eventResizableFromStart={false}
         eventDurationEditable={true}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}

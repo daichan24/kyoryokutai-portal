@@ -80,6 +80,16 @@ const emptyStringToUndefined = (value: unknown) => (value === '' ? undefined : v
 const nullOrEmptyStringToUndefined = (value: unknown) => (
   value === null || value === '' ? undefined : value
 );
+const normalizeTimeInput = (value: unknown) => {
+  if (typeof value !== 'string') return value;
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return value;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return value;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+const normalizeOptionalTimeInput = (value: unknown) => normalizeTimeInput(nullOrEmptyStringToUndefined(value));
 
 router.use(authenticate);
 
@@ -315,8 +325,8 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
 const createScheduleSchema = z.object({
   date: z.string(),
   endDate: z.string().optional(),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/),
+  startTime: z.preprocess(normalizeTimeInput, z.string().regex(/^\d{2}:\d{2}$/)),
+  endTime: z.preprocess(normalizeTimeInput, z.string().regex(/^\d{2}:\d{2}$/)),
   locationText: z.string().trim().min(1, '場所を入力してください'),
   title: z.string().max(200).min(1, 'タイトルを入力してください'),
   activityDescription: z.preprocess(
@@ -351,8 +361,8 @@ const createScheduleSchema = z.object({
 const updateScheduleSchema = createScheduleSchema.partial().extend({
   date: z.preprocess(nullOrEmptyStringToUndefined, z.string().optional()),
   endDate: z.preprocess(nullOrEmptyStringToUndefined, z.string().optional()),
-  startTime: z.preprocess(nullOrEmptyStringToUndefined, z.string().regex(/^\d{2}:\d{2}$/).optional()),
-  endTime: z.preprocess(nullOrEmptyStringToUndefined, z.string().regex(/^\d{2}:\d{2}$/).optional()),
+  startTime: z.preprocess(normalizeOptionalTimeInput, z.string().regex(/^\d{2}:\d{2}$/).optional()),
+  endTime: z.preprocess(normalizeOptionalTimeInput, z.string().regex(/^\d{2}:\d{2}$/).optional()),
   locationText: z.preprocess(
     nullOrEmptyStringToUndefined,
     z.string().trim().min(1, '場所を入力してください').optional(),
@@ -1019,8 +1029,8 @@ router.post('/recurring', async (req: AuthRequest, res) => {
   try {
     const schema = z.object({
       title: z.string().min(1),
-      startTime: z.string().regex(/^\d{2}:\d{2}$/),
-      endTime: z.string().regex(/^\d{2}:\d{2}$/),
+      startTime: z.preprocess(normalizeTimeInput, z.string().regex(/^\d{2}:\d{2}$/)),
+      endTime: z.preprocess(normalizeTimeInput, z.string().regex(/^\d{2}:\d{2}$/)),
       activityDescription: z.string().optional(),
       locationText: z.string().optional(),
       projectId: z.string().optional().nullable(),

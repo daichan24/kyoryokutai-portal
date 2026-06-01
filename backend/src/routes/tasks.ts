@@ -7,6 +7,26 @@ import { ensureDefaultWorkMissionProject, isDefaultWorkLinkKind } from '../servi
 const router = Router();
 router.use(authenticate);
 
+const nullOrEmptyStringToUndefined = (value: unknown) => (
+  value === null || value === '' ? undefined : value
+);
+
+function normalizeTimeInput(value: unknown): unknown {
+  const normalized = nullOrEmptyStringToUndefined(value);
+  if (typeof normalized !== 'string') return normalized;
+  const match = normalized.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return normalized;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return normalized;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+const optionalTimeSchema = z.preprocess(
+  normalizeTimeInput,
+  z.string().regex(/^\d{2}:\d{2}$/).optional(),
+);
+
 const taskSchema = z.object({
   title: z.string().min(1, 'タイトルは必須です'),
   description: z.string().optional(),
@@ -15,8 +35,8 @@ const taskSchema = z.object({
   order: z.number().int().optional(),
   dueDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
+  startTime: optionalTimeSchema,
+  endTime: optionalTimeSchema,
   linkKind: z.enum(['PROJECT', 'UNSET', 'KYORYOKUTAI_WORK', 'YAKUBA_WORK', 'TRIAGE_PENDING']).optional(),
   // スケジュール連携フィールド
   locationText: z.string().optional(),
@@ -34,6 +54,10 @@ function normalizeReferenceUrl(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeTimeValue(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
 }
 
 function resolveTaskLinkKind(
@@ -225,8 +249,8 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
             date: startDate,
             startDate: startDate,
             endDate: endDate,
-            startTime: data.startTime || '09:00',
-            endTime: data.endTime || '17:00',
+            startTime: normalizeTimeValue(data.startTime, '09:00'),
+            endTime: normalizeTimeValue(data.endTime, '17:00'),
             title: data.title,
             activityDescription: data.description || data.title,
             locationText: data.locationText || null,
@@ -402,8 +426,8 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
               date: startDate,
               startDate: startDate,
               endDate: endDate,
-              startTime: data.startTime || '09:00',
-              endTime: data.endTime || '17:00',
+              startTime: normalizeTimeValue(data.startTime, '09:00'),
+              endTime: normalizeTimeValue(data.endTime, '17:00'),
               title: updated.title,
               activityDescription: data.description || updated.description || updated.title,
               locationText: data.locationText || null,
@@ -445,8 +469,8 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
             updateData.startDate = startDate;
             updateData.endDate = endDate;
           }
-          if (data.startTime) updateData.startTime = data.startTime;
-          if (data.endTime) updateData.endTime = data.endTime;
+          if (data.startTime) updateData.startTime = normalizeTimeValue(data.startTime, '09:00');
+          if (data.endTime) updateData.endTime = normalizeTimeValue(data.endTime, '17:00');
           if (data.locationText !== undefined) updateData.locationText = data.locationText || null;
           if (data.freeNote !== undefined) updateData.freeNote = data.freeNote || null;
           if (data.referenceUrl !== undefined) updateData.referenceUrl = normalizeReferenceUrl(data.referenceUrl);
