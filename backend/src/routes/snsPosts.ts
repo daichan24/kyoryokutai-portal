@@ -242,7 +242,8 @@ router.post('/', async (req: AuthRequest, res) => {
                 BEGIN
                   FOR r IN SELECT indexname FROM pg_indexes 
                     WHERE tablename='SNSPost' AND indexdef LIKE '%userId%week%' 
-                    AND indexdef NOT LIKE '%postType%' AND indexname != 'SNSPost_userId_week_idx'
+                    AND (indexdef NOT LIKE '%postType%' OR indexdef NOT LIKE '%accountId%')
+                    AND indexname != 'SNSPost_userId_week_idx'
                   LOOP
                     EXECUTE 'DROP INDEX IF EXISTS "' || r.indexname || '"';
                     RAISE NOTICE 'Dropped: %', r.indexname;
@@ -330,19 +331,45 @@ router.put('/:id', async (req: AuthRequest, res) => {
         data.followerCount === null || data.followerCount === undefined ? null : data.followerCount;
     }
 
-    const post = await prisma.sNSPost.update({
-      where: { id },
-      data: updateData,
-      include: { user: true },
-    });
+    let post;
+    try {
+      post = await prisma.sNSPost.update({
+        where: { id },
+        data: updateData,
+        include: { user: true },
+      });
+    } catch (updateError: any) {
+      if (updateError?.code !== 'P2002') throw updateError;
+
+      const nextWeek = updateData.week ?? existingPost.week;
+      const nextPostType = updateData.postType ?? existingPost.postType;
+      const duplicate = await prisma.sNSPost.findFirst({
+        where: {
+          id: { not: existingPost.id },
+          userId: existingPost.userId,
+          week: nextWeek,
+          postType: nextPostType,
+          accountId: existingPost.accountId,
+        },
+      });
+
+      if (!duplicate) throw updateError;
+
+      post = await prisma.sNSPost.update({
+        where: { id: duplicate.id },
+        data: updateData,
+        include: { user: true },
+      });
+      await prisma.sNSPost.delete({ where: { id: existingPost.id } });
+    }
 
     res.json(post);
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
     console.error('Update SNS post error:', error);
-    res.status(500).json({ error: 'Failed to update SNS post' });
+    res.status(500).json({ error: 'Failed to update SNS post', details: error?.message, code: error?.code });
   }
 });
 
