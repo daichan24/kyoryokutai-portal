@@ -92,6 +92,27 @@ export const parseWeekString = (weekStr: string): Date => {
   }
 };
 
+export const formatWeekLabel = (weekStr: string, options: { includeYear?: boolean; suffix?: string } = {}): string => {
+  const { includeYear = true, suffix = 'の週' } = options;
+  try {
+    const weekStart = parseWeekString(weekStr);
+    if (isNaN(weekStart.getTime())) return weekStr;
+    const formatStr = includeYear ? 'yyyy年M月d日' : 'M月d日';
+    return `${formatDate(weekStart, formatStr)}${suffix}`;
+  } catch {
+    return weekStr;
+  }
+};
+
+export const getFiscalYear = (date: Date = new Date()): number => {
+  const year = date.getFullYear();
+  return date.getMonth() >= 3 ? year : year - 1;
+};
+
+export const formatFiscalYear = (fiscalYear: number): string => {
+  return `${fiscalYear}年度`;
+};
+
 export const isToday = (date: Date | string): boolean => {
   const d = typeof date === 'string' ? new Date(date) : date;
   const today = new Date();

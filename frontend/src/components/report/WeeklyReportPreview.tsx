@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { WeeklyReport } from '../../types';
-import { parseWeekString, formatDate } from '../../utils/date';
+import { formatWeekLabel, parseWeekString } from '../../utils/date';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../../utils/api';
@@ -67,9 +67,9 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
     weekStart = new Date();
   }
 
-  const weekStartStr = isNaN(weekStart.getTime()) 
-    ? report.week 
-    : formatDate(weekStart, 'yyyy年M月d日');
+  const weekStartStr = isNaN(weekStart.getTime())
+    ? report.week
+    : formatWeekLabel(report.week);
   
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
   const groupedActivities = useMemo(() => {
@@ -137,7 +137,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
 
       {/* 対象週 */}
       <div style={{ marginBottom: '30px' }}>
-        <strong>対象週:</strong> {report.week}（{weekStartStr}週）
+        <strong>対象週:</strong> {weekStartStr}
       </div>
 
       {/* 1. 活動内容（先週の振り返り） */}
@@ -149,7 +149,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
           padding: '8px',
           marginBottom: '15px'
         }}>
-          1. {templateSettings?.weeklyReport.activityLabel || '活動内容'}（{weekStartStr}週）
+          1. {templateSettings?.weeklyReport.activityLabel || '活動内容'}（{weekStartStr}）
         </div>
         {groupedActivities.length > 0 ? (
           <div style={{ marginTop: '10px' }}>

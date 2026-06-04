@@ -14,6 +14,20 @@ function formatDateJa(value: Date) {
   return value.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
 }
 
+function weeklyReportLabel(week: string) {
+  const match = week.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return week;
+  const year = parseInt(match[1], 10);
+  const weekNum = parseInt(match[2], 10);
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const firstIsoMonday = new Date(jan4);
+  firstIsoMonday.setDate(jan4.getDate() - jan4Day + 1);
+  const weekStart = new Date(firstIsoMonday);
+  weekStart.setDate(firstIsoMonday.getDate() + (weekNum - 1) * 7);
+  return `${formatDateJa(weekStart)}の週`;
+}
+
 async function notifyRoles(args: {
   roles: Role[];
   eventType: EmailEventType;
@@ -74,13 +88,14 @@ export async function notifyWeeklyReportSubmitted(reportId: string) {
     include: { user: { select: { id: true, name: true } } },
   });
   if (!report?.submittedAt) return { count: 0 };
+  const targetWeekLabel = weeklyReportLabel(report.week);
 
   return notifyRoles({
     roles: staffRoles,
     eventType: 'WEEKLY_REPORT_SUBMITTED',
     actorUserId: report.userId,
-    subject: `週次報告の承認依頼: ${report.user.name}さん ${report.week}`,
-    textBody: `${report.user.name}さんから週次報告が提出されました。\n対象週: ${report.week}\n受付ボックスから内容を確認してください。`,
+    subject: `週次報告の承認依頼: ${report.user.name}さん ${targetWeekLabel}`,
+    textBody: `${report.user.name}さんから週次報告が提出されました。\n対象週: ${targetWeekLabel}\n受付ボックスから内容を確認してください。`,
     link: `/reports/weekly?week=${encodeURIComponent(report.week)}&userId=${encodeURIComponent(report.userId)}`,
     relatedType: 'WeeklyReport',
     relatedId: report.id,
@@ -98,12 +113,13 @@ export async function notifyWeeklyReportResult(reportId: string) {
   }
 
   const statusText = approvalStatusJa(report.approvalStatus);
+  const targetWeekLabel = weeklyReportLabel(report.week);
   return notifyUser({
     userId: report.userId,
     eventType: report.approvalStatus === 'APPROVED' ? 'WEEKLY_REPORT_APPROVED' : 'WEEKLY_REPORT_REJECTED',
     actorUserId: report.approvedBy,
-    subject: `週次報告が${statusText}されました: ${report.week}`,
-    textBody: `週次報告（${report.week}）が${statusText}されました。\n対応者: ${report.approver?.name || '不明'}${report.approvalComment ? `\nコメント: ${report.approvalComment}` : ''}`,
+    subject: `週次報告が${statusText}されました: ${targetWeekLabel}`,
+    textBody: `週次報告（${targetWeekLabel}）が${statusText}されました。\n対応者: ${report.approver?.name || '不明'}${report.approvalComment ? `\nコメント: ${report.approvalComment}` : ''}`,
     link: `/reports/weekly?week=${encodeURIComponent(report.week)}`,
     relatedType: 'WeeklyReport',
     relatedId: report.id,

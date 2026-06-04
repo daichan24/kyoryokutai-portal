@@ -2,9 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Plus, Eye } from 'lucide-react';
 import { api } from '../utils/api';
 import { WeeklyReport as WeeklyReportType } from '../types';
-import { formatDate, getWeekString, normalizeWeekString, parseWeekString } from '../utils/date';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { formatFiscalYear, formatWeekLabel, getFiscalYear, getWeekString, normalizeWeekString, parseWeekString } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { WeeklyReportModal } from '../components/report/WeeklyReportModal';
@@ -24,6 +22,7 @@ export const WeeklyReport: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState<WeeklyReportType[]>([]);
   const [allWeekReports, setAllWeekReports] = useState<WeeklyReportType[]>([]); // 選択した週の全員分の報告
+  const [allReports, setAllReports] = useState<WeeklyReportType[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingWeekView, setLoadingWeekView] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,7 +30,7 @@ export const WeeklyReport: React.FC = () => {
   const [modalViewMode, setModalViewMode] = useState<'edit' | 'preview'>('edit');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [users, setUsers] = useState<MemberUserOption[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 月のフィルタ
+  const [selectedFiscalYear, setSelectedFiscalYear] = useState<number>(() => getFiscalYear()); // 年度のフィルタ
   const [selectedWeek, setSelectedWeek] = useState<string>(''); // 週の選択（全員分表示用）
   const [viewMode, setViewMode] = useState<'individual' | 'weekly'>('individual'); // 表示モード
   const weekFromQuery = searchParams.get('week') || '';
@@ -192,39 +191,35 @@ export const WeeklyReport: React.FC = () => {
   const activityProjectLabel = (activity: WeeklyReportType['thisWeekActivities'][number]) =>
     activity.projectName?.trim() || '未紐づけ';
 
-  // 月でフィルタリングされた報告
+  const isReportInFiscalYear = (report: WeeklyReportType, fiscalYear: number) => {
+    try {
+      const weekStart = parseWeekString(report.week);
+      return getFiscalYear(weekStart) === fiscalYear;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  // 年度でフィルタリングされた報告
   const filteredReports = useMemo(() => {
-    if (selectedMonth === 'all') return reports;
+    return reports.filter(report => isReportInFiscalYear(report, selectedFiscalYear));
+  }, [reports, selectedFiscalYear]);
 
-    return reports.filter(report => {
+  // 利用可能な年度の一覧
+  const availableFiscalYears = useMemo(() => {
+    const years = new Set<number>([getFiscalYear()]);
+    [...reports, ...allReports].forEach(report => {
       try {
         const weekStart = parseWeekString(report.week);
-        const monthStr = format(weekStart, 'yyyy-MM');
-        return monthStr === selectedMonth;
-      } catch (error) {
-        return false;
-      }
-    });
-  }, [reports, selectedMonth]);
-
-  // 利用可能な月の一覧
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    reports.forEach(report => {
-      try {
-        const weekStart = parseWeekString(report.week);
-        const monthStr = format(weekStart, 'yyyy-MM');
-        months.add(monthStr);
+        years.add(getFiscalYear(weekStart));
       } catch (error) {
         // パースエラーは無視
       }
     });
-    return Array.from(months).sort().reverse();
-  }, [reports]);
+    return Array.from(years).sort((a, b) => b - a);
+  }, [reports, allReports]);
 
   // 全員の報告を取得（週別表示用）
-  const [allReports, setAllReports] = useState<WeeklyReportType[]>([]);
-  
   useEffect(() => {
     const fetchAllReports = async () => {
       if (user?.role === 'MEMBER') return;
@@ -248,10 +243,12 @@ export const WeeklyReport: React.FC = () => {
     const weeks = new Set<string>();
     const sourceReports = viewMode === 'weekly' ? allReports : reports;
     sourceReports.forEach(report => {
-      weeks.add(report.week);
+      if (isReportInFiscalYear(report, selectedFiscalYear)) {
+        weeks.add(report.week);
+      }
     });
     return Array.from(weeks).sort().reverse();
-  }, [reports, allReports, viewMode]);
+  }, [reports, allReports, selectedFiscalYear, viewMode]);
 
   // 全員分表示用：メンバーと報告のマッピング
   const memberReportMap = useMemo(() => {
@@ -298,6 +295,12 @@ export const WeeklyReport: React.FC = () => {
       }
     }
   }, [viewMode, selectedWeek, availableWeeks]);
+
+  useEffect(() => {
+    if (selectedWeek && !availableWeeks.includes(selectedWeek)) {
+      setSelectedWeek('');
+    }
+  }, [availableWeeks, selectedWeek]);
 
   return (
     <div className="space-y-6">
@@ -346,9 +349,28 @@ export const WeeklyReport: React.FC = () => {
 
       {viewMode === 'individual' ? (
         <>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
+            <div className="max-w-xs">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                年度で絞り込み
+              </label>
+              <select
+                value={selectedFiscalYear}
+                onChange={(e) => setSelectedFiscalYear(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              >
+                {availableFiscalYears.map(year => (
+                  <option key={year} value={year}>
+                    {formatFiscalYear(year)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {canView && users.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     担当者を選択
@@ -361,23 +383,6 @@ export const WeeklyReport: React.FC = () => {
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    対象月で絞り込み
-                  </label>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  >
-                    <option value="all">全ての月</option>
-                    {availableMonths.map(month => (
-                      <option key={month} value={month}>
-                        {format(new Date(`${month}-01`), 'yyyy年M月', { locale: ja })}
                       </option>
                     ))}
                   </select>
@@ -420,7 +425,7 @@ export const WeeklyReport: React.FC = () => {
                         onClick={() => canCreate ? handleEditReport(report) : undefined}
                       >
                         <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                          {isNaN(weekStart.getTime()) ? report.week : formatDate(weekStart, 'yyyy年M月d日週')}
+                          {isNaN(weekStart.getTime()) ? report.week : formatWeekLabel(report.week)}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           {report.user?.name}
@@ -431,8 +436,8 @@ export const WeeklyReport: React.FC = () => {
                         {user?.role !== 'MEMBER' && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {isNaN(weekStart.getTime()) 
-                              ? report.week 
-                              : `${formatDate(weekStart, 'yyyy年M月d日')}週の報告`}
+                              ? report.week
+                              : `${formatWeekLabel(report.week)}の報告`}
                           </p>
                         )}
                       </div>
@@ -507,6 +512,22 @@ export const WeeklyReport: React.FC = () => {
             <div className="flex flex-col lg:flex-row lg:items-end gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  年度を選択
+                </label>
+                <select
+                  value={selectedFiscalYear}
+                  onChange={(e) => setSelectedFiscalYear(Number(e.target.value))}
+                  className="w-full md:w-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  {availableFiscalYears.map(year => (
+                    <option key={year} value={year}>
+                      {formatFiscalYear(year)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   対象週を選択
                 </label>
                 <select
@@ -520,7 +541,7 @@ export const WeeklyReport: React.FC = () => {
                       const weekStart = parseWeekString(week);
                       return (
                         <option key={week} value={week}>
-                          {formatDate(weekStart, 'yyyy年M月d日週')}
+                          {formatWeekLabel(week)}
                         </option>
                       );
                     } catch (error) {
@@ -672,7 +693,7 @@ export const WeeklyReport: React.FC = () => {
                       <div className="text-center py-4">
                         <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">未提出</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatDate(weekStart, 'yyyy年M月d日')}週の報告がありません
+                          {formatWeekLabel(selectedWeek)}の報告がありません
                         </p>
                       </div>
                     )}

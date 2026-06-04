@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, FileDown } from 'lucide-react';
 import { api } from '../../utils/api';
 import { WeeklyReport, Schedule } from '../../types';
-import { getWeekString, parseWeekString, normalizeWeekString, toWeekInputValue } from '../../utils/date';
+import { formatWeekLabel, getWeekString, parseWeekString, normalizeWeekString, toWeekInputValue } from '../../utils/date';
 import { endOfWeek, format } from 'date-fns';
 import { ja } from 'date-fns/locale/ja';
 import { useAuthStore } from '../../stores/authStore';
@@ -83,7 +83,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
           : '未作成';
         return {
           week: optionWeek,
-          label: `${format(weekStart, 'yyyy年M月d日', { locale: ja })}〜${format(weekEnd, 'M月d日', { locale: ja })}（${status}）`,
+          label: `${formatWeekLabel(optionWeek)}（${format(weekEnd, 'M月d日', { locale: ja })}まで / ${status}）`,
           isCreated: Boolean(existing),
         };
       });
@@ -394,7 +394,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                   try {
                     const weekStart = parseWeekString(week);
                     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-                    const weekRange = `${format(weekStart, 'yyyy年M月d日', { locale: ja })} 〜 ${format(weekEnd, 'M月d日', { locale: ja })}`;
+                    const weekRange = `${formatWeekLabel(week)}（${format(weekEnd, 'M月d日', { locale: ja })}まで）`;
                     return (
                       <div className="text-sm text-gray-900 dark:text-gray-100 mb-2">
                         {weekRange}

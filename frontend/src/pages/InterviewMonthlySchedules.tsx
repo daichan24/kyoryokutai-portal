@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addMonths, format, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../utils/api';
+import { formatWeekLabel } from '../utils/date';
 import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EnhancedInterviewCalendar } from '../components/interview/EnhancedInterviewCalendar';
@@ -932,7 +933,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
                     className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800/80"
                   >
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      週 {w.week}
+                      {formatWeekLabel(w.week)}
                       {w.submittedAt && (
                         <span className="text-xs font-normal text-gray-500 ml-2">
                           提出 {format(new Date(w.submittedAt), 'M/d HH:mm', { locale: ja })}

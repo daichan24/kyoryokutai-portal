@@ -466,7 +466,7 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
     return result;
   })();
   const weekLabel = weekStart
-    ? `${format(weekStart, 'yyyy年M月d日(E)', { locale: ja })}週`
+    ? `${format(weekStart, 'yyyy年M月d日(E)', { locale: ja })}の週`
     : report.week;
 
   const html = `
@@ -495,7 +495,7 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
 
       <div style="margin-bottom: 30px;">
         <div><strong>報告者:</strong> ${escapeHtmlForPdf(report.user.name)}</div>
-        <div><strong>対象週:</strong> ${escapeHtmlForPdf(report.week)}（${escapeHtmlForPdf(weekLabel)}）</div>
+        <div><strong>対象週:</strong> ${escapeHtmlForPdf(weekLabel)}</div>
         <div><strong>提出日:</strong> ${report.submittedAt ? escapeHtmlForPdf(format(new Date(report.submittedAt), 'yyyy年MM月dd日')) : '未提出'}</div>
       </div>
 

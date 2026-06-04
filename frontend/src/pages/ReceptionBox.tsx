@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { formatTime } from '../utils/date';
+import { formatTime, formatWeekLabel } from '../utils/date';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -146,7 +146,7 @@ const ItemPopup: React.FC<{
             <h3 className="font-semibold text-lg">週次報告</h3>
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-1 text-sm">
               <p><span className="text-gray-500">提出者:</span> {item.data.user.name}</p>
-              <p><span className="text-gray-500">対象週:</span> {item.data.week}</p>
+              <p><span className="text-gray-500">対象週:</span> {formatWeekLabel(item.data.week)}</p>
               <p><span className="text-gray-500">提出日時:</span> {format(new Date(item.data.submittedAt), 'yyyy/MM/dd HH:mm', { locale: ja })}</p>
             </div>
             {isStaff && (

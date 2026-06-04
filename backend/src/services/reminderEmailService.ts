@@ -7,6 +7,7 @@ const staffRoles = ['MASTER', 'SUPPORT', 'GOVERNMENT'] as const;
 
 export async function queueSnsWeeklySummaryEmail() {
   const { weekStart, weekEnd, weekKey } = getCurrentWeekBoundary();
+  const weekLabel = `${format(weekStart, 'yyyy年M月d日')}の週`;
   const [members, posts, recipients] = await Promise.all([
     prisma.user.findMany({
       where: { role: 'MEMBER', displayOrder: { not: 0 } },
@@ -29,7 +30,7 @@ export async function queueSnsWeeklySummaryEmail() {
 
   const textBody = [
     `今週のSNS投稿状況です。`,
-    `対象週: ${weekKey}`,
+    `対象週: ${weekLabel}`,
     '',
     ...lines,
   ].join('\n');
@@ -37,7 +38,7 @@ export async function queueSnsWeeklySummaryEmail() {
   return queueEmail({
     eventType: 'SNS_WEEKLY_SUMMARY',
     recipients,
-    subject: `今週のSNS投稿状況: ${weekKey}`,
+    subject: `今週のSNS投稿状況: ${weekLabel}`,
     textBody,
     link: '/sns-posts',
     relatedType: 'SNSWeeklySummary',
