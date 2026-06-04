@@ -5,6 +5,9 @@ import { ja } from 'date-fns/locale';
 interface ActivityItem {
   date: string;
   activity: string;
+  projectId?: string | null;
+  projectName?: string;
+  sourceType?: 'schedule' | 'event' | 'projectTask' | 'task';
 }
 
 interface ReportScheduleParticipant {
@@ -28,6 +31,7 @@ interface ReportSchedule {
   activityDescription?: string | null;
   locationText?: string | null;
   project?: {
+    id?: string;
     projectName: string;
     mission?: { missionName: string } | null;
   } | null;
@@ -41,23 +45,41 @@ interface ReportSchedule {
   scheduleProgress?: ReportScheduleProgress[];
 }
 
-function parseWeekStart(week: string) {
-  const weekMatch = week.match(/^(\d{4})-(\d{2})$/);
+function activityProjectLabel(projectName?: string | null) {
+  return projectName?.trim() || '未紐づけ';
+}
+
+export function normalizeWeeklyReportWeek(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const weekMatch = value.trim().match(/^(\d{4})-W?(\d{2})$/);
   if (!weekMatch) {
-    throw new Error('Invalid week format. Expected YYYY-WW');
+    return null;
   }
 
   const year = parseInt(weekMatch[1], 10);
   const weekNum = parseInt(weekMatch[2], 10);
+  if (weekNum < 1 || weekNum > 53) return null;
 
-  const yearStart = new Date(year, 0, 1);
-  const firstMonday = new Date(yearStart);
-  const dayOfWeek = yearStart.getDay();
-  const daysToMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7;
-  firstMonday.setDate(yearStart.getDate() + daysToMonday);
+  return `${year}-${String(weekNum).padStart(2, '0')}`;
+}
 
-  const weekStart = new Date(firstMonday);
-  weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+function parseWeekStart(week: string) {
+  const normalized = normalizeWeeklyReportWeek(week);
+  if (!normalized) {
+    throw new Error('Invalid week format. Expected YYYY-WW or YYYY-Www');
+  }
+
+  const [yearText, weekText] = normalized.split('-');
+  const year = parseInt(yearText, 10);
+  const weekNum = parseInt(weekText, 10);
+
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const firstIsoMonday = new Date(jan4);
+  firstIsoMonday.setDate(jan4.getDate() - jan4Day + 1);
+
+  const weekStart = new Date(firstIsoMonday);
+  weekStart.setDate(firstIsoMonday.getDate() + (weekNum - 1) * 7);
   weekStart.setHours(0, 0, 0, 0);
   return weekStart;
 }
@@ -106,9 +128,15 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
   week: string;
   thisWeekActivities: ActivityItem[];
   nextWeekPlan: string;
+  reflection: string;
   note: string;
 }> {
-  const weekStart = parseWeekStart(week);
+  const normalizedWeek = normalizeWeeklyReportWeek(week);
+  if (!normalizedWeek) {
+    throw new Error('Invalid week format. Expected YYYY-WW or YYYY-Www');
+  }
+
+  const weekStart = parseWeekStart(normalizedWeek);
   const weekEnd = endOfRange(weekStart, 6);
 
   const activities: ActivityItem[] = [];
@@ -160,9 +188,13 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
   });
 
   for (const schedule of schedules) {
+    const projectName = schedule.project?.projectName || schedule.task?.mission?.missionName || schedule.project?.mission?.missionName;
     activities.push({
       date: format(schedule.startDate || schedule.date, 'yyyy-MM-dd'),
       activity: formatScheduleActivity(schedule),
+      projectId: schedule.project?.id || null,
+      projectName: activityProjectLabel(projectName),
+      sourceType: 'schedule',
     });
   }
 
@@ -198,6 +230,9 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     activities.push({
       date: reportDate,
       activity: `${displayDate} / イベント:${eventType} / ${event.eventName}${event.startTime ? ` / ${event.startTime}${event.endTime ? `-${event.endTime}` : ''}` : ''}`,
+      projectId: null,
+      projectName: 'イベント',
+      sourceType: 'event',
     });
   }
 
@@ -214,6 +249,7 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     include: {
       project: {
         select: {
+          id: true,
           projectName: true,
         },
       },
@@ -229,6 +265,9 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     activities.push({
       date: reportDate,
       activity: `${displayDate} / プロジェクト: ${task.project.projectName} / ${task.taskName} 完了`,
+      projectId: task.project.id,
+      projectName: activityProjectLabel(task.project.projectName),
+      sourceType: 'projectTask',
     });
   }
 
@@ -247,7 +286,13 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     include: {
       project: {
         select: {
+          id: true,
           projectName: true,
+        },
+      },
+      mission: {
+        select: {
+          missionName: true,
         },
       },
     },
@@ -266,11 +311,16 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     activities.push({
       date: reportDate,
       activity: `${displayDate} / ${activityText} 完了`,
+      projectId: task.project?.id || null,
+      projectName: activityProjectLabel(task.project?.projectName || task.mission?.missionName),
+      sourceType: 'task',
     });
   }
 
-  // 日付順にソート
+  // プロジェクトごとに並べ、その中で日付順にソート
   activities.sort((a, b) => {
+    const projectCompare = activityProjectLabel(a.projectName).localeCompare(activityProjectLabel(b.projectName), 'ja');
+    if (projectCompare !== 0) return projectCompare;
     return a.date.localeCompare(b.date);
   });
 
@@ -342,9 +392,10 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     .join('\n');
 
   return {
-    week,
+    week: normalizedWeek,
     thisWeekActivities: uniqueActivities,
     nextWeekPlan: nextWeekPlan || '',
-    note: '※ 自動作成された下書きです。必ず内容を確認・編集してください。',
+    reflection: '',
+    note: '',
   };
 }

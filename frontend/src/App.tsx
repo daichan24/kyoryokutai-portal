@@ -38,6 +38,7 @@ const SupportRecords = lazy(() => import('./pages/SupportRecords').then((m) => (
 const InterviewMonthlySchedules = lazy(() =>
   import('./pages/InterviewMonthlySchedules').then((m) => ({ default: m.InterviewMonthlySchedules })),
 );
+const InterviewPolls = lazy(() => import('./pages/InterviewPolls').then((m) => ({ default: m.InterviewPolls })));
 const ActivityExpenses = lazy(() => import('./pages/ActivityExpenses').then((m) => ({ default: m.ActivityExpenses })));
 const Announcements = lazy(() => import('./pages/Announcements').then((m) => ({ default: m.Announcements })));
 const Wishes = lazy(() => import('./pages/Wishes').then((m) => ({ default: m.Wishes })));
@@ -337,6 +338,17 @@ const App: React.FC = () => {
                 <InterviewMonthlySchedules />
               </Layout>
             </RoleProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/interview/polls"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <InterviewPolls />
+              </Layout>
+            </PrivateRoute>
           }
         />
 

@@ -211,6 +211,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         label: '面談',
       });
     }
+    items.push({
+      to: '/interview/polls',
+      icon: CalendarCheck,
+      label: '面談日程調整',
+    });
     return items;
   };
 

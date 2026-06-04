@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Menu, Box } from 'lucide-react';
 import { Button } from '../common/Button';
 import { api } from '../../utils/api';
-import { BUILD_VERSION } from '../../buildVersion';
+import { BUILD_COMMIT_COUNT, BUILD_COMMIT_SHA, BUILD_VERSION } from '../../buildVersion';
 import { NotepadDropdown } from '../notepad/NotepadDropdown';
 
 interface HeaderProps {
@@ -14,7 +14,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user } = useAuthStore();
-  const version = BUILD_VERSION;
+  const versionLabel = `Ver.${BUILD_COMMIT_COUNT}`;
+  const versionTitle = `Package ${BUILD_VERSION} / Git commit ${BUILD_COMMIT_SHA}`;
 
   // 受付ボックスの未読数（お知らせの未確認数も含む）
   const { data: unreadReception } = useQuery({
@@ -50,8 +51,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 地域おこし協力隊の活動・報告・提出を一元管理するツール
               </p>
             </div>
-            <span className="hidden sm:inline-block text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-              VER: {version}
+            <span
+              className="hidden sm:inline-block text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"
+              title={versionTitle}
+            >
+              {versionLabel}
             </span>
           </div>
 

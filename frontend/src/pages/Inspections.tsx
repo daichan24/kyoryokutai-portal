@@ -9,7 +9,6 @@ import { InspectionDetailModal } from '../components/inspection/InspectionDetail
 import { Button } from '../components/common/Button';
 import { Plus } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
-import { fileNameFromContentDisposition } from '../utils/contentDispositionFilename';
 
 interface Inspection {
   id: string;
@@ -37,6 +36,7 @@ export const Inspections: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
   const scheduleIdFromQuery = searchParams.get('scheduleId') || undefined;
+  const inspectionIdFromQuery = searchParams.get('inspectionId') || undefined;
 
   const initialInspectionData = useMemo(() => {
     if (!scheduleIdFromQuery) return undefined;
@@ -61,6 +61,12 @@ export const Inspections: React.FC = () => {
     }
   }, [scheduleIdFromQuery]);
 
+  useEffect(() => {
+    if (inspectionIdFromQuery) {
+      setSelectedInspectionId(inspectionIdFromQuery);
+    }
+  }, [inspectionIdFromQuery]);
+
   const { data: inspections, isLoading } = useQuery<Inspection[]>({
     queryKey: ['inspections', user?.id],
     queryFn: async () => {
@@ -72,38 +78,6 @@ export const Inspections: React.FC = () => {
       return response.data;
     }
   });
-
-  const downloadPDF = async (id: string, destination: string, date: string, authorName: string) => {
-    try {
-      const response = await api.get(`/api/inspections/${id}/pdf`, {
-        responseType: 'blob'
-      });
-      
-      // エラーレスポンスのチェック
-      if (response.data instanceof Blob && response.data.type === 'application/json') {
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.error || 'PDF出力に失敗しました');
-      }
-
-      const fallback = `復命書_${authorName}_${format(new Date(date), 'yyyyMMdd')}.pdf`;
-      const cd = response.headers?.['content-disposition'] as string | undefined;
-      const filename = fileNameFromContentDisposition(cd, fallback);
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      window.URL.revokeObjectURL(url);
-      link.remove();
-    } catch (error: any) {
-      console.error('PDF download failed:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
-      alert(errorMessage);
-    }
-  };
 
   const handleCreateInspection = () => {
     setIsModalOpen(true);
@@ -180,14 +154,11 @@ export const Inspections: React.FC = () => {
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">差し戻し理由: {inspection.approvalComment}</p>
                 )}
               </div>
-              <button
-                onClick={() =>
-                  downloadPDF(inspection.id, inspection.destination, inspection.date, inspection.user.name)
-                }
-                className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                📄 PDF出力
-              </button>
+              {inspection.schedule && (
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/25 dark:text-blue-300">
+                  予定に添付済み
+                </span>
+              )}
             </div>
 
             <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
@@ -242,7 +213,14 @@ export const Inspections: React.FC = () => {
       {selectedInspectionId && (
         <InspectionDetailModal
           inspectionId={selectedInspectionId}
-          onClose={() => setSelectedInspectionId(null)}
+          onClose={() => {
+            setSelectedInspectionId(null);
+            if (inspectionIdFromQuery) {
+              const next = new URLSearchParams(searchParams);
+              next.delete('inspectionId');
+              setSearchParams(next, { replace: true });
+            }
+          }}
           onUpdated={() => {
             queryClient.invalidateQueries({ queryKey: ['inspections'] });
           }}

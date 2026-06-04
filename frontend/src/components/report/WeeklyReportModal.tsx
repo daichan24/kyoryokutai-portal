@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, FileDown } from 'lucide-react';
 import { api } from '../../utils/api';
 import { WeeklyReport, Schedule } from '../../types';
-import { getWeekString, parseWeekString, formatDate, formatTime } from '../../utils/date';
-import { endOfWeek, addWeeks, format } from 'date-fns';
+import { getWeekString, parseWeekString, normalizeWeekString, toWeekInputValue } from '../../utils/date';
+import { endOfWeek, format } from 'date-fns';
 import { ja } from 'date-fns/locale/ja';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
@@ -15,6 +15,8 @@ import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 interface WeeklyReportModalProps {
   report?: WeeklyReport | null;
   initialWeek?: string;
+  existingReports?: WeeklyReport[];
+  onOpenExisting?: (report: WeeklyReport) => void;
   onClose: () => void;
   onSaved: () => void;
   viewMode?: 'edit' | 'preview'; // 表示モード（デフォルトはedit）
@@ -23,15 +25,18 @@ interface WeeklyReportModalProps {
 export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   report,
   initialWeek,
+  existingReports = [],
+  onOpenExisting,
   onClose,
   onSaved,
   viewMode: initialViewMode = 'edit',
 }) => {
   const [week, setWeek] = useState('');
-  const [activities, setActivities] = useState<Array<{ date: string; activity: string }>>([
+  const [activities, setActivities] = useState<WeeklyReport['thisWeekActivities']>([
     { date: '', activity: '' },
   ]);
   const [nextWeekPlan, setNextWeekPlan] = useState('');
+  const [reflection, setReflection] = useState('');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentReport, setCurrentReport] = useState<WeeklyReport | null>(report || null);
@@ -43,41 +48,67 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   const isMobile = useIsMobileBreakpoint();
 
   // 作成者のみ編集可能
-  const canEdit = !report || (user && report.user?.id === user.id);
+  const canEdit = !currentReport || (user && currentReport.user?.id === user.id);
+  const existingReportByWeek = useMemo(() => {
+    const map = new Map<string, WeeklyReport>();
+    existingReports.forEach((item) => {
+      map.set(normalizeWeekString(item.week), item);
+    });
+    return map;
+  }, [existingReports]);
 
-  const formatScheduleForActivity = (schedule: Schedule) => {
-    const dateValue = schedule.startDate || schedule.date;
-    const date = formatDate(new Date(dateValue), 'M月d日');
-    const time = schedule.startTime && schedule.endTime
-      ? `${formatTime(schedule.startTime)}〜${formatTime(schedule.endTime)}`
-      : schedule.startTime ? formatTime(schedule.startTime) : '';
-    const title = schedule.title || schedule.activityDescription || '予定';
-    const location = schedule.location?.name || schedule.locationText || '';
-    const projectName = schedule.project?.projectName;
-    const taskTitle = schedule.task?.title;
-    const participants = schedule.scheduleParticipants
-      ?.filter(p => p.status === 'APPROVED')
-      .map(p => p.user?.name)
-      .filter(Boolean)
-      .join('、') || '';
+  const weekOptions = useMemo(() => {
+    const options = new Set<string>();
+    const currentStart = parseWeekString(getWeekString());
+    for (let i = -12; i <= 2; i += 1) {
+      const candidate = new Date(currentStart);
+      candidate.setDate(currentStart.getDate() + i * 7);
+      options.add(getWeekString(candidate));
+    }
+    existingReports.forEach((item) => options.add(normalizeWeekString(item.week)));
+    return Array.from(options)
+      .sort((a, b) => parseWeekString(b).getTime() - parseWeekString(a).getTime())
+      .map((optionWeek) => {
+        const weekStart = parseWeekString(optionWeek);
+        const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+        const existing = existingReportByWeek.get(optionWeek);
+        const status = existing
+          ? existing.approvalStatus === 'APPROVED'
+            ? '承認済み'
+            : existing.approvalStatus === 'REJECTED'
+            ? '差し戻し'
+            : existing.submittedAt
+            ? '提出済み'
+            : '下書き'
+          : '未作成';
+        return {
+          week: optionWeek,
+          label: `${format(weekStart, 'yyyy年M月d日', { locale: ja })}〜${format(weekEnd, 'M月d日', { locale: ja })}（${status}）`,
+          isCreated: Boolean(existing),
+        };
+      });
+  }, [existingReportByWeek, existingReports]);
 
-    const parts = [
-      `${date}${time ? ` ${time}` : ''}`,
-      projectName ? `プロジェクト: ${projectName}` : null,
-      taskTitle ? `タスク: ${taskTitle}` : null,
-      location ? `場所: ${location}` : null,
-      `内容: ${title}`,
-      participants ? `共同: ${participants}` : null,
-    ].filter(Boolean);
-
-    return parts.join(' / ');
-  };
+  const groupedActivities = useMemo(() => {
+    const groups = new Map<string, Array<{ index: number; date: string; activity: string }>>();
+    activities.forEach((activity, index) => {
+      if (!activity.date && !activity.activity) return;
+      const projectName = activity.projectName?.trim() || '未紐づけ';
+      if (!groups.has(projectName)) groups.set(projectName, []);
+      groups.get(projectName)!.push({ index, date: activity.date, activity: activity.activity });
+    });
+    return Array.from(groups.entries()).map(([projectName, items]) => ({
+      projectName,
+      items: items.sort((a, b) => a.date.localeCompare(b.date)),
+    }));
+  }, [activities]);
 
   const handleDownloadPDF = async () => {
-    if (!report || !user) return;
+    const targetReport = currentReport || report;
+    if (!targetReport || !user) return;
     
     try {
-      const response = await api.get(`/api/weekly-reports/${report.userId}/${report.week}/pdf`, {
+      const response = await api.get(`/api/weekly-reports/${targetReport.userId}/${targetReport.week}/pdf`, {
         responseType: 'blob'
       });
       
@@ -91,7 +122,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `週次報告_${report.week}.pdf`);
+      link.setAttribute('download', `週次報告_${targetReport.week}.pdf`);
       document.body.appendChild(link);
       link.click();
       window.URL.revokeObjectURL(url);
@@ -110,18 +141,23 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   };
 
   useEffect(() => {
+    setViewMode(initialViewMode);
+  }, [initialViewMode]);
+
+  useEffect(() => {
     if (report) {
       setCurrentReport(report);
-      setWeek(report.week);
+      setWeek(normalizeWeekString(report.week));
       setActivities(
         Array.isArray(report.thisWeekActivities) && report.thisWeekActivities.length > 0
           ? report.thisWeekActivities
           : [{ date: '', activity: '' }]
       );
       setNextWeekPlan(report.nextWeekPlan || '');
+      setReflection(report.reflection || '');
       setNote(report.note || '');
     } else {
-      setWeek(initialWeek || getWeekString());
+      setWeek(normalizeWeekString(initialWeek || getWeekString()));
       setCurrentReport(null);
     }
   }, [report, initialWeek]);
@@ -140,43 +176,39 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
     
     try {
       setLoadingSchedules(true);
-      
+
+      const draftResponse = await api.post<{
+        week: string;
+        thisWeekActivities: WeeklyReport['thisWeekActivities'];
+        nextWeekPlan: string;
+        reflection?: string;
+        note?: string;
+      }>('/api/weekly-reports/draft-preview', { week: normalizeWeekString(week) });
+      const draft = draftResponse.data;
+
       // 対象週の開始日と終了日を取得
-      const weekStart = parseWeekString(week);
+      const weekStart = parseWeekString(draft.week);
       const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-      
-      // 来週（予定用）
-      const nextWeekStart = addWeeks(weekStart, 1);
-      const nextWeekEnd = endOfWeek(nextWeekStart, { weekStartsOn: 1 });
-      
-      // 対象週のスケジュールを取得（活動内容）
-      const weekResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(weekStart, 'yyyy-MM-dd')}&endDate=${format(weekEnd, 'yyyy-MM-dd')}&reportable=true`);
-      const weekSchedules = weekResponse.data || [];
 
       const unlinkedResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(weekStart, 'yyyy-MM-dd')}&endDate=${format(weekEnd, 'yyyy-MM-dd')}&reportable=false`);
       setUnlinkedGoogleSchedulesCount((unlinkedResponse.data || []).filter((schedule) =>
         schedule.googleCalendarEventLink?.origin === 'GOOGLE' && !schedule.projectId
       ).length);
-      
-      // 来週のスケジュールを取得（予定）
-      const nextWeekResponse = await api.get<Schedule[]>(`/api/schedules?userId=${user.id}&startDate=${format(nextWeekStart, 'yyyy-MM-dd')}&endDate=${format(nextWeekEnd, 'yyyy-MM-dd')}&reportable=true`);
-      const nextWeekSchedules = nextWeekResponse.data || [];
-      
-      // 対象週の活動内容をフォーマット
-      if (weekSchedules.length > 0 && activities.length === 1 && !activities[0].date && !activities[0].activity) {
-        const formattedActivities = weekSchedules.map(schedule => ({
-          date: formatDate(new Date(schedule.startDate || schedule.date), 'yyyy-MM-dd'),
-          activity: formatScheduleForActivity(schedule),
-        }));
-        
-        setActivities(formattedActivities.length > 0 ? formattedActivities : [{ date: '', activity: '' }]);
+
+      if (draft.thisWeekActivities.length > 0 && activities.length === 1 && !activities[0].date && !activities[0].activity) {
+        setActivities(draft.thisWeekActivities);
       }
-      
-      // 来週の予定をフォーマット
-      if (nextWeekSchedules.length > 0 && !nextWeekPlan) {
-        const formattedPlan = nextWeekSchedules.map(formatScheduleForActivity).join('\n');
-        
-        setNextWeekPlan(formattedPlan);
+
+      if (draft.nextWeekPlan && !nextWeekPlan) {
+        setNextWeekPlan(draft.nextWeekPlan);
+      }
+
+      if (draft.reflection && !reflection) {
+        setReflection(draft.reflection);
+      }
+
+      if (draft.note && !note) {
+        setNote(draft.note);
       }
     } catch (error) {
       console.error('Failed to load schedules for template:', error);
@@ -186,7 +218,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   };
 
   const handleAddActivity = () => {
-    setActivities([...activities, { date: '', activity: '' }]);
+    setActivities([...activities, { date: '', activity: '', projectName: '未紐づけ' }]);
   };
 
   const handleRemoveActivity = (index: number) => {
@@ -203,15 +235,33 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
     setActivities(newActivities);
   };
 
+  const handleWeekChange = (value: string) => {
+    const normalized = normalizeWeekString(value);
+    const existing = existingReportByWeek.get(normalized);
+    if (!currentReport && existing && onOpenExisting) {
+      onOpenExisting(existing);
+      return;
+    }
+    setWeek(normalized);
+    if (!currentReport) {
+      setActivities([{ date: '', activity: '' }]);
+      setNextWeekPlan('');
+      setReflection('');
+      setNote('');
+      setUnlinkedGoogleSchedulesCount(0);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent, submit: boolean = false) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       const data = {
-        week,
+        week: normalizeWeekString(week),
         thisWeekActivities: activities.filter((a) => a.date && a.activity),
         nextWeekPlan,
+        reflection,
         note,
         submittedAt: submit ? new Date().toISOString() : undefined,
       };
@@ -247,6 +297,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
     week,
     thisWeekActivities: activities.filter((a) => a.date && a.activity),
     nextWeekPlan,
+    reflection,
     note,
   } : null;
 
@@ -346,88 +397,85 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                     );
                   }
                 })()}
-                <Input
-                  type="week"
-                  value={week}
-                  onChange={(e) => setWeek(e.target.value)}
-                  required
-                  disabled={!canEdit}
-                  className="hidden"
-                />
                 {canEdit && (
-                  <Input
-                    type="week"
-                    value={week}
-                    onChange={(e) => setWeek(e.target.value)}
+                  <select
+                    value={toWeekInputValue(week)}
+                    onChange={(e) => handleWeekChange(e.target.value)}
                     required
-                    className="mt-1"
-                  />
+                    disabled={Boolean(currentReport)}
+                    className="mt-1 w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  >
+                    {weekOptions.map((option) => (
+                      <option key={option.week} value={toWeekInputValue(option.week)}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
               
-              {!report && canEdit && (
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={loadSchedulesForTemplate}
-                    disabled={loadingSchedules}
-                  >
-                    {loadingSchedules ? '取得中...' : 'スケジュールから自動取得'}
-                  </Button>
-                </div>
-              )}
-
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     今週の活動 <span className="text-error dark:text-red-400">*</span>
                   </label>
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddActivity}>
-                    活動を追加
-                  </Button>
                 </div>
 
-                <div className="space-y-3">
-                  {activities.map((activity, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 p-3 sm:p-0 border sm:border-0 border-gray-100 dark:border-gray-700 rounded-lg sm:rounded-none">
-                      <div className="w-full sm:w-1/3">
-                        <Input
-                          type="date"
-                          value={activity.date}
-                          onChange={(e) =>
-                            handleActivityChange(index, 'date', e.target.value)
-                          }
-                          className="w-full"
-                          required
-                        />
+                <div className="space-y-4">
+                  {groupedActivities.length > 0 ? (
+                    groupedActivities.map((group) => (
+                      <div key={group.projectName} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                          {group.projectName}
+                        </div>
+                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {group.items.map((activity) => (
+                            <div key={activity.index} className="grid grid-cols-1 sm:grid-cols-[160px_1fr_auto] gap-2 p-3">
+                              <Input
+                                type="date"
+                                value={activity.date}
+                                onChange={(e) =>
+                                  handleActivityChange(activity.index, 'date', e.target.value)
+                                }
+                                className="w-full"
+                                required
+                              />
+                              <textarea
+                                value={activity.activity}
+                                onChange={(e) =>
+                                  handleActivityChange(activity.index, 'activity', e.target.value)
+                                }
+                                placeholder="活動内容"
+                                rows={2}
+                                className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-y"
+                                required
+                              />
+                              {activities.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRemoveActivity(activity.index)}
+                                  className="h-10"
+                                >
+                                  削除
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex-1 flex space-x-2">
-                        <input
-                          type="text"
-                          value={activity.activity}
-                          onChange={(e) =>
-                            handleActivityChange(index, 'activity', e.target.value)
-                          }
-                          placeholder="活動内容"
-                          className="flex-1 px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-w-0"
-                          required
-                        />
-                        {activities.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleRemoveActivity(index)}
-                            className="shrink-0"
-                          >
-                            削除
-                          </Button>
-                        )}
-                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 p-4 text-sm text-gray-500 dark:text-gray-400">
+                      この週に報告対象の予定がありません。必要な場合は活動を追加してください。
                     </div>
-                  ))}
+                  )}
+                  {canEdit && (
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddActivity}>
+                      活動を追加
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -439,6 +487,19 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                   value={nextWeekPlan}
                   onChange={(e) => setNextWeekPlan(e.target.value)}
                   rows={4}
+                  className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  振り返り・所感
+                </label>
+                <textarea
+                  value={reflection}
+                  onChange={(e) => setReflection(e.target.value)}
+                  rows={4}
+                  placeholder="今週やってみて感じたこと、気づき、次に活かしたいことなど"
                   className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>

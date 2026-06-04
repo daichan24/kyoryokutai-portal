@@ -3,9 +3,15 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { ensureDefaultWorkMissionProject, isDefaultWorkLinkKind } from '../services/defaultWorkProjectService';
+import {
+  notifyCompensatoryLeaveSubmitted,
+  notifyTimeAdjustmentSubmitted,
+} from '../services/approvalEmailService';
 
 const router = Router();
 router.use(authenticate);
+
+const HALF_DAY_WORK_HOURS = 4.5;
 
 const nullOrEmptyStringToUndefined = (value: unknown) => (
   value === null || value === '' ? undefined : value
@@ -47,6 +53,11 @@ const taskSchema = z.object({
   isAllDay: z.boolean().optional(),
   isTimeUnspecified: z.boolean().optional(),
   reportable: z.boolean().optional(),
+  isHolidayWork: z.boolean().optional(),
+  compensatoryLeaveRequired: z.boolean().optional(),
+  compensatoryLeaveType: z.enum(['FULL_DAY', 'HALF_DAY', 'TIME_ADJUST']).optional().nullable(),
+  isDayOff: z.boolean().optional(),
+  dayOffType: z.enum(['PAID', 'UNPAID', 'COMPENSATORY', 'TIME_ADJUST']).optional().nullable(),
   participantsUserIds: z.array(z.string()).optional(),
 });
 
@@ -58,6 +69,90 @@ function normalizeReferenceUrl(value: unknown): string | null {
 
 function normalizeTimeValue(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+function hoursBetween(start: string, end: string): number {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  return Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
+}
+
+function calcWorkHours(startTime: string, endTime: string): number {
+  const constraintHours = hoursBetween(startTime, endTime);
+  const workHours = constraintHours <= 5.5 ? constraintHours : constraintHours - 1;
+  return Math.round(workHours * 10) / 10;
+}
+
+async function syncAutoCompensatoryFromTaskSchedule(args: {
+  scheduleId: string;
+  userId: string;
+  grantedAt: Date;
+  startTime: string;
+  endTime: string;
+  leaveType: 'FULL_DAY' | 'HALF_DAY' | 'TIME_ADJUST' | null | undefined;
+  enabled: boolean;
+  requesterRole: string;
+}) {
+  if (!args.enabled || !args.leaveType) {
+    const leaves = await prisma.compensatoryLeave.findMany({
+      where: { scheduleId: args.scheduleId, userId: args.userId },
+      include: { usages: true },
+    });
+    if (leaves.some((leave) => leave.usages.length > 0)) return;
+    await prisma.timeAdjustment.deleteMany({ where: { sourceScheduleId: args.scheduleId, userId: args.userId } });
+    await prisma.compensatoryLeave.deleteMany({ where: { scheduleId: args.scheduleId, userId: args.userId } });
+    return;
+  }
+
+  const expiresAt = new Date(args.grantedAt.getTime() + 56 * 86400000);
+  const workHours = calcWorkHours(args.startTime, args.endTime);
+  const leaveHours = args.leaveType === 'HALF_DAY' ? Math.min(workHours, HALF_DAY_WORK_HOURS) : workHours;
+  const timeAdjustmentHours = args.leaveType === 'HALF_DAY'
+    ? Math.round(Math.max(0, workHours - HALF_DAY_WORK_HOURS) * 10) / 10
+    : args.leaveType === 'TIME_ADJUST'
+      ? workHours
+      : 0;
+
+  const existing = await prisma.compensatoryLeave.findFirst({
+    where: { scheduleId: args.scheduleId, userId: args.userId },
+  });
+  const leave = existing
+    ? await prisma.compensatoryLeave.update({
+        where: { id: existing.id },
+        data: { grantedAt: args.grantedAt, expiresAt, totalHours: leaveHours, leaveType: args.leaveType, note: null },
+      })
+    : await prisma.compensatoryLeave.create({
+        data: { userId: args.userId, grantedAt: args.grantedAt, expiresAt, scheduleId: args.scheduleId, totalHours: leaveHours, leaveType: args.leaveType, note: null },
+      });
+
+  if (!existing && args.requesterRole === 'MEMBER') {
+    await notifyCompensatoryLeaveSubmitted(leave.id).catch((error) =>
+      console.error('compensatory leave from task schedule email failed:', error),
+    );
+  }
+
+  const existingTA = await prisma.timeAdjustment.findFirst({
+    where: { sourceScheduleId: args.scheduleId, userId: args.userId },
+  });
+  if (timeAdjustmentHours > 0) {
+    if (existingTA) {
+      await prisma.timeAdjustment.update({
+        where: { id: existingTA.id },
+        data: { compensatoryLeaveId: leave.id, adjustedAt: args.grantedAt, hours: timeAdjustmentHours },
+      });
+    } else {
+      const adjustment = await prisma.timeAdjustment.create({
+        data: { userId: args.userId, compensatoryLeaveId: leave.id, adjustedAt: args.grantedAt, hours: timeAdjustmentHours, sourceScheduleId: args.scheduleId },
+      });
+      if (args.requesterRole === 'MEMBER') {
+        await notifyTimeAdjustmentSubmitted(adjustment.id).catch((error) =>
+          console.error('time adjustment from task schedule email failed:', error),
+        );
+      }
+    }
+  } else if (existingTA) {
+    await prisma.timeAdjustment.delete({ where: { id: existingTA.id } });
+  }
 }
 
 function resolveTaskLinkKind(
@@ -261,10 +356,25 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
             isAllDay: data.isAllDay ?? false,
             isTimeUnspecified: data.isTimeUnspecified ?? false,
             reportable: data.reportable ?? true,
+            isHolidayWork: data.isHolidayWork ?? false,
+            compensatoryLeaveRequired: data.compensatoryLeaveRequired ?? false,
+            compensatoryLeaveType: data.compensatoryLeaveRequired ? data.compensatoryLeaveType ?? null : null,
+            isDayOff: data.isDayOff ?? false,
+            dayOffType: data.isDayOff ? data.dayOffType ?? null : null,
             isPending: false,
             taskId: task.id,
             projectId: effectiveProjectId,
           },
+        });
+        await syncAutoCompensatoryFromTaskSchedule({
+          scheduleId: schedule.id,
+          userId: mission.userId,
+          grantedAt: startDate,
+          startTime: normalizeTimeValue(data.startTime, '09:00'),
+          endTime: normalizeTimeValue(data.endTime, '17:00'),
+          leaveType: data.compensatoryLeaveType,
+          enabled: !!data.isHolidayWork && !!data.compensatoryLeaveRequired,
+          requesterRole: req.user!.role,
         });
         // 参加者を追加
         if (data.participantsUserIds && data.participantsUserIds.length > 0) {
@@ -438,10 +548,25 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
               isAllDay: data.isAllDay ?? false,
               isTimeUnspecified: data.isTimeUnspecified ?? false,
               reportable: data.reportable ?? true,
+              isHolidayWork: data.isHolidayWork ?? false,
+              compensatoryLeaveRequired: data.compensatoryLeaveRequired ?? false,
+              compensatoryLeaveType: data.compensatoryLeaveRequired ? data.compensatoryLeaveType ?? null : null,
+              isDayOff: data.isDayOff ?? false,
+              dayOffType: data.isDayOff ? data.dayOffType ?? null : null,
               isPending: false,
               taskId: updated.id,
               projectId: updated.projectId || null,
             },
+          });
+          await syncAutoCompensatoryFromTaskSchedule({
+            scheduleId: schedule.id,
+            userId: updated.mission.userId,
+            grantedAt: startDate,
+            startTime: normalizeTimeValue(data.startTime, '09:00'),
+            endTime: normalizeTimeValue(data.endTime, '17:00'),
+            leaveType: data.compensatoryLeaveType,
+            enabled: !!data.isHolidayWork && !!data.compensatoryLeaveRequired,
+            requesterRole: req.user!.role,
           });
           if (data.participantsUserIds && data.participantsUserIds.length > 0) {
             await prisma.scheduleParticipant.createMany({
@@ -479,8 +604,23 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
           if (data.isAllDay !== undefined) updateData.isAllDay = data.isAllDay;
           if (data.isTimeUnspecified !== undefined) updateData.isTimeUnspecified = data.isTimeUnspecified;
           if (data.reportable !== undefined) updateData.reportable = data.reportable;
+          if (data.isHolidayWork !== undefined) updateData.isHolidayWork = data.isHolidayWork;
+          if (data.compensatoryLeaveRequired !== undefined) updateData.compensatoryLeaveRequired = data.compensatoryLeaveRequired;
+          if (data.compensatoryLeaveType !== undefined) updateData.compensatoryLeaveType = data.compensatoryLeaveRequired ? data.compensatoryLeaveType ?? null : null;
+          if (data.isDayOff !== undefined) updateData.isDayOff = data.isDayOff;
+          if (data.dayOffType !== undefined) updateData.dayOffType = data.isDayOff ? data.dayOffType ?? null : null;
           if (data.projectId !== undefined || shouldResolveDefaultWorkProject) updateData.projectId = updated.projectId || null;
-          await prisma.schedule.update({ where: { id: existingSchedule.id }, data: updateData });
+          const savedSchedule = await prisma.schedule.update({ where: { id: existingSchedule.id }, data: updateData });
+          await syncAutoCompensatoryFromTaskSchedule({
+            scheduleId: savedSchedule.id,
+            userId: savedSchedule.userId,
+            grantedAt: savedSchedule.startDate || savedSchedule.date,
+            startTime: savedSchedule.startTime,
+            endTime: savedSchedule.endTime,
+            leaveType: data.compensatoryLeaveType,
+            enabled: !!data.isHolidayWork && !!data.compensatoryLeaveRequired,
+            requesterRole: req.user!.role,
+          });
         } catch (scheduleError) {
           console.error('Failed to update schedule for task:', scheduleError);
         }

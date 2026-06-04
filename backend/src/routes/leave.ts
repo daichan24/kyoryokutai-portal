@@ -12,6 +12,9 @@ import {
 const router = Router();
 router.use(authenticate);
 
+type CompensatoryLeaveTypeValue = 'FULL_DAY' | 'HALF_DAY' | 'TIME_ADJUST';
+const HALF_DAY_WORK_HOURS = 4.5;
+
 function isStaff(role: string) {
   return role === 'MASTER' || role === 'SUPPORT' || role === 'GOVERNMENT';
 }
@@ -54,6 +57,17 @@ function hoursBetween(start: string, end: string): number {
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
   return Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
+}
+
+function compensatoryEntitlementDays(type: CompensatoryLeaveTypeValue): number {
+  if (type === 'HALF_DAY') return 0.5;
+  if (type === 'FULL_DAY') return 1;
+  return 0;
+}
+
+function usedTimeAdjustmentHours(adjustment: { usedStartTime: string | null; usedEndTime: string | null }): number {
+  if (!adjustment.usedStartTime || !adjustment.usedEndTime) return 0;
+  return hoursBetween(adjustment.usedStartTime, adjustment.usedEndTime);
 }
 
 function dayOffTitle(type: 'PAID' | 'UNPAID' | 'COMPENSATORY' | 'TIME_ADJUST', amount: number) {
@@ -188,10 +202,13 @@ router.get('/summary', async (req: AuthRequest, res) => {
       }),
     );
 
-    const activeLeaves = updatedLeaves.filter((cl) => cl.status === 'PENDING' && cl.leaveType === 'FULL_DAY');
+    const activeLeaves = updatedLeaves.filter((cl) => (
+      cl.status === 'PENDING'
+      && (cl.leaveType === 'FULL_DAY' || cl.leaveType === 'HALF_DAY')
+    ));
     const compTotalDays = activeLeaves.reduce((s, cl) => {
       const usedDays = cl.usages.reduce((u, x) => u + x.days, 0);
-      return s + Math.max(0, 1 - usedDays);
+      return s + Math.max(0, compensatoryEntitlementDays(cl.leaveType as CompensatoryLeaveTypeValue) - usedDays);
     }, 0);
 
     const compWithDeadline = activeLeaves.map((cl) => {
@@ -199,7 +216,11 @@ router.get('/summary', async (req: AuthRequest, res) => {
       exp.setHours(12, 0, 0, 0);
       const daysLeft = Math.ceil((exp.getTime() - today.getTime()) / 86400000);
       const usedDays = cl.usages.reduce((u, x) => u + x.days, 0);
-      return { ...cl, daysLeft, remainingDays: Math.max(0, 1 - usedDays) };
+      return {
+        ...cl,
+        daysLeft,
+        remainingDays: Math.max(0, compensatoryEntitlementDays(cl.leaveType as CompensatoryLeaveTypeValue) - usedDays),
+      };
     }).sort((a, b) => a.daysLeft - b.daysLeft);
 
     const usableTimeAdjustments = timeAdjustments.filter((t) => {
@@ -209,11 +230,10 @@ router.get('/summary', async (req: AuthRequest, res) => {
       return exp >= today;
     });
     const timeAdjTotal = timeAdjustments.reduce((s, t) => s + t.hours, 0);
-    const timeAdjUsed = timeAdjustments.filter(t => t.usedAt).reduce((s, t) => {
-      if (!t.usedStartTime || !t.usedEndTime) return s;
-      return s + hoursBetween(t.usedStartTime, t.usedEndTime);
-    }, 0);
-    const timeAdjRemaining = usableTimeAdjustments.filter(t => !t.usedAt).reduce((s, t) => s + t.hours, 0);
+    const timeAdjUsed = timeAdjustments.reduce((s, t) => s + usedTimeAdjustmentHours(t), 0);
+    const timeAdjRemaining = usableTimeAdjustments.reduce((s, t) => (
+      s + Math.max(0, t.hours - usedTimeAdjustmentHours(t))
+    ), 0);
 
     res.json({
       fiscalYear,
@@ -382,7 +402,7 @@ const compLeaveSchema = z.object({
   grantedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   scheduleId: z.string().uuid().optional().nullable(),
   totalHours: z.number().min(0).max(24).optional().nullable(),
-  leaveType: z.enum(['FULL_DAY', 'TIME_ADJUST']).optional(),
+  leaveType: z.enum(['FULL_DAY', 'HALF_DAY', 'TIME_ADJUST']).optional(),
   note: z.string().max(500).optional().nullable(),
 });
 
@@ -511,8 +531,12 @@ router.post('/compensatory/:id/usage', async (req: AuthRequest, res) => {
     if (usedAt > exp) return res.status(400).json({ error: '期限を過ぎた代休は使用できません' });
     if (leave.status === 'USED') return res.status(400).json({ error: 'すでに使用済みです' });
     if (leave.status === 'EXPIRED') return res.status(400).json({ error: '期限切れの代休です' });
+    const entitlementDays = compensatoryEntitlementDays(leave.leaveType as CompensatoryLeaveTypeValue);
+    if (entitlementDays <= 0) return res.status(400).json({ error: '時間調整は時間調整欄から使用してください' });
     const usedSoFar = leave.usages.reduce((s, u) => s + u.days, 0);
-    if (usedSoFar + body.days > 1) return res.status(400).json({ error: '使用日数が1日を超えます' });
+    if (usedSoFar + body.days > entitlementDays) {
+      return res.status(400).json({ error: `使用日数が残日数（${Math.max(0, entitlementDays - usedSoFar)}日）を超えます` });
+    }
     const schedule = await upsertDayOffSchedule({
       userId: leave.userId,
       usedAt,
@@ -524,7 +548,7 @@ router.post('/compensatory/:id/usage', async (req: AuthRequest, res) => {
       data: { compensatoryLeaveId: req.params.id, usedAt, days: body.days, note: body.note ?? null, scheduleId: schedule.id, createdById: req.user!.id },
     });
     const newTotal = usedSoFar + body.days;
-    if (newTotal >= 1) {
+    if (newTotal >= entitlementDays) {
       await prisma.compensatoryLeave.update({ where: { id: req.params.id }, data: { status: 'USED' } });
     }
     res.json(usage);
@@ -544,7 +568,8 @@ router.delete('/compensatory/usage/:usageId', async (req: AuthRequest, res) => {
     // 使用済みステータスを戻す
     const remaining = await prisma.compensatoryLeaveUsage.findMany({ where: { compensatoryLeaveId: usage.compensatoryLeaveId } });
     const total = remaining.reduce((s, u) => s + u.days, 0);
-    if (total < 1) {
+    const entitlementDays = compensatoryEntitlementDays(usage.compensatoryLeave.leaveType as CompensatoryLeaveTypeValue);
+    if (total < entitlementDays) {
       await prisma.compensatoryLeave.update({ where: { id: usage.compensatoryLeaveId }, data: { status: 'PENDING' } });
     }
     res.json({ ok: true });
@@ -742,8 +767,37 @@ const autoCreateSchema = z.object({
   grantedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
-  leaveType: z.enum(['FULL_DAY', 'TIME_ADJUST']),
+  leaveType: z.enum(['FULL_DAY', 'HALF_DAY', 'TIME_ADJUST']),
   note: z.string().max(500).optional().nullable(),
+});
+
+router.delete('/compensatory/from-schedule/:scheduleId', async (req: AuthRequest, res) => {
+  try {
+    const { scheduleId } = req.params;
+    const targetId = req.user!.role === 'MEMBER'
+      ? req.user!.id
+      : typeof req.query.userId === 'string'
+        ? req.query.userId
+        : undefined;
+    const schedule = await prisma.schedule.findUnique({ where: { id: scheduleId }, select: { id: true, userId: true } });
+    if (!schedule) return res.status(404).json({ error: 'スケジュールが見つかりません' });
+    if (req.user!.role === 'MEMBER' && schedule.userId !== req.user!.id) return res.status(403).json({ error: '権限がありません' });
+    const userId = targetId ?? schedule.userId;
+
+    const leaves = await prisma.compensatoryLeave.findMany({
+      where: { scheduleId, userId },
+      include: { usages: true },
+    });
+    if (leaves.some((leave) => leave.usages.length > 0)) {
+      return res.status(409).json({ error: 'すでに使用記録があるため自動解除できません' });
+    }
+
+    await prisma.timeAdjustment.deleteMany({ where: { sourceScheduleId: scheduleId, userId } });
+    await prisma.compensatoryLeave.deleteMany({ where: { scheduleId, userId } });
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
@@ -759,6 +813,14 @@ router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
     const constraintMinutes = (eh * 60 + em) - (sh * 60 + sm);
     const workMinutes = calcWorkMinutes(constraintMinutes);
     const workHours = Math.round(workMinutes / 60 * 10) / 10; // 小数点1桁
+    const leaveHours = body.leaveType === 'HALF_DAY'
+      ? Math.min(workHours, HALF_DAY_WORK_HOURS)
+      : workHours;
+    const timeAdjustmentHours = body.leaveType === 'HALF_DAY'
+      ? Math.round(Math.max(0, workHours - HALF_DAY_WORK_HOURS) * 10) / 10
+      : body.leaveType === 'TIME_ADJUST'
+        ? workHours
+        : 0;
 
     // 既存チェック（同じスケジュールIDで既に作成済みなら更新）
     const existing = await prisma.compensatoryLeave.findFirst({
@@ -769,12 +831,12 @@ router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
     if (existing) {
       leave = await prisma.compensatoryLeave.update({
         where: { id: existing.id },
-        data: { grantedAt: grantedDate, expiresAt, totalHours: workHours, leaveType: body.leaveType, note: body.note ?? null },
+        data: { grantedAt: grantedDate, expiresAt, totalHours: leaveHours, leaveType: body.leaveType, note: body.note ?? null },
         include: { schedule: { select: { id: true, title: true, activityDescription: true, startDate: true } }, usages: true, confirmedBy: { select: { id: true, name: true } } },
       });
     } else {
       leave = await prisma.compensatoryLeave.create({
-        data: { userId: targetId, grantedAt: grantedDate, expiresAt, scheduleId: body.scheduleId, totalHours: workHours, leaveType: body.leaveType, note: body.note ?? null },
+        data: { userId: targetId, grantedAt: grantedDate, expiresAt, scheduleId: body.scheduleId, totalHours: leaveHours, leaveType: body.leaveType, note: body.note ?? null },
         include: { schedule: { select: { id: true, title: true, activityDescription: true, startDate: true } }, usages: true, confirmedBy: { select: { id: true, name: true } } },
       });
       if (req.user!.role === 'MEMBER') {
@@ -784,19 +846,20 @@ router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
       }
     }
 
-    // TIME_ADJUSTの場合は時間調整レコードも作成
-    if (body.leaveType === 'TIME_ADJUST') {
-      const existingTA = await prisma.timeAdjustment.findFirst({
-        where: { sourceScheduleId: body.scheduleId, userId: targetId },
-      });
+    const existingTA = await prisma.timeAdjustment.findFirst({
+      where: { sourceScheduleId: body.scheduleId, userId: targetId },
+    });
+
+    // TIME_ADJUST、または半休を超えた時間は時間調整レコードも作成
+    if (timeAdjustmentHours > 0) {
       if (existingTA) {
         await prisma.timeAdjustment.update({
           where: { id: existingTA.id },
-          data: { compensatoryLeaveId: leave.id, adjustedAt: grantedDate, hours: workHours },
+          data: { compensatoryLeaveId: leave.id, adjustedAt: grantedDate, hours: timeAdjustmentHours },
         });
       } else {
         const adjustment = await prisma.timeAdjustment.create({
-          data: { userId: targetId, compensatoryLeaveId: leave.id, adjustedAt: grantedDate, hours: workHours, sourceScheduleId: body.scheduleId },
+          data: { userId: targetId, compensatoryLeaveId: leave.id, adjustedAt: grantedDate, hours: timeAdjustmentHours, sourceScheduleId: body.scheduleId },
         });
         if (req.user!.role === 'MEMBER') {
           await notifyTimeAdjustmentSubmitted(adjustment.id).catch((error) =>
@@ -804,9 +867,11 @@ router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
           );
         }
       }
+    } else if (existingTA) {
+      await prisma.timeAdjustment.delete({ where: { id: existingTA.id } });
     }
 
-    res.json({ leave, workHours, constraintMinutes, workMinutes });
+    res.json({ leave, workHours, leaveHours, timeAdjustmentHours, constraintMinutes, workMinutes });
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     res.status(500).json({ error: err.message });

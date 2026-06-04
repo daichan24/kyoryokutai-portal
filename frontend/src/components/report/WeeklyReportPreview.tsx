@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { WeeklyReport } from '../../types';
 import { parseWeekString, formatDate } from '../../utils/date';
 import { format } from 'date-fns';
@@ -13,6 +13,10 @@ interface TemplateSettings {
   weeklyReport: {
     recipient: string;
     title: string;
+    activityLabel: string;
+    nextPlanLabel: string;
+    reflectionLabel: string;
+    noteLabel: string;
   };
 }
 
@@ -34,6 +38,10 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         weeklyReport: {
           recipient: '○○市役所　○○課長　様',
           title: '地域おこし協力隊活動報告',
+          activityLabel: '活動内容',
+          nextPlanLabel: '来週の予定',
+          reflectionLabel: '振り返り・所感',
+          noteLabel: '備考',
         },
       });
     }
@@ -50,6 +58,19 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
     : formatDate(weekStart, 'yyyy年M月d日');
   
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
+  const groupedActivities = useMemo(() => {
+    if (!Array.isArray(report.thisWeekActivities)) return [];
+    const groups = new Map<string, typeof report.thisWeekActivities>();
+    report.thisWeekActivities.forEach((activity) => {
+      const projectName = activity.projectName?.trim() || '未紐づけ';
+      if (!groups.has(projectName)) groups.set(projectName, []);
+      groups.get(projectName)!.push(activity);
+    });
+    return Array.from(groups.entries()).map(([projectName, items]) => ({
+      projectName,
+      items: [...items].sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+    }));
+  }, [report.thisWeekActivities]);
 
   return (
     <div className="bg-white text-gray-900" style={{
@@ -65,6 +86,10 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
       {/* ヘッダー（日付） */}
       <div style={{ textAlign: 'right', marginBottom: '30px' }}>
         {currentDate}
+      </div>
+
+      <div style={{ marginBottom: '24px', whiteSpace: 'pre-wrap' }}>
+        {templateSettings?.weeklyReport.recipient || '○○市役所　○○課長　様'}
       </div>
 
       {/* タイトル */}
@@ -110,55 +135,63 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
           padding: '8px',
           marginBottom: '15px'
         }}>
-          1. 活動内容（{weekStartStr}週の振り返り）
+          1. {templateSettings?.weeklyReport.activityLabel || '活動内容'}（{weekStartStr}週）
         </div>
-        {Array.isArray(report.thisWeekActivities) && report.thisWeekActivities.length > 0 ? (
-          <table style={{
-            width: '100%', 
-            borderCollapse: 'collapse', 
-            marginTop: '10px',
-            border: '1px solid #000'
-          }}>
-            <thead>
-              <tr>
-                <th style={{
-                  border: '1px solid #000', 
-                  padding: '8px',
-                  width: '30%',
-                  textAlign: 'left',
-                  backgroundColor: '#f0f0f0'
+        {groupedActivities.length > 0 ? (
+          <div style={{ marginTop: '10px' }}>
+            {groupedActivities.map((group) => (
+              <div key={group.projectName} style={{ marginBottom: '16px', pageBreakInside: 'avoid' }}>
+                <div style={{ fontWeight: 'bold', margin: '6px 0' }}>
+                  {group.projectName}
+                </div>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  border: '1px solid #000'
                 }}>
-                  日時
-                </th>
-                <th style={{
-                  border: '1px solid #000', 
-                  padding: '8px',
-                  textAlign: 'left',
-                  backgroundColor: '#f0f0f0'
-                }}>
-                  活動内容
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.thisWeekActivities.map((activity, index) => (
-                <tr key={index}>
-                  <td style={{
-                    border: '1px solid #000', 
-                    padding: '8px'
-                  }}>
-                    {activity.date || ''}
-                  </td>
-                  <td style={{
-                    border: '1px solid #000', 
-                    padding: '8px'
-                  }}>
-                    {activity.activity || ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  <thead>
+                    <tr>
+                      <th style={{
+                        border: '1px solid #000',
+                        padding: '8px',
+                        width: '30%',
+                        textAlign: 'left',
+                        backgroundColor: '#f0f0f0'
+                      }}>
+                        日時
+                      </th>
+                      <th style={{
+                        border: '1px solid #000',
+                        padding: '8px',
+                        textAlign: 'left',
+                        backgroundColor: '#f0f0f0'
+                      }}>
+                        活動内容
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.items.map((activity, index) => (
+                      <tr key={`${group.projectName}-${index}`}>
+                        <td style={{
+                          border: '1px solid #000',
+                          padding: '8px'
+                        }}>
+                          {activity.date || ''}
+                        </td>
+                        <td style={{
+                          border: '1px solid #000',
+                          padding: '8px'
+                        }}>
+                          {activity.activity || ''}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
         ) : (
           <p style={{ marginLeft: '15px', marginTop: '10px' }}>
             活動内容がありません
@@ -175,7 +208,7 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
           padding: '8px',
           marginBottom: '15px'
         }}>
-          2. 来週の予定
+          2. {templateSettings?.weeklyReport.nextPlanLabel || '来週の予定'}
         </div>
         <div style={{
           marginLeft: '15px', 
@@ -186,7 +219,29 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         </div>
       </div>
 
-      {/* 3. 備考 */}
+      {/* 3. 振り返り・所感 */}
+      {report.reflection && (
+        <div style={{ marginBottom: '30px' }}>
+          <div style={{
+            fontWeight: 'bold',
+            backgroundColor: '#f0f0f0',
+            color: '#1F2937',
+            padding: '8px',
+            marginBottom: '15px'
+          }}>
+            3. {templateSettings?.weeklyReport.reflectionLabel || '振り返り・所感'}
+          </div>
+          <div style={{
+            marginLeft: '15px',
+            marginTop: '10px',
+            whiteSpace: 'pre-wrap'
+          }}>
+            {report.reflection}
+          </div>
+        </div>
+      )}
+
+      {/* 4. 備考 */}
       {report.note && (
         <div style={{ marginBottom: '30px' }}>
           <div style={{
@@ -196,15 +251,15 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
             padding: '8px',
             marginBottom: '15px'
           }}>
-            3. 備考
+            4. {templateSettings?.weeklyReport.noteLabel || '備考'}
           </div>
           <div style={{
             marginLeft: '15px', 
             marginTop: '10px',
             whiteSpace: 'pre-wrap'
-          }}>
-            {report.note}
-          </div>
+          }}
+          dangerouslySetInnerHTML={{ __html: report.note }}
+          />
         </div>
       )}
 

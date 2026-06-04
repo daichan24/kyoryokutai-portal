@@ -10,6 +10,8 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import type { User } from '../types';
 
 // ─── 型定義 ──────────────────────────────────────────────────────────────────
+type CompensatoryLeaveType = 'FULL_DAY' | 'HALF_DAY' | 'TIME_ADJUST';
+
 interface PaidLeaveData {
   totalDays: number; usedDays: number; remainingDays: number;
   expiresAt: string; daysUntilExpiry: number; memo: string | null;
@@ -22,7 +24,7 @@ interface UnpaidLeaveData {
 }
 interface CompLeaveItem {
   id: string; grantedAt: string; expiresAt: string; daysLeft: number; remainingDays: number;
-  totalHours: number | null; leaveType: 'FULL_DAY' | 'TIME_ADJUST'; status: string; note: string | null;
+  totalHours: number | null; leaveType: CompensatoryLeaveType; status: string; note: string | null;
   confirmedBy: { id: string; name: string } | null; confirmedAt: string | null;
   schedule: { id: string; title: string | null; activityDescription: string; startDate: string; startTime: string; endTime: string } | null;
   usages: Array<{ id: string; usedAt: string; days: number; note: string | null }>;
@@ -93,6 +95,9 @@ const THEME = {
 // ─── ユーティリティ ───────────────────────────────────────────────────────────
 const fmt = (d: string) => format(parseISO(d), 'M/d（E）', { locale: ja });
 const fmtFull = (d: string) => format(parseISO(d), 'yyyy/M/d', { locale: ja });
+const compLeaveLabel = (type: CompensatoryLeaveType) => (
+  type === 'FULL_DAY' ? '代休（1日）' : type === 'HALF_DAY' ? '半休' : '時間調整'
+);
 const urgencyText = (days: number) =>
   days <= 7 ? 'text-rose-600 dark:text-rose-400'
   : days <= 21 ? 'text-amber-600 dark:text-amber-400'
@@ -129,7 +134,7 @@ export const LeaveManagement: React.FC = () => {
   // 代休フォーム
   const [compGrantedAt, setCompGrantedAt] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [compHours, setCompHours] = useState('');
-  const [compLeaveType, setCompLeaveType] = useState<'FULL_DAY' | 'TIME_ADJUST'>('FULL_DAY');
+  const [compLeaveType, setCompLeaveType] = useState<CompensatoryLeaveType>('FULL_DAY');
   const [compNote, setCompNote] = useState('');
   const [usageLeaveId, setUsageLeaveId] = useState('');
   const [usageDate, setUsageDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
@@ -210,6 +215,8 @@ export const LeaveManagement: React.FC = () => {
   if (!user) return null;
 
   const activeLeaves = summary?.compensatory.activeLeaves ?? [];
+  const selectedUsageLeave = activeLeaves.find(cl => cl.id === usageLeaveId) ?? null;
+  const maxUsageDays = selectedUsageLeave?.remainingDays ?? 1;
   const pendingSchedules = summary?.compensatory.allLeaves.filter(cl => cl.schedule?.id && cl.status === 'PENDING') ?? [];
   const nearestLeave = activeLeaves[0] ?? null;
 
@@ -462,7 +469,7 @@ export const LeaveManagement: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">付与日：{fmtFull(cl.grantedAt)}{cl.totalHours != null && `　${cl.totalHours}時間`}{cl.note && `　${cl.note}`}</p>
+                            <p className="text-xs text-gray-500 mt-1">付与日：{fmtFull(cl.grantedAt)}　{compLeaveLabel(cl.leaveType)} / 残{cl.remainingDays}日{cl.totalHours != null && `　${cl.totalHours}時間`}{cl.note && `　${cl.note}`}</p>
                             {cl.schedule && <p className={`text-xs mt-0.5 ${THEME.comp.text}`}>紐づくタスク：{cl.schedule.title || cl.schedule.activityDescription}（{fmtFull(cl.schedule.startDate)}　{cl.schedule.startTime}〜{cl.schedule.endTime}）</p>}
                             {cl.usages.length > 0 && <p className="text-xs text-gray-400 mt-0.5">使用済み：{cl.usages.map(u => `${fmt(u.usedAt)} ${u.days}日`).join('、')}</p>}
                           </div>
@@ -507,11 +514,11 @@ export const LeaveManagement: React.FC = () => {
                     <div><label className="block text-xs mb-1">代休を選択</label>
                       <select value={usageLeaveId} onChange={e => setUsageLeaveId(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm">
                         <option value="">選択</option>
-                        {activeLeaves.map(cl => <option key={cl.id} value={cl.id}>{fmtFull(cl.grantedAt)}付与（残{cl.daysLeft}日）</option>)}
+                        {activeLeaves.map(cl => <option key={cl.id} value={cl.id}>{fmtFull(cl.grantedAt)}付与 {compLeaveLabel(cl.leaveType)}（残{cl.remainingDays}日・期限まで{cl.daysLeft}日）</option>)}
                       </select>
                     </div>
                     <div><label className="block text-xs mb-1">使用日</label><input type="date" value={usageDate} onChange={e => setUsageDate(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
-                    <div><label className="block text-xs mb-1">日数</label><input type="number" step="0.5" min="0.5" max="1" value={usageDays} onChange={e => setUsageDays(e.target.value)} className="w-20 px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
+                    <div><label className="block text-xs mb-1">日数</label><input type="number" step="0.5" min="0.5" max={maxUsageDays} value={usageDays} onChange={e => setUsageDays(e.target.value)} className="w-20 px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
                     <Button size="sm" type="button" onClick={() => { if (!usageLeaveId) { alert('代休を選択してください'); return; } usageMut.mutate(); }} disabled={usageMut.isPending}>記録</Button>
                   </div>
                 </div>
@@ -521,8 +528,9 @@ export const LeaveManagement: React.FC = () => {
                 <div className="flex flex-wrap gap-2 items-end">
                   <div><label className="block text-xs mb-1">付与された日</label><input type="date" value={compGrantedAt} onChange={e => setCompGrantedAt(e.target.value)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm" /></div>
                   <div><label className="block text-xs mb-1">種別</label>
-                    <select value={compLeaveType} onChange={e => setCompLeaveType(e.target.value as 'FULL_DAY' | 'TIME_ADJUST')} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm">
+                    <select value={compLeaveType} onChange={e => setCompLeaveType(e.target.value as CompensatoryLeaveType)} className="px-2 py-1.5 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm">
                       <option value="FULL_DAY">代休（1日）</option>
+                      <option value="HALF_DAY">半休</option>
                       <option value="TIME_ADJUST">時間調整</option>
                     </select>
                   </div>

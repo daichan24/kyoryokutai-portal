@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileDown, Edit2 } from 'lucide-react';
+import { X, Edit2 } from 'lucide-react';
 import { api } from '../../utils/api';
-import { fileNameFromContentDisposition } from '../../utils/contentDispositionFilename';
 import { format } from 'date-fns';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { Button } from '../common/Button';
 import { useAuthStore } from '../../stores/authStore';
 import { InspectionPreview } from './InspectionPreview';
-import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface Inspection {
   id: string;
@@ -42,7 +40,6 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
   viewMode: initialViewMode = 'edit',
 }) => {
   const { user } = useAuthStore();
-  const isMobile = useIsMobileBreakpoint();
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [isEditing, setIsEditing] = useState(initialViewMode === 'edit');
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
@@ -100,42 +97,6 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleDownloadPDF = async () => {
-    try {
-      const response = await api.get(`/api/inspections/${inspectionId}/pdf`, {
-        responseType: 'blob'
-      });
-      
-      // エラーレスポンスのチェック
-      if (response.data instanceof Blob && response.data.type === 'application/json') {
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.error || 'PDF出力に失敗しました');
-      }
-      
-      const fallback = `復命書_${inspection?.user?.name || 'user'}_${format(new Date(inspection?.date || new Date()), 'yyyyMMdd')}.pdf`;
-      const cd = response.headers?.['content-disposition'] as string | undefined;
-      const filename = fileNameFromContentDisposition(cd, fallback);
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      window.URL.revokeObjectURL(url);
-      link.remove();
-    } catch (error: any) {
-      console.error('PDF download failed:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
-      alert(errorMessage);
-    }
-  };
-
-  const handlePDFButtonClick = () => {
-    handleDownloadPDF();
   };
 
   if (loading) {
@@ -227,14 +188,6 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
             </button>
             {!isEditing && viewMode === 'edit' && (
               <>
-                {!isMobile ? (
-                  <Button variant="outline" onClick={handlePDFButtonClick} size="sm">
-                    <FileDown className="w-4 h-4 mr-2" />
-                    PDF出力
-                  </Button>
-                ) : (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 self-center">PDFはPC表示で</span>
-                )}
                 {canEdit && (
                   <Button variant="outline" onClick={() => setIsEditing(true)} size="sm">
                     <Edit2 className="w-4 h-4 mr-2" />

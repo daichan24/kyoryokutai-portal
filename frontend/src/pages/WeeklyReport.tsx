@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Plus, Trash2, Eye } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 import { api } from '../utils/api';
 import { WeeklyReport as WeeklyReportType } from '../types';
-import { formatDate, parseWeekString } from '../utils/date';
-import { format, startOfWeek } from 'date-fns';
+import { formatDate, getWeekString, normalizeWeekString, parseWeekString } from '../utils/date';
+import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -168,7 +168,8 @@ export const WeeklyReport: React.FC = () => {
   useEffect(() => {
     if (!weekFromQuery || loading || openedWeekFromQueryRef.current === weekFromQuery) return;
     openedWeekFromQueryRef.current = weekFromQuery;
-    const existing = reports.find((report) => report.week === weekFromQuery) || null;
+    const normalizedWeekFromQuery = normalizeWeekString(weekFromQuery);
+    const existing = reports.find((report) => normalizeWeekString(report.week) === normalizedWeekFromQuery) || null;
     if (!existing && !canCreate) return;
     setSelectedReport(existing);
     setModalViewMode(existing && canView ? 'preview' : 'edit');
@@ -188,21 +189,8 @@ export const WeeklyReport: React.FC = () => {
     return { label: '下書き', className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' };
   };
 
-  const handleDelete = async (reportId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // カードのクリックイベントを防ぐ
-    if (!confirm('この週次報告を削除しますか？')) return;
-    
-    try {
-      await api.delete(`/api/weekly-reports/${reportId}`);
-      fetchReports();
-      if (viewMode === 'weekly' && selectedWeek) {
-        fetchAllWeekReports(selectedWeek);
-      }
-    } catch (error) {
-      console.error('Failed to delete report:', error);
-      alert('削除に失敗しました');
-    }
-  };
+  const activityProjectLabel = (activity: WeeklyReportType['thisWeekActivities'][number]) =>
+    activity.projectName?.trim() || '未紐づけ';
 
   // 月でフィルタリングされた報告
   const filteredReports = useMemo(() => {
@@ -299,14 +287,7 @@ export const WeeklyReport: React.FC = () => {
   // 現在の週を取得（デフォルト選択用）
   useEffect(() => {
     if (viewMode === 'weekly' && !selectedWeek && availableWeeks.length > 0) {
-      // 現在の週を計算
-      const now = new Date();
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // 月曜日開始
-      const year = weekStart.getFullYear();
-      const firstDayOfYear = new Date(year, 0, 1);
-      const daysSinceFirstDay = Math.floor((weekStart.getTime() - firstDayOfYear.getTime()) / (1000 * 60 * 60 * 24));
-      const weekNum = Math.ceil((daysSinceFirstDay + firstDayOfYear.getDay() + 1) / 7);
-      const currentWeek = `${year}-${String(weekNum).padStart(2, '0')}`;
+      const currentWeek = getWeekString();
       
       // 利用可能な週の中にあるか確認
       if (availableWeeks.includes(currentWeek)) {
@@ -325,37 +306,10 @@ export const WeeklyReport: React.FC = () => {
           週次報告
         </h1>
         {canCreate && (
-          <div className="flex gap-2">
-            <Button 
-              onClick={async () => {
-                try {
-                  // 現在の週を取得
-                  const now = new Date();
-                  const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // 月曜日開始
-                  const year = weekStart.getFullYear();
-                  const firstDayOfYear = new Date(year, 0, 1);
-                  const daysSinceFirstDay = Math.floor((weekStart.getTime() - firstDayOfYear.getTime()) / (1000 * 60 * 60 * 24));
-                  const weekNum = Math.ceil((daysSinceFirstDay + firstDayOfYear.getDay() + 1) / 7);
-                  const week = `${year}-${String(weekNum).padStart(2, '0')}`;
-                  
-                  const response = await api.post('/api/weekly-reports/draft', { week });
-                  setSelectedReport(response.data);
-                  setIsModalOpen(true);
-                } catch (error: unknown) {
-                  console.error('Failed to generate draft:', error);
-                  const apiError = error as { response?: { data?: { error?: string } } };
-                  alert(apiError.response?.data?.error || '自動作成に失敗しました');
-                }
-              }}
-              variant="outline"
-            >
-              🤖 自動作成
-            </Button>
-            <Button onClick={handleCreateReport}>
-              <Plus className="h-4 w-4 mr-2" />
-              新規作成
-            </Button>
-          </div>
+          <Button onClick={handleCreateReport}>
+            <Plus className="h-4 w-4 mr-2" />
+            新規作成
+          </Button>
         )}
       </div>
 
@@ -510,17 +464,6 @@ export const WeeklyReport: React.FC = () => {
                           <Eye className="h-4 w-4 mr-1" />
                           詳細を見る
                         </Button>
-                        {canCreate && (
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={(e) => handleDelete(report.id, e)}
-                            title="削除"
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            削除
-                          </Button>
-                        )}
                       </div>
                     </div>
 
@@ -535,7 +478,7 @@ export const WeeklyReport: React.FC = () => {
                           {Array.isArray(report.thisWeekActivities) &&
                             report.thisWeekActivities.slice(0, 3).map((activity, index) => (
                               <div key={index} className="text-sm text-gray-700 dark:text-gray-300">
-                                <span className="font-medium">{activity.date}:</span>{' '}
+                                <span className="font-medium">{activityProjectLabel(activity)} / {activity.date}:</span>{' '}
                                 {activity.activity}
                               </div>
                             ))}
@@ -691,7 +634,7 @@ export const WeeklyReport: React.FC = () => {
                               {Array.isArray(report.thisWeekActivities) &&
                                 report.thisWeekActivities.slice(0, 2).map((activity, index) => (
                                   <div key={index} className="text-xs text-gray-600 dark:text-gray-400">
-                                    <span className="font-medium">{activity.date}:</span>{' '}
+                                    <span className="font-medium">{activityProjectLabel(activity)} / {activity.date}:</span>{' '}
                                     {activity.activity}
                                   </div>
                                 ))}
@@ -745,6 +688,11 @@ export const WeeklyReport: React.FC = () => {
         <WeeklyReportModal
           report={selectedReport}
           initialWeek={weekFromQuery || undefined}
+          existingReports={reports}
+          onOpenExisting={(existingReport) => {
+            setSelectedReport(existingReport);
+            setModalViewMode('edit');
+          }}
           onClose={handleCloseModal}
           onSaved={handleSaved}
           viewMode={modalViewMode}

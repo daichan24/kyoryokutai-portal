@@ -352,7 +352,7 @@ const createScheduleSchema = z.object({
   isTimeUnspecified: z.boolean().optional(),
   reportable: z.boolean().optional(),
   compensatoryLeaveRequired: z.boolean().optional(),
-  compensatoryLeaveType: z.enum(['FULL_DAY', 'TIME_ADJUST']).optional().nullable(),
+  compensatoryLeaveType: z.enum(['FULL_DAY', 'HALF_DAY', 'TIME_ADJUST']).optional().nullable(),
   isHolidayWork: z.boolean().optional(),
   isDayOff: z.boolean().optional(),
   dayOffType: z.enum(['PAID', 'UNPAID', 'COMPENSATORY', 'TIME_ADJUST']).optional().nullable(),

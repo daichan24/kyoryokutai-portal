@@ -378,6 +378,13 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   };
   const goToInspection = () => {
     if (!schedule) return;
+    const existingInspection = schedule.inspections?.[0];
+    if (existingInspection) {
+      navigate(`/inspections?inspectionId=${existingInspection.id}`);
+      onClose();
+      return;
+    }
+
     const params = new URLSearchParams({
       scheduleId: schedule.id,
       userId: schedule.userId,
@@ -461,7 +468,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                   </Button>
                   <Button type="button" size="sm" variant="outline" onClick={goToInspection}>
                     <FileText className="h-4 w-4 mr-1" />
-                    復命書
+                    {(schedule.inspections?.length || 0) > 0 ? '復命書あり' : '復命書を添付'}
                   </Button>
                   <Button type="button" size="sm" variant="outline" onClick={goToExpense}>
                     <ReceiptText className="h-4 w-4 mr-1" />
@@ -472,8 +479,15 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               {((schedule.inspections?.length || 0) > 0 || (schedule.activityExpenseEntries?.length || 0) > 0) && (
                 <div className="mt-3 grid gap-2 text-xs text-gray-700 dark:text-gray-200 sm:grid-cols-2">
                   {(schedule.inspections?.length || 0) > 0 && (
-                    <div>
-                      <span className="font-medium">関連復命書:</span> {schedule.inspections!.map((i) => i.destination).join('、')}
+                    <div className="rounded-md bg-blue-50 px-2 py-1 text-blue-800 dark:bg-blue-900/25 dark:text-blue-200">
+                      <span className="font-medium">復命書添付:</span>{' '}
+                      {schedule.inspections!.map((i) => {
+                        const status =
+                          i.approvalStatus === 'APPROVED' ? '承認済み'
+                          : i.approvalStatus === 'REJECTED' ? '差し戻し'
+                          : '未承認';
+                        return `${i.destination}（${status}）`;
+                      }).join('、')}
                     </div>
                   )}
                   {(schedule.activityExpenseEntries?.length || 0) > 0 && (

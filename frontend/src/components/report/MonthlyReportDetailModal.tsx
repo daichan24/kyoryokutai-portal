@@ -597,6 +597,23 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  振り返り・所感
+                </label>
+                <SimpleRichTextEditor
+                  value={sheet.reflectionNotes || ''}
+                  onChange={(value) => {
+                    const newSheets = [...memberSheets];
+                    newSheets[index] = {
+                      ...sheet,
+                      reflectionNotes: value,
+                    };
+                    setMemberSheets(newSheets);
+                  }}
+                  placeholder="週次報告から集約された振り返り・所感を入力..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   勤務に関する質問など
                 </label>
                 <SimpleRichTextEditor
@@ -648,6 +665,12 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                 <div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">来月の予定:</span>
                   <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.nextMonthPlan }} />
+                </div>
+              )}
+              {sheet.reflectionNotes && (
+                <div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">振り返り・所感:</span>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.reflectionNotes }} />
                 </div>
               )}
               {sheet.workQuestions && (

@@ -280,7 +280,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
   const [isHolidayWork, setIsHolidayWork] = useState(false);
   const [compensatoryLeaveRequired, setCompensatoryLeaveRequired] = useState(false);
-  const [compensatoryLeaveType, setCompensatoryLeaveType] = useState<'FULL_DAY' | 'TIME_ADJUST'>('FULL_DAY');
+  const [compensatoryLeaveType, setCompensatoryLeaveType] = useState<'FULL_DAY' | 'HALF_DAY' | 'TIME_ADJUST'>('FULL_DAY');
   const [isDayOff, setIsDayOff] = useState(false);
   const [dayOffType, setDayOffType] = useState<'PAID' | 'UNPAID' | 'COMPENSATORY' | 'TIME_ADJUST'>('PAID');
   const [showRecurringModal, setShowRecurringModal] = useState(false);
@@ -554,6 +554,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           try {
             await api.post('/api/leave/compensatory/from-schedule', {
               scheduleId: savedScheduleId,
+              userId: schedule?.userId,
               grantedAt: dueDate,
               startTime: normalizeTimeValue(startTime),
               endTime: normalizeTimeValue(endTime, '17:30'),
@@ -562,6 +563,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             });
           } catch (e) {
             console.warn('代休自動作成に失敗しました', e);
+          }
+        } else if (savedScheduleId) {
+          try {
+            await api.delete(`/api/leave/compensatory/from-schedule/${savedScheduleId}`, {
+              params: schedule?.userId ? { userId: schedule.userId } : undefined,
+            });
+          } catch (e) {
+            console.warn('代休自動解除に失敗しました', e);
           }
         }
       } else {
@@ -604,6 +613,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           isAllDay: isCalendarCreate ? isAllDay : undefined,
           isTimeUnspecified: isCalendarCreate ? isTimeUnspecified : undefined,
           reportable: isCalendarCreate ? reportable : undefined,
+          isHolidayWork: isCalendarCreate ? isHolidayWork : undefined,
+          compensatoryLeaveRequired: isCalendarCreate ? compensatoryLeaveRequired : undefined,
+          compensatoryLeaveType: isCalendarCreate && compensatoryLeaveRequired ? compensatoryLeaveType : null,
+          isDayOff: isCalendarCreate ? isDayOff : undefined,
+          dayOffType: isCalendarCreate && isDayOff ? dayOffType : null,
           participantsUserIds: isCollaborative && selectedParticipantIds.length > 0 ? selectedParticipantIds : undefined,
         };
         if (task) { await api.put(`/api/missions/${targetMissionId}/tasks/${task.id}`, data); }
@@ -961,13 +975,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     {compensatoryLeaveRequired && (
                       <div className="ml-6 space-y-1">
                         <div className="flex gap-4">
-                          {(['FULL_DAY', 'TIME_ADJUST'] as const).map(t => (
+                          {(['FULL_DAY', 'HALF_DAY', 'TIME_ADJUST'] as const).map(t => (
                             <label key={t} className="flex items-center gap-1.5 cursor-pointer">
                               <input type="radio" checked={compensatoryLeaveType === t}
                                 onChange={() => setCompensatoryLeaveType(t)}
                                 className="h-4 w-4 text-orange-500" disabled={readOnly} />
                               <span className="text-sm text-gray-700 dark:text-gray-300">
-                                {t === 'FULL_DAY' ? '代休（1日）' : '時間調整'}
+                                {t === 'FULL_DAY' ? '代休（1日）' : t === 'HALF_DAY' ? '半休' : '時間調整'}
                               </span>
                             </label>
                           ))}

@@ -12,6 +12,7 @@ interface WeeklyReport {
   week: string;
   thisWeekActivities: any;
   nextWeekPlan: string | null;
+  reflection: string | null;
   note: string | null;
 }
 
@@ -81,6 +82,7 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
         // 週次報告から活動内容を抽出
         const thisMonthActivities = extractActivitiesFromWeeklyReports(weeklyReports, month);
         const nextMonthPlan = aggregateNextWeekPlans(weeklyReports, month);
+        const reflectionNotes = extractReflectionNotes(weeklyReports);
         const workQuestions = extractWorkQuestions(weeklyReports);
         const lifeNotes = extractLifeNotes(weeklyReports);
 
@@ -90,6 +92,7 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
           missionType: user.missionType,
           thisMonthActivities,
           nextMonthPlan,
+          reflectionNotes,
           workQuestions,
           lifeNotes,
         });
@@ -102,6 +105,7 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
           missionType: user.missionType,
           thisMonthActivities: [],
           nextMonthPlan: '',
+          reflectionNotes: '',
           workQuestions: '',
           lifeNotes: '',
         });
@@ -238,23 +242,8 @@ function getWeeksInMonth(month: string): string[] {
     { weekStartsOn: 1 }
   );
   
-  // 週の形式に変換（YYYY-WW）
-  return weeks.map(weekStart => {
-    const year = weekStart.getFullYear();
-    const weekNum = getWeekNumber(weekStart);
-    return `${year}-${weekNum.toString().padStart(2, '0')}`;
-  });
-}
-
-/**
- * 週番号を取得（ISO週番号）
- */
-function getWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  // 週の形式に変換（ISO週年-週番号 / YYYY-WW）
+  return weeks.map(weekStart => format(weekStart, 'RRRR-II'));
 }
 
 /**
@@ -262,22 +251,19 @@ function getWeekNumber(date: Date): number {
  */
 function parseWeekString(weekStr: string): Date {
   try {
-    // YYYY-WW形式（例: 2024-01）をパース
+    // YYYY-WW形式（例: 2024-01）をISO週としてパース
     const match = weekStr.match(/^(\d{4})-(\d{2})$/);
     if (match) {
       const year = parseInt(match[1], 10);
       const weekNum = parseInt(match[2], 10);
-      
-      // 年の最初の月曜日を基準に週を計算
-      const yearStart = new Date(year, 0, 1);
-      const dayOfWeek = yearStart.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7;
-      const firstMonday = new Date(yearStart);
-      firstMonday.setDate(yearStart.getDate() + daysToMonday);
-      
-      // 指定された週の開始日
-      const weekStart = new Date(firstMonday);
-      weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+
+      const jan4 = new Date(year, 0, 4);
+      const jan4Day = jan4.getDay() || 7;
+      const firstIsoMonday = new Date(jan4);
+      firstIsoMonday.setDate(jan4.getDate() - jan4Day + 1);
+
+      const weekStart = new Date(firstIsoMonday);
+      weekStart.setDate(firstIsoMonday.getDate() + (weekNum - 1) * 7);
       
       return weekStart;
     }
@@ -423,6 +409,16 @@ function aggregateNextWeekPlans(
   }
   
   return plans.join('\n\n');
+}
+
+/**
+ * 週次報告から振り返り・所感を抽出
+ */
+function extractReflectionNotes(weeklyReports: WeeklyReport[]): string {
+  return weeklyReports
+    .map((report) => report.reflection?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join('\n\n');
 }
 
 /**

@@ -112,8 +112,6 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         margin: '0 auto',
         boxSizing: 'border-box',
         pageBreakAfter: 'always',
-        borderTop: '2px solid #e5e7eb',
-        borderBottom: '2px solid #e5e7eb',
         marginBottom: '1rem'
       }}>
         {/* 報告日（右寄せ） */}
@@ -214,8 +212,6 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
               margin: '0 auto',
               boxSizing: 'border-box',
               pageBreakAfter: index < report.memberSheets.length - 1 ? 'always' : 'auto',
-              borderTop: index > 0 ? '2px solid #e5e7eb' : '2px solid #e5e7eb',
-              borderBottom: '2px solid #e5e7eb',
               marginTop: index > 0 ? '1rem' : '0',
               marginBottom: '1rem'
             }}>
@@ -274,6 +270,22 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
                 </div>
               </div>
 
+              {/* 振り返り・所感 */}
+              <div style={{ marginBottom: '30px' }}>
+                <div style={{
+                  fontWeight: 'bold',
+                  backgroundColor: '#f0f0f0',
+                  color: '#1F2937',
+                  padding: '8px',
+                  marginBottom: '15px'
+                }}>
+                  【振り返り・所感】
+                </div>
+                <div style={{ marginLeft: '15px', whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
+                  {stripHtml(sheet.reflectionNotes) || '（未記入）'}
+                </div>
+              </div>
+
               {/* 勤務に関する質問など */}
               <div style={{ marginBottom: '30px' }}>
                 <div style={{
@@ -320,8 +332,6 @@ export const MonthlyReportPreview: React.FC<MonthlyReportPreviewProps> = ({ repo
         lineHeight: '1.8',
         margin: '0 auto',
         boxSizing: 'border-box',
-        borderTop: '2px solid #e5e7eb',
-        borderBottom: '2px solid #e5e7eb',
         marginTop: '1rem',
         marginBottom: '1rem'
       }}>

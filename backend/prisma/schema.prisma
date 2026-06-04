@@ -130,6 +130,11 @@ model User {
   snsAccounts           SNSAccount[]
   interviewNotesAsMember InterviewNote[] @relation("InterviewNoteMember")
   interviewNotesUpdated  InterviewNote[] @relation("InterviewNoteUpdatedBy")
+  interviewPollsCreated  InterviewPoll[] @relation("InterviewPollCreator")
+  interviewPollsConfirmed InterviewPoll[] @relation("InterviewPollConfirmer")
+  interviewPollParticipants InterviewPollParticipant[] @relation("InterviewPollParticipantMember")
+  interviewPollAvailability InterviewPollAvailability[] @relation("InterviewPollAvailabilityMember")
+  interviewPollAssignments InterviewPollAssignment[] @relation("InterviewPollAssignmentMember")
 
   handoverDocumentsCreated HandoverDocument[] @relation("HandoverDocumentCreator")
   handoverDocumentsUpdated HandoverDocument[] @relation("HandoverDocumentUpdater")
@@ -197,7 +202,7 @@ model Schedule {
 
   // 代休・時間調整
   compensatoryLeaveRequired Boolean               @default(false) // 代休が必要か
-  compensatoryLeaveType     CompensatoryLeaveType? // FULL_DAY=代休 / TIME_ADJUST=時間調整
+  compensatoryLeaveType     CompensatoryLeaveType? // FULL_DAY=代休 / HALF_DAY=半休 / TIME_ADJUST=時間調整
 
   // 休日出勤・休日区分
   isHolidayWork Boolean  @default(false) // 休日出勤フラグ
@@ -394,6 +399,7 @@ model WeeklyReport {
 
   thisWeekActivities Json
   nextWeekPlan       String? @db.Text
+  reflection         String? @db.Text
   note               String? @db.Text
 
   submittedAt DateTime?
@@ -1293,6 +1299,10 @@ model DocumentTemplate {
   // 週次報告テンプレート設定
   weeklyReportRecipient String? // 宛先
   weeklyReportTitle     String? // タイトル
+  weeklyReportActivityLabel   String? // 活動内容見出し
+  weeklyReportNextPlanLabel   String? // 来週予定見出し
+  weeklyReportReflectionLabel String? // 振り返り見出し
+  weeklyReportNoteLabel       String? // 備考見出し
 
   // 月次報告テンプレート設定
   monthlyReportRecipient String? // 宛先
@@ -1768,6 +1778,116 @@ model InterviewNote {
 }
 
 // ========================================
+// 月次面談の日程調整
+// ========================================
+
+model InterviewPoll {
+  id        String @id @default(uuid())
+  title     String @db.VarChar(200)
+  month     String @db.VarChar(7) // YYYY-MM
+  status    InterviewPollStatus @default(COLLECTING)
+  startTime String @default("09:00")
+  endTime   String @default("17:00")
+  memo      String? @db.Text
+
+  createdById String
+  createdBy   User @relation("InterviewPollCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  confirmedById String?
+  confirmedBy   User? @relation("InterviewPollConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  confirmedAt   DateTime?
+
+  dates        InterviewPollDate[]
+  participants InterviewPollParticipant[]
+  availability InterviewPollAvailability[]
+  assignments  InterviewPollAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([month, status])
+  @@index([createdById])
+}
+
+model InterviewPollDate {
+  id        String @id @default(uuid())
+  pollId    String
+  poll      InterviewPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  capacity  Int @default(4)
+  unavailableDepartments String[] @default([])
+
+  availability InterviewPollAvailability[]
+  assignments  InterviewPollAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pollId, date])
+  @@index([pollId, date])
+}
+
+model InterviewPollParticipant {
+  id        String @id @default(uuid())
+  pollId    String
+  poll      InterviewPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    User @relation("InterviewPollParticipantMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([pollId, memberId])
+  @@index([memberId])
+}
+
+model InterviewPollAvailability {
+  id        String @id @default(uuid())
+  pollId    String
+  poll      InterviewPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  dateId    String
+  date      InterviewPollDate @relation(fields: [dateId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    User @relation("InterviewPollAvailabilityMember", fields: [memberId], references: [id], onDelete: Cascade)
+  status    InterviewAvailabilityStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pollId, dateId, memberId])
+  @@index([memberId, pollId])
+}
+
+model InterviewPollAssignment {
+  id        String @id @default(uuid())
+  pollId    String
+  poll      InterviewPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  dateId    String
+  date      InterviewPollDate @relation(fields: [dateId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    User @relation("InterviewPollAssignmentMember", fields: [memberId], references: [id], onDelete: Cascade)
+  slotOrder Int
+  scheduleId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pollId, memberId])
+  @@index([pollId, dateId])
+  @@index([scheduleId])
+}
+
+enum InterviewPollStatus {
+  COLLECTING
+  PROPOSED
+  CONFIRMED
+  CANCELLED
+}
+
+enum InterviewAvailabilityStatus {
+  OK
+  NG
+}
+
+// ========================================
 // 有給・代休管理
 // ========================================
 
@@ -1837,7 +1957,7 @@ model CompensatoryLeave {
   scheduleId  String?               // 紐づくスケジュール
   schedule    Schedule?             @relation("CompensatoryLeaveSchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
   totalHours  Float?                // 発生した時間（タスクから自動入力、変更可）
-  leaveType   CompensatoryLeaveType @default(FULL_DAY) // 代休 or 時間調整
+  leaveType   CompensatoryLeaveType @default(FULL_DAY) // 代休 / 半休 / 時間調整
   status      CompensatoryLeaveStatus @default(PENDING)
   note        String?               @db.VarChar(500)
   confirmedById String?
@@ -1857,6 +1977,7 @@ model CompensatoryLeave {
 
 enum CompensatoryLeaveType {
   FULL_DAY      // 代休（1日単位）
+  HALF_DAY      // 半休（0.5日単位）
   TIME_ADJUST   // 時間調整
 }
 

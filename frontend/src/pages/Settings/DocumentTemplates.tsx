@@ -11,6 +11,10 @@ interface TemplateSettings {
   weeklyReport: {
     recipient: string;
     title: string;
+    activityLabel: string;
+    nextPlanLabel: string;
+    reflectionLabel: string;
+    noteLabel: string;
   };
   monthlyReport: {
     recipient: string;
@@ -53,13 +57,28 @@ export const DocumentTemplatesSettings: React.FC = () => {
       const response = await api.get('/api/document-templates');
       // APIレスポンスの形式を確認
       if (response.data && (response.data.weeklyReport || response.data.monthlyReport || response.data.inspection)) {
-        setSettings(response.data as TemplateSettings);
+        setSettings({
+          ...(response.data as TemplateSettings),
+          weeklyReport: {
+            recipient: '○○市役所　○○課長　様',
+            title: '地域おこし協力隊活動報告',
+            activityLabel: '活動内容',
+            nextPlanLabel: '来週の予定',
+            reflectionLabel: '振り返り・所感',
+            noteLabel: '備考',
+            ...response.data.weeklyReport,
+          },
+        } as TemplateSettings);
       } else {
         // デフォルト値を設定
         setSettings({
           weeklyReport: {
             recipient: '○○市役所　○○課長　様',
             title: '地域おこし協力隊活動報告',
+            activityLabel: '活動内容',
+            nextPlanLabel: '来週の予定',
+            reflectionLabel: '振り返り・所感',
+            noteLabel: '備考',
           },
           monthlyReport: {
             recipient: '長沼町長　齋　藤　良　彦　様',
@@ -92,6 +111,10 @@ export const DocumentTemplatesSettings: React.FC = () => {
         weeklyReport: {
           recipient: '○○市役所　○○課長　様',
           title: '地域おこし協力隊活動報告',
+          activityLabel: '活動内容',
+          nextPlanLabel: '来週の予定',
+          reflectionLabel: '振り返り・所感',
+          noteLabel: '備考',
         },
         monthlyReport: {
           recipient: '長沼町長　齋　藤　良　彦　様',
@@ -195,6 +218,17 @@ export const DocumentTemplatesSettings: React.FC = () => {
         <h2 className="text-xl font-bold mb-4 dark:text-gray-100">週次報告テンプレート</h2>
         <div className="space-y-4">
           <Input
+            label="宛先"
+            value={settings.weeklyReport.recipient}
+            onChange={(e) =>
+              setSettings({
+                ...settings,
+                weeklyReport: { ...settings.weeklyReport, recipient: e.target.value },
+              })
+            }
+            disabled={!canEdit}
+          />
+          <Input
             label="タイトル"
             value={settings.weeklyReport.title}
             onChange={(e) =>
@@ -205,6 +239,52 @@ export const DocumentTemplatesSettings: React.FC = () => {
             }
             disabled={!canEdit}
           />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="活動内容の見出し"
+              value={settings.weeklyReport.activityLabel}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  weeklyReport: { ...settings.weeklyReport, activityLabel: e.target.value },
+                })
+              }
+              disabled={!canEdit}
+            />
+            <Input
+              label="来週予定の見出し"
+              value={settings.weeklyReport.nextPlanLabel}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  weeklyReport: { ...settings.weeklyReport, nextPlanLabel: e.target.value },
+                })
+              }
+              disabled={!canEdit}
+            />
+            <Input
+              label="振り返りの見出し"
+              value={settings.weeklyReport.reflectionLabel}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  weeklyReport: { ...settings.weeklyReport, reflectionLabel: e.target.value },
+                })
+              }
+              disabled={!canEdit}
+            />
+            <Input
+              label="備考の見出し"
+              value={settings.weeklyReport.noteLabel}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  weeklyReport: { ...settings.weeklyReport, noteLabel: e.target.value },
+                })
+              }
+              disabled={!canEdit}
+            />
+          </div>
         </div>
       </div>
 
@@ -509,4 +589,3 @@ export const DocumentTemplatesSettings: React.FC = () => {
     </div>
   );
 };
-

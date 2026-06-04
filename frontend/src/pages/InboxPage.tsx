@@ -62,7 +62,7 @@ interface ReceptionData {
   weeklyReports: Array<{ id: string; week: string; submittedAt: string; approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
   inspections: Array<{ id: string; destination: string; date: string; createdAt: string; approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
   monthlyReports: Array<{ id: string; month: string; submittedAt: string; approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; creator: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
-  compensatoryLeaves: Array<{ id: string; grantedAt: string; expiresAt: string; totalHours?: number | null; leaveType: 'FULL_DAY' | 'TIME_ADJUST'; note?: string | null; createdAt: string; confirmedAt?: string | null; user: { id: string; name: string }; confirmedBy?: { id: string; name: string } | null; schedule?: { id: string; title?: string | null; activityDescription?: string | null; startDate?: string | null } | null }>;
+  compensatoryLeaves: Array<{ id: string; grantedAt: string; expiresAt: string; totalHours?: number | null; leaveType: 'FULL_DAY' | 'HALF_DAY' | 'TIME_ADJUST'; note?: string | null; createdAt: string; confirmedAt?: string | null; user: { id: string; name: string }; confirmedBy?: { id: string; name: string } | null; schedule?: { id: string; title?: string | null; activityDescription?: string | null; startDate?: string | null } | null }>;
   timeAdjustments: Array<{ id: string; adjustedAt: string; hours: number; note?: string | null; createdAt: string; confirmedAt?: string | null; user: { id: string; name: string }; confirmedBy?: { id: string; name: string } | null; sourceSchedule?: { id: string; title?: string | null; activityDescription?: string | null; startDate?: string | null } | null; compensatoryLeave?: { id: string; expiresAt: string } | null }>;
 }
 
@@ -542,7 +542,7 @@ export const InboxPage: React.FC = () => {
       id: l.id, type: 'compensatoryLeave' as const,
       status: l.confirmedAt ? 'resolved' as const : 'unapproved' as const,
       from: l.user.name,
-      label: `${l.leaveType === 'TIME_ADJUST' ? '時間調整元' : '代休'}: ${format(new Date(l.grantedAt), 'M月d日', { locale: ja })}${l.totalHours ? ` ${l.totalHours}時間` : ''}`,
+      label: `${l.leaveType === 'TIME_ADJUST' ? '時間調整元' : l.leaveType === 'HALF_DAY' ? '半休' : '代休'}: ${format(new Date(l.grantedAt), 'M月d日', { locale: ja })}${l.totalHours ? ` ${l.totalHours}時間` : ''}`,
       createdAt: l.createdAt, raw: l,
     })),
     ...(receptionData?.timeAdjustments || []).map(t => ({

@@ -140,8 +140,12 @@ export interface WeeklyReport {
   thisWeekActivities: Array<{
     date: string;
     activity: string;
+    projectId?: string | null;
+    projectName?: string;
+    sourceType?: string;
   }>;
   nextWeekPlan?: string;
+  reflection?: string;
   note?: string;
   submittedAt?: string;
   approvalStatus?: ApprovalStatus;
@@ -176,6 +180,66 @@ export interface ScheduleSuggestion {
   }>;
   createdAt: string;
   respondedAt?: string;
+}
+
+export type InterviewPollStatus = 'COLLECTING' | 'PROPOSED' | 'CONFIRMED' | 'CANCELLED';
+export type InterviewAvailabilityStatus = 'OK' | 'NG';
+
+export interface InterviewPollDate {
+  id: string;
+  pollId: string;
+  date: string;
+  capacity: number;
+  unavailableDepartments: string[];
+}
+
+export interface InterviewPollAvailability {
+  id: string;
+  pollId: string;
+  dateId: string;
+  memberId: string;
+  status: InterviewAvailabilityStatus;
+}
+
+export interface InterviewPollParticipant {
+  id: string;
+  pollId: string;
+  memberId: string;
+  member: User;
+}
+
+export interface InterviewPollAssignment {
+  id: string;
+  pollId: string;
+  dateId: string;
+  memberId: string;
+  slotOrder: number;
+  scheduleId?: string | null;
+  date?: InterviewPollDate;
+  member?: User;
+}
+
+export interface InterviewPoll {
+  id: string;
+  title: string;
+  month: string;
+  status: InterviewPollStatus;
+  startTime: string;
+  endTime: string;
+  memo?: string | null;
+  createdById: string;
+  confirmedAt?: string | null;
+  dates: InterviewPollDate[];
+  participants: InterviewPollParticipant[];
+  availability: InterviewPollAvailability[];
+  myAvailability?: InterviewPollAvailability[];
+  assignments: InterviewPollAssignment[];
+  responseSummary?: {
+    totalParticipants: number;
+    respondedParticipants: number;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ParsedSchedule {

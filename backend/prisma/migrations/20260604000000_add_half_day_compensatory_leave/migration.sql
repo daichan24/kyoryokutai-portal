@@ -1,0 +1,1 @@
+ALTER TYPE "CompensatoryLeaveType" ADD VALUE IF NOT EXISTS 'HALF_DAY';

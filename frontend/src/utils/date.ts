@@ -44,30 +44,43 @@ export const isSaturday = (date: Date | string): boolean => {
   return d.getDay() === 6;
 };
 
+const getIsoWeekStart = (year: number, weekNum: number): Date => {
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const firstIsoMonday = new Date(jan4);
+  firstIsoMonday.setDate(jan4.getDate() - jan4Day + 1);
+
+  const weekStart = new Date(firstIsoMonday);
+  weekStart.setDate(firstIsoMonday.getDate() + (weekNum - 1) * 7);
+  weekStart.setHours(0, 0, 0, 0);
+  return weekStart;
+};
+
+export const normalizeWeekString = (weekStr: string): string => {
+  const match = weekStr.trim().match(/^(\d{4})-W?(\d{2})$/);
+  if (!match) return weekStr;
+  return `${match[1]}-${match[2]}`;
+};
+
+export const toWeekInputValue = (weekStr: string): string => {
+  const normalized = normalizeWeekString(weekStr);
+  const match = normalized.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return weekStr;
+  return `${match[1]}-W${match[2]}`;
+};
+
 export const getWeekString = (date: Date = new Date()): string => {
-  return format(date, "yyyy-'W'II");
+  return format(date, 'RRRR-II');
 };
 
 export const parseWeekString = (weekStr: string): Date => {
   try {
-    // YYYY-WW形式（例: 2024-01）をパース
-    const match = weekStr.match(/^(\d{4})-(\d{2})$/);
+    // YYYY-WW / YYYY-Www形式（例: 2024-01 / 2024-W01）をISO週としてパース
+    const match = weekStr.match(/^(\d{4})-W?(\d{2})$/);
     if (match) {
       const year = parseInt(match[1], 10);
       const weekNum = parseInt(match[2], 10);
-      
-      // 年の最初の月曜日を基準に週を計算
-      const yearStart = new Date(year, 0, 1);
-      const firstMonday = new Date(yearStart);
-      const dayOfWeek = yearStart.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7;
-      firstMonday.setDate(yearStart.getDate() + daysToMonday);
-      
-      // 指定された週の開始日
-      const weekStart = new Date(firstMonday);
-      weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
-      
-      return weekStart;
+      return getIsoWeekStart(year, weekNum);
     }
     
     // フォールバック: 既存のパース方法を試す

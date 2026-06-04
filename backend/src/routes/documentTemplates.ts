@@ -6,6 +6,15 @@ import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 const router = Router();
 router.use(authenticate);
 
+const defaultWeeklyReportTemplate = {
+  recipient: '○○市役所　○○課長　様',
+  title: '地域おこし協力隊活動報告',
+  activityLabel: '活動内容',
+  nextPlanLabel: '来週の予定',
+  reflectionLabel: '振り返り・所感',
+  noteLabel: '備考',
+};
+
 // テンプレート設定初期化（デフォルト値を保存）
 router.post('/init', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) => {
   try {
@@ -31,8 +40,12 @@ router.post('/init', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, re
     const template = await prisma.documentTemplate.create({
       data: {
         templateType: 'weekly_report',
-        weeklyReportRecipient: '○○市役所　○○課長　様',
-        weeklyReportTitle: '地域おこし協力隊活動報告',
+        weeklyReportRecipient: defaultWeeklyReportTemplate.recipient,
+        weeklyReportTitle: defaultWeeklyReportTemplate.title,
+        weeklyReportActivityLabel: defaultWeeklyReportTemplate.activityLabel,
+        weeklyReportNextPlanLabel: defaultWeeklyReportTemplate.nextPlanLabel,
+        weeklyReportReflectionLabel: defaultWeeklyReportTemplate.reflectionLabel,
+        weeklyReportNoteLabel: defaultWeeklyReportTemplate.noteLabel,
         monthlyReportRecipient: '長沼町長　齋　藤　良　彦　様',
         monthlyReportSender: '一般社団法人まおいのはこ<br>代表理事　坂本　一志',
         monthlyReportTitle: '長沼町地域おこし協力隊サポート業務月次報告',
@@ -75,8 +88,7 @@ router.get('/', async (req: AuthRequest, res) => {
       if (error?.message?.includes('does not exist') || error?.code === 'P2021') {
         return res.json({
           weeklyReport: {
-            recipient: '○○市役所　○○課長　様',
-            title: '地域おこし協力隊活動報告',
+            ...defaultWeeklyReportTemplate,
           },
           monthlyReport: {
             recipient: '長沼町長　齋　藤　良　彦　様',
@@ -107,8 +119,7 @@ router.get('/', async (req: AuthRequest, res) => {
     if (templates.length === 0) {
       return res.json({
         weeklyReport: {
-          recipient: '○○市役所　○○課長　様',
-          title: '地域おこし協力隊活動報告',
+          ...defaultWeeklyReportTemplate,
         },
         monthlyReport: {
           recipient: '長沼町長　齋　藤　良　彦　様',
@@ -140,8 +151,12 @@ router.get('/', async (req: AuthRequest, res) => {
     
     res.json({
       weeklyReport: {
-        recipient: latest.weeklyReportRecipient || '○○市役所　○○課長　様',
-        title: latest.weeklyReportTitle || '地域おこし協力隊活動報告',
+        recipient: latest.weeklyReportRecipient || defaultWeeklyReportTemplate.recipient,
+        title: latest.weeklyReportTitle || defaultWeeklyReportTemplate.title,
+        activityLabel: latest.weeklyReportActivityLabel || defaultWeeklyReportTemplate.activityLabel,
+        nextPlanLabel: latest.weeklyReportNextPlanLabel || defaultWeeklyReportTemplate.nextPlanLabel,
+        reflectionLabel: latest.weeklyReportReflectionLabel || defaultWeeklyReportTemplate.reflectionLabel,
+        noteLabel: latest.weeklyReportNoteLabel || defaultWeeklyReportTemplate.noteLabel,
       },
       monthlyReport: {
         recipient: latest.monthlyReportRecipient || '長沼町長　齋　藤　良　彦　様',
@@ -179,6 +194,10 @@ router.put('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =>
       weeklyReport: z.object({
         recipient: z.string().optional(),
         title: z.string().optional(),
+        activityLabel: z.string().optional(),
+        nextPlanLabel: z.string().optional(),
+        reflectionLabel: z.string().optional(),
+        noteLabel: z.string().optional(),
       }).optional(),
       monthlyReport: z.object({
         recipient: z.string().optional(),
@@ -247,6 +266,10 @@ router.put('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =>
       data: {
         weeklyReportRecipient: data.weeklyReport?.recipient,
         weeklyReportTitle: data.weeklyReport?.title,
+        weeklyReportActivityLabel: data.weeklyReport?.activityLabel,
+        weeklyReportNextPlanLabel: data.weeklyReport?.nextPlanLabel,
+        weeklyReportReflectionLabel: data.weeklyReport?.reflectionLabel,
+        weeklyReportNoteLabel: data.weeklyReport?.noteLabel,
         monthlyReportRecipient: data.monthlyReport?.recipient,
         monthlyReportSender: data.monthlyReport?.sender,
         monthlyReportTitle: data.monthlyReport?.title,
@@ -280,4 +303,3 @@ router.put('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =>
 });
 
 export default router;
-

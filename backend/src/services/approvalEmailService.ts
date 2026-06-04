@@ -298,7 +298,7 @@ export async function notifyCompensatoryLeaveSubmitted(leaveId: string) {
   });
   if (!leave || leave.confirmedAt) return { count: 0 };
 
-  const typeText = leave.leaveType === 'TIME_ADJUST' ? '時間調整元' : '代休';
+  const typeText = leave.leaveType === 'TIME_ADJUST' ? '時間調整元' : leave.leaveType === 'HALF_DAY' ? '半休' : '代休';
   return notifyRoles({
     roles: staffRoles,
     eventType: 'COMPENSATORY_LEAVE_SUBMITTED',
@@ -319,7 +319,7 @@ export async function notifyCompensatoryLeaveConfirmed(leaveId: string) {
   });
   if (!leave?.confirmedAt) return { count: 0 };
 
-  const typeText = leave.leaveType === 'TIME_ADJUST' ? '時間調整元' : '代休';
+  const typeText = leave.leaveType === 'TIME_ADJUST' ? '時間調整元' : leave.leaveType === 'HALF_DAY' ? '半休' : '代休';
   return notifyUser({
     userId: leave.userId,
     eventType: 'COMPENSATORY_LEAVE_CONFIRMED',

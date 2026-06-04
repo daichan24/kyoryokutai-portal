@@ -3,7 +3,7 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateWeeklyReportPDF } from '../services/pdfGenerator';
-import { generateWeeklyReportDraft } from '../services/weeklyReportGenerator';
+import { generateWeeklyReportDraft, normalizeWeeklyReportWeek } from '../services/weeklyReportGenerator';
 import { notifyWeeklyReportResult, notifyWeeklyReportSubmitted } from '../services/approvalEmailService';
 
 const router = Router();
@@ -15,14 +15,18 @@ function isStaff(role: string) {
 }
 
 const createWeeklyReportSchema = z.object({
-  week: z.string().regex(/^\d{4}-\d{2}$/),
+  week: z.preprocess((value) => normalizeWeeklyReportWeek(value), z.string().regex(/^\d{4}-\d{2}$/)),
   thisWeekActivities: z.array(
     z.object({
       date: z.string(),
       activity: z.string(),
+      projectId: z.string().nullable().optional(),
+      projectName: z.string().optional(),
+      sourceType: z.string().optional(),
     })
   ),
   nextWeekPlan: z.string().optional(),
+  reflection: z.string().optional(),
   note: z.string().optional(),
   submittedAt: z.string().optional(),
 });
@@ -46,7 +50,11 @@ router.get('/', async (req: AuthRequest, res) => {
     }
 
     if (week) {
-      where.week = week as string;
+      const normalizedWeek = normalizeWeeklyReportWeek(week);
+      if (!normalizedWeek) {
+        return res.status(400).json({ error: '週はYYYY-WWまたはYYYY-Www形式で入力してください' });
+      }
+      where.week = normalizedWeek;
     }
 
     const reports = await prisma.weeklyReport.findMany({
@@ -80,7 +88,11 @@ router.get('/', async (req: AuthRequest, res) => {
 
 router.get('/:userId/:week', async (req: AuthRequest, res) => {
   try {
-    const { userId, week } = req.params;
+    const { userId } = req.params;
+    const week = normalizeWeeklyReportWeek(req.params.week);
+    if (!week) {
+      return res.status(400).json({ error: '週はYYYY-WWまたはYYYY-Www形式で入力してください' });
+    }
 
     if (userId !== req.user!.id && !isStaff(req.user!.role)) {
       return res.status(403).json({ error: 'Forbidden' });
@@ -133,6 +145,7 @@ router.post('/', async (req: AuthRequest, res) => {
         week: data.week,
         thisWeekActivities: data.thisWeekActivities,
         nextWeekPlan: data.nextWeekPlan,
+        reflection: data.reflection,
         note: data.note,
         submittedAt: data.submittedAt ? new Date(data.submittedAt) : null,
         approvalStatus: data.submittedAt ? 'PENDING' : 'DRAFT',
@@ -286,13 +299,28 @@ router.post('/:id/approve', async (req: AuthRequest, res) => {
   }
 });
 
+// 週次報告の自動作成プレビュー（保存しない）
+router.post('/draft-preview', async (req: AuthRequest, res) => {
+  try {
+    const week = normalizeWeeklyReportWeek(req.body?.week);
+    if (!week) {
+      return res.status(400).json({ error: '週はYYYY-WWまたはYYYY-Www形式で入力してください' });
+    }
+
+    const draft = await generateWeeklyReportDraft(req.user!.id, week);
+    res.json(draft);
+  } catch (error) {
+    console.error('Generate weekly report draft preview error:', error);
+    res.status(500).json({ error: '週次報告の自動取得に失敗しました' });
+  }
+});
+
 // 週次報告の自動作成（下書き）
 router.post('/draft', async (req: AuthRequest, res) => {
   try {
-    const { week } = req.body;
-
-    if (!week || !week.match(/^\d{4}-\d{2}$/)) {
-      return res.status(400).json({ error: '週はYYYY-WW形式で入力してください' });
+    const week = normalizeWeeklyReportWeek(req.body?.week);
+    if (!week) {
+      return res.status(400).json({ error: '週はYYYY-WWまたはYYYY-Www形式で入力してください' });
     }
 
     // 既に存在する場合はエラー
@@ -319,6 +347,7 @@ router.post('/draft', async (req: AuthRequest, res) => {
         week: draft.week,
         thisWeekActivities: draft.thisWeekActivities as any,
         nextWeekPlan: draft.nextWeekPlan,
+        reflection: draft.reflection,
         note: draft.note,
         submittedAt: null, // 下書きなのでnull
       },
@@ -345,7 +374,11 @@ router.post('/draft', async (req: AuthRequest, res) => {
 // PDF出力
 router.get('/:userId/:week/pdf', async (req: AuthRequest, res) => {
   try {
-    const { userId, week } = req.params;
+    const { userId } = req.params;
+    const week = normalizeWeeklyReportWeek(req.params.week);
+    if (!week) {
+      return res.status(400).json({ error: '週はYYYY-WWまたはYYYY-Www形式で入力してください' });
+    }
 
     if (userId !== req.user!.id && !isStaff(req.user!.role)) {
       return res.status(403).json({ error: 'Forbidden' });

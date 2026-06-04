@@ -35,6 +35,33 @@ function escapeHtmlForPdf(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function renderPlainTextForPdf(value?: string | null): string {
+  return escapeHtmlForPdf(value || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br/>');
+}
+
+function renderRichTextForPdf(value?: string | null): string {
+  return (value || '')
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+    .replace(/javascript:/gi, '');
+}
+
+function stripHtmlForPdf(value?: string | null): string {
+  return (value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
 /**
  * HTML文字列からPDFを生成
  */
@@ -393,10 +420,54 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
       throw new Error('Weekly report user information is missing for PDF generation.');
     }
 
+  const template = await prisma.documentTemplate.findFirst({
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  const weeklyTemplate = {
+    recipient: template?.weeklyReportRecipient || '○○市役所　○○課長　様',
+    title: template?.weeklyReportTitle || '地域おこし協力隊活動報告',
+    activityLabel: template?.weeklyReportActivityLabel || '活動内容',
+    nextPlanLabel: template?.weeklyReportNextPlanLabel || '来週の予定',
+    reflectionLabel: template?.weeklyReportReflectionLabel || '振り返り・所感',
+    noteLabel: template?.weeklyReportNoteLabel || '備考',
+  };
+
   const activities = report.thisWeekActivities as Array<{
     date: string;
     activity: string;
+    projectName?: string;
   }>;
+  const groupedActivities = activities.reduce<Array<{ projectName: string; items: typeof activities }>>((groups, activity) => {
+    const projectName = activity.projectName?.trim() || '未紐づけ';
+    const group = groups.find((item) => item.projectName === projectName);
+    if (group) {
+      group.items.push(activity);
+    } else {
+      groups.push({ projectName, items: [activity] });
+    }
+    return groups;
+  }, []).map((group) => ({
+    ...group,
+    items: [...group.items].sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+  }));
+
+  const weekStart = (() => {
+    const match = report.week.match(/^(\d{4})-(\d{2})$/);
+    if (!match) return null;
+    const year = parseInt(match[1], 10);
+    const weekNum = parseInt(match[2], 10);
+    const jan4 = new Date(year, 0, 4);
+    const jan4Day = jan4.getDay() || 7;
+    const firstIsoMonday = new Date(jan4);
+    firstIsoMonday.setDate(jan4.getDate() - jan4Day + 1);
+    const result = new Date(firstIsoMonday);
+    result.setDate(firstIsoMonday.getDate() + (weekNum - 1) * 7);
+    return result;
+  })();
+  const weekLabel = weekStart
+    ? `${format(weekStart, 'yyyy年M月d日(E)', { locale: ja })}週`
+    : report.week;
 
   const html = `
     <!DOCTYPE html>
@@ -409,6 +480,8 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
         h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; }
         .section { margin: 25px 0; }
         .label { font-weight: bold; background-color: #f0f0f0; padding: 5px; margin-bottom: 10px; }
+        .project-group { margin: 14px 0 18px; page-break-inside: avoid; }
+        .project-title { font-weight: bold; margin-bottom: 6px; }
         table { width: 100%; border-collapse: collapse; margin: 10px 0; }
         td, th { border: 1px solid #000; padding: 8px; }
         th { background-color: #f0f0f0; font-weight: bold; }
@@ -416,43 +489,55 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
       </style>
     </head>
     <body>
-      <h1>週次報告書</h1>
+      <div style="text-align: right; margin-bottom: 24px;">${escapeHtmlForPdf(format(new Date(), 'yyyy年MM月dd日'))}</div>
+      <div style="margin-bottom: 24px;">${renderPlainTextForPdf(weeklyTemplate.recipient)}</div>
+      <h1>${escapeHtmlForPdf(weeklyTemplate.title)}</h1>
 
       <div style="margin-bottom: 30px;">
-        <div><strong>報告者:</strong> ${report.user.name}</div>
-        <div><strong>対象週:</strong> ${report.week}</div>
-        <div><strong>提出日:</strong> ${report.submittedAt ? format(new Date(report.submittedAt), 'yyyy年MM月dd日') : '未提出'}</div>
+        <div><strong>報告者:</strong> ${escapeHtmlForPdf(report.user.name)}</div>
+        <div><strong>対象週:</strong> ${escapeHtmlForPdf(report.week)}（${escapeHtmlForPdf(weekLabel)}）</div>
+        <div><strong>提出日:</strong> ${report.submittedAt ? escapeHtmlForPdf(format(new Date(report.submittedAt), 'yyyy年MM月dd日')) : '未提出'}</div>
       </div>
 
       <div class="section">
-        <div class="label">今週の活動内容</div>
-        ${activities && activities.length > 0 ? `
-        <table>
-          <tr>
-            <th style="width: 30%;">日時</th>
-            <th>活動内容</th>
-          </tr>
-          ${activities.map(activity => `
+        <div class="label">1. ${escapeHtmlForPdf(weeklyTemplate.activityLabel)}</div>
+        ${groupedActivities.length > 0 ? groupedActivities.map((group) => `
+        <div class="project-group">
+          <div class="project-title">${escapeHtmlForPdf(group.projectName)}</div>
+          <table>
             <tr>
-              <td>${activity.date || ''}</td>
-              <td>${activity.activity || ''}</td>
+              <th style="width: 30%;">日時</th>
+              <th>活動内容</th>
             </tr>
-          `).join('')}
-        </table>
-        ` : '<p>活動内容がありません</p>'}
+            ${group.items.map(activity => `
+              <tr>
+                <td>${escapeHtmlForPdf(activity.date || '')}</td>
+                <td>${escapeHtmlForPdf(activity.activity || '')}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>
+        `).join('') : '<p>活動内容がありません</p>'}
       </div>
 
       ${report.nextWeekPlan ? `
       <div class="section">
-        <div class="label">来週の予定</div>
-        <div class="content">${report.nextWeekPlan}</div>
+        <div class="label">2. ${escapeHtmlForPdf(weeklyTemplate.nextPlanLabel)}</div>
+        <div class="content">${renderPlainTextForPdf(report.nextWeekPlan)}</div>
+      </div>
+      ` : ''}
+
+      ${report.reflection ? `
+      <div class="section">
+        <div class="label">3. ${escapeHtmlForPdf(weeklyTemplate.reflectionLabel)}</div>
+        <div class="content">${renderPlainTextForPdf(report.reflection)}</div>
       </div>
       ` : ''}
 
       ${report.note ? `
       <div class="section">
-        <div class="label">備考</div>
-        <div class="content">${report.note}</div>
+        <div class="label">4. ${escapeHtmlForPdf(weeklyTemplate.noteLabel)}</div>
+        <div class="content">${renderRichTextForPdf(report.note)}</div>
       </div>
       ` : ''}
     </body>
@@ -473,7 +558,7 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
 }
 
 /**
- * 月次報告PDF生成（簡易版）
+ * 月次報告PDF生成
  */
 export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer> {
   try {
@@ -498,14 +583,49 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
       throw new Error('Monthly report creator information is missing for PDF generation.');
     }
 
-    // サポート記録をユーザーごとにグループ化
-    const groupedRecords: { [userId: string]: any[] } = {};
-    report.supportRecords.forEach((record) => {
-      if (!groupedRecords[record.userId]) {
-        groupedRecords[record.userId] = [];
-      }
-      groupedRecords[record.userId].push(record);
+    const template = await prisma.documentTemplate.findFirst({
+      orderBy: { updatedAt: 'desc' },
     });
+
+    const monthDate = new Date(`${report.month}-01`);
+    const monthLabel = format(monthDate, 'yyyy年M月', { locale: ja });
+    const reportDate = report.submittedAt
+      ? format(new Date(report.submittedAt), 'yyyy年M月d日', { locale: ja })
+      : format(new Date(), 'yyyy年M月d日', { locale: ja });
+    const reiwaYear = monthDate.getFullYear() - 2018;
+    const monthNum = monthDate.getMonth() + 1;
+    const dayNum = new Date().getDate();
+    const memberSheets = Array.isArray(report.memberSheets) ? report.memberSheets as any[] : [];
+
+    const titleTemplate = template?.monthlyReportTitle || '長沼町地域おこし協力隊サポート業務月次報告（{month}）';
+    const title = titleTemplate.includes('{month}')
+      ? titleTemplate.replace('{month}', monthLabel)
+      : `${titleTemplate}（${monthLabel}）`;
+    const text1 = template?.monthlyReportText1 || '表記業務の結果について別紙のとおり報告いたします。';
+    const text2 = (template?.monthlyReportText2 || '報告内容\n・隊員別ヒアリングシート ◯名分\n・一般社団法人まおいのはこの支援内容\n・月次勤怠表')
+      .replace('{count}', String(memberSheets.length))
+      .replace('◯名分', `${memberSheets.length}名分`);
+    const contact = template?.monthlyReportContact || '担当　代表理事　坂本　一志、電話　090-6218-4797、E-mail　info@maoinohako.org';
+
+    const renderActivityItems = (items: unknown) => {
+      if (!Array.isArray(items) || items.length === 0) {
+        return '<p class="empty">活動内容がありません</p>';
+      }
+      return `<ul>${items.map((item) => {
+        if (typeof item === 'string') {
+          return `<li>${renderPlainTextForPdf(stripHtmlForPdf(item))}</li>`;
+        }
+        const row = item as { date?: string; description?: string; activity?: string };
+        const date = row.date ? `${row.date}: ` : '';
+        const body = stripHtmlForPdf(row.description || row.activity || '');
+        return `<li>${renderPlainTextForPdf(`${date}${body}`)}</li>`;
+      }).join('')}</ul>`;
+    };
+
+    const renderTextSection = (value?: string | null) => {
+      const text = stripHtmlForPdf(value);
+      return text ? renderPlainTextForPdf(text) : '（未記入）';
+    };
 
     const html = `
     <!DOCTYPE html>
@@ -514,39 +634,104 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
       <meta charset="UTF-8">
       ${getEmbeddedNotoSansJpStyle()}
       <style>
-        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 11pt; margin: 30px; color: #111; }
-        h1 { text-align: center; font-size: 16pt; }
-        h2 { font-size: 14pt; margin-top: 30px; border-bottom: 2px solid #333; padding-bottom: 5px; }
-        .section { margin: 20px 0; page-break-inside: avoid; }
-        .user-section { margin: 15px 0; }
-        .record { margin-left: 20px; margin-bottom: 5px; }
+        @page { size: A4; margin: 20mm; }
+        * { box-sizing: border-box; }
+        body {
+          font-family: 'Noto Sans JP', 'Yu Mincho', 'Hiragino Mincho ProN', 'Meiryo', serif;
+          font-size: 11pt;
+          line-height: 1.8;
+          color: #111;
+          background: #fff;
+        }
+        .page { min-height: 257mm; page-break-after: always; }
+        .page:last-child { page-break-after: auto; }
+        .right { text-align: right; }
+        h1 { text-align: center; font-size: 17pt; margin: 36px 0; font-weight: 700; }
+        h2 { text-align: center; font-size: 15pt; margin: 0 0 28px; font-weight: 700; }
+        .cover-date { text-align: right; margin-bottom: 28px; }
+        .recipient { margin-bottom: 22px; white-space: pre-wrap; }
+        .sender { text-align: right; margin: 24px 0 38px; }
+        .content-block { white-space: pre-wrap; margin-bottom: 24px; }
+        .center-marker { text-align: center; font-size: 14pt; font-weight: 700; margin: 30px 0; }
+        .end-marker { text-align: right; font-size: 13pt; font-weight: 700; margin: 32px 0 48px; }
+        .contact { margin-top: 56px; white-space: pre-wrap; }
+        .sheet-header { text-align: right; margin-bottom: 28px; }
+        .member-name { font-size: 13pt; font-weight: 700; margin-bottom: 6px; }
+        .section { margin: 22px 0; page-break-inside: avoid; }
+        .label { background: #f0f0f0; padding: 7px 9px; font-weight: 700; margin-bottom: 10px; }
+        ul { margin: 6px 0 0 20px; padding: 0; }
+        li { margin-bottom: 4px; }
+        .body-text { margin-left: 14px; white-space: pre-wrap; }
+        .support-record { margin-bottom: 18px; page-break-inside: avoid; }
+        .support-user { font-weight: 700; font-size: 12.5pt; margin-bottom: 5px; }
+        .empty { color: #666; font-style: italic; margin-left: 14px; }
       </style>
     </head>
     <body>
-      <div style="text-align: center; margin: 50px 0;">
-        <div style="margin: 20px 0;">${format(new Date(), 'yyyy年M月d日')}</div>
-        <div style="margin: 20px 0;">${report.coverRecipient || '長沼町長 斎藤良彦様'}</div>
-        <div style="margin: 40px 0; text-align: right; padding-right: 50px;">
-          ${(report.coverSender || '一般社団法人まおいのはこ 代表理事 坂本一志').split('\n').map(line => `<div>${line}</div>`).join('')}
-        </div>
-        <h1>長沼町地域おこし協力隊サポート業務月次報告（${report.month}）</h1>
-      </div>
+      <section class="page">
+        <div class="cover-date">${escapeHtmlForPdf(reportDate)}</div>
+        <div class="recipient">${renderPlainTextForPdf(report.coverRecipient)}</div>
+        <div class="sender">${renderRichTextForPdf(report.coverSender)}</div>
+        <h1>${escapeHtmlForPdf(title)}</h1>
+        <div class="content-block">${renderPlainTextForPdf(text1)}</div>
+        <div class="center-marker">記</div>
+        <div class="content-block">${renderPlainTextForPdf(text2)}</div>
+        <div class="end-marker">以上</div>
+        <div class="contact">${renderPlainTextForPdf(contact)}</div>
+      </section>
 
-      ${Object.keys(groupedRecords).length > 0 ? `
-      <div style="page-break-before: always;">
-        <h2>一般社団法人まおいのはこの支援内容（${report.month}）</h2>
-        ${Object.entries(groupedRecords).map(([userId, records]) => `
-          <div class="user-section">
-            <strong>【${records[0].user.name}】</strong>
-            ${records.map(record => `
-              <div class="record">
-                ・${format(new Date(record.supportDate), 'M/d')} ${(record.supportContent || '').replace(/<[^>]*>/g, '').replace(/\n/g, ' ')}（${record.supportBy}）
-              </div>
-            `).join('')}
+      ${memberSheets.map((sheet, index) => `
+        <section class="page">
+          <div class="sheet-header">協力隊活動ヒアリングシート</div>
+          <div style="margin-bottom: 28px;">
+            <div class="member-name">氏名　${escapeHtmlForPdf(sheet.userName || `隊員${index + 1}`)}　${escapeHtmlForPdf(monthLabel)}分</div>
+            <div>令和${escapeHtmlForPdf(String(reiwaYear))}年　${escapeHtmlForPdf(String(monthNum))}月　${escapeHtmlForPdf(String(dayNum))}日</div>
           </div>
-        `).join('')}
-      </div>
-      ` : ''}
+
+          <div class="section">
+            <div class="label">【今月の主な活動内容】</div>
+            ${renderActivityItems(sheet.thisMonthActivities)}
+          </div>
+
+          <div class="section">
+            <div class="label">【翌月以降の活動予定】</div>
+            <div class="body-text">${renderTextSection(sheet.nextMonthPlan)}</div>
+          </div>
+
+          <div class="section">
+            <div class="label">【振り返り・所感】</div>
+            <div class="body-text">${renderTextSection(sheet.reflectionNotes)}</div>
+          </div>
+
+          <div class="section">
+            <div class="label">【勤務に関する質問など】</div>
+            <div class="body-text">${renderTextSection(sheet.workQuestions)}</div>
+          </div>
+
+          <div class="section">
+            <div class="label">【生活面の留意事項その他】</div>
+            <div class="body-text">${renderTextSection(sheet.lifeNotes)}</div>
+          </div>
+        </section>
+      `).join('')}
+
+      <section class="page">
+        <div class="right" style="margin-bottom: 28px;">${escapeHtmlForPdf(format(new Date(), 'yyyy年M月d日'))}</div>
+        <h2>一般社団法人まおいのはこの支援内容（${escapeHtmlForPdf(monthLabel)}）</h2>
+        <div>
+          ${report.supportRecords.length > 0 ? report.supportRecords.map((record) => `
+            <div class="support-record">
+              <div class="support-user">【${escapeHtmlForPdf(record.user.name)}】</div>
+              <ul>
+                <li>
+                  ${escapeHtmlForPdf(format(new Date(record.supportDate), 'yyyy年M月d日', { locale: ja }))}: ${renderPlainTextForPdf(stripHtmlForPdf(record.supportContent))}
+                  ${record.supportBy ? `（支援者: ${escapeHtmlForPdf(record.supportBy)}）` : ''}
+                </li>
+              </ul>
+            </div>
+          `).join('') : '<p class="empty">支援記録がありません</p>'}
+        </div>
+      </section>
     </body>
     </html>
   `;
