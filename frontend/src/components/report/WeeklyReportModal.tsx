@@ -8,7 +8,6 @@ import { ja } from 'date-fns/locale/ja';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
-import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { WeeklyReportPreview } from './WeeklyReportPreview';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
@@ -48,7 +47,8 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   const isMobile = useIsMobileBreakpoint();
 
   // 作成者のみ編集可能
-  const canEdit = !currentReport || (user && currentReport.user?.id === user.id);
+  const canEdit = !currentReport || Boolean(user && currentReport.user?.id === user.id);
+  const canChangeWeek = canEdit && !currentReport?.submittedAt;
   const existingReportByWeek = useMemo(() => {
     const map = new Map<string, WeeklyReport>();
     existingReports.forEach((item) => {
@@ -171,8 +171,8 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   }, [week, user]);
 
   // スケジュールからテンプレートを自動取得
-  const loadSchedulesForTemplate = async () => {
-    if (!user || !week) return;
+  const loadSchedulesForTemplate = async (targetWeek = week, replaceExisting = false) => {
+    if (!user || !targetWeek) return;
     
     try {
       setLoadingSchedules(true);
@@ -183,7 +183,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
         nextWeekPlan: string;
         reflection?: string;
         note?: string;
-      }>('/api/weekly-reports/draft-preview', { week: normalizeWeekString(week) });
+      }>('/api/weekly-reports/draft-preview', { week: normalizeWeekString(targetWeek) });
       const draft = draftResponse.data;
 
       // 対象週の開始日と終了日を取得
@@ -195,19 +195,27 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
         schedule.googleCalendarEventLink?.origin === 'GOOGLE' && !schedule.projectId
       ).length);
 
-      if (draft.thisWeekActivities.length > 0 && activities.length === 1 && !activities[0].date && !activities[0].activity) {
+      if (replaceExisting) {
+        setActivities(draft.thisWeekActivities.length > 0 ? draft.thisWeekActivities : [{ date: '', activity: '' }]);
+      } else if (draft.thisWeekActivities.length > 0 && activities.length === 1 && !activities[0].date && !activities[0].activity) {
         setActivities(draft.thisWeekActivities);
       }
 
-      if (draft.nextWeekPlan && !nextWeekPlan) {
+      if (replaceExisting) {
+        setNextWeekPlan(draft.nextWeekPlan || '');
+      } else if (draft.nextWeekPlan && !nextWeekPlan) {
         setNextWeekPlan(draft.nextWeekPlan);
       }
 
-      if (draft.reflection && !reflection) {
+      if (replaceExisting) {
+        setReflection(draft.reflection || '');
+      } else if (draft.reflection && !reflection) {
         setReflection(draft.reflection);
       }
 
-      if (draft.note && !note) {
+      if (replaceExisting) {
+        setNote(draft.note || '');
+      } else if (draft.note && !note) {
         setNote(draft.note);
       }
     } catch (error) {
@@ -249,6 +257,9 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       setReflection('');
       setNote('');
       setUnlinkedGoogleSchedulesCount(0);
+    } else if (!currentReport.submittedAt && normalized !== normalizeWeekString(currentReport.week)) {
+      setUnlinkedGoogleSchedulesCount(0);
+      loadSchedulesForTemplate(normalized, true);
     }
   };
 
@@ -402,7 +413,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                     value={toWeekInputValue(week)}
                     onChange={(e) => handleWeekChange(e.target.value)}
                     required
-                    disabled={Boolean(currentReport)}
+                    disabled={!canChangeWeek}
                     className="mt-1 w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   >
                     {weekOptions.map((option) => (
@@ -508,10 +519,12 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   備考
                 </label>
-                <SimpleRichTextEditor
+                <textarea
                   value={note}
-                  onChange={setNote}
+                  onChange={(e) => setNote(e.target.value)}
                   placeholder="備考を入力..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
 

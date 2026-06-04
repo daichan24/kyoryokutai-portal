@@ -11,11 +11,12 @@ const { execSync } = require('child_process');
 const packageJsonPath = path.join(__dirname, '../package.json');
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version || 'dev';
+const repoRoot = path.join(__dirname, '..', '..');
 
 function gitValue(command, fallback) {
   try {
     return execSync(command, {
-      cwd: path.join(__dirname, '..', '..'),
+      cwd: repoRoot,
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim() || fallback;
@@ -24,7 +25,30 @@ function gitValue(command, fallback) {
   }
 }
 
-const commitCount = gitValue('git rev-list --count HEAD', '0');
+function runGit(command) {
+  try {
+    execSync(command, {
+      cwd: repoRoot,
+      stdio: ['ignore', 'ignore', 'ignore'],
+    });
+  } catch {
+    // デプロイ環境でfetchできない場合は、後続のフォールバックを使う
+  }
+}
+
+function ensureFullGitHistory() {
+  const isShallow = gitValue('git rev-parse --is-shallow-repository', 'false');
+  if (isShallow === 'true') {
+    runGit('git fetch --unshallow --quiet');
+  }
+}
+
+ensureFullGitHistory();
+
+const rawCommitCount = gitValue('git rev-list --count HEAD', process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT || '0');
+const commitCount = rawCommitCount === '1' && (process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT)
+  ? (process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT)
+  : rawCommitCount;
 const commitSha = gitValue('git rev-parse --short HEAD', 'unknown');
 const buildDate = new Date().toISOString();
 

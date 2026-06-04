@@ -91,6 +91,12 @@ function endOfRange(start: Date, days: number) {
   return end;
 }
 
+function isDateInRange(value: Date | null | undefined, start: Date, end: Date) {
+  if (!value) return false;
+  const time = value.getTime();
+  return time >= start.getTime() && time <= end.getTime();
+}
+
 function formatScheduleActivity(schedule: ReportSchedule) {
   const title = schedule.title || schedule.activityDescription || '予定';
   const missionName = schedule.task?.mission?.missionName || schedule.project?.mission?.missionName;
@@ -236,15 +242,33 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     });
   }
 
-  // 3. プロジェクトタスクから抽出（完了したもの：progress=100）
+  // 3. プロジェクトタスクから抽出（対象週が期限、または対象週に完了したもの）
   const projectTasks = await prisma.projectTask.findMany({
     where: {
-      assignedTo: userId,
-      progress: 100,
-      updatedAt: {
-        gte: weekStart,
-        lte: weekEnd,
-      },
+      OR: [
+        { assignedTo: userId },
+        { project: { userId } },
+        { project: { members: { some: { userId } } } },
+      ],
+      AND: [
+        {
+          OR: [
+            {
+              deadline: {
+                gte: weekStart,
+                lte: weekEnd,
+              },
+            },
+            {
+              progress: 100,
+              updatedAt: {
+                gte: weekStart,
+                lte: weekEnd,
+              },
+            },
+          ],
+        },
+      ],
     },
     include: {
       project: {
@@ -260,28 +284,42 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
   });
 
   for (const task of projectTasks) {
-    const reportDate = format(task.updatedAt, 'yyyy-MM-dd');
-    const displayDate = format(task.updatedAt, 'M/d(E)', { locale: ja });
+    const reportSourceDate = isDateInRange(task.deadline, weekStart, weekEnd) && task.deadline
+      ? task.deadline
+      : task.updatedAt;
+    const reportDate = format(reportSourceDate, 'yyyy-MM-dd');
+    const displayDate = format(reportSourceDate, 'M/d(E)', { locale: ja });
+    const statusText = task.progress === 100 ? '完了' : '期限';
     activities.push({
       date: reportDate,
-      activity: `${displayDate} / プロジェクト: ${task.project.projectName} / ${task.taskName} 完了`,
+      activity: `${displayDate} / プロジェクト: ${task.project.projectName} / ${task.taskName} ${statusText}`,
       projectId: task.project.id,
       projectName: activityProjectLabel(task.project.projectName),
       sourceType: 'projectTask',
     });
   }
 
-  // 4. タスク（小目標）から抽出（完了したもの）
+  // 4. タスク（小目標）から抽出（対象週が期限、または対象週に完了したもの）
   const tasks = await prisma.task.findMany({
     where: {
       mission: {
         userId,
       },
-      status: 'COMPLETED',
-      updatedAt: {
-        gte: weekStart,
-        lte: weekEnd,
-      },
+      OR: [
+        {
+          dueDate: {
+            gte: weekStart,
+            lte: weekEnd,
+          },
+        },
+        {
+          status: 'COMPLETED',
+          updatedAt: {
+            gte: weekStart,
+            lte: weekEnd,
+          },
+        },
+      ],
     },
     include: {
       project: {
@@ -302,15 +340,19 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
   });
 
   for (const task of tasks) {
-    const reportDate = format(task.updatedAt, 'yyyy-MM-dd');
-    const displayDate = format(task.updatedAt, 'M/d(E)', { locale: ja });
+    const reportSourceDate = isDateInRange(task.dueDate, weekStart, weekEnd) && task.dueDate
+      ? task.dueDate
+      : task.updatedAt;
+    const reportDate = format(reportSourceDate, 'yyyy-MM-dd');
+    const displayDate = format(reportSourceDate, 'M/d(E)', { locale: ja });
     let activityText = task.title;
     if (task.project) {
       activityText = `プロジェクト: ${task.project.projectName} / ${activityText}`;
     }
+    const statusText = task.status === 'COMPLETED' ? '完了' : '期限';
     activities.push({
       date: reportDate,
-      activity: `${displayDate} / ${activityText} 完了`,
+      activity: `${displayDate} / ${activityText} ${statusText}`,
       projectId: task.project?.id || null,
       projectName: activityProjectLabel(task.project?.projectName || task.mission?.missionName),
       sourceType: 'task',

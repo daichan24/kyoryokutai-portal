@@ -537,7 +537,7 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
       ${report.note ? `
       <div class="section">
         <div class="label">4. ${escapeHtmlForPdf(weeklyTemplate.noteLabel)}</div>
-        <div class="content">${renderRichTextForPdf(report.note)}</div>
+        <div class="content">${renderPlainTextForPdf(stripHtmlForPdf(report.note))}</div>
       </div>
       ` : ''}
     </body>

@@ -20,6 +20,20 @@ interface TemplateSettings {
   };
 }
 
+function stripHtml(value?: string | null) {
+  return (value || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
 export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report }) => {
   const [templateSettings, setTemplateSettings] = useState<TemplateSettings | null>(null);
 
@@ -257,9 +271,9 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
             marginLeft: '15px', 
             marginTop: '10px',
             whiteSpace: 'pre-wrap'
-          }}
-          dangerouslySetInnerHTML={{ __html: report.note }}
-          />
+          }}>
+            {stripHtml(report.note)}
+          </div>
         </div>
       )}
 
