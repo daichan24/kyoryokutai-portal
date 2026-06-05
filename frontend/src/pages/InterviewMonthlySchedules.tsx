@@ -314,6 +314,154 @@ function MissionProjectCompact({
   );
 }
 
+function MissionProjectScheduleSection({
+  missions,
+  projects,
+  schedules,
+}: {
+  missions: MissionKpiRow[];
+  projects: ProjectKpiRow[];
+  schedules: InterviewSchedule[];
+}) {
+  const projectSchedulesMap = useMemo(() => {
+    const map = new Map<string, InterviewSchedule[]>();
+    schedules.forEach((s) => {
+      const projectId = s.project?.id;
+      if (!projectId) return;
+      if (!map.has(projectId)) map.set(projectId, []);
+      map.get(projectId)!.push(s);
+    });
+    return map;
+  }, [schedules]);
+
+  const projectsByMission = useMemo(() => {
+    const map = new Map<string, ProjectKpiRow[]>();
+    projects.forEach((project) => {
+      const key = project.mission?.id || '__none__';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(project);
+    });
+    return map;
+  }, [projects]);
+
+  const knownProjectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
+  const schedulesWithoutProject = schedules.filter((s) => !s.project);
+  const schedulesWithUnknownProject = schedules.filter((s) => s.project?.id && !knownProjectIds.has(s.project.id));
+  const unlinkedProjects = projectsByMission.get('__none__') || [];
+
+  const renderProject = (project: ProjectKpiRow | { id: string; projectName: string; themeColor: string | null }) => {
+    const projectSchedules = projectSchedulesMap.get(project.id) || [];
+    return (
+      <div key={project.id} className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+        <div
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white"
+          style={{ backgroundColor: project.themeColor || '#6366f1' }}
+        >
+          {project.projectName}
+          <span className="text-xs font-normal opacity-90">（{projectSchedules.length} 件）</span>
+        </div>
+        {projectSchedules.length > 0 ? (
+          <ul className="divide-y divide-gray-100 bg-white dark:divide-gray-700 dark:bg-gray-800/60">
+            {projectSchedules.map((s) => (
+              <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
+                <span className="mr-2 text-gray-500 dark:text-gray-400">{formatScheduleDateRange(s)}</span>
+                {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
+                {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="bg-white px-3 py-2 text-sm italic text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+            この月は実行されませんでした
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderLooseScheduleGroup = (title: string, rows: InterviewSchedule[], color = '#64748b', key = title) => {
+    if (rows.length === 0) return null;
+    return (
+      <div key={key} className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white" style={{ backgroundColor: color }}>
+          {title}
+          <span className="text-xs font-normal opacity-90">（{rows.length} 件）</span>
+        </div>
+        <ul className="divide-y divide-gray-100 bg-white dark:divide-gray-700 dark:bg-gray-800/60">
+          {rows.map((s) => (
+            <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
+              <span className="mr-2 text-gray-500 dark:text-gray-400">{formatScheduleDateRange(s)}</span>
+              {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
+              {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
+  if (missions.length === 0 && projects.length === 0 && schedules.length === 0) {
+    return <p className="text-sm text-gray-500 dark:text-gray-400">対象月の活動はありません。</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {missions.map((mission) => {
+        const missionProjects = projectsByMission.get(mission.id) || [];
+        return (
+          <div key={mission.id} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/80">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2 dark:border-gray-700">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{mission.missionName}</h3>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  進捗 {mission.progress}%・プロジェクト {missionProjects.length}件
+                </p>
+              </div>
+              <div className="h-1.5 w-32 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <div className={`h-full ${progressBarColor(mission.progress)}`} style={{ width: `${Math.min(100, mission.progress)}%` }} />
+              </div>
+            </div>
+            {missionProjects.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">このミッションに紐づくプロジェクトはありません。</p>
+            ) : (
+              <div className="space-y-3">{missionProjects.map(renderProject)}</div>
+            )}
+          </div>
+        );
+      })}
+
+      {unlinkedProjects.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/80">
+          <h3 className="mb-3 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-900 dark:border-gray-700 dark:text-gray-100">
+            ミッション未設定
+          </h3>
+          <div className="space-y-3">{unlinkedProjects.map(renderProject)}</div>
+        </div>
+      )}
+
+      {schedulesWithUnknownProject.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/80">
+          <h3 className="mb-3 border-b border-gray-100 pb-2 text-sm font-semibold text-gray-900 dark:border-gray-700 dark:text-gray-100">
+            マスタ未取得のプロジェクト
+          </h3>
+          <div className="space-y-3">
+            {Object.values(
+              schedulesWithUnknownProject.reduce<Record<string, { project: NonNullable<InterviewSchedule['project']>; rows: InterviewSchedule[] }>>((acc, s) => {
+                const project = s.project!;
+                if (!acc[project.id]) acc[project.id] = { project, rows: [] };
+                acc[project.id].rows.push(s);
+                return acc;
+              }, {}),
+            ).map(({ project, rows }) => renderLooseScheduleGroup(project.projectName, rows, project.themeColor || '#6366f1', project.id))}
+          </div>
+        </div>
+      )}
+
+      {renderLooseScheduleGroup('プロジェクト未設定', schedulesWithoutProject, '#64748b', '__no_project__')}
+    </div>
+  );
+}
+
 function InterviewMemoPanel({
   memberId,
   month,
@@ -627,7 +775,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
                 <strong>活動経費</strong> - 予算の使用状況とプロジェクト別の支出を確認
               </li>
               <li>
-                <strong>プロジェクト別の活動</strong> - 各プロジェクトでの予定を確認
+                <strong>ミッション別・プロジェクト別の活動</strong> - 各ミッション配下のプロジェクトで予定を確認
               </li>
               <li>
                 <strong>協働した人</strong> - 誰と一緒に活動したかを確認
@@ -761,93 +909,14 @@ export const InterviewMonthlySchedules: React.FC = () => {
             </section>
           )}
 
-          <section className="space-y-3">
+          <section id="missions-projects" className="space-y-3">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
-              プロジェクト別
+              ミッション別・プロジェクト別
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              全てのプロジェクトを表示します。スケジュールがないプロジェクトも表示され、なぜ実行されなかったかを確認できます。
+              ミッションの中にプロジェクトを並べて、対象月に実行された活動を確認します。スケジュールがないプロジェクトも表示されます。
             </p>
-            {(() => {
-              // 全プロジェクトのリストを作成（projectsKpi から）
-              const allProjects = projectsKpi.map(p => ({
-                id: p.id,
-                name: p.projectName,
-                color: p.themeColor || '#6366f1',
-              }));
-
-              // プロジェクトごとのスケジュールをマップ
-              const projectSchedulesMap = new Map<string, InterviewSchedule[]>();
-              schedules.forEach(s => {
-                const projectId = s.project?.id;
-                if (projectId) {
-                  if (!projectSchedulesMap.has(projectId)) {
-                    projectSchedulesMap.set(projectId, []);
-                  }
-                  projectSchedulesMap.get(projectId)!.push(s);
-                }
-              });
-
-              // プロジェクト未設定のスケジュール
-              const unlinkedSchedules = schedules.filter(s => !s.project);
-
-              return (
-                <div className="space-y-3">
-                  {/* 全プロジェクトを表示 */}
-                  {allProjects.map(proj => {
-                    const projectSchedules = projectSchedulesMap.get(proj.id) || [];
-                    return (
-                      <div key={proj.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                        <div
-                          className="px-3 py-2 text-sm font-medium text-white flex items-center gap-2"
-                          style={{ backgroundColor: proj.color }}
-                        >
-                          {proj.name}
-                          <span className="opacity-90 font-normal text-xs">（{projectSchedules.length} 件）</span>
-                        </div>
-                        {projectSchedules.length > 0 ? (
-                          <ul className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800/60">
-                            {projectSchedules.map((s) => (
-                              <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
-                                <span className="text-gray-500 dark:text-gray-400 mr-2">{formatScheduleDateRange(s)}</span>
-                                {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
-                                {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800/60 italic">
-                            この月は実行されませんでした
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* プロジェクト未設定 */}
-                  {unlinkedSchedules.length > 0 && (
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                      <div
-                        className="px-3 py-2 text-sm font-medium text-white flex items-center gap-2"
-                        style={{ backgroundColor: '#64748b' }}
-                      >
-                        プロジェクト未設定
-                        <span className="opacity-90 font-normal text-xs">（{unlinkedSchedules.length} 件）</span>
-                      </div>
-                      <ul className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800/60">
-                        {unlinkedSchedules.map((s) => (
-                          <li key={s.id} className="px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
-                            <span className="text-gray-500 dark:text-gray-400 mr-2">{formatScheduleDateRange(s)}</span>
-                            {s.shortTitle?.trim() || s.activityDescription?.trim()?.slice(0, 80)}
-                            {(s.activityDescription?.length ?? 0) > 80 ? '…' : ''}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            <MissionProjectScheduleSection missions={missionsKpi} projects={projectsKpi} schedules={schedules} />
           </section>
 
           <section className="space-y-3">
@@ -969,162 +1038,62 @@ export const InterviewMonthlySchedules: React.FC = () => {
           </section>
         </div>
 
-        {/* 右カラム（サマリー情報） */}
-        <div className="lg:col-span-1 space-y-6">
+        {/* 右カラム（固定サイドバー） */}
+        <div className="lg:col-span-1">
           <div className="sticky top-4 space-y-6">
             <InterviewMemoPanel memberId={memberId} month={month} noteData={interviewNoteData} />
 
-            {/* 統計サマリー */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-              {data.member.name}さん · {format(new Date(`${data.month}-01`), 'yyyy年M月', { locale: ja })}
-            </h3>
-            
-            <div className="space-y-3">
-              <a
-                href="#missions-projects"
-                className="flex items-center justify-between text-sm hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors cursor-pointer"
-              >
-                <span className="text-gray-600 dark:text-gray-400">ミッション・プロジェクト</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{missionsKpi.length + projectsKpi.length} 件</span>
-              </a>
-              <a
-                href="#consultations"
-                className="flex items-center justify-between text-sm hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors cursor-pointer"
-              >
-                <span className="text-gray-600 dark:text-gray-400">相談</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{consultations.length} 件</span>
-              </a>
-              {expenseSummary && (
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
+                {data.member.name}さん · {format(new Date(`${data.month}-01`), 'yyyy年M月', { locale: ja })}
+              </h3>
+
+              <div className="space-y-3">
                 <a
-                  href="#activity-expenses"
-                  className="flex items-center justify-between text-sm hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors cursor-pointer"
+                  href="#consultations"
+                  className="flex items-center justify-between rounded p-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
-                  <span className="text-gray-600 dark:text-gray-400">活動経費</span>
-                  <span className={`font-semibold tabular-nums ${
-                    expenseSummary.remaining < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
-                  }`}>
-                    {formatYenInterview(expenseSummary.remaining)}
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">相談</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{consultations.length} 件</span>
                 </a>
-              )}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+                {expenseSummary && (
+                  <a
+                    href="#activity-expenses"
+                    className="flex items-center justify-between rounded p-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <span className="text-gray-600 dark:text-gray-400">活動経費残額</span>
+                    <span className={`font-semibold tabular-nums ${
+                      expenseSummary.remaining < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
+                    }`}>
+                      {formatYenInterview(expenseSummary.remaining)}
+                    </span>
+                  </a>
+                )}
+                <a
+                  href="#missions-projects"
+                  className="flex items-center justify-between rounded p-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <span className="text-gray-600 dark:text-gray-400">ミッション・プロジェクト</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{missionsKpi.length + projectsKpi.length} 件</span>
+                </a>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">予定</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">{schedules.length} 件</span>
                 </div>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">プロジェクト</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{projectCount} 件</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">協働した人</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{uniquePeopleCount} 名</span>
-              </div>
-            </div>
-
-            <Link
-              to="/schedule"
-              className="mt-4 block text-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              スケジュール画面で確認 →
-            </Link>
-          </div>
-
-          {/* 相談サマリー */}
-          {consultations.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-                相談状況
-              </h3>
-              <div className="space-y-2">
-                {consultations.slice(0, 3).map((c) => (
-                  <div key={c.id} className="text-sm">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate flex-1">
-                        {c.subject?.trim() || '（件名なし）'}
-                      </span>
-                      <span
-                        className={`text-xs ml-2 ${
-                          c.status === 'OPEN'
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-green-600 dark:text-green-400'
-                        }`}
-                      >
-                        {c.status === 'OPEN' ? '未対応' : '対応済み'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {format(new Date(c.createdAt), 'M/d', { locale: ja })}
-                    </p>
-                  </div>
-                ))}
-                {consultations.length > 3 && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    他 {consultations.length - 3} 件
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 活動経費サマリー */}
-          {expenseSummary && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-                活動経費
-              </h3>
-              <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">設定上限額</span>
-                  <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
-                    {formatYenInterview(expenseSummary.allocatedAmount)}
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">プロジェクト</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{projectCount} 件</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">使用・予定累計額</span>
-                  <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
-                    {formatYenInterview(expenseSummary.totalSpent)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">残り額</span>
-                  <span
-                    className={`font-semibold tabular-nums ${
-                      expenseSummary.remaining < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'
-                    }`}
-                  >
-                    {formatYenInterview(expenseSummary.remaining)}
-                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">協働した人</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{uniquePeopleCount} 名</span>
                 </div>
               </div>
-              {expenseSummary.remaining < 0 && (
-                <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                  ⚠️ 予算を超過しています
-                </p>
-              )}
-              
-              <a
-                href="#activity-expenses"
-                className="mt-4 block text-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                活動経費の詳細を開く →
-              </a>
             </div>
-          )}
-
-          <div id="missions-projects" className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">
-              ミッション・プロジェクト
-            </h3>
-            <MissionProjectCompact missions={missionsKpi} projects={projectsKpi} />
           </div>
         </div>
       </div>
-    </div>
-
-    </>
+      </>
   )}
 </div>
 );
