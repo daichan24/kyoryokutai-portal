@@ -78,8 +78,15 @@ export const SNSPosts: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
 
-  const { weekStart, weekEnd } = getWeekMetaForDate(new Date());
+  const currentWeekMeta = getWeekMetaForDate(new Date());
+  const { weekStart, weekEnd } = currentWeekMeta;
   const personalWeekRows = useMemo(() => getRecentWeekRows(12), []);
+  const staffWeekRows = useMemo(() => getRecentWeekRows(26), []);
+  const [selectedWeek, setSelectedWeek] = useState<string>(currentWeekMeta.weekKey);
+  const selectedWeekMeta = useMemo(
+    () => staffWeekRows.find((row) => row.weekKey === selectedWeek) || currentWeekMeta,
+    [staffWeekRows, selectedWeek, currentWeekMeta]
+  );
 
   useEffect(() => {
     if (searchParams.get('add') === 'true' && viewMode === 'personal') {
@@ -203,10 +210,12 @@ export const SNSPosts: React.FC = () => {
 
   // 閲覧タブ用の投稿取得
   const { data: allPosts, isLoading: isLoadingView } = useQuery<SNSPost[]>({
-    queryKey: ['sns-posts', 'view', selectedMonth, selectedUserId, isStaff ? workspaceMode : 'm'],
+    queryKey: ['sns-posts', 'view', selectedWeek, selectedMonth, selectedUserId, isStaff ? workspaceMode : 'm'],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedMonth) {
+      if (selectedWeek) {
+        params.append('week', selectedWeek);
+      } else if (selectedMonth) {
         params.append('from', format(startOfMonth(new Date(`${selectedMonth}-01`)), 'yyyy-MM-dd'));
         params.append('to', format(endOfMonth(new Date(`${selectedMonth}-01`)), 'yyyy-MM-dd'));
       }
@@ -221,16 +230,19 @@ export const SNSPosts: React.FC = () => {
 
   const currentWeekStatus = useMemo<MemberStatus[]>(() => {
     if (!members.length) return [];
-    return members.map(member => {
+    const targetMembers = selectedUserId ? members.filter((member) => member.id === selectedUserId) : members;
+    return targetMembers.map(member => {
       const memberPosts = (allPosts || []).filter(p =>
-        p.userId === member.id && p.postedAt &&
-        new Date(p.postedAt) >= weekStart && new Date(p.postedAt) < weekEnd
+        p.userId === member.id &&
+        (selectedWeek ? p.week === selectedWeek : p.postedAt &&
+          new Date(p.postedAt) >= selectedWeekMeta.weekStart &&
+          new Date(p.postedAt) < selectedWeekMeta.weekEnd)
       );
       const feedPosts = memberPosts.filter(p => p.postType === 'FEED');
       const storyPosts = memberPosts.filter(p => p.postType === 'STORY');
       return { userId: member.id, userName: member.name, hasFeed: feedPosts.length > 0, hasStory: storyPosts.length > 0, feedPosts, storyPosts };
     });
-  }, [allPosts, members, weekStart, weekEnd]);
+  }, [allPosts, members, selectedUserId, selectedWeek, selectedWeekMeta]);
 
   const historicalPosts = useMemo(() =>
     (allPosts || []).filter(p => p.postedAt).sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime()),
@@ -266,6 +278,12 @@ export const SNSPosts: React.FC = () => {
       incomplete: Math.max(statuses.length - complete, 0),
     };
   }, [currentWeekStatus]);
+
+  const getLatestFollowerCount = (postList: SNSPost[]) => {
+    return [...postList]
+      .filter((p) => p.followerCount != null)
+      .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime())[0]?.followerCount ?? null;
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (postId: string) => api.delete(`/api/sns-posts/${postId}`),
@@ -395,27 +413,57 @@ export const SNSPosts: React.FC = () => {
       {viewMode === 'view' ? (
         <>
           {/* 閲覧モード: フィルタ */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><Users className="h-4 w-4" />今週の対象</div>
-              <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{staffSummary.totalMembers}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
+          {selectedWeek ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><Users className="h-4 w-4" />対象メンバー</div>
+                <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{staffSummary.totalMembers}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
+              </div>
+              <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><CheckCircle2 className="h-4 w-4" />選択週 完了</div>
+                <div className="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400">{staffSummary.complete}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
+              </div>
+              <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><AlertTriangle className="h-4 w-4" />未完了</div>
+                <div className="mt-1 text-2xl font-semibold text-amber-600 dark:text-amber-400">{staffSummary.incomplete}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
+              </div>
             </div>
+          ) : (
             <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><CheckCircle2 className="h-4 w-4" />今週完了</div>
-              <div className="mt-1 text-2xl font-semibold text-green-600 dark:text-green-400">{staffSummary.complete}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">投稿履歴</div>
+              <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{historicalPosts.length}<span className="ml-1 text-sm font-normal text-gray-500">件</span></div>
             </div>
-            <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400"><AlertTriangle className="h-4 w-4" />未完了</div>
-              <div className="mt-1 text-2xl font-semibold text-amber-600 dark:text-amber-400">{staffSummary.incomplete}<span className="ml-1 text-sm font-normal text-gray-500">名</span></div>
-            </div>
-          </div>
+          )}
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">対象月で絞り込み</label>
-                <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                  <option value="">全ての月</option>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">対象週でチェック</label>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => {
+                    setSelectedWeek(e.target.value);
+                    if (e.target.value) setSelectedMonth('');
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  {staffWeekRows.map(row => (
+                    <option key={row.weekKey} value={row.weekKey}>{row.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">履歴を月で見る</label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    const month = e.target.value;
+                    setSelectedMonth(month);
+                    setSelectedWeek(month ? '' : currentWeekMeta.weekKey);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">対象週の履歴</option>
                   {availableMonths.map(month => <option key={month} value={month}>{format(new Date(`${month}-01`), 'yyyy年M月', { locale: ja })}</option>)}
                 </select>
               </div>
@@ -430,23 +478,24 @@ export const SNSPosts: React.FC = () => {
           </div>
 
           {/* 閲覧モード: 現在の週の投稿状況（メンバー×アカウント別） */}
-          {!selectedMonth && !selectedUserId && (
+          {selectedWeek && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  今週の投稿状況
+                  選択週の投稿状況
                   <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
-                    ({format(weekStart, 'M月d日', { locale: ja })} 〜 {format(addDays(weekEnd, -1), 'M月d日', { locale: ja })})
+                    ({format(selectedWeekMeta.weekStart, 'M月d日', { locale: ja })} 〜 {format(addDays(selectedWeekMeta.weekEnd, -1), 'M月d日', { locale: ja })})
                   </span>
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  「未完了」は今週のストーリーズとフィードのどちらか、または両方が未記録の状態です。登録済みSNSアカウントがあるメンバーはアカウント別に表示します。
+                  「未完了」は選択週のストーリーズとフィードのどちらか、または両方が未記録の状態です。フォロワー数が入力済みの場合はアカウント別に表示します。
                 </p>
               </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
                 {currentWeekStatus.map((status) => {
                   // このメンバーのアカウント一覧
                   const memberAccounts = allAccounts.filter(a => a.userId === status.userId);
+                  const memberFollowerCount = getLatestFollowerCount([...(status.feedPosts || []), ...(status.storyPosts || [])]);
                   return (
                     <div key={status.userId} className="p-4">
                       <div className="flex items-center gap-3 mb-3">
@@ -460,6 +509,9 @@ export const SNSPosts: React.FC = () => {
                         ) : (
                           <span className="text-xs text-gray-400 dark:text-gray-500">登録アカウントなし</span>
                         )}
+                        {memberFollowerCount != null && (
+                          <span className="text-xs text-gray-600 dark:text-gray-300">フォロワー {memberFollowerCount.toLocaleString()}人</span>
+                        )}
                       </div>
                       {memberAccounts.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -467,19 +519,25 @@ export const SNSPosts: React.FC = () => {
                             const accPosts = (allPosts || []).filter(p =>
                               p.userId === status.userId &&
                               p.accountId === acc.id &&
-                              p.postedAt &&
-                              new Date(p.postedAt) >= weekStart &&
-                              new Date(p.postedAt) < weekEnd
+                              p.week === selectedWeek
                             );
                             const hasFeed = accPosts.some(p => p.postType === 'FEED');
                             const hasStory = accPosts.some(p => p.postType === 'STORY');
                             const feedPosts = accPosts.filter(p => p.postType === 'FEED');
                             const storyPosts = accPosts.filter(p => p.postType === 'STORY');
+                            const latestFollowerCount = getLatestFollowerCount(accPosts);
                             return (
                               <div key={acc.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-                                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 truncate">
-                                  {acc.displayName || acc.accountName}
-                                  <span className="ml-1 text-gray-400 font-normal">({acc.platform})</span>
+                                <div className="mb-2 flex items-start justify-between gap-2">
+                                  <div className="min-w-0 text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                                    {acc.displayName || acc.accountName}
+                                    <span className="ml-1 text-gray-400 font-normal">({acc.platform})</span>
+                                  </div>
+                                  {latestFollowerCount != null && (
+                                    <span className="flex-shrink-0 rounded bg-white px-1.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-600">
+                                      {latestFollowerCount.toLocaleString()}人
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="space-y-1">
                                   <div className="flex items-center justify-between text-xs">
@@ -514,6 +572,7 @@ export const SNSPosts: React.FC = () => {
                           <div className="flex flex-wrap gap-x-4 gap-y-1">
                             <span>ストーリーズ: {status.hasStory ? <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span> : <span className="text-gray-400">未投稿</span>}</span>
                             <span>フィード: {status.hasFeed ? <span className="text-green-600 dark:text-green-400 font-medium">✓ 投稿済み</span> : <span className="text-gray-400">未投稿</span>}</span>
+                            {memberFollowerCount != null && <span>フォロワー: <span className="font-medium text-gray-700 dark:text-gray-200">{memberFollowerCount.toLocaleString()}人</span></span>}
                           </div>
                         </div>
                       )}
