@@ -7,6 +7,8 @@ import {
   Settings,
   Users,
   MapPin,
+  Target,
+  FolderKanban,
   CalendarDays,
   CalendarCheck,
   Share2,
@@ -171,6 +173,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   ];
 
   const goalsAndEventsItems = [
+    { to: '/goals', icon: Target, label: 'ミッション' },
+    { to: '/projects', icon: FolderKanban, label: 'プロジェクト' },
     { to: '/tasks', icon: Check, label: 'タスク' },
     { to: '/events', icon: CalendarDays, label: 'オーガナイザー', end: true as const },
   ];
@@ -312,7 +316,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
 
         <div className="pt-4 pb-2">
           <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            タスク・オーガナイザー
+            目標・オーガナイザー
           </p>
         </div>
         {goalsAndEventsItems.map((item) => (
