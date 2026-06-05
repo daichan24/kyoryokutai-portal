@@ -8,6 +8,7 @@ import { useAuthStore } from '../stores/authStore';
 import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
+import { sortUsersByDisplayOrder } from '../utils/userSort';
 
 function formatYen(n: number) {
   return `¥${n.toLocaleString('ja-JP')}`;
@@ -91,7 +92,7 @@ export const ActivityExpenses: React.FC = () => {
   });
 
   const sortedMembers = useMemo(
-    () => [...members].sort((a, b) => a.name.localeCompare(b.name, 'ja')),
+    () => sortUsersByDisplayOrder(members),
     [members]
   );
 

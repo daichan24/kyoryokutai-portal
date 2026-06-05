@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { SupportRecordModal } from '../components/support/SupportRecordModal';
 import type { User } from '../types';
+import { sortUsersByDisplayOrder } from '../utils/userSort';
 
 interface SupportRecord {
   id: string;
@@ -94,7 +95,7 @@ export const SupportRecords: React.FC = () => {
   });
 
   const sortedMembers = React.useMemo(
-    () => [...members].sort((a, b) => a.name.localeCompare(b.name, 'ja')),
+    () => sortUsersByDisplayOrder(members),
     [members]
   );
 
@@ -385,4 +386,3 @@ export const SupportRecords: React.FC = () => {
     </div>
   );
 };
-

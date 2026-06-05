@@ -5,6 +5,7 @@ import { CalendarCheck, Check, Circle, Plus, RefreshCw, Users, X } from 'lucide-
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import type { InterviewAvailabilityStatus, InterviewPoll, InterviewPollAssignment, User } from '../types';
+import { sortUsersByDisplayOrder } from '../utils/userSort';
 
 const staffRoles = ['MASTER', 'SUPPORT', 'GOVERNMENT'];
 
@@ -99,8 +100,9 @@ export const InterviewPolls: React.FC = () => {
         api.get<User[]>('/api/users?role=MEMBER'),
       ]);
       setPolls(pollRes.data);
-      setMembers(userRes.data);
-      setSelectedMemberIds(new Set(userRes.data.map((m) => m.id)));
+      const orderedMembers = sortUsersByDisplayOrder(userRes.data || []);
+      setMembers(orderedMembers);
+      setSelectedMemberIds(new Set(orderedMembers.map((m) => m.id)));
       if (!selectedId && pollRes.data[0]) setSelectedId(pollRes.data[0].id);
     } catch (err) {
       setError(getErrorMessage(err, '面談日程調整を取得できませんでした'));

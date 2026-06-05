@@ -40,16 +40,39 @@ function ensureFullGitHistory() {
   const isShallow = gitValue('git rev-parse --is-shallow-repository', 'false');
   if (isShallow === 'true') {
     runGit('git fetch --unshallow --quiet');
+    runGit('git fetch --depth=100000 origin --quiet');
+  }
+}
+
+function readExistingBuildVersion() {
+  const outPath = path.join(__dirname, '../src/buildVersion.ts');
+  try {
+    const current = fs.readFileSync(outPath, 'utf-8');
+    const count = current.match(/BUILD_COMMIT_COUNT = '(\d+)'/)?.[1];
+    const sha = current.match(/BUILD_COMMIT_SHA = '([^']+)'/)?.[1];
+    return { count, sha };
+  } catch {
+    return { count: undefined, sha: undefined };
   }
 }
 
 ensureFullGitHistory();
 
 const rawCommitCount = gitValue('git rev-list --count HEAD', process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT || '0');
-const commitCount = rawCommitCount === '1' && (process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT)
-  ? (process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT)
-  : rawCommitCount;
 const commitSha = gitValue('git rev-parse --short HEAD', 'unknown');
+const existingBuild = readExistingBuildVersion();
+const envCommitCount = process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT;
+let commitCount = rawCommitCount;
+
+if (rawCommitCount === '1') {
+  if (envCommitCount) {
+    commitCount = envCommitCount;
+  } else if (existingBuild.count && Number(existingBuild.count) > 1) {
+    commitCount = existingBuild.sha && existingBuild.sha !== commitSha
+      ? String(Number(existingBuild.count) + 1)
+      : existingBuild.count;
+  }
+}
 const buildDate = new Date().toISOString();
 
 const outPath = path.join(__dirname, '../src/buildVersion.ts');

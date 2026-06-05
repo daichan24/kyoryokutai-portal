@@ -8,6 +8,7 @@ import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import type { User } from '../types';
+import { sortUsersByDisplayOrder } from '../utils/userSort';
 
 // ─── 型定義 ──────────────────────────────────────────────────────────────────
 type CompensatoryLeaveType = 'FULL_DAY' | 'HALF_DAY' | 'TIME_ADJUST';
@@ -234,7 +235,7 @@ export const LeaveManagement: React.FC = () => {
           <select value={selectedMemberId || ''} onChange={e => setSelectedMemberId(e.target.value || null)}
             className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm">
             <option value="">選択してください</option>
-            {[...members].sort((a, b) => a.name.localeCompare(b.name, 'ja')).map(m => (
+            {sortUsersByDisplayOrder(members).map(m => (
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>

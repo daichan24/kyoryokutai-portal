@@ -9,6 +9,7 @@ import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { EnhancedInterviewCalendar } from '../components/interview/EnhancedInterviewCalendar';
 import { ActivityExpensesByProject } from '../components/interview/ActivityExpensesByProject';
+import { sortUsersByDisplayOrder } from '../utils/userSort';
 
 interface InterviewParticipantUser {
   id: string;
@@ -598,7 +599,7 @@ export const InterviewMonthlySchedules: React.FC = () => {
   });
 
   const sortedMembers = useMemo(
-    () => [...members].sort((a, b) => a.name.localeCompare(b.name, 'ja')),
+    () => sortUsersByDisplayOrder(members),
     [members]
   );
 
