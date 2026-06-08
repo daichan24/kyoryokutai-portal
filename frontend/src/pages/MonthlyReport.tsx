@@ -79,7 +79,6 @@ export const MonthlyReport: React.FC = () => {
   if (error) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">月次報告</h1>
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
           <p className="text-yellow-800 dark:text-yellow-300">
             月次報告機能は現在準備中です。
@@ -94,8 +93,7 @@ export const MonthlyReport: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">月次報告</h1>
+      <div className="flex justify-end">
         {canCreate && (
           <div className="flex gap-2">
             <button

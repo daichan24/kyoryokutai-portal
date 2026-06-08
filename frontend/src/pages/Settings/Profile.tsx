@@ -181,11 +181,6 @@ export const ProfileSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">プロフィール設定</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">表示設定とSNSリンクを設定できます</p>
-      </div>
-
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">パスワード変更</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">

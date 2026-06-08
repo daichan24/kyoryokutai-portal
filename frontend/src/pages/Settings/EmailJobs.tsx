@@ -187,13 +187,7 @@ export const EmailJobsSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">メール通知キュー</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            承認依頼・結果通知・期限リマインドの送信状況を確認します。
-          </p>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
             type="email"

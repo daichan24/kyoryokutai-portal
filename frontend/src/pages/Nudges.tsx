@@ -175,13 +175,7 @@ export const Nudges: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">協力隊細則</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            {canEdit ? '年度ごとの細則を管理できます' : '年度ごとの細則を閲覧できます'}
-          </p>
-        </div>
+      <div className="flex justify-end">
         {canEdit && !isCreating && !isEditing && (
           <Button onClick={() => {
             setIsCreating(true);

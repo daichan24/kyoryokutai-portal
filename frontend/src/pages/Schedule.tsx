@@ -463,35 +463,6 @@ export const Schedule: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 -mx-3 sm:-mx-4 md:-mx-6">
-      {/* スマホ: タイトルとボタンを別カラムに配置 */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-3 sm:px-4 md:px-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
-          スケジュール管理
-        </h1>
-        <div className="flex flex-wrap gap-2 items-center">
-          <Button
-            variant="outline"
-            onClick={() => setIsGovernmentAttendanceModalOpen(true)}
-            title="行政出勤カレンダーを表示"
-          >
-            <CalendarDays className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">行政カレンダー</span>
-            <span className="sm:hidden">行政</span>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await Promise.all([fetchSchedules(), fetchProjects()]);
-            }}
-            title="スケジュールとタスクを更新"
-          >
-            <RefreshCw className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">更新</span>
-          </Button>
-
-        </div>
-      </div>
-
       <div className="bg-white dark:bg-gray-800 shadow border-y border-border dark:border-gray-700 min-w-0 w-full">
         <div className="flex gap-4 px-0 sm:px-3 md:px-4 py-0 sm:py-6">
           {/* メンバーサイドバー（すべてのビューモードで表示） */}
@@ -659,6 +630,29 @@ export const Schedule: React.FC = () => {
                 月
               </Button>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsGovernmentAttendanceModalOpen(true)}
+              className="h-8 shrink-0 px-3"
+              title="行政出勤カレンダーを表示"
+            >
+              <CalendarDays className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">行政カレンダー</span>
+              <span className="sm:hidden">行政</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await Promise.all([fetchSchedules(), fetchProjects()]);
+              }}
+              className="h-8 shrink-0 px-3"
+              title="スケジュールとタスクを更新"
+            >
+              <RefreshCw className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">更新</span>
+            </Button>
             <button
               type="button"
               onClick={selectOnlyMe}

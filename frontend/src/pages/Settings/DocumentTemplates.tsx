@@ -190,8 +190,7 @@ export const DocumentTemplatesSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">テンプレート設定</h1>
+      <div className="flex justify-end">
         {canEdit && (
           <div className="flex gap-2">
             <Button onClick={handleInit} variant="outline" disabled={saving}>

@@ -195,9 +195,6 @@ export const Projects: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            プロジェクト管理
-          </h1>
           <Button
             variant="outline"
             size="sm"

@@ -123,8 +123,7 @@ export const Inspections: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">復命書</h1>
+      <div className="flex justify-end">
         {canCreate && (
           <Button onClick={handleCreateInspection}>
             <Plus className="h-4 w-4 mr-2" />

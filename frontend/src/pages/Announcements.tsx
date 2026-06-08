@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { Megaphone, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -208,16 +208,6 @@ export const Announcements: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <Megaphone className="h-7 w-7 text-primary shrink-0" />
-          お知らせ
-        </h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          全員がお知らせを投稿できます。確認を求める対象を選んで投稿してください。
-        </p>
-      </div>
-
       {canPost && (
         <>
           <section className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-6 space-y-4">

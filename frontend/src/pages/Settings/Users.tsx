@@ -178,16 +178,12 @@ export const UsersSettings: React.FC = () => {
   // 管理者（MASTER / SUPPORT）のみが新規作成ボタンを表示
   const canCreateUser = currentUser?.role === 'MASTER' || currentUser?.role === 'SUPPORT';
   
-  // ページタイトル（ロール別）
-  const pageTitle = currentUser?.role === 'MASTER' ? 'ユーザー管理' : 'ユーザー情報';
-  
   // 全ロールでフィルターUIを表示
   const showRoleFilter = true;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">{pageTitle}</h1>
+      <div className="flex justify-end">
         <div className="flex gap-3">
           {canCreateUser && (
             <Button onClick={() => { resetForm(); setIsModalOpen(true); }}>

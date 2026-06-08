@@ -304,10 +304,7 @@ export const WeeklyReport: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">
-          週次報告
-        </h1>
+      <div className="flex justify-end">
         {canCreate && (
           <Button onClick={handleCreateReport}>
             <Plus className="h-4 w-4 mr-2" />

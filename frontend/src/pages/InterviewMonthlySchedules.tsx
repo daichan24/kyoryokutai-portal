@@ -708,13 +708,6 @@ export const InterviewMonthlySchedules: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-7xl">{/* max-w-5xl から max-w-7xl に変更 */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">面談</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-          隊員と対象月を選ぶと、スケジュールカレンダー、ミッション・プロジェクトの達成状況、活動経費、相談内容などを一画面で確認できます。面談で使いやすいように情報を整理して表示します。
-        </p>
-      </div>
-
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-4 md:p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -759,37 +752,6 @@ export const InterviewMonthlySchedules: React.FC = () => {
 
       {memberId && data && !isFetching && (
         <>
-          {/* 面談の流れ */}
-          <section className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">面談の流れ</h2>
-            <ol className="text-sm text-blue-950/90 dark:text-blue-100/90 space-y-2 list-decimal list-inside">
-              <li>
-                <strong>スケジュール確認</strong> - カレンダーで対象月の活動状況を把握
-              </li>
-              <li>
-                <strong>ミッション・プロジェクトの達成状況</strong> - 進捗率とタスク完了状況を確認
-              </li>
-              <li>
-                <strong>相談内容の確認</strong> - 隊員からの相談事項を事前に把握
-              </li>
-              <li>
-                <strong>活動経費</strong> - 予算の使用状況とプロジェクト別の支出を確認
-              </li>
-              <li>
-                <strong>ミッション別・プロジェクト別の活動</strong> - 各ミッション配下のプロジェクトで予定を確認
-              </li>
-              <li>
-                <strong>協働した人</strong> - 誰と一緒に活動したかを確認
-              </li>
-              <li>
-                <strong>来月の予定</strong> - 翌月の計画を確認
-              </li>
-              <li>
-                <strong>週次報告</strong> - 提出された週次報告から今後の計画を確認
-              </li>
-            </ol>
-          </section>
-
           {/* 2カラムレイアウト */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* 左カラム（メインコンテンツ） */}

@@ -259,13 +259,6 @@ export const ActivityExpenses: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">活動経費</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          使った日・内容・金額を記録し、設定された上限から差し引いた残りが分かります。支出は必ず自分のプロジェクト（ミッション配下の活動）に紐づけてください。メンバーは自分の分だけ表示されます。行政・サポート・マスターは隊員を選んで閲覧・予算設定・チェックリスト編集ができます。
-        </p>
-      </div>
-
       <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">対象経費一覧</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">

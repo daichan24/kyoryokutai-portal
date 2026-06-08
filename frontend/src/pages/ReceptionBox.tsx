@@ -502,7 +502,6 @@ export const ReceptionBox: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl mx-auto min-w-0">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">受付ボックス</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {!isMember && `未対応 ${pendingCount} 件 / `}未承認 {unapprovedCount} 件 / 解決済み {resolvedCount} 件
         </p>

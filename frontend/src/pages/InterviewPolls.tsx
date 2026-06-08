@@ -222,13 +222,7 @@ export const InterviewPolls: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">面談日程調整</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            候補日、上長NG日、隊員回答をもとに日割りを作成します。
-          </p>
-        </div>
+      <div className="flex justify-end">
         <button
           type="button"
           onClick={load}

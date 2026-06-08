@@ -233,13 +233,6 @@ export const EventParticipationSummary: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl whitespace-nowrap font-bold text-gray-900 dark:text-gray-100">イベント参加状況</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          役場・スタッフが登録する隊員参加枠はマトリクスで管理します。参加回数は選択した年度の「隊員参加枠でのチェック」と「他メンバーのイベント主催への参加（承認済み）」の内訳で表示します。
-        </p>
-      </div>
-
       <div className="flex flex-wrap gap-2 border-b border-border dark:border-gray-700 pb-2">
         <button
           type="button"

@@ -223,11 +223,6 @@ export const LeaveManagement: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">有給・代休</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">有給・無休・代休・時間調整の状況を確認・記録できます。</p>
-      </div>
-
       {/* 隊員選択（スタッフのみ） */}
       {isStaff && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">

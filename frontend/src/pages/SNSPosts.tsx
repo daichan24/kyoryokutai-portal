@@ -321,14 +321,7 @@ export const SNSPosts: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ヘッダー */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">SNS記録</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {viewMode === 'personal' ? '投稿実績とフォロワー数を記録します。' : 'メンバーが入力した投稿実績を確認します。'}
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center gap-3">
         {viewMode === 'personal' && (
           <div className="flex gap-2">
             <Button

@@ -175,17 +175,6 @@ export const Consultations: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {isMember ? '相談' : '相談（対応）'}
-        </h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          {isMember
-            ? 'サポート・行政・マスターへ相談を送れます。面談画面でも担当者が確認できます。'
-            : '隊員からの相談に対応し、解決したら「対応済み」にしてください。'}
-        </p>
-      </div>
-
       {isMember && (
         <>
           <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 space-y-4">

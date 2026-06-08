@@ -262,8 +262,7 @@ export const Handover: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">引き継ぎ</h1>
+      <div className="flex justify-end mb-6">
         <div className="flex gap-2">
           <Button
             variant={viewMode === 'view' ? 'primary' : 'outline'}

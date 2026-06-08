@@ -93,13 +93,6 @@ export const GoogleCalendarSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Googleカレンダー連携</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          専用カレンダー「クリアベース｜活動予定」とスケジュールを同期します。
-        </p>
-      </div>
-
       {message && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
           {message}

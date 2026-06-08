@@ -396,9 +396,6 @@ export const Tasks: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            タスク
-          </h1>
           <Button
             variant="outline"
             size="sm"
