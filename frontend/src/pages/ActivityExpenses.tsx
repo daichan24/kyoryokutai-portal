@@ -267,12 +267,12 @@ export const ActivityExpenses: React.FC = () => {
           長沼町地域おこし協力隊活動費補助金交付要綱に基づく対象経費です。詳細は役場にご確認ください。
         </p>
         <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-          <table className="min-w-full text-sm">
+          <table className="min-w-full table-fixed text-sm">
             <thead className="bg-gray-50 dark:bg-gray-700/80">
               <tr>
-                <th className="text-left px-3 py-2 font-medium w-32">費用区分</th>
-                <th className="text-left px-3 py-2 font-medium">対象経費</th>
-                <th className="text-left px-3 py-2 font-medium w-48">対象外経費</th>
+                <th className="text-left px-3 py-2 font-medium w-[18%] min-w-[120px]">費用区分</th>
+                <th className="text-left px-3 py-2 font-medium w-[42%] min-w-[260px]">対象経費</th>
+                <th className="text-left px-3 py-2 font-medium w-[40%] min-w-[260px]">対象外経費</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">

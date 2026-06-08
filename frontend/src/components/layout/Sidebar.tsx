@@ -291,7 +291,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const statusItems: Array<{ to: string; icon: NavIcon; label: string; end?: boolean }> = [
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/events/participation-summary', icon: CalendarDays, label: 'イベント参加状況' },
-    { to: '/contacts', icon: Contact, label: '町民データベース' },
+    ...(user?.contactsSidebarEnabled === true ? [{ to: '/contacts', icon: Contact, label: '町民データベース' }] : []),
   ];
 
   const closeMobile = () => onClose?.();

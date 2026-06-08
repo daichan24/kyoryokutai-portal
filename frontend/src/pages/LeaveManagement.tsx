@@ -222,7 +222,7 @@ export const LeaveManagement: React.FC = () => {
   const nearestLeave = activeLeaves[0] ?? null;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="w-full max-w-none space-y-6">
       {/* 隊員選択（スタッフのみ） */}
       {isStaff && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">

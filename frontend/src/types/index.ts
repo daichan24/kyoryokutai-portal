@@ -21,6 +21,7 @@ export interface User {
   displayOrder?: number;
   wishesEnabled?: boolean;
   notepadEnabled?: boolean;
+  contactsSidebarEnabled?: boolean;
   emailNotificationsEnabled?: boolean;
   scheduleWeekStartsOn?: 0 | 1;
   scheduleHiddenLocationIds?: string[];

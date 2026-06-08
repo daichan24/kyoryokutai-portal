@@ -31,6 +31,7 @@ model User {
   displayOrder  Int     @default(0) // 表示順（メンバー以外が設定可能）
   wishesEnabled Boolean @default(false) // やりたいこと100（プロフィールでON、Wishが1件以上あるユーザーは移行でON）
   notepadEnabled Boolean @default(true) // メモ帳機能の表示（デフォルトON）
+  contactsSidebarEnabled Boolean @default(false) // 町民データベースのサイドバー表示（デフォルトOFF）
   emailNotificationsEnabled Boolean @default(true) // メール通知の受信
   scheduleWeekStartsOn Int @default(0) // スケジュール週表示の開始曜日（0=日曜, 1=月曜）
   scheduleHiddenLocationIds String[] @default([]) // スケジュール入力で非表示にする活動場所ID
