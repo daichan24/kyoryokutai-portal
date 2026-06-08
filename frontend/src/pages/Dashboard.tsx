@@ -98,7 +98,9 @@ export const Dashboard: React.FC = () => {
       const response = await api.get('/api/inbox');
       return response.data;
     },
-    refetchInterval: 30000, // 30秒ごとに更新
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: announcementUnread } = useQuery({
@@ -108,8 +110,9 @@ export const Dashboard: React.FC = () => {
       return r.data;
     },
     enabled: user?.role === 'MEMBER',
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: staffAnnouncements = [] } = useQuery({

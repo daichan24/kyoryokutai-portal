@@ -5,6 +5,9 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 const router = Router();
 router.use(authenticate);
 
+const unreadCountCache = new Map<string, { count: number; expiresAt: number }>();
+const UNREAD_COUNT_CACHE_MS = 30_000;
+
 function consultationMatchesStaff(c: any, staffId: string, staffRole: string) {
   if (c.audience === 'SPECIFIC_USER') {
     const isAssigned = c.assignedUsers?.some((u: any) => u.id === staffId);
@@ -24,6 +27,11 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
     const role = req.user!.role;
+    const cacheKey = `${userId}:${role}`;
+    const cached = unreadCountCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return res.json({ count: cached.count });
+    }
 
     let count = 0;
 
@@ -54,66 +62,67 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
       });
       count += scheduleCount;
     } else if (role === 'GOVERNMENT' || role === 'SUPPORT' || role === 'MASTER') {
-      // ① スケジュール承認リクエスト
-      const scheduleCount = await prisma.scheduleParticipant.count({
-        where: {
-          schedule: { userId: { not: userId } },
-          status: 'PENDING',
-        },
-      });
+      const [
+        scheduleCount,
+        openConsultations,
+        expenseCount,
+        weeklyReportCount,
+        inspectionCount,
+        monthlyReportCount,
+        compensatoryLeaveCount,
+        timeAdjustmentCount,
+      ] = await Promise.all([
+        prisma.scheduleParticipant.count({
+          where: {
+            schedule: { userId: { not: userId } },
+            status: 'PENDING',
+          },
+        }),
+        prisma.consultation.findMany({
+          where: { status: 'OPEN' },
+          include: {
+            assignedUsers: { select: { id: true } },
+          },
+        }),
+        prisma.activityExpenseEntry.count({
+          where: { userId: { not: userId }, status: 'PENDING' },
+        }),
+        prisma.weeklyReport.count({
+          where: {
+            submittedAt: { not: null },
+            approvalStatus: 'PENDING',
+            user: { role: 'MEMBER' },
+          },
+        }),
+        prisma.inspection.count({
+          where: { user: { role: 'MEMBER' }, approvalStatus: 'PENDING' },
+        }),
+        prisma.monthlyReport.count({
+          where: {
+            submittedAt: { not: null },
+            approvalStatus: 'PENDING',
+            creator: { role: { in: ['SUPPORT', 'MASTER'] } },
+          },
+        }),
+        prisma.compensatoryLeave.count({
+          where: { confirmedAt: null, user: { role: 'MEMBER' } },
+        }),
+        prisma.timeAdjustment.count({
+          where: { confirmedAt: null, user: { role: 'MEMBER' } },
+        }),
+      ]);
 
-      // ② 相談（メンバーから届いたもの）
-      const openConsultations = await prisma.consultation.findMany({
-        where: {
-          status: 'OPEN',
-        },
-        include: {
-          assignedUsers: { select: { id: true } },
-        },
-      });
       const consultationCount = openConsultations.filter((c) =>
         consultationMatchesStaff(c, userId, role)
       ).length;
 
-      // ③ 活動経費（行政・サポート・マスター） — PENDINGのみカウント
-      const expenseCount = await prisma.activityExpenseEntry.count({
-        where: { userId: { not: userId }, status: 'PENDING' },
-      });
-
-      // ④ 週次報告の提出
-      const weeklyReportCount = await prisma.weeklyReport.count({
-        where: {
-          submittedAt: { not: null },
-          approvalStatus: 'PENDING',
-          user: { role: 'MEMBER' },
-        },
-      });
-
-      // ⑤ 復命書の提出
-      const inspectionCount = await prisma.inspection.count({
-        where: { user: { role: 'MEMBER' }, approvalStatus: 'PENDING' },
-      });
-
-      // ⑥ 月次報告の提出
-      const monthlyReportCount = await prisma.monthlyReport.count({
-        where: {
-          submittedAt: { not: null },
-          approvalStatus: 'PENDING',
-          creator: { role: { in: ['SUPPORT', 'MASTER'] } },
-        },
-      });
-
-      // ⑦ 代休・時間調整の確認依頼
-      const compensatoryLeaveCount = await prisma.compensatoryLeave.count({
-        where: { confirmedAt: null, user: { role: 'MEMBER' } },
-      });
-      const timeAdjustmentCount = await prisma.timeAdjustment.count({
-        where: { confirmedAt: null, user: { role: 'MEMBER' } },
-      });
-
       count += scheduleCount + consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount + compensatoryLeaveCount + timeAdjustmentCount;
     }
 
+    unreadCountCache.set(cacheKey, {
+      count,
+      expiresAt: Date.now() + UNREAD_COUNT_CACHE_MS,
+    });
     res.json({ count });
   } catch (error) {
     console.error('Get reception box unread count error:', error);

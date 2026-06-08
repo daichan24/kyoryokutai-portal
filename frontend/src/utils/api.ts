@@ -28,8 +28,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      const requestAuthorization = error.config?.headers?.Authorization;
+      const requestToken =
+        typeof requestAuthorization === 'string'
+          ? requestAuthorization.replace(/^Bearer\s+/i, '')
+          : null;
+      const currentToken = localStorage.getItem('token');
+
+      // ログイン前の古い通信が、新しく発行されたトークンを消さないようにする。
+      if (currentToken && (!requestToken || requestToken === currentToken)) {
+        localStorage.removeItem('token');
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      }
     }
     return Promise.reject(error);
   }

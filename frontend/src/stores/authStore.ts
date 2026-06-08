@@ -59,13 +59,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     api.setToken(null);
-    set({ user: null, isAuthenticated: false });
+    set({ user: null, isAuthenticated: false, isLoading: false, error: null });
   },
 
   fetchMe: async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      set({ isAuthenticated: false, user: null });
+      set({ isAuthenticated: false, user: null, isLoading: false });
       return;
     }
 

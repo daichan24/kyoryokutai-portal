@@ -27,7 +27,7 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
 
   // プロジェクト一覧を取得（Taskの紐づき情報用）
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['tasks-widget-projects', user?.id, isStaff ? workspaceMode : 'member'],
+    queryKey: ['dashboard-projects', user?.id, isStaff ? workspaceMode : 'member'],
     queryFn: async () => {
       if (user?.role === 'MEMBER') {
         const response = await api.get(`/api/projects?userId=${user.id}`);
@@ -154,4 +154,3 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
     </div>
   );
 };
-

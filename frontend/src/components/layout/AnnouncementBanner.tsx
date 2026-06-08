@@ -14,8 +14,9 @@ export const AnnouncementBanner: React.FC = () => {
       return r.data;
     },
     enabled: user?.role === 'MEMBER',
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    refetchIntervalInBackground: false,
   });
 
   if (user?.role !== 'MEMBER' || !data?.count) return null;

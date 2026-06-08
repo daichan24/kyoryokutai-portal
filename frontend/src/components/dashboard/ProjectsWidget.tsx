@@ -28,18 +28,18 @@ export const ProjectsWidget: React.FC<ProjectsWidgetProps> = ({
   const { user } = useAuthStore();
   const { isStaff, workspaceMode } = useStaffWorkspace();
   const { data: projects, isLoading } = useQuery<Project[]>({
-    queryKey: ['projects-widget', user?.id, isStaff ? workspaceMode : 'member'],
+    queryKey: ['dashboard-projects', user?.id, isStaff ? workspaceMode : 'member'],
     queryFn: async () => {
       if (user?.role === 'MEMBER') {
         const response = await api.get(`/api/projects?userId=${user.id}`);
-        return (response.data || []).slice(0, 5);
+        return response.data || [];
       }
       if (isStaff && workspaceMode === 'personal') {
         const response = await api.get(`/api/projects?userId=${user!.id}`);
-        return (response.data || []).slice(0, 5);
+        return response.data || [];
       }
       const response = await api.get('/api/projects');
-      return (response.data || []).slice(0, 5);
+      return response.data || [];
     },
   });
 
@@ -77,7 +77,7 @@ export const ProjectsWidget: React.FC<ProjectsWidgetProps> = ({
         <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">プロジェクトがありません</p>
       ) : (
         <div className="space-y-2">
-          {projects.map((project) => (
+          {projects.slice(0, 5).map((project) => (
             <Link
               key={project.id}
               to="/projects"
@@ -108,4 +108,3 @@ export const ProjectsWidget: React.FC<ProjectsWidgetProps> = ({
     </div>
   );
 };
-

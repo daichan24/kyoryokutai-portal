@@ -259,8 +259,6 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         data.customColor = null; // 明示的にnullを送信してリセット可能に
       }
 
-      console.log('Sending schedule data:', JSON.stringify(data, null, 2));
-
       if (selectedProjectId) {
         data.projectId = selectedProjectId;
       }

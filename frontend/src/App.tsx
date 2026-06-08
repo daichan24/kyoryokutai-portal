@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from './stores/authStore';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
@@ -47,9 +48,9 @@ const NotepadPage = lazy(() => import('./pages/NotepadPage').then((m) => ({ defa
 const LeaveManagement = lazy(() => import('./pages/LeaveManagement').then((m) => ({ default: m.LeaveManagement })));
 const Handover = lazy(() => import('./pages/Handover'));
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const PrivateRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <>{children ?? <Outlet />}</> : <Navigate to="/login" replace />;
 };
 
 const getDefaultAuthenticatedPath = () => {
@@ -60,7 +61,8 @@ const getDefaultAuthenticatedPath = () => {
 };
 
 const App: React.FC = () => {
-  const { isLoading, fetchMe, user } = useAuthStore();
+  const { isLoading, fetchMe, logout, user } = useAuthStore();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     fetchMe();
@@ -70,6 +72,16 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', !!user?.darkMode);
   }, [user?.darkMode]);
+
+  useEffect(() => {
+    const handleUnauthorized = async () => {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      logout();
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, [logout, queryClient]);
 
   if (isLoading) {
     return (
@@ -89,378 +101,50 @@ const App: React.FC = () => {
     >
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route element={<PrivateRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Navigate to={getDefaultAuthenticatedPath()} replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/reports/weekly" element={<WeeklyReport />} />
+            <Route path="/settings/users" element={<UsersSettings />} />
+            <Route path="/settings/locations" element={<LocationsSettings />} />
+            <Route path="/settings/drive-links" element={<DriveLinksSettings />} />
+            <Route path="/settings/profile" element={<ProfileSettings />} />
+            <Route path="/settings/google-calendar" element={<GoogleCalendarSettings />} />
+            <Route path="/goals" element={<Goals />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/events/:id" element={<EventDetail />} />
+            <Route path="/events/participation-summary" element={<EventParticipationSummary />} />
+            <Route path="/sns-posts" element={<SNSPosts />} />
+            <Route path="/contacts" element={<Contacts />} />
+            <Route path="/inspections" element={<Inspections />} />
+            <Route path="/interview/polls" element={<InterviewPolls />} />
+            <Route path="/consultations" element={<InboxPage />} />
+            <Route path="/activity-expenses" element={<ActivityExpenses />} />
+            <Route path="/wishes" element={<Wishes />} />
+            <Route path="/announcements" element={<Announcements />} />
+            <Route path="/reception-box" element={<InboxPage />} />
+            <Route path="/nudges" element={<Nudges />} />
+            <Route path="/notepad" element={<NotepadPage />} />
+            <Route path="/notepad/:id" element={<NotepadPage />} />
+            <Route path="/leave-management" element={<LeaveManagement />} />
+            <Route path="/handover" element={<Handover />} />
 
-        <Route
-          path="/"
-          element={
-            <PrivateRoute>
-              <Navigate to={getDefaultAuthenticatedPath()} replace />
-            </PrivateRoute>
-          }
-        />
+            <Route element={<RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']} />}>
+              <Route path="/settings/document-templates" element={<DocumentTemplatesSettings />} />
+              <Route path="/settings/email-jobs" element={<EmailJobsSettings />} />
+              <Route path="/support-records" element={<SupportRecords />} />
+            </Route>
 
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Dashboard />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/schedule"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Schedule />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/reports/weekly"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <WeeklyReport />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/settings/users"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <UsersSettings />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/settings/locations"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <LocationsSettings />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/settings/drive-links"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <DriveLinksSettings />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/settings/profile"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <ProfileSettings />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/settings/document-templates"
-          element={
-            <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
-              <Layout>
-                <DocumentTemplatesSettings />
-              </Layout>
-            </RoleProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/settings/google-calendar"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <GoogleCalendarSettings />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/settings/email-jobs"
-          element={
-            <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
-              <Layout>
-                <EmailJobsSettings />
-              </Layout>
-            </RoleProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/goals"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Goals />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/projects"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Projects />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/tasks"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Tasks />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/events"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Events />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/events/:id"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <EventDetail />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/events/participation-summary"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <EventParticipationSummary />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/sns-posts"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <SNSPosts />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/contacts"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Contacts />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/inspections"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Inspections />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/reports/monthly"
-          element={
-            <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT', 'GOVERNMENT']}>
-              <Layout>
-                <MonthlyReport />
-              </Layout>
-            </RoleProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/support-records"
-          element={
-            <RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']}>
-              <Layout>
-                <SupportRecords />
-              </Layout>
-            </RoleProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/interview/monthly-schedules"
-          element={
-            <RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT', 'GOVERNMENT']}>
-              <Layout>
-                <InterviewMonthlySchedules />
-              </Layout>
-            </RoleProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/interview/polls"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <InterviewPolls />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/consultations"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <InboxPage />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/activity-expenses"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <ActivityExpenses />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/wishes"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Wishes />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/announcements"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Announcements />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/reception-box"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <InboxPage />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/nudges"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Nudges />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/notepad"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <NotepadPage />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/notepad/:id"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <NotepadPage />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/leave-management"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <LeaveManagement />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/handover"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Handover />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
+            <Route element={<RoleProtectedRoute allowedRoles={['MASTER', 'SUPPORT', 'GOVERNMENT']} />}>
+              <Route path="/reports/monthly" element={<MonthlyReport />} />
+              <Route path="/interview/monthly-schedules" element={<InterviewMonthlySchedules />} />
+            </Route>
+          </Route>
+        </Route>
       </Routes>
       {/* ビルドバージョン表示（デバッグ用） */}
       <div style={{ position: 'fixed', bottom: '5px', right: '5px', fontSize: '10px', color: '#999', zIndex: 9999 }}>

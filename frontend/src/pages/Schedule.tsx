@@ -60,7 +60,18 @@ export const Schedule: React.FC = () => {
   const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
   const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
-  const [visibleMemberIds, setVisibleMemberIds] = useState<Set<string>>(new Set());
+  const [visibleMemberIds, setVisibleMemberIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('calendarVisibleMembers');
+      if (saved) {
+        const ids = JSON.parse(saved);
+        if (Array.isArray(ids)) return new Set(ids);
+      }
+    } catch {
+      /* ignore invalid stored values */
+    }
+    return user?.id ? new Set([user.id]) : new Set();
+  });
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
   const scheduleWeekStartsOn: WeekStartsOn = user?.scheduleWeekStartsOn === 1 ? 1 : 0;
 
@@ -85,31 +96,11 @@ export const Schedule: React.FC = () => {
       fetchProjects();
       fetchMissions();
     }
-  }, [weekDates, user?.id, isStaff, workspaceMode, visibleMemberIds]);
+  }, [weekDates, user?.id, isStaff, workspaceMode, visibleMemberIds, projectViewMode]);
 
   // メンバーリストを取得（週表示・月表示共通）
   useEffect(() => {
     fetchMembers();
-  }, []);
-
-  // 初期表示時に自分のIDをvisibleMemberIdsに追加
-  useEffect(() => {
-    if (user?.id && visibleMemberIds.size === 0) {
-      setVisibleMemberIds(new Set([user.id]));
-    }
-  }, [user?.id]);
-
-  // ローカルストレージから表示設定を読み込み
-  useEffect(() => {
-    const saved = localStorage.getItem('calendarVisibleMembers');
-    if (saved) {
-      try {
-        const ids = JSON.parse(saved);
-        setVisibleMemberIds(new Set(ids));
-      } catch (e) {
-        console.error('Failed to load visible members:', e);
-      }
-    }
   }, []);
 
   // 表示設定をローカルストレージに保存
@@ -132,14 +123,6 @@ export const Schedule: React.FC = () => {
       setAvailableMembers([]);
     }
   };
-
-  // プロジェクト表示モード変更時の処理（weekDatesが空でないことを確認）
-  useEffect(() => {
-    if (weekDates.length > 0) {
-      console.log('Fetching projects with mode:', projectViewMode, 'weekDates:', weekDates.length);
-      fetchProjects();
-    }
-  }, [projectViewMode, weekDates, user?.id, isStaff, workspaceMode]);
 
   // スケジュール更新イベントをリッスン
   useEffect(() => {
@@ -202,7 +185,6 @@ export const Schedule: React.FC = () => {
     try {
       // weekDatesが空の場合は実行しない
       if (weekDates.length === 0) {
-        console.log('fetchProjects: weekDates is empty, skipping');
         return;
       }
       
@@ -215,56 +197,11 @@ export const Schedule: React.FC = () => {
         if (projectViewMode === 'personal') {
           // 個人モード: 自分のプロジェクトのみ
           url = `/api/projects?userId=${user?.id}`;
-        } else {
-          // 閲覧モード: 自分以外のメンバーのプロジェクトのみ
-          // まずメンバー一覧を取得して、自分のIDを除外
-          const membersResponse = await api.get('/api/users');
-          const members = (membersResponse.data || []).filter((u: any) => 
-            u.role === 'MEMBER' && u.id !== user?.id
-          );
-          // メンバーがいる場合は、各メンバーのプロジェクトを取得して結合
-          if (members.length > 0) {
-            const allMemberProjects: Project[] = [];
-            for (const member of members) {
-              try {
-                const memberResponse = await api.get<Project[]>(`/api/projects?userId=${member.id}`);
-                allMemberProjects.push(...(memberResponse.data || []));
-              } catch (error) {
-                console.error(`Failed to fetch projects for member ${member.id}:`, error);
-              }
-            }
-            // 表示期間内のプロジェクトのみフィルタリング
-            const filteredProjects = allMemberProjects.filter((project) => {
-              if (!project.startDate && !project.endDate) return false;
-              const projectStartDate = project.startDate ? new Date(project.startDate) : null;
-              const projectEndDate = project.endDate ? new Date(project.endDate) : null;
-              const viewStartDate = new Date(startDate);
-              const viewEndDate = new Date(endDate);
-              
-              if (projectStartDate && projectEndDate) {
-                return projectStartDate <= viewEndDate && projectEndDate >= viewStartDate;
-              } else if (projectStartDate) {
-                return projectStartDate <= viewEndDate;
-              } else if (projectEndDate) {
-                return projectEndDate >= viewStartDate;
-              }
-              return false;
-            });
-            
-            console.log('fetchProjects: filtered to', filteredProjects.length, 'projects (view mode)');
-            setProjects(filteredProjects);
-            return;
-          } else {
-            setProjects([]);
-            return;
-          }
         }
       }
       
-      console.log('fetchProjects: fetching from', url, 'mode:', projectViewMode);
       const response = await api.get<Project[]>(url);
       const allProjects = response.data || [];
-      console.log('fetchProjects: received', allProjects.length, 'projects');
       
       // 表示期間内のプロジェクトのみフィルタリング（開始日または終了日が期間内にあるもの）
       const filteredProjects = allProjects.filter((project) => {
@@ -285,7 +222,6 @@ export const Schedule: React.FC = () => {
         return false;
       });
       
-      console.log('fetchProjects: filtered to', filteredProjects.length, 'projects');
       // relatedTasksが含まれているプロジェクトをそのまま使用
       setProjects(filteredProjects);
     } catch (error) {

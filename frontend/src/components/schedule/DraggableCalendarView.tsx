@@ -60,12 +60,6 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   const isMobile = useIsMobileBreakpoint();
   const isMobileMonth = isMobile && viewMode === 'month';
 
-  // デバッグ: スケジュール数を確認
-  useEffect(() => {
-    console.log('DraggableCalendarView: schedules count =', schedules.length);
-    console.log('DraggableCalendarView: events count =', events.length);
-  }, [schedules, events]);
-
   // 色のコントラストを計算して適切なテキスト色を返す
   const getTextColor = (backgroundColor: string): string => {
     // #RRGGBB形式の色からRGB値を抽出
@@ -90,9 +84,6 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
   // FullCalendar用のイベントデータに変換
   const calendarEvents = React.useMemo(() => {
-    console.log('Converting schedules to calendar events...');
-    console.log('Sample schedule:', schedules[0]);
-    
     const result = [
       // スケジュール
       ...schedules.map((schedule) => {
@@ -185,15 +176,6 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             },
           };
 
-          console.log('Converted schedule:', { 
-            id: schedule.id, 
-            start: event.start, 
-            end: event.end, 
-            title: event.title,
-            originalStartTime: schedule.startTime,
-            originalEndTime: schedule.endTime,
-            editable: isEditable,
-          });
           return event;
         } catch (error) {
           console.error('Error converting schedule:', schedule, error);
@@ -241,8 +223,6 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       }).filter(Boolean),
     ];
 
-    console.log('Total calendar events:', result.length);
-    console.log('Sample calendar event:', result[0]);
     return result;
   }, [schedules, events, calendarViewMode, currentUserId]);
 
@@ -384,15 +364,6 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           updateData.endDate = newEndDateStr;
         }
 
-        console.log('月表示での移動:', {
-          scheduleId: schedule.id,
-          oldDate: schedule.date,
-          newDate: newDateStr,
-          oldStartTime,
-          oldEndTime,
-          daysDiff,
-          updateData,
-        });
       } else {
         // 週/日表示の場合: ブロックごと移動（開始・終了の両方が移動）
         // 元の所要時間を計算
@@ -400,18 +371,9 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         const oldEndMinutes = parseInt(schedule.endTime.split(':')[0]) * 60 + parseInt(schedule.endTime.split(':')[1]);
         const duration = oldEndMinutes - oldStartMinutes;
 
-        console.log('=== ドラッグ&ドロップ デバッグ ===');
-        console.log('newStart (raw):', newStart);
-        console.log('newStart.toString():', newStart.toString());
-        console.log('newStart.toISOString():', newStart.toISOString());
-        console.log('newStart.getTimezoneOffset():', newStart.getTimezoneOffset());
-        
         // JST の時刻を取得
         const newStartTime = getJSTTimeString(newStart);
-        
-        console.log('計算された newStartTime:', newStartTime);
-        console.log('元の schedule.startTime:', schedule.startTime);
-        
+
         const newEndTime = newEnd ? getJSTTimeString(newEnd) : (() => {
           const [startHours, startMinutes] = newStartTime.split(':').map(Number);
           const newStartMinutes = startHours * 60 + startMinutes;
@@ -421,11 +383,6 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           return `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}`;
         })();
         
-        console.log('計算された newEndTime:', newEndTime);
-        console.log('元の schedule.endTime:', schedule.endTime);
-        console.log('所要時間 (duration):', duration, '分');
-        console.log('===================================');
-
         // 日付を JST で取得
         const newDateStr = getJSTDateString(newStart);
 
@@ -441,23 +398,9 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           updateData.endDate = newEndDateStr;
         }
 
-        console.log('週/日表示でのブロック移動:', {
-          scheduleId: schedule.id,
-          oldDate: schedule.date,
-          newDate: newDateStr,
-          oldStartTime: schedule.startTime,
-          newStartTime,
-          oldEndTime: schedule.endTime,
-          newEndTime,
-          duration: `${duration}分`,
-          updateData,
-        });
       }
 
-      console.log('Updating schedule:', { id: schedule.id, updateData });
-
-      const response = await api.put(`/api/schedules/${schedule.id}`, updateData);
-      console.log('Update response:', response.data);
+      await api.put(`/api/schedules/${schedule.id}`, updateData);
       
       // 成功したら親コンポーネントに通知
       onScheduleUpdate();
@@ -518,48 +461,12 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
       if (isStartResize) {
         // 開始時刻のみ変更（終了時刻は固定）
-        console.log('=== リサイズ（開始時刻変更）デバッグ ===');
-        console.log('newStart (raw):', newStart);
-        console.log('newStart.toString():', newStart.toString());
-        console.log('newStart.toISOString():', newStart.toISOString());
-        
         startTime = getJSTTimeString(newStart);
         endTime = schedule.endTime; // 元の終了時刻を保持
-        
-        console.log('計算された startTime:', startTime);
-        console.log('元の schedule.startTime:', schedule.startTime);
-        console.log('保持される endTime:', endTime);
-        console.log('===================================');
-        
-        console.log('開始時刻のみリサイズ:', {
-          scheduleId: schedule.id,
-          oldStartTime: schedule.startTime,
-          newStartTime: startTime,
-          endTime: endTime,
-          delta: `${startDelta.milliseconds / 1000 / 60}分`,
-        });
       } else if (isEndResize) {
         // 終了時刻のみ変更（開始時刻は固定）
-        console.log('=== リサイズ（終了時刻変更）デバッグ ===');
-        console.log('newEnd (raw):', newEnd);
-        console.log('newEnd.toString():', newEnd.toString());
-        console.log('newEnd.toISOString():', newEnd.toISOString());
-        
         startTime = schedule.startTime; // 元の開始時刻を保持
         endTime = getJSTTimeString(newEnd);
-        
-        console.log('保持される startTime:', startTime);
-        console.log('計算された endTime:', endTime);
-        console.log('元の schedule.endTime:', schedule.endTime);
-        console.log('===================================');
-        
-        console.log('終了時刻のみリサイズ:', {
-          scheduleId: schedule.id,
-          startTime: startTime,
-          oldEndTime: schedule.endTime,
-          newEndTime: endTime,
-          delta: `${endDelta.milliseconds / 1000 / 60}分`,
-        });
       } else {
         // どちらも変更されていない場合（念のため）
         startTime = getJSTTimeString(newStart);
@@ -578,15 +485,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         updateData.endDate = getJSTDateString(newEnd);
       }
 
-      console.log('Resizing schedule:', { 
-        scheduleId: schedule.id, 
-        isStartResize,
-        isEndResize,
-        updateData 
-      });
-
-      const response = await api.put(`/api/schedules/${schedule.id}`, updateData);
-      console.log('Resize response:', response.data);
+      await api.put(`/api/schedules/${schedule.id}`, updateData);
       
       // 成功したら親コンポーネントに通知
       onScheduleUpdate();
@@ -619,46 +518,21 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     if (isTimeGridView) {
       // 週/日表示の場合は時刻付きで作成
       const clickedDate = info.date;
-      
-      console.log('=== 日付クリック（週/日表示）デバッグ ===');
-      console.log('clickedDate (raw):', clickedDate);
-      console.log('clickedDate.toString():', clickedDate.toString());
-      console.log('clickedDate.toISOString():', clickedDate.toISOString());
-      console.log('clickedDate.getHours():', clickedDate.getHours());
-      console.log('clickedDate.getMinutes():', clickedDate.getMinutes());
-      console.log('clickedDate.getTimezoneOffset():', clickedDate.getTimezoneOffset());
-      
+
       const startTime = getJSTTimeString(clickedDate);
       const endDate = new Date(clickedDate);
       endDate.setHours(clickedDate.getHours() + 1);
       const endTime = getJSTTimeString(endDate);
-      
-      console.log('計算された startTime:', startTime);
-      console.log('計算された endTime:', endTime);
-      console.log('===================================');
-      
+
       onCreateSchedule(clickedDate, startTime, endTime);
     } else {
       // 月表示の場合は日付のみで作成
-      console.log('=== 日付クリック（月表示）デバッグ ===');
-      console.log('clickedDate:', info.date);
-      console.log('===================================');
       onCreateSchedule(info.date);
     }
   };
 
   return (
     <div className={`fullcalendar-wrapper ${isMobile ? 'fullcalendar-mobile' : ''}`}>
-      {calendarEvents.length === 0 && (
-        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg mb-4">
-          <p className="text-yellow-800 dark:text-yellow-200">
-            ⚠️ カレンダーイベントが0件です。ブラウザのコンソールを確認してください。
-          </p>
-          <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
-            スケジュール数: {schedules.length} / イベント数: {events.length}
-          </p>
-        </div>
-      )}
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}

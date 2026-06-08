@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { AnnouncementBanner } from './AnnouncementBanner';
@@ -6,7 +7,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -51,7 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         
         {/* メインコンテンツエリア（モバイル: 全画面、デスクトップ: サイドバー横） */}
         <main className="flex-1 overflow-y-auto bg-background dark:bg-gray-900 p-3 sm:p-4 md:p-6 w-full min-w-0">
-          <div className="max-w-7xl mx-auto w-full">{children}</div>
+          <div className="max-w-7xl mx-auto w-full">{children ?? <Outlet />}</div>
         </main>
       </div>
     </div>

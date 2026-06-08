@@ -25,8 +25,9 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       return r.data;
     },
     enabled: !!user,
-    staleTime: 60_000,
-    refetchInterval: 120_000,
+    staleTime: 120_000,
+    refetchInterval: 300_000,
+    refetchIntervalInBackground: false,
   });
 
   return (
