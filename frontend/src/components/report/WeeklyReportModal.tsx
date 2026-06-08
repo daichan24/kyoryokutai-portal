@@ -92,8 +92,8 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   const groupedActivities = useMemo(() => {
     const groups = new Map<string, Array<{ index: number; date: string; activity: string }>>();
     activities.forEach((activity, index) => {
-      if (!activity.date && !activity.activity) return;
-      const projectName = activity.projectName?.trim() || '未紐づけ';
+      if (!canEdit && !activity.date && !activity.activity) return;
+      const projectName = activity.projectName?.trim() || 'プロジェクト未設定';
       if (!groups.has(projectName)) groups.set(projectName, []);
       groups.get(projectName)!.push({ index, date: activity.date, activity: activity.activity });
     });
@@ -101,7 +101,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       projectName,
       items: items.sort((a, b) => a.date.localeCompare(b.date)),
     }));
-  }, [activities]);
+  }, [activities, canEdit]);
 
   const handleDownloadPDF = async () => {
     const targetReport = currentReport || report;
@@ -226,7 +226,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   };
 
   const handleAddActivity = () => {
-    setActivities([...activities, { date: '', activity: '', projectName: '未紐づけ' }]);
+    setActivities([...activities, { date: '', activity: '', projectName: '手動追加' }]);
   };
 
   const handleRemoveActivity = (index: number) => {

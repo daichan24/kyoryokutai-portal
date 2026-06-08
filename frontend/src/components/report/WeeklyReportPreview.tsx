@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { WeeklyReport } from '../../types';
-import { formatWeekLabel, parseWeekString } from '../../utils/date';
+import { parseWeekString } from '../../utils/date';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../../utils/api';
@@ -69,14 +69,14 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
 
   const weekStartStr = isNaN(weekStart.getTime())
     ? report.week
-    : formatWeekLabel(report.week);
+    : `${format(weekStart, 'yyyy年M月d日', { locale: ja })}の週`;
   
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
   const groupedActivities = useMemo(() => {
     if (!Array.isArray(report.thisWeekActivities)) return [];
     const groups = new Map<string, typeof report.thisWeekActivities>();
     report.thisWeekActivities.forEach((activity) => {
-      const projectName = activity.projectName?.trim() || '未紐づけ';
+      const projectName = activity.projectName?.trim() || 'プロジェクト未設定';
       if (!groups.has(projectName)) groups.set(projectName, []);
       groups.get(projectName)!.push(activity);
     });
@@ -168,15 +168,6 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
                       <th style={{
                         border: '1px solid #000',
                         padding: '8px',
-                        width: '30%',
-                        textAlign: 'left',
-                        backgroundColor: '#f0f0f0'
-                      }}>
-                        日時
-                      </th>
-                      <th style={{
-                        border: '1px solid #000',
-                        padding: '8px',
                         textAlign: 'left',
                         backgroundColor: '#f0f0f0'
                       }}>
@@ -187,12 +178,6 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
                   <tbody>
                     {group.items.map((activity, index) => (
                       <tr key={`${group.projectName}-${index}`}>
-                        <td style={{
-                          border: '1px solid #000',
-                          padding: '8px'
-                        }}>
-                          {activity.date || ''}
-                        </td>
                         <td style={{
                           border: '1px solid #000',
                           padding: '8px'

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, RefreshCw, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType, Project, Task, User } from '../types';
@@ -74,6 +74,41 @@ export const Schedule: React.FC = () => {
   });
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
   const scheduleWeekStartsOn: WeekStartsOn = user?.scheduleWeekStartsOn === 1 ? 1 : 0;
+
+  const projectsByMission = useMemo(() => {
+    const missionOrder = new Map(missions.map((mission, index) => [mission.id, index]));
+    const missionName = new Map(missions.map((mission) => [mission.id, mission.missionName]));
+    const groups = new Map<string, { id: string; name: string; projects: Project[] }>();
+
+    for (const project of projects) {
+      const missionId = project.missionId || project.mission?.id || 'unassigned';
+      const name = project.mission?.missionName || missionName.get(missionId) || 'ミッション未設定';
+      if (!groups.has(missionId)) {
+        groups.set(missionId, { id: missionId, name, projects: [] });
+      }
+      groups.get(missionId)!.projects.push(project);
+    }
+
+    return Array.from(groups.values())
+      .map((group) => ({
+        ...group,
+        projects: group.projects.sort((a, b) =>
+          (a.order ?? 9999) - (b.order ?? 9999) || a.projectName.localeCompare(b.projectName, 'ja')
+        ),
+      }))
+      .sort((a, b) =>
+        (missionOrder.get(a.id) ?? 9999) - (missionOrder.get(b.id) ?? 9999) || a.name.localeCompare(b.name, 'ja')
+      );
+  }, [missions, projects]);
+
+  const sortProjectTasks = (tasks: Task[]) => {
+    const statusWeight = (task: Task) => (task.status === 'COMPLETED' ? 2 : task.status === 'IN_PROGRESS' ? 0 : 1);
+    return [...tasks].sort((a, b) =>
+      statusWeight(a) - statusWeight(b) ||
+      (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31') ||
+      (a.order ?? 9999) - (b.order ?? 9999)
+    );
+  };
 
   useEffect(() => {
     setDetailFilterUserId('');
@@ -511,12 +546,12 @@ export const Schedule: React.FC = () => {
 
           {/* カレンダー本体 */}
           <div className="flex-1 min-w-0">
-        <div className="sticky top-0 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur border-b border-gray-100 dark:border-gray-700 sm:static sm:border-b-0 px-3 sm:px-2 py-3 sm:py-0 mb-3 sm:mb-6">
-          <div className="flex items-center justify-between gap-2">
+        <div className="sticky top-0 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur border-b border-gray-100 dark:border-gray-700 sm:static sm:border-b-0 px-3 sm:px-0 py-2 sm:py-0 mb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Button variant="outline" onClick={handlePrev} className="h-9 w-9 p-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-gray-100 text-center min-w-0 truncate">
+            <h2 className="min-w-[8rem] flex-1 text-center text-base font-bold text-gray-900 dark:text-gray-100 truncate sm:text-xl">
               {viewMode === 'day' && formatDate(currentDate, isMobile ? 'M月d日(E)' : 'yyyy年M月d日(E)')}
               {viewMode === 'week' && weekDates[0] && weekDates[6] && (
                 <>
@@ -527,6 +562,32 @@ export const Schedule: React.FC = () => {
               {viewMode === 'month' && formatDate(currentDate, 'yyyy年M月')}
             </h2>
             <div className="flex items-center gap-1">
+              <div className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-900">
+                <Button
+                  variant={viewMode === 'day' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('day')}
+                  className="h-8 border-0 px-3 shadow-none"
+                >
+                  日
+                </Button>
+                <Button
+                  variant={viewMode === 'week' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('week')}
+                  className="h-8 border-0 px-3 shadow-none"
+                >
+                  週
+                </Button>
+                <Button
+                  variant={viewMode === 'month' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('month')}
+                  className="h-8 border-0 px-3 shadow-none"
+                >
+                  月
+                </Button>
+              </div>
               <Button
                 variant="outline"
                 onClick={() => setCurrentDate(new Date())}
@@ -539,56 +600,7 @@ export const Schedule: React.FC = () => {
               </Button>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
-            <div className="inline-flex shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-0.5">
-              <Button
-                variant={viewMode === 'day' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('day')}
-                className="border-0 shadow-none h-8 px-3"
-              >
-                日
-              </Button>
-              <Button
-                variant={viewMode === 'week' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('week')}
-                className="border-0 shadow-none h-8 px-3"
-              >
-                週
-              </Button>
-              <Button
-                variant={viewMode === 'month' ? 'primary' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('month')}
-                className="border-0 shadow-none h-8 px-3"
-              >
-                月
-              </Button>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsGovernmentAttendanceModalOpen(true)}
-              className="h-8 shrink-0 px-3"
-              title="行政出勤カレンダーを表示"
-            >
-              <CalendarDays className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">行政カレンダー</span>
-              <span className="sm:hidden">行政</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                await Promise.all([fetchSchedules(), fetchProjects()]);
-              }}
-              className="h-8 shrink-0 px-3"
-              title="スケジュールとタスクを更新"
-            >
-              <RefreshCw className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">更新</span>
-            </Button>
+          <div className="lg:hidden mt-2 -mx-3 px-3 flex gap-2 overflow-x-auto pb-1">
             <button
               type="button"
               onClick={selectOnlyMe}
@@ -603,8 +615,6 @@ export const Schedule: React.FC = () => {
             >
               全員
             </button>
-          </div>
-          <div className="lg:hidden mt-2 -mx-3 px-3 flex gap-2 overflow-x-auto pb-1">
             {user && (
               <button
                 type="button"
@@ -672,23 +682,6 @@ export const Schedule: React.FC = () => {
               onScheduleUpdate={fetchSchedules}
               firstDay={scheduleWeekStartsOn}
             />
-            {/* 行政出勤カレンダー */}
-            {viewMode === 'week' && (
-              <div className="mt-4">
-                <GovernmentAttendanceCalendar
-                  dates={weekDates}
-                  viewMode="week"
-                />
-              </div>
-            )}
-            {viewMode === 'month' && (
-              <div className="mt-4">
-                <GovernmentAttendanceCalendar
-                  dates={weekDates}
-                  viewMode="month"
-                />
-              </div>
-            )}
           </>
         ) : viewMode === 'week' || viewMode === 'day' ? (
           <>
@@ -712,11 +705,6 @@ export const Schedule: React.FC = () => {
               calendarViewMode={viewMode === 'day' && selectedCalendarMembers.length > 1 ? 'all' : calendarViewMode}
               currentUserId={user?.id}
               members={viewMode === 'day' ? selectedCalendarMembers : undefined}
-            />
-            {/* 行政出勤カレンダー（週表示） */}
-            <GovernmentAttendanceCalendar
-              dates={weekDates}
-              viewMode="week"
             />
           </>
         ) : (
@@ -971,12 +959,13 @@ export const Schedule: React.FC = () => {
                 );
               });
             })()}
-          {/* 行政出勤カレンダー（月表示） */}
+          </div>
+        )}
+        {!loading && weekDates.length > 0 && (
           <GovernmentAttendanceCalendar
             dates={weekDates}
-            viewMode="month"
+            viewMode={viewMode === 'day' ? 'week' : viewMode}
           />
-          </div>
         )}
           </div>
         </div>
@@ -990,114 +979,115 @@ export const Schedule: React.FC = () => {
               進行中のプロジェクト
             </h3>
           </div>
-          {projects.length > 0 ? (
-            projects.map((project) => {
-              const projectStartDate = project.startDate ? new Date(project.startDate) : null;
-              const projectEndDate = project.endDate ? new Date(project.endDate) : null;
-              const viewStartDate = weekDates[0];
-              const viewEndDate = weekDates[weekDates.length - 1];
+          {projectsByMission.length > 0 ? (
+            projectsByMission.map((group) => (
+              <div key={group.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/30 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                    {group.name}
+                  </h4>
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400">{group.projects.length}件</span>
+                </div>
+                <div className="space-y-2">
+                  {group.projects.map((project) => {
+                    const projectStartDate = project.startDate ? new Date(project.startDate) : null;
+                    const projectEndDate = project.endDate ? new Date(project.endDate) : null;
+                    const viewStartDate = weekDates[0];
+                    const viewEndDate = weekDates[weekDates.length - 1];
+                    const projectTasks = sortProjectTasks((project.relatedTasks || (project as any).tasks || []) as Task[]);
+                    const isExpanded = expandedProjectIds.includes(project.id);
+                    const displayStartDate = projectStartDate && projectStartDate > viewStartDate ? projectStartDate : viewStartDate;
+                    const displayEndDate = projectEndDate && projectEndDate < viewEndDate ? projectEndDate : viewEndDate;
 
-              const projectTasks = (project.relatedTasks || (project as any).tasks || []) as Task[];
-              const isExpanded = expandedProjectIds.includes(project.id);
-              
-              // 表示期間内の開始日と終了日を計算
-              const displayStartDate = projectStartDate && projectStartDate > viewStartDate ? projectStartDate : viewStartDate;
-              const displayEndDate = projectEndDate && projectEndDate < viewEndDate ? projectEndDate : viewEndDate;
-              
-              return (
-                <div
-                  key={project.id}
-                  className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
-                  style={{
-                    borderLeftWidth: '4px',
-                    borderLeftColor: project.themeColor || '#6B7280',
-                  }}
-                >
-                  <div
-                    className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                    onClick={() => toggleProjectExpanded(project.id)}
-                  >
-                    <div className="flex-shrink-0">
-                      {isExpanded ? (
-                        <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                      ) : (
-                        <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
-                          {project.projectName}
-                        </p>
-                        {/* メンバー以外の役職で閲覧モード時のみ所有者名を表示 */}
-                        {user?.role !== 'MEMBER' && projectViewMode === 'view' && project.user && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                            （{project.user.name}）
-                          </span>
+                    return (
+                      <div
+                        key={project.id}
+                        className="rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800 overflow-hidden"
+                      >
+                        <div
+                          className="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                          onClick={() => toggleProjectExpanded(project.id)}
+                        >
+                          <div className="flex-shrink-0">
+                            {isExpanded ? (
+                              <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                            ) : (
+                              <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-base font-semibold text-gray-900 dark:text-gray-100">
+                                {project.projectName}
+                              </p>
+                              {user?.role !== 'MEMBER' && projectViewMode === 'view' && project.user && (
+                                <span className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+                                  （{project.user.name}）
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                              {formatDate(displayStartDate, 'M月d日')} 〜 {formatDate(displayEndDate, 'M月d日')} まで進行中
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate('/projects', { state: { projectId: project.id } })}
+                              className="whitespace-nowrap"
+                            >
+                              <ListChecks className="h-4 w-4 mr-1" />
+                              詳細へ
+                            </Button>
+                          </div>
+                        </div>
+
+                        {isExpanded && projectTasks.length > 0 && (
+                          <div className="space-y-2 border-t border-gray-200 px-4 pb-4 pt-3 dark:border-gray-700">
+                            {projectTasks.map((task) => {
+                              const isCompleted = task.status === 'COMPLETED';
+                              let statusClass = 'text-gray-600 dark:text-gray-300';
+                              let statusBgClass = 'bg-gray-50 dark:bg-gray-700/50';
+                              if (task.status === 'IN_PROGRESS') {
+                                statusClass = 'text-blue-700 dark:text-blue-300';
+                                statusBgClass = 'bg-blue-50 dark:bg-blue-900/20';
+                              } else if (isCompleted) {
+                                statusClass = 'text-gray-400 dark:text-gray-500 line-through';
+                                statusBgClass = 'bg-gray-50/70 dark:bg-gray-800/70 opacity-75';
+                              }
+                              return (
+                                <div
+                                  key={task.id}
+                                  className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-opacity hover:opacity-80 cursor-pointer ${statusBgClass}`}
+                                  onMouseEnter={() => setHoveredTaskId(task.id)}
+                                  onMouseLeave={() => setHoveredTaskId(null)}
+                                >
+                                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                                    {task.status === 'NOT_STARTED' && <Circle className="h-4 w-4 flex-shrink-0 text-gray-400" />}
+                                    {task.status === 'IN_PROGRESS' && <PlayCircle className="h-4 w-4 flex-shrink-0 text-blue-500" />}
+                                    {isCompleted && <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-gray-400" />}
+                                    <span className={`truncate font-medium ${statusClass}`}>{task.title}</span>
+                                  </div>
+                                  <span className="ml-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+                                    {task.status === 'NOT_STARTED' ? '未着手' : task.status === 'IN_PROGRESS' ? '進行中' : '完了'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {isExpanded && projectTasks.length === 0 && (
+                          <div className="px-4 pb-4 py-3 text-center text-sm text-gray-500 dark:text-gray-400">
+                            このプロジェクトに紐づくタスクはありません
+                          </div>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        {formatDate(displayStartDate, 'M月d日')} 〜 {formatDate(displayEndDate, 'M月d日')} まで進行中
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate('/projects', { state: { projectId: project.id } })}
-                        className="whitespace-nowrap"
-                      >
-                        <ListChecks className="h-4 w-4 mr-1" />
-                        詳細へ
-                      </Button>
-                    </div>
-                  </div>
-
-                  {isExpanded && projectTasks.length > 0 && (
-                    <div className="px-4 pb-4 space-y-2 border-t border-gray-200 dark:border-gray-700 pt-3">
-                      {projectTasks.map((task) => {
-                        let statusClass = 'text-gray-600 dark:text-gray-300';
-                        let statusBgClass = 'bg-gray-50 dark:bg-gray-700/50';
-                        if (task.status === 'IN_PROGRESS') {
-                          statusClass = 'text-blue-700 dark:text-blue-300';
-                          statusBgClass = 'bg-blue-50 dark:bg-blue-900/20';
-                        } else if (task.status === 'COMPLETED') {
-                          statusClass = 'text-green-700 dark:text-green-300';
-                          statusBgClass = 'bg-green-50 dark:bg-green-900/20';
-                        }
-                        return (
-                          <div
-                            key={task.id}
-                            className={`flex items-center justify-between text-sm px-3 py-2 rounded-md ${statusBgClass} hover:opacity-80 transition-opacity cursor-pointer`}
-                            onMouseEnter={() => setHoveredTaskId(task.id)}
-                            onMouseLeave={() => setHoveredTaskId(null)}
-                          >
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {task.status === 'NOT_STARTED' && <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />}
-                              {task.status === 'IN_PROGRESS' && <PlayCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />}
-                              {task.status === 'COMPLETED' && <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />}
-                              <span className={`font-medium truncate ${statusClass}`}>{task.title}</span>
-                            </div>
-                            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                              {task.status === 'NOT_STARTED'
-                                ? '未着手'
-                                : task.status === 'IN_PROGRESS'
-                                ? '進行中'
-                                : '完了'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {isExpanded && projectTasks.length === 0 && (
-                    <div className="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400 text-center py-3">
-                      このプロジェクトに紐づくタスクはありません
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              );
-            })
+              </div>
+            ))
           ) : (
             <div className="text-center text-gray-500 dark:text-gray-400 py-4">
               {projectViewMode === 'personal' ? '表示期間内に自分のプロジェクトはありません' : '表示期間内に進行中のプロジェクトはありません'}

@@ -70,6 +70,7 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState<AttendanceStatus>('PRESENT');
   const [editNote, setEditNote] = useState('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const from = dates[0] ? format(dates[0], 'yyyy-MM-dd') : '';
   const to = dates[dates.length - 1] ? format(dates[dates.length - 1], 'yyyy-MM-dd') : '';
@@ -83,6 +84,10 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
     },
     enabled: !!from && !!to,
   });
+
+  const todayAttendances = attendances.filter((a) =>
+    isDateInRange(todayStr, a.date.slice(0, 10), a.endDate?.slice(0, 10))
+  );
 
   const getAttendancesForDate = (date: Date): GovernmentAttendance[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -109,9 +114,6 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
   if (viewMode === 'month') {
     // 月表示: 「今日」と日ごとの出勤状況をコンパクトに確認
     const uniqueDates = Array.from(new Set(dates.map(d => format(d, 'yyyy-MM-dd')))).sort();
-    const todayAttendances = attendances.filter((a) =>
-      isDateInRange(todayStr, a.date.slice(0, 10), a.endDate?.slice(0, 10))
-    );
 
     return (
       <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
@@ -154,6 +156,16 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
             )}
           </div>
 
+          <button
+            type="button"
+            onClick={() => setIsCalendarOpen((v) => !v)}
+            className="mb-3 inline-flex items-center rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            {isCalendarOpen ? '行政カレンダーを閉じる' : '行政カレンダーを表示'}
+          </button>
+
+          {isCalendarOpen && (
+            <>
           {/* 凡例 */}
           <div className="flex flex-wrap gap-3 mb-3">
             {(Object.entries(STATUS_LABELS) as [AttendanceStatus, string][]).map(([status, label]) => (
@@ -294,6 +306,8 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
               </div>
             </div>
           )}
+            </>
+          )}
         </div>
         {editingDate && canEdit && (
           <AttendanceEditModal
@@ -321,6 +335,41 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
             </span>
           </h3>
         </div>
+        <div className="bg-white p-3 dark:bg-gray-800">
+          <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/70 dark:bg-blue-900/20">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">今日の行政出勤</p>
+              <span className="text-[11px] text-blue-700 dark:text-blue-200">{todayAttendances.length}件</span>
+            </div>
+            {todayAttendances.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {todayAttendances.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setPopupDate(todayStr)}
+                    className={`rounded border px-2 py-1 text-xs ${STATUS_COLORS[a.status]}`}
+                    title={`${a.user.name}: ${STATUS_LABELS[a.status]}${a.startTime ? ` ${formatTime(a.startTime)}〜${a.endTime ? formatTime(a.endTime) : ''}` : ''}${a.note ? ` (${a.note})` : ''}`}
+                  >
+                    {a.user.name.split(/[\s\u3000]/)[0]}・{STATUS_LABELS[a.status]}
+                    {a.startTime ? ` ${formatTime(a.startTime)}` : ''}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-blue-800 dark:text-blue-100">今日の出勤記録はまだありません。</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCalendarOpen((v) => !v)}
+            className="inline-flex items-center rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            {isCalendarOpen ? '行政カレンダーを閉じる' : '行政カレンダーを表示'}
+          </button>
+        </div>
+        {isCalendarOpen && (
+          <>
         <div className="grid grid-cols-7 divide-x divide-gray-200 dark:divide-gray-700">
           {dates.map((date, i) => {
             const dateStr = format(date, 'yyyy-MM-dd');
@@ -442,6 +491,8 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
             </span>
           ))}
         </div>
+          </>
+        )}
 
         {/* 編集モーダル（行政のみ） */}
         {editingDate && canEdit && (

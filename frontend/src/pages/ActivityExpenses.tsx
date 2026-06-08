@@ -258,10 +258,12 @@ export const ActivityExpenses: React.FC = () => {
   if (!user) return null;
 
   return (
-    <div className="space-y-8 max-w-4xl">
-      <section className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">対象経費一覧</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+    <div className="w-full max-w-none space-y-6">
+      <details className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-gray-700 dark:text-gray-200">
+          対象経費一覧を確認
+        </summary>
+        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 mb-4">
           長沼町地域おこし協力隊活動費補助金交付要綱に基づく対象経費です。詳細は役場にご確認ください。
         </p>
         <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
@@ -369,7 +371,7 @@ export const ActivityExpenses: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </section>
+      </details>
 
       {isStaff && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">

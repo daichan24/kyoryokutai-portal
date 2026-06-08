@@ -109,7 +109,6 @@ function formatScheduleActivity(schedule: ReportSchedule) {
     .filter(Boolean);
 
   const parts = [
-    `${format(schedule.startDate || schedule.date, 'M/d(E)', { locale: ja })} ${schedule.startTime}-${schedule.endTime}`,
     missionName ? `ミッション: ${missionName}` : null,
     projectName ? `プロジェクト: ${projectName}` : null,
     location ? `場所: ${location}` : null,
@@ -225,11 +224,10 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
 
   for (const event of events) {
     const reportDate = format(new Date(event.date), 'yyyy-MM-dd');
-    const displayDate = format(new Date(event.date), 'M/d(E)', { locale: ja });
     const eventType = event.eventType === 'TOWN_OFFICIAL' ? '町公式' : event.eventType === 'TEAM' ? 'チーム' : 'その他';
     activities.push({
       date: reportDate,
-      activity: `${displayDate} / イベント:${eventType} / ${event.eventName}${event.startTime ? ` / ${event.startTime}${event.endTime ? `-${event.endTime}` : ''}` : ''}`,
+      activity: `イベント:${eventType} / ${event.eventName}`,
       projectId: null,
       projectName: 'イベント',
       sourceType: 'event',

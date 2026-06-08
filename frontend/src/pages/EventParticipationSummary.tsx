@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { CalendarDays, ClipboardList, Users, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
@@ -265,46 +265,7 @@ export const EventParticipationSummary: React.FC = () => {
 
       {tab === 'matrix' && (
         <>
-          {summaryLoading ? (
-            <div className="flex justify-center h-32">
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-5">
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
-                  <Users className="h-4 w-4" />
-                  {year}年度 合計
-                </div>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                  {summary?.totalCumulative ?? 0}
-                </p>
-              </div>
-              <div className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-5">
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
-                  <ClipboardList className="h-4 w-4" />
-                  内訳: 隊員参加枠
-                </div>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                  {summary?.mandatedCount ?? 0}
-                </p>
-              </div>
-              <div className="bg-card dark:bg-gray-800 rounded-lg border border-border dark:border-gray-700 p-5">
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
-                  <CalendarDays className="h-4 w-4" />
-                  内訳: メンバー主催イベント参加
-                </div>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                  {summary?.memberHostedEventCount ?? 0}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  他メンバーが作成したイベントに、あなたが参加承認された回数です。
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 dark:border-gray-700 dark:bg-gray-800">
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               表示年度
               <select
@@ -322,6 +283,17 @@ export const EventParticipationSummary: React.FC = () => {
                 ))}
               </select>
             </label>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="rounded bg-gray-100 px-2 py-1 font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-100">
+                合計 {summaryLoading ? '...' : summary?.totalCumulative ?? 0}
+              </span>
+              <span className="rounded bg-gray-100 px-2 py-1 text-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                隊員参加枠 {summaryLoading ? '...' : summary?.mandatedCount ?? 0}
+              </span>
+              <span className="rounded bg-gray-100 px-2 py-1 text-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                メンバー主催 {summaryLoading ? '...' : summary?.memberHostedEventCount ?? 0}
+              </span>
+            </div>
             {!editMode ? (
               <Button type="button" variant="outline" size="sm" onClick={startEdit}>
                 変更

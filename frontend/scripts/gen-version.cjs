@@ -25,6 +25,11 @@ function gitValue(command, fallback) {
   }
 }
 
+function safeRefName(value) {
+  if (!value) return '';
+  return String(value).replace(/^refs\/heads\//, '').trim().replace(/[^A-Za-z0-9._/-]/g, '');
+}
+
 function runGit(command) {
   try {
     execSync(command, {
@@ -36,11 +41,22 @@ function runGit(command) {
   }
 }
 
-function ensureFullGitHistory() {
+function resolveBuildBranch() {
+  return safeRefName(
+    process.env.RENDER_GIT_BRANCH ||
+    process.env.GITHUB_REF_NAME ||
+    process.env.BRANCH ||
+    gitValue('git branch --show-current', 'main') ||
+    'main'
+  ) || 'main';
+}
+
+function ensureFullGitHistory(branch) {
   const isShallow = gitValue('git rev-parse --is-shallow-repository', 'false');
+  runGit(`git fetch origin ${branch} --quiet --depth=100000`);
   if (isShallow === 'true') {
     runGit('git fetch --unshallow --quiet');
-    runGit('git fetch --depth=100000 origin --quiet');
+    runGit(`git fetch origin ${branch} --quiet --depth=100000`);
   }
 }
 
@@ -56,12 +72,14 @@ function readExistingBuildVersion() {
   }
 }
 
-ensureFullGitHistory();
+const buildBranch = resolveBuildBranch();
+ensureFullGitHistory(buildBranch);
 
-const rawCommitCount = gitValue('git rev-list --count HEAD', process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT || '0');
+const envCommitCount = process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT;
+const remoteCommitCount = gitValue(`git rev-list --count origin/${buildBranch}`, '');
+const rawCommitCount = remoteCommitCount || gitValue('git rev-list --count HEAD', envCommitCount || '0');
 const commitSha = gitValue('git rev-parse --short HEAD', 'unknown');
 const existingBuild = readExistingBuildVersion();
-const envCommitCount = process.env.VITE_BUILD_COMMIT_COUNT || process.env.BUILD_COMMIT_COUNT;
 let commitCount = rawCommitCount;
 
 if (rawCommitCount === '1') {
@@ -85,4 +103,4 @@ export const BUILD_DATE = '${buildDate}';
 `;
 
 fs.writeFileSync(outPath, content, 'utf-8');
-console.log(`[gen-version] BUILD_VERSION = ${version}, BUILD_COMMIT_COUNT = ${commitCount}, BUILD_COMMIT_SHA = ${commitSha}`);
+console.log(`[gen-version] BUILD_VERSION = ${version}, BUILD_COMMIT_COUNT = ${commitCount}, BUILD_COMMIT_SHA = ${commitSha}, BUILD_BRANCH = ${buildBranch}`);

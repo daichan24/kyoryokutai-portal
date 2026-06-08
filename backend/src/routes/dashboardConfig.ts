@@ -88,11 +88,12 @@ const getDefaultConfig = (role: string) => {
         if (w.key === 'snsHistory') enabled = false;
         if (w.key === 'goals-personal' || w.key === 'goals-view') enabled = false;
         if (w.key === 'nextWish') enabled = false;
+        if (w.key === 'contacts') enabled = false;
         return { ...w, enabled, order: i + 1 };
       }),
     };
   } else if (role === 'MASTER') {
-    return { widgets: base.map((w, i) => ({ ...w, enabled: true, order: i + 1 })) };
+    return { widgets: base.map((w, i) => ({ ...w, enabled: w.key !== 'contacts', order: i + 1 })) };
   }
 
   return { widgets: base };
@@ -212,4 +213,3 @@ router.put('/', async (req: AuthRequest, res) => {
 });
 
 export default router;
-
