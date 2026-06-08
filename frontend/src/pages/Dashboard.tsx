@@ -164,11 +164,12 @@ export const Dashboard: React.FC = () => {
           if (w.key === 'snsHistory') enabled = false;
           if (w.key === 'goals') enabled = false;
           if (w.key === 'nextWish') enabled = false;
+          if (w.key === 'contacts') enabled = false;
           return { ...w, enabled, order: i + 1 };
         }),
       };
     } else if (role === 'MASTER') {
-      return { widgets: baseWidgets.map((w: any, i: number) => ({ ...w, enabled: true, order: i + 1 })) };
+      return { widgets: baseWidgets.map((w: any, i: number) => ({ ...w, enabled: w.key !== 'contacts', order: i + 1 })) };
     }
 
     return { widgets: baseWidgets };

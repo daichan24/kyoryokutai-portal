@@ -22,6 +22,7 @@ const createWeeklyReportSchema = z.object({
       activity: z.string(),
       projectId: z.string().nullable().optional(),
       projectName: z.string().optional(),
+      missionName: z.string().optional(),
       sourceType: z.string().optional(),
     })
   ),

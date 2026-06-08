@@ -7,6 +7,7 @@ interface ActivityItem {
   activity: string;
   projectId?: string | null;
   projectName?: string;
+  missionName?: string;
   sourceType?: 'schedule' | 'event' | 'projectTask' | 'task';
 }
 
@@ -46,7 +47,11 @@ interface ReportSchedule {
 }
 
 function activityProjectLabel(projectName?: string | null) {
-  return projectName?.trim() || '未紐づけ';
+  return projectName?.trim() || 'プロジェクト未設定';
+}
+
+function activityMissionLabel(missionName?: string | null) {
+  return missionName?.trim() || 'ミッション未設定';
 }
 
 export function normalizeWeeklyReportWeek(value: unknown): string | null {
@@ -188,11 +193,13 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
 
   for (const schedule of schedules) {
     const projectName = schedule.project?.projectName || schedule.task?.mission?.missionName || schedule.project?.mission?.missionName;
+    const missionName = schedule.project?.mission?.missionName || schedule.task?.mission?.missionName;
     activities.push({
       date: format(schedule.startDate || schedule.date, 'yyyy-MM-dd'),
       activity: formatScheduleActivity(schedule),
       projectId: schedule.project?.id || null,
       projectName: activityProjectLabel(projectName),
+      missionName: activityMissionLabel(missionName),
       sourceType: 'schedule',
     });
   }
@@ -230,6 +237,7 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
       activity: `イベント:${eventType} / ${event.eventName}`,
       projectId: null,
       projectName: 'イベント',
+      missionName: 'イベント',
       sourceType: 'event',
     });
   }
@@ -252,6 +260,7 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
         select: {
           id: true,
           projectName: true,
+          mission: { select: { missionName: true } },
         },
       },
     },
@@ -264,12 +273,12 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     if (!task.deadline) continue;
     const reportSourceDate = task.deadline;
     const reportDate = format(reportSourceDate, 'yyyy-MM-dd');
-    const displayDate = format(reportSourceDate, 'M/d(E)', { locale: ja });
     activities.push({
       date: reportDate,
-      activity: `${displayDate} / プロジェクト: ${task.project.projectName} / ${task.taskName}`,
+      activity: task.taskName,
       projectId: task.project.id,
       projectName: activityProjectLabel(task.project.projectName),
+      missionName: activityMissionLabel(task.project.mission?.missionName),
       sourceType: 'projectTask',
     });
   }
@@ -290,6 +299,7 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
         select: {
           id: true,
           projectName: true,
+          mission: { select: { missionName: true } },
         },
       },
       mission: {
@@ -307,22 +317,21 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     if (!task.dueDate) continue;
     const reportSourceDate = task.dueDate;
     const reportDate = format(reportSourceDate, 'yyyy-MM-dd');
-    const displayDate = format(reportSourceDate, 'M/d(E)', { locale: ja });
     let activityText = task.title;
-    if (task.project) {
-      activityText = `プロジェクト: ${task.project.projectName} / ${activityText}`;
-    }
     activities.push({
       date: reportDate,
-      activity: `${displayDate} / ${activityText}`,
+      activity: activityText,
       projectId: task.project?.id || null,
       projectName: activityProjectLabel(task.project?.projectName || task.mission?.missionName),
+      missionName: activityMissionLabel(task.project?.mission?.missionName || task.mission?.missionName),
       sourceType: 'task',
     });
   }
 
-  // プロジェクトごとに並べ、その中で日付順にソート
+  // ミッション、プロジェクトごとに並べ、その中で日付順にソート
   activities.sort((a, b) => {
+    const missionCompare = activityMissionLabel(a.missionName).localeCompare(activityMissionLabel(b.missionName), 'ja');
+    if (missionCompare !== 0) return missionCompare;
     const projectCompare = activityProjectLabel(a.projectName).localeCompare(activityProjectLabel(b.projectName), 'ja');
     if (projectCompare !== 0) return projectCompare;
     return a.date.localeCompare(b.date);

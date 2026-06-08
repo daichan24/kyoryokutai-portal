@@ -272,7 +272,7 @@ export async function generateNudgePDF(fiscalYear?: number): Promise<Buffer> {
     </head>
     <body>
       <div class="header">
-        <div>${format(new Date(), 'yyyy年MM月dd日')}</div>
+        <div>${format(new Date(), 'yyyy年M月d日')}</div>
       </div>
       <h1>${document.title}</h1>
       <div class="content">${cleanContent}</div>
@@ -337,7 +337,7 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       <h1>復命書</h1>
 
       <div class="info">
-        <strong>日付:</strong> ${escapeHtmlForPdf(format(new Date(inspection.date), 'yyyy年MM月dd日(E)', { locale: ja }))}
+        <strong>日付:</strong> ${escapeHtmlForPdf(format(new Date(inspection.date), 'yyyy年M月d日(E)', { locale: ja }))}
       </div>
 
       <div class="info">
@@ -375,7 +375,7 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       </div>
 
       <div style="margin-top: 60px; text-align: right;">
-        <div>${escapeHtmlForPdf(format(new Date(), 'yyyy年MM月dd日'))}</div>
+        <div>${escapeHtmlForPdf(format(new Date(), 'yyyy年M月d日'))}</div>
         <div style="margin-top: 10px;">${escapeHtmlForPdf(inspection.user.name)}</div>
       </div>
     </body>
@@ -437,19 +437,29 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
     date: string;
     activity: string;
     projectName?: string;
+    missionName?: string;
   }>;
-  const groupedActivities = activities.reduce<Array<{ projectName: string; items: typeof activities }>>((groups, activity) => {
-    const projectName = activity.projectName?.trim() || '未紐づけ';
-    const group = groups.find((item) => item.projectName === projectName);
-    if (group) {
-      group.items.push(activity);
-    } else {
-      groups.push({ projectName, items: [activity] });
+  const groupedActivities = activities.reduce<Array<{ missionName: string; projects: Array<{ projectName: string; items: typeof activities }> }>>((groups, activity) => {
+    const missionName = activity.missionName?.trim() || 'ミッション未設定';
+    const projectName = activity.projectName?.trim() || 'プロジェクト未設定';
+    let mission = groups.find((item) => item.missionName === missionName);
+    if (!mission) {
+      mission = { missionName, projects: [] };
+      groups.push(mission);
     }
+    let project = mission.projects.find((item) => item.projectName === projectName);
+    if (!project) {
+      project = { projectName, items: [] };
+      mission.projects.push(project);
+    }
+    project.items.push(activity);
     return groups;
-  }, []).map((group) => ({
-    ...group,
-    items: [...group.items].sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+  }, []).map((mission) => ({
+    ...mission,
+    projects: mission.projects.map((project) => ({
+      ...project,
+      items: [...project.items].sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+    })),
   }));
 
   const weekStart = (() => {
@@ -489,33 +499,34 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
       </style>
     </head>
     <body>
-      <div style="text-align: right; margin-bottom: 24px;">${escapeHtmlForPdf(format(new Date(), 'yyyy年MM月dd日'))}</div>
+        <div style="text-align: right; margin-bottom: 24px;">${escapeHtmlForPdf(format(new Date(), 'yyyy年M月d日'))}</div>
       <div style="margin-bottom: 24px;">${renderPlainTextForPdf(weeklyTemplate.recipient)}</div>
       <h1>${escapeHtmlForPdf(weeklyTemplate.title)}</h1>
 
       <div style="margin-bottom: 30px;">
         <div><strong>報告者:</strong> ${escapeHtmlForPdf(report.user.name)}</div>
         <div><strong>対象週:</strong> ${escapeHtmlForPdf(weekLabel)}</div>
-        <div><strong>提出日:</strong> ${report.submittedAt ? escapeHtmlForPdf(format(new Date(report.submittedAt), 'yyyy年MM月dd日')) : '未提出'}</div>
+        <div><strong>提出日:</strong> ${report.submittedAt ? escapeHtmlForPdf(format(new Date(report.submittedAt), 'yyyy年M月d日')) : '未提出'}</div>
       </div>
 
       <div class="section">
         <div class="label">1. ${escapeHtmlForPdf(weeklyTemplate.activityLabel)}</div>
-        ${groupedActivities.length > 0 ? groupedActivities.map((group) => `
+        ${groupedActivities.length > 0 ? groupedActivities.map((mission) => `
         <div class="project-group">
-          <div class="project-title">${escapeHtmlForPdf(group.projectName)}</div>
+          <div class="project-title">${escapeHtmlForPdf(mission.missionName)}</div>
+          ${mission.projects.map((project) => `
+          <div class="project-title" style="font-size: 11pt; margin-left: 10px;">${escapeHtmlForPdf(project.projectName)}</div>
           <table>
             <tr>
-              <th style="width: 30%;">日時</th>
               <th>活動内容</th>
             </tr>
-            ${group.items.map(activity => `
+            ${project.items.map(activity => `
               <tr>
-                <td>${escapeHtmlForPdf(activity.date || '')}</td>
                 <td>${escapeHtmlForPdf(activity.activity || '')}</td>
               </tr>
             `).join('')}
           </table>
+          `).join('')}
         </div>
         `).join('') : '<p>活動内容がありません</p>'}
       </div>

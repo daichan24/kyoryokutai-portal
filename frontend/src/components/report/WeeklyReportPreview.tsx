@@ -74,15 +74,21 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
   const currentDate = format(new Date(), 'yyyy年M月d日', { locale: ja });
   const groupedActivities = useMemo(() => {
     if (!Array.isArray(report.thisWeekActivities)) return [];
-    const groups = new Map<string, typeof report.thisWeekActivities>();
+    const missionGroups = new Map<string, Map<string, typeof report.thisWeekActivities>>();
     report.thisWeekActivities.forEach((activity) => {
+      const missionName = activity.missionName?.trim() || 'ミッション未設定';
       const projectName = activity.projectName?.trim() || 'プロジェクト未設定';
-      if (!groups.has(projectName)) groups.set(projectName, []);
-      groups.get(projectName)!.push(activity);
+      if (!missionGroups.has(missionName)) missionGroups.set(missionName, new Map());
+      const projectGroups = missionGroups.get(missionName)!;
+      if (!projectGroups.has(projectName)) projectGroups.set(projectName, []);
+      projectGroups.get(projectName)!.push(activity);
     });
-    return Array.from(groups.entries()).map(([projectName, items]) => ({
-      projectName,
-      items: [...items].sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+    return Array.from(missionGroups.entries()).map(([missionName, projectGroups]) => ({
+      missionName,
+      projects: Array.from(projectGroups.entries()).map(([projectName, items]) => ({
+        projectName,
+        items: [...items].sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+      })),
     }));
   }, [report.thisWeekActivities]);
 
@@ -153,41 +159,48 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
         </div>
         {groupedActivities.length > 0 ? (
           <div style={{ marginTop: '10px' }}>
-            {groupedActivities.map((group) => (
-              <div key={group.projectName} style={{ marginBottom: '16px', pageBreakInside: 'avoid' }}>
-                <div style={{ fontWeight: 'bold', margin: '6px 0' }}>
-                  {group.projectName}
+            {groupedActivities.map((mission) => (
+              <div key={mission.missionName} style={{ marginBottom: '18px', pageBreakInside: 'avoid' }}>
+                <div style={{ fontWeight: 'bold', margin: '8px 0' }}>
+                  {mission.missionName}
                 </div>
-                <table style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  border: '1px solid #000'
-                }}>
-                  <thead>
-                    <tr>
-                      <th style={{
-                        border: '1px solid #000',
-                        padding: '8px',
-                        textAlign: 'left',
-                        backgroundColor: '#f0f0f0'
-                      }}>
-                        活動内容
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.items.map((activity, index) => (
-                      <tr key={`${group.projectName}-${index}`}>
-                        <td style={{
-                          border: '1px solid #000',
-                          padding: '8px'
-                        }}>
-                          {activity.activity || ''}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {mission.projects.map((project) => (
+                  <div key={`${mission.missionName}-${project.projectName}`} style={{ marginBottom: '12px' }}>
+                    <div style={{ fontWeight: 'bold', margin: '6px 0 4px 10px', fontSize: '11pt' }}>
+                      {project.projectName}
+                    </div>
+                    <table style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      border: '1px solid #000'
+                    }}>
+                      <thead>
+                        <tr>
+                          <th style={{
+                            border: '1px solid #000',
+                            padding: '8px',
+                            textAlign: 'left',
+                            backgroundColor: '#f0f0f0'
+                          }}>
+                            活動内容
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {project.items.map((activity, index) => (
+                          <tr key={`${project.projectName}-${index}`}>
+                            <td style={{
+                              border: '1px solid #000',
+                              padding: '8px'
+                            }}>
+                              {activity.activity || ''}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
               </div>
             ))}
           </div>

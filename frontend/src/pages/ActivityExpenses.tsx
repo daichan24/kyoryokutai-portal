@@ -765,40 +765,46 @@ export const ActivityExpenses: React.FC = () => {
                 {/* スマホ表示: カード */}
                 <div className="sm:hidden space-y-2">
                   {filteredEntries.map((row) => (
-                    <div key={row.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 tabular-nums mb-0.5">
-                            {format(parseISO(row.spentAt), 'M/d', { locale: ja })}
-                            {row.status === 'PLANNED' ? (
-                              <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">予定</span>
-                            ) : row.status === 'APPROVED' ? (
-                              <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">承認済</span>
-                            ) : row.status === 'REJECTED' ? (
-                              <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">差戻し</span>
-                            ) : (
-                              <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-sm bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">未検証</span>
-                            )}
-                          </p>
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{row.description}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                            {row.project?.projectName || <span className="text-amber-600 dark:text-amber-400">プロジェクト未設定</span>}
-                          </p>
-                          {row.schedule && (
-                            <p className="text-xs text-blue-600 dark:text-blue-300 truncate mt-0.5">
-                              予定: {row.schedule.title || '予定'}{row.schedule.startDate ? `（${format(parseISO(row.schedule.startDate), 'M/d', { locale: ja })}）` : ''}
+                    <div key={row.id} className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                      <div className="p-3">
+                        <div className="mb-2 flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 tabular-nums mb-1">
+                              {format(parseISO(row.spentAt), 'yyyy年M月d日', { locale: ja })}
                             </p>
-                          )}
-                          {row.status === 'REJECTED' && row.rejectionReason && (
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 line-clamp-2">差し戻し: {row.rejectionReason}</p>
-                          )}
-                          {row.status && row.status !== 'PENDING' && row.updatedBy && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">対応: {row.updatedBy.name}</p>
-                          )}
+                            <p className="text-sm font-semibold leading-5 text-gray-900 dark:text-gray-100">{row.description}</p>
+                          </div>
+                          <p className="whitespace-nowrap text-base font-bold tabular-nums text-gray-900 dark:text-gray-100">{formatYen(row.amount)}</p>
                         </div>
-                        <p className="text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100 whitespace-nowrap">{formatYen(row.amount)}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                          <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                            {row.project?.projectName || 'プロジェクト未設定'}
+                          </span>
+                          <span>
+                            {row.status === 'PLANNED' ? (
+                              <span className="font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">予定</span>
+                            ) : row.status === 'APPROVED' ? (
+                              <span className="font-medium px-2 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">承認済</span>
+                            ) : row.status === 'REJECTED' ? (
+                              <span className="font-medium px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">差戻し</span>
+                            ) : (
+                              <span className="font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">未承認</span>
+                            )}
+                          </span>
+                        </div>
+                        {row.schedule && (
+                          <p className="mt-2 text-xs text-blue-600 dark:text-blue-300">
+                            予定: {row.schedule.title || '予定'}{row.schedule.startDate ? `（${format(parseISO(row.schedule.startDate), 'M月d日', { locale: ja })}）` : ''}
+                          </p>
+                        )}
+                        {row.status === 'REJECTED' && row.rejectionReason && (
+                          <p className="mt-2 text-xs text-red-600 dark:text-red-400">差し戻し: {row.rejectionReason}</p>
+                        )}
+                        {row.status && row.status !== 'PENDING' && row.updatedBy && (
+                          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">対応: {row.updatedBy.name}</p>
+                        )}
                       </div>
-                      <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                      <div className="flex gap-2 border-t border-gray-100 p-2 dark:border-gray-700">
                         {row.status && row.status !== 'PENDING' && row.updatedBy?.id === user?.id && (
                           <button
                             type="button"

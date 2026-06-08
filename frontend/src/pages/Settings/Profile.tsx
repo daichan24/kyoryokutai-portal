@@ -13,6 +13,18 @@ interface SNSLink {
   url: string | null;
 }
 
+interface DashboardConfigWidget {
+  key: string;
+  enabled: boolean;
+  order: number;
+  [key: string]: unknown;
+}
+
+interface DashboardConfig {
+  widgets: DashboardConfigWidget[];
+  weeklyScheduleCount?: 3 | 5 | 10;
+}
+
 const AVATAR_COLOR_PRESETS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
 export const ProfileSettings: React.FC = () => {
@@ -26,6 +38,7 @@ export const ProfileSettings: React.FC = () => {
   const [missionType, setMissionType] = useState<'FREE' | 'MISSION' | ''>('');
   const [wishesEnabled, setWishesEnabled] = useState(false);
   const [notepadEnabled, setNotepadEnabled] = useState(true);
+  const [contactsDashboardEnabled, setContactsDashboardEnabled] = useState(false);
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
   const [scheduleWeekStartsOn, setScheduleWeekStartsOn] = useState<0 | 1>(0);
   const [scheduleHiddenLocationIds, setScheduleHiddenLocationIds] = useState<string[]>([]);
@@ -64,11 +77,24 @@ export const ProfileSettings: React.FC = () => {
     },
   });
 
+  const { data: dashboardConfig, isLoading: isDashboardConfigLoading } = useQuery<DashboardConfig>({
+    queryKey: ['dashboard-config'],
+    queryFn: async () => {
+      const response = await api.get('/api/me/dashboard-config');
+      return response.data;
+    },
+  });
+
   useEffect(() => {
     if (currentLinks) {
       setSnsLinks(currentLinks.length > 0 ? [...currentLinks] : [{ platform: '', url: '' }]);
     }
   }, [currentLinks]);
+
+  useEffect(() => {
+    const contactsWidget = dashboardConfig?.widgets?.find((widget) => widget.key === 'contacts');
+    setContactsDashboardEnabled(contactsWidget?.enabled === true);
+  }, [dashboardConfig]);
 
   const profileMutation = useMutation({
     mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[] }) => {
@@ -77,6 +103,7 @@ export const ProfileSettings: React.FC = () => {
     },
     onSuccess: async () => {
       await fetchMe();
+      queryClient.invalidateQueries({ queryKey: ['dashboard-config'] });
       alert('表示設定を保存しました');
     },
     onError: (error: any) => {
@@ -141,6 +168,22 @@ export const ProfileSettings: React.FC = () => {
   };
 
   const handleSaveProfile = () => {
+    if (dashboardConfig?.widgets?.length) {
+      const widgets = dashboardConfig.widgets.map((widget) =>
+        widget.key === 'contacts'
+          ? { ...widget, enabled: contactsDashboardEnabled }
+          : widget
+      );
+      api.put('/api/me/dashboard-config', {
+        ...dashboardConfig,
+        widgets,
+      }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['dashboard-config'] });
+      }).catch((error) => {
+        console.error('Failed to save dashboard contacts setting:', error);
+      });
+    }
+
     profileMutation.mutate({
       darkMode: darkMode,
       avatarColor: avatarColor,
@@ -171,7 +214,7 @@ export const ProfileSettings: React.FC = () => {
     saveMutation.mutate(validLinks);
   };
 
-  if (isLoading || isLocationsLoading) {
+  if (isLoading || isLocationsLoading || isDashboardConfigLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner />
@@ -329,6 +372,23 @@ export const ProfileSettings: React.FC = () => {
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
               <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{notepadEnabled ? 'ON' : 'OFF'}</span>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">町民データベース</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">ダッシュボードに町民データベースを表示する</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={contactsDashboardEnabled}
+                onChange={(e) => setContactsDashboardEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{contactsDashboardEnabled ? 'ON' : 'OFF'}</span>
             </label>
           </div>
 

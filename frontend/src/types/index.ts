@@ -142,6 +142,7 @@ export interface WeeklyReport {
     activity: string;
     projectId?: string | null;
     projectName?: string;
+    missionName?: string;
     sourceType?: string;
   }>;
   nextWeekPlan?: string;

@@ -90,16 +90,22 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   }, [existingReportByWeek, existingReports]);
 
   const groupedActivities = useMemo(() => {
-    const groups = new Map<string, Array<{ index: number; date: string; activity: string }>>();
+    const missionGroups = new Map<string, Map<string, Array<{ index: number; date: string; activity: string }>>>();
     activities.forEach((activity, index) => {
       if (!canEdit && !activity.date && !activity.activity) return;
+      const missionName = activity.missionName?.trim() || 'ミッション未設定';
       const projectName = activity.projectName?.trim() || 'プロジェクト未設定';
-      if (!groups.has(projectName)) groups.set(projectName, []);
-      groups.get(projectName)!.push({ index, date: activity.date, activity: activity.activity });
+      if (!missionGroups.has(missionName)) missionGroups.set(missionName, new Map());
+      const projectGroups = missionGroups.get(missionName)!;
+      if (!projectGroups.has(projectName)) projectGroups.set(projectName, []);
+      projectGroups.get(projectName)!.push({ index, date: activity.date, activity: activity.activity });
     });
-    return Array.from(groups.entries()).map(([projectName, items]) => ({
-      projectName,
-      items: items.sort((a, b) => a.date.localeCompare(b.date)),
+    return Array.from(missionGroups.entries()).map(([missionName, projectGroups]) => ({
+      missionName,
+      projects: Array.from(projectGroups.entries()).map(([projectName, items]) => ({
+        projectName,
+        items: items.sort((a, b) => a.date.localeCompare(b.date)),
+      })),
     }));
   }, [activities, canEdit]);
 
@@ -226,7 +232,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
   };
 
   const handleAddActivity = () => {
-    setActivities([...activities, { date: '', activity: '', projectName: '手動追加' }]);
+    setActivities([...activities, { date: '', activity: '', projectName: '手動追加', missionName: '手動追加' }]);
   };
 
   const handleRemoveActivity = (index: number) => {
@@ -377,7 +383,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
               )}
               {unlinkedGoogleSchedulesCount > 0 && (
                 <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-lg text-sm">
-                  Googleから取り込まれた未紐づけ予定が{unlinkedGoogleSchedulesCount}件あります。スケジュール画面でプロジェクトや報告対象を設定すると週次報告に利用できます。
+                  Googleから取り込まれたプロジェクト未設定の予定が{unlinkedGoogleSchedulesCount}件あります。スケジュール画面でプロジェクトや報告対象を設定すると週次報告に利用できます。
                 </div>
               )}
               {!report && initialWeek && (
@@ -434,44 +440,53 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
                 <div className="space-y-4">
                   {groupedActivities.length > 0 ? (
-                    groupedActivities.map((group) => (
-                      <div key={group.projectName} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
-                          {group.projectName}
+                    groupedActivities.map((mission) => (
+                      <div key={mission.missionName} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {mission.missionName}
                         </div>
-                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {group.items.map((activity) => (
-                            <div key={activity.index} className="grid grid-cols-1 sm:grid-cols-[160px_1fr_auto] gap-2 p-3">
-                              <Input
-                                type="date"
-                                value={activity.date}
-                                onChange={(e) =>
-                                  handleActivityChange(activity.index, 'date', e.target.value)
-                                }
-                                className="w-full"
-                                required
-                              />
-                              <textarea
-                                value={activity.activity}
-                                onChange={(e) =>
-                                  handleActivityChange(activity.index, 'activity', e.target.value)
-                                }
-                                placeholder="活動内容"
-                                rows={2}
-                                className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-y"
-                                required
-                              />
-                              {activities.length > 1 && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleRemoveActivity(activity.index)}
-                                  className="h-10"
-                                >
-                                  削除
-                                </Button>
-                              )}
+                        <div className="space-y-3 p-3">
+                          {mission.projects.map((project) => (
+                            <div key={`${mission.missionName}-${project.projectName}`} className="rounded-md border border-gray-100 dark:border-gray-700 overflow-hidden">
+                              <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
+                                {project.projectName}
+                              </div>
+                              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                                {project.items.map((activity) => (
+                                  <div key={activity.index} className="grid grid-cols-1 sm:grid-cols-[160px_1fr_auto] gap-2 p-3">
+                                    <Input
+                                      type="date"
+                                      value={activity.date}
+                                      onChange={(e) =>
+                                        handleActivityChange(activity.index, 'date', e.target.value)
+                                      }
+                                      className="w-full"
+                                      required
+                                    />
+                                    <textarea
+                                      value={activity.activity}
+                                      onChange={(e) =>
+                                        handleActivityChange(activity.index, 'activity', e.target.value)
+                                      }
+                                      placeholder="活動内容"
+                                      rows={2}
+                                      className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-y"
+                                      required
+                                    />
+                                    {activities.length > 1 && (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleRemoveActivity(activity.index)}
+                                        className="h-10"
+                                      >
+                                        削除
+                                      </Button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           ))}
                         </div>
