@@ -8,18 +8,43 @@ import type { InterviewAvailabilityStatus, InterviewPoll, InterviewPollAssignmen
 import { sortUsersByDisplayOrder } from '../utils/userSort';
 
 const staffRoles = ['MASTER', 'SUPPORT', 'GOVERNMENT'];
+const DEFAULT_CANDIDATE_DATE_COUNT = 3;
+
+type DateRow = {
+  id: string;
+  date: string;
+  capacity: number;
+  unavailableDepartments: string[];
+};
+
+let candidateDateRowId = 0;
+
+function nextCandidateDateRowId() {
+  candidateDateRowId += 1;
+  return `candidate-date-${candidateDateRowId}`;
+}
 
 function currentMonth() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function firstHalfDates(month: string) {
+function monthDate(month: string, day: number) {
   const [year, rawMonth] = month.split('-').map(Number);
-  return Array.from({ length: 15 }, (_, index) => {
-    const day = index + 1;
-    return `${year}-${String(rawMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  });
+  return `${year}-${String(rawMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function createDateRow(month: string, day: number): DateRow {
+  return {
+    id: nextCandidateDateRowId(),
+    date: monthDate(month, day),
+    capacity: 4,
+    unavailableDepartments: [],
+  };
+}
+
+function defaultDateRows(month: string) {
+  return Array.from({ length: DEFAULT_CANDIDATE_DATE_COUNT }, (_, index) => createDateRow(month, index + 1));
 }
 
 function dateLabel(date: string) {
@@ -56,9 +81,7 @@ export const InterviewPolls: React.FC = () => {
   const [title, setTitle] = useState(`${currentMonth()} 月次面談`);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
-  const [dateRows, setDateRows] = useState(() =>
-    firstHalfDates(currentMonth()).map((date) => ({ date, capacity: 4, unavailableDepartments: [] as string[] })),
-  );
+  const [dateRows, setDateRows] = useState(() => defaultDateRows(currentMonth()));
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [draftAvailability, setDraftAvailability] = useState<Record<string, InterviewAvailabilityStatus>>({});
 
@@ -125,7 +148,26 @@ export const InterviewPolls: React.FC = () => {
   const updateMonth = (nextMonth: string) => {
     setMonth(nextMonth);
     setTitle(`${nextMonth} 月次面談`);
-    setDateRows(firstHalfDates(nextMonth).map((date) => ({ date, capacity: 4, unavailableDepartments: [] })));
+    setDateRows(defaultDateRows(nextMonth));
+  };
+
+  const addDateRow = () => {
+    setDateRows((prev) => {
+      const [year, rawMonth] = month.split('-').map(Number);
+      const lastDayOfMonth = new Date(year, rawMonth, 0).getDate();
+      const usedDays = prev
+        .map((row) => {
+          const [rowYear, rowMonth, rowDay] = row.date.split('-').map(Number);
+          return rowYear === year && rowMonth === rawMonth ? rowDay : null;
+        })
+        .filter((day): day is number => day !== null);
+      const nextDay = Math.min((usedDays.length ? Math.max(...usedDays) : 0) + 1, lastDayOfMonth);
+      return [...prev, createDateRow(month, nextDay)];
+    });
+  };
+
+  const removeDateRow = (rowId: string) => {
+    setDateRows((prev) => (prev.length <= 1 ? prev : prev.filter((row) => row.id !== rowId)));
   };
 
   const createPoll = async () => {
@@ -138,7 +180,11 @@ export const InterviewPolls: React.FC = () => {
         month,
         startTime,
         endTime,
-        dates: dateRows,
+        dates: dateRows.map(({ date, capacity, unavailableDepartments }) => ({
+          date,
+          capacity,
+          unavailableDepartments,
+        })),
         memberIds: [...selectedMemberIds],
       });
       setPolls((prev) => [res.data, ...prev]);
@@ -287,10 +333,20 @@ export const InterviewPolls: React.FC = () => {
                 </div>
 
                 <div>
-                  <div className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">候補日・定員・上長NG課</div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">候補日・定員・上長NG課</div>
+                    <button
+                      type="button"
+                      onClick={addDateRow}
+                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      追加
+                    </button>
+                  </div>
                   <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                     {dateRows.map((row, index) => (
-                      <div key={row.date} className="rounded-lg border border-gray-200 p-2 dark:border-gray-700">
+                      <div key={row.id} className="rounded-lg border border-gray-200 p-2 dark:border-gray-700">
                         <div className="flex items-center gap-2">
                           <input
                             type="date"
@@ -312,6 +368,15 @@ export const InterviewPolls: React.FC = () => {
                             }
                             className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-900"
                           />
+                          <button
+                            type="button"
+                            onClick={() => removeDateRow(row.id)}
+                            disabled={dateRows.length <= 1}
+                            aria-label="候補日を削除"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
                         {departments.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
