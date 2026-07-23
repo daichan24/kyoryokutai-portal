@@ -140,6 +140,9 @@ model User {
   handoverDocumentsCreated HandoverDocument[] @relation("HandoverDocumentCreator")
   handoverDocumentsUpdated HandoverDocument[] @relation("HandoverDocumentUpdater")
 
+  inventoryItemsUpdated InventoryItem[]   @relation("InventoryItemUpdater")
+  inventoryUpdates      InventoryUpdate[] @relation("InventoryUpdateUpdater")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -2113,4 +2116,63 @@ model HandoverDocument {
 
   @@index([folderId])
   @@index([createdById])
+}
+
+// ========================================
+// 在庫管理
+// ========================================
+
+/// 品名や容量は固定し、通常の更新では在庫数と賞味期限だけを変更する。
+model InventoryItem {
+  id             String  @id @default(uuid())
+  category       String
+  name           String
+  capacity       String?
+  quantity       Float?
+  quantitySuffix String?
+  quantityNote   String?
+  expiry         String?
+  sortOrder      Int     @default(0)
+
+  updatedById String?
+  updatedBy   User?   @relation("InventoryItemUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  changes     InventoryChange[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, sortOrder])
+}
+
+/// 1回の保存操作を表す更新履歴。複数品目の変更をまとめて記録する。
+model InventoryUpdate {
+  id          String @id @default(uuid())
+  updatedById String?
+  updatedBy   User?  @relation("InventoryUpdateUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  changes     InventoryChange[]
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([updatedById])
+}
+
+/// 在庫更新時の品目ごとの差分。
+model InventoryChange {
+  id                 String           @id @default(uuid())
+  updateId           String
+  update             InventoryUpdate  @relation(fields: [updateId], references: [id], onDelete: Cascade)
+  itemId             String?
+  item               InventoryItem?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  itemName           String
+  itemCapacity       String?
+  itemQuantitySuffix String?
+  category           String
+  changeType         String           @default("UPDATE")
+  previousQuantity   Float?
+  nextQuantity       Float?
+  previousExpiry     String?
+  nextExpiry         String?
+
+  @@index([updateId])
+  @@index([itemId])
 }

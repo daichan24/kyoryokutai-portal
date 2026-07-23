@@ -28,6 +28,7 @@ import {
   CalendarClock,
   FolderOpen,
   Mail,
+  Package,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -66,6 +67,7 @@ function matchesStatusPath(pathname: string) {
   return (
     pathname.startsWith('/sns-posts') ||
     pathname.startsWith('/events/participation-summary') ||
+    pathname.startsWith('/inventory') ||
     pathname.startsWith('/contacts')
   );
 }
@@ -291,6 +293,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const statusItems: Array<{ to: string; icon: NavIcon; label: string; end?: boolean }> = [
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
     { to: '/events/participation-summary', icon: CalendarDays, label: 'イベント参加状況' },
+    { to: '/inventory', icon: Package, label: '在庫管理' },
     ...(user?.contactsSidebarEnabled === true ? [{ to: '/contacts', icon: Contact, label: '町民データベース' }] : []),
   ];
 

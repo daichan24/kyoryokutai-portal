@@ -47,6 +47,7 @@ const InboxPage = lazy(() => import('./pages/InboxPage').then((m) => ({ default:
 const NotepadPage = lazy(() => import('./pages/NotepadPage').then((m) => ({ default: m.NotepadPage })));
 const LeaveManagement = lazy(() => import('./pages/LeaveManagement').then((m) => ({ default: m.LeaveManagement })));
 const Handover = lazy(() => import('./pages/Handover'));
+const Inventory = lazy(() => import('./pages/Inventory').then((m) => ({ default: m.Inventory })));
 
 const PrivateRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -132,6 +133,7 @@ const App: React.FC = () => {
             <Route path="/notepad/:id" element={<NotepadPage />} />
             <Route path="/leave-management" element={<LeaveManagement />} />
             <Route path="/handover" element={<Handover />} />
+            <Route path="/inventory" element={<Inventory />} />
 
             <Route element={<RoleProtectedRoute allowedRoles={['SUPPORT', 'MASTER']} />}>
               <Route path="/settings/document-templates" element={<DocumentTemplatesSettings />} />
