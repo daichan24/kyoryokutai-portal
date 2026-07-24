@@ -299,10 +299,6 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     }
   };
 
-  const getStatusIcon = (_status: string) => null;
-  const getStatusLabel = (_status: string) => '';
-  const getStatusColor = (_status: string) => '';
-
   // 権限チェック: MEMBERは自分のプロジェクトのみ編集可、GOVERNMENTは閲覧のみ
   const canEditTasks = !isReadOnly && project && (
     user?.role === 'MASTER' ||
@@ -769,4 +765,3 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     </>
   );
 };
-

@@ -1,6 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
-  Type, 
   AlignLeft, 
   AlignCenter, 
   AlignRight, 
@@ -285,4 +284,3 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
     </div>
   );
 };
-

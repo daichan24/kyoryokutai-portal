@@ -24,6 +24,8 @@ export const WeeklyStatusAlert: React.FC = () => {
     retry: 1,
   });
 
+  if (isLoading) return null;
+
   // エラー時も表示（暫定で未完扱い）
   const hasStory = status?.hasStory ?? false;
   const hasFeed = status?.hasFeed ?? false;
@@ -68,4 +70,3 @@ export const WeeklyStatusAlert: React.FC = () => {
     </div>
   );
 };
-

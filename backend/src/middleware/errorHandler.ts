@@ -1,11 +1,11 @@
-// @ts-nocheck
+// @ts-nocheck -- Expressエラーハンドラーの戻り値型移行は段階対応中。
 import { Request, Response, NextFunction } from 'express';
 
 export const errorHandler = (
   err: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   console.error('Error:', err);
 

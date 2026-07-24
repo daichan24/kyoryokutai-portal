@@ -9,7 +9,7 @@ import { ProjectModal } from '../components/project/ProjectModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, HelpCircle, LayoutGrid, List, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, HelpCircle, LayoutGrid, List, GripVertical } from 'lucide-react';
 import { Task } from '../types';
 import { formatDate } from '../utils/date';
 
@@ -33,7 +33,6 @@ export const Projects: React.FC = () => {
   const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
   const [filterPhase, setFilterPhase] = useState<string>('all');
-  const [filterApproval, setFilterApproval] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);

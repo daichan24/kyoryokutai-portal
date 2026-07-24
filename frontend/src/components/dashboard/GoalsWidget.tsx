@@ -30,7 +30,6 @@ interface GoalsWidgetProps {
 export const GoalsWidget: React.FC<GoalsWidgetProps> = ({
   displayMode = 'view-only',
   showAddButton = false,
-  onAddClick,
   viewMode = 'personal',
 }) => {
   const { user } = useAuthStore();

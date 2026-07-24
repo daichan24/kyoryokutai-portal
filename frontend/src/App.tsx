@@ -62,12 +62,11 @@ const getDefaultAuthenticatedPath = () => {
 };
 
 const App: React.FC = () => {
-  const { isLoading, fetchMe, logout, user } = useAuthStore();
+  const { isLoading, error, fetchMe, logout, user } = useAuthStore();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     fetchMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -88,6 +87,33 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error && localStorage.getItem('token')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 dark:bg-gray-900">
+        <div className="w-full max-w-md rounded-xl bg-white p-6 text-center shadow-sm dark:bg-gray-800">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">接続を確認できませんでした</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{error}</p>
+          <div className="mt-5 flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => fetchMe()}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              再試行
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+            >
+              ログイン画面へ
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

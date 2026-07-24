@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { api } from '../../utils/api';
 import { Location } from '../../types';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { useAuthStore } from '../../stores/authStore';
 
 export const LocationsSettings: React.FC = () => {
-  const { user } = useAuthStore();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLocationName, setNewLocationName] = useState('');

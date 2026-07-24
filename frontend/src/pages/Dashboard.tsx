@@ -137,12 +137,11 @@ export const Dashboard: React.FC = () => {
     ];
     const sns = { key: 'snsHistory', enabled: true, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const, order: 1 };
 
-    let baseWidgets: typeof tail & { key: string }[];
-    baseWidgets = [
+    const baseWidgets = [
       sns,
       { key: 'goals', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 1 as const, order: 4 },
       ...tail,
-    ] as any;
+    ] as typeof tail & { key: string }[];
 
     if (role === 'MEMBER') {
       return {

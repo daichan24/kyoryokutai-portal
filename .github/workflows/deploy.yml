@@ -25,13 +25,18 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
       
       - name: Generate Prisma Client
         run: npx prisma generate
       
       - name: Run linter
-        run: npm run lint || true
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test:run
       
       - name: Build
         run: npm run build
@@ -54,14 +59,19 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
       
       - name: Run linter
-        run: npm run lint || true
+        run: npm run lint
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
       
       - name: Build
         run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:3001' }}
         continue-on-error: false
-

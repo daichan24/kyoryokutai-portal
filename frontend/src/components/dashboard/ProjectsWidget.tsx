@@ -23,7 +23,6 @@ interface ProjectsWidgetProps {
 
 export const ProjectsWidget: React.FC<ProjectsWidgetProps> = ({
   showAddButton = false,
-  onAddClick,
 }) => {
   const { user } = useAuthStore();
   const { isStaff, workspaceMode } = useStaffWorkspace();

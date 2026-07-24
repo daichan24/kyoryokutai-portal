@@ -498,6 +498,21 @@ export const InboxPage: React.FC = () => {
     createdAt: string;
     raw: any;
   };
+  type ApprovalItemType = 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense';
+  type LeaveItemType = 'compensatoryLeave' | 'timeAdjustment';
+  const isApprovalItem = (
+    item: UnifiedItem,
+  ): item is UnifiedItem & { type: ApprovalItemType } => (
+    item.type === 'weeklyReport'
+    || item.type === 'inspection'
+    || item.type === 'monthlyReport'
+    || item.type === 'expense'
+  );
+  const isLeaveItem = (
+    item: UnifiedItem,
+  ): item is UnifiedItem & { type: LeaveItemType } => (
+    item.type === 'compensatoryLeave' || item.type === 'timeAdjustment'
+  );
 
   const allItems: UnifiedItem[] = isStaff ? [
     ...(receptionData?.scheduleInvites || []).map(s => ({
@@ -716,18 +731,18 @@ export const InboxPage: React.FC = () => {
                     {item.status === 'pending' ? '確認・対応' : '詳細'}
                   </Button>
                 )}
-                {(item.type === 'weeklyReport' || item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'expense') && item.status === 'unapproved' && (
+                {isApprovalItem(item) && item.status === 'unapproved' && (
                   <>
-                    <Button size="sm" onClick={() => handleApprovalAction(item, 'APPROVED')} disabled={actionLoading}>
+                    <Button size="sm" onClick={() => handleApprovalAction({ id: item.id, type: item.type }, 'APPROVED')} disabled={actionLoading}>
                       承認
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleApprovalAction(item, 'REJECTED')} disabled={actionLoading}>
+                    <Button size="sm" variant="outline" onClick={() => handleApprovalAction({ id: item.id, type: item.type }, 'REJECTED')} disabled={actionLoading}>
                       差し戻し
                     </Button>
                   </>
                 )}
-                {(item.type === 'compensatoryLeave' || item.type === 'timeAdjustment') && item.status === 'unapproved' && (
-                  <Button size="sm" onClick={() => handleLeaveConfirmAction(item)} disabled={actionLoading}>
+                {isLeaveItem(item) && item.status === 'unapproved' && (
+                  <Button size="sm" onClick={() => handleLeaveConfirmAction({ id: item.id, type: item.type })} disabled={actionLoading}>
                     確認済み
                   </Button>
                 )}

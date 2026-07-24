@@ -4,17 +4,13 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { api } from '../utils/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { GoalModal } from '../components/goal/GoalModal';
-import { MidGoalModal } from '../components/goal/MidGoalModal';
-import { SubGoalModal } from '../components/goal/SubGoalModal';
-import { GoalTaskModal } from '../components/goal/GoalTaskModal';
 import { MissionDetailContent } from '../components/mission/MissionDetailContent';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, HelpCircle, GripVertical, LayoutGrid, List } from 'lucide-react';
+import { Plus, HelpCircle, GripVertical, LayoutGrid, List } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
-import { Task, Project } from '../types';
 
 interface Goal {
   id: string;
@@ -62,23 +58,12 @@ export const Goals: React.FC = () => {
   const { isStaff, workspaceMode } = useStaffWorkspace();
   const queryClient = useQueryClient();
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
-  const [expandedMidGoals, setExpandedMidGoals] = useState<Set<string>>(new Set());
-  const [expandedSubGoals, setExpandedSubGoals] = useState<Set<string>>(new Set());
   
   // モーダル状態
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
-  const [isMidGoalModalOpen, setIsMidGoalModalOpen] = useState(false);
-  const [isSubGoalModalOpen, setIsSubGoalModalOpen] = useState(false);
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   
   // 選択状態
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
-  const [selectedGoalId, setSelectedGoalId] = useState<string>('');
-  const [selectedMidGoalId, setSelectedMidGoalId] = useState<string>('');
-  const [selectedSubGoalId, setSelectedSubGoalId] = useState<string>('');
-  const [selectedTask, setSelectedTask] = useState<GoalTask | null>(null);
-  const [selectedNewTask, setSelectedNewTask] = useState<Task | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isUsageGuideOpen, setIsUsageGuideOpen] = useState(false);
   const [displayMode, setDisplayMode] = useState<'card' | 'list'>('card');
@@ -168,27 +153,6 @@ export const Goals: React.FC = () => {
     refetchOnWindowFocus: false, // ウィンドウフォーカス時は再取得しない
   });
 
-  // 各ミッションのプロジェクトとタスクを取得
-  const fetchProjectsForMission = async (missionId: string): Promise<Project[]> => {
-    try {
-      const response = await api.get(`/api/projects?missionId=${missionId}`);
-      return response.data || [];
-    } catch (error) {
-      console.error('Failed to fetch projects:', error);
-      return [];
-    }
-  };
-
-  const fetchTasksForMission = async (missionId: string): Promise<Task[]> => {
-    try {
-      const response = await api.get(`/api/missions/${missionId}/tasks`);
-      return response.data || [];
-    } catch (error) {
-      console.error('Failed to fetch tasks:', error);
-      return [];
-    }
-  };
-
   const toggleGoal = (id: string) => {
     const newSet = new Set(expandedGoals);
     if (newSet.has(id)) {
@@ -197,26 +161,6 @@ export const Goals: React.FC = () => {
       newSet.add(id);
     }
     setExpandedGoals(newSet);
-  };
-
-  const toggleMidGoal = (id: string) => {
-    const newSet = new Set(expandedMidGoals);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setExpandedMidGoals(newSet);
-  };
-
-  const toggleSubGoal = (id: string) => {
-    const newSet = new Set(expandedSubGoals);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setExpandedSubGoals(newSet);
   };
 
   const getProgressColor = (progress: number) => {
@@ -236,38 +180,9 @@ export const Goals: React.FC = () => {
     setIsGoalModalOpen(true);
   };
 
-  const handleCreateMidGoal = (goalId: string) => {
-    setSelectedGoalId(goalId);
-    setIsMidGoalModalOpen(true);
-  };
-
-  const handleCreateSubGoal = (midGoalId: string) => {
-    setSelectedMidGoalId(midGoalId);
-    setIsSubGoalModalOpen(true);
-  };
-
-  const handleCreateTask = (subGoalId: string) => {
-    setSelectedSubGoalId(subGoalId);
-    setSelectedTask(null);
-    setIsTaskModalOpen(true);
-  };
-
-  const handleUpdateTaskProgress = (task: GoalTask, subGoalId: string) => {
-    setSelectedTask(task);
-    setSelectedSubGoalId(subGoalId);
-    setIsTaskModalOpen(true);
-  };
-
   const handleCloseModals = () => {
     setIsGoalModalOpen(false);
-    setIsMidGoalModalOpen(false);
-    setIsSubGoalModalOpen(false);
-    setIsTaskModalOpen(false);
     setSelectedGoal(null);
-    setSelectedGoalId('');
-    setSelectedMidGoalId('');
-    setSelectedSubGoalId('');
-    setSelectedTask(null);
   };
 
   const handleSaved = () => {
@@ -688,31 +603,6 @@ export const Goals: React.FC = () => {
       {isGoalModalOpen && (
         <GoalModal
           goal={selectedGoal}
-          onClose={handleCloseModals}
-          onSaved={handleSaved}
-        />
-      )}
-
-      {isMidGoalModalOpen && selectedGoalId && (
-        <MidGoalModal
-          goalId={selectedGoalId}
-          onClose={handleCloseModals}
-          onSaved={handleSaved}
-        />
-      )}
-
-      {isSubGoalModalOpen && selectedMidGoalId && (
-        <SubGoalModal
-          midGoalId={selectedMidGoalId}
-          onClose={handleCloseModals}
-          onSaved={handleSaved}
-        />
-      )}
-
-      {isTaskModalOpen && selectedSubGoalId && (
-        <GoalTaskModal
-          subGoalId={selectedSubGoalId}
-          task={selectedTask}
           onClose={handleCloseModals}
           onSaved={handleSaved}
         />

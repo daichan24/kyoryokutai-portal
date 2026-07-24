@@ -89,7 +89,14 @@ export async function respondToSuggestion(
 
   // ACCEPTEDの場合、予定をコピー
   if (status === 'ACCEPTED') {
-    const { id, createdAt, updatedAt, userId, recurrenceRule, ...scheduleData } = suggestion.schedule;
+    const {
+      id: _id,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      userId: _userId,
+      recurrenceRule,
+      ...scheduleData
+    } = suggestion.schedule;
 
     await prisma.schedule.create({
       data: {

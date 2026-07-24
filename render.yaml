@@ -7,6 +7,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     dockerCommand: npm run start:prod
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -22,6 +23,8 @@ services:
         sync: false
       - key: BACKEND_PUBLIC_URL
         sync: false
+      - key: SLOW_REQUEST_THRESHOLD_MS
+        value: 2000
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -45,7 +48,7 @@ services:
   - type: static_site
     name: kyoryokutai-frontend
     rootDir: frontend
-    buildCommand: rm -rf node_modules dist .vite && npm install --legacy-peer-deps && npm run build
+    buildCommand: npm ci --legacy-peer-deps && npm run build
     publishPath: dist
     envVars:
       - key: VITE_API_URL

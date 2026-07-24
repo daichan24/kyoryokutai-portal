@@ -465,8 +465,8 @@ export const LeaveManagement: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">付与日：{fmtFull(cl.grantedAt)}　{compLeaveLabel(cl.leaveType)} / 残{cl.remainingDays}日{cl.totalHours != null && `　${cl.totalHours}時間`}{cl.note && `　${cl.note}`}</p>
-                            {cl.schedule && <p className={`text-xs mt-0.5 ${THEME.comp.text}`}>紐づくタスク：{cl.schedule.title || cl.schedule.activityDescription}（{fmtFull(cl.schedule.startDate)}　{cl.schedule.startTime}〜{cl.schedule.endTime}）</p>}
+                            <p className="text-xs text-gray-500 mt-1">付与日：{fmtFull(cl.grantedAt)} {compLeaveLabel(cl.leaveType)} / 残{cl.remainingDays}日{cl.totalHours != null && ` ${cl.totalHours}時間`}{cl.note && ` ${cl.note}`}</p>
+                            {cl.schedule && <p className={`text-xs mt-0.5 ${THEME.comp.text}`}>紐づくタスク：{cl.schedule.title || cl.schedule.activityDescription}（{fmtFull(cl.schedule.startDate)} {cl.schedule.startTime}〜{cl.schedule.endTime}）</p>}
                             {cl.usages.length > 0 && <p className="text-xs text-gray-400 mt-0.5">使用済み：{cl.usages.map(u => `${fmt(u.usedAt)} ${u.days}日`).join('、')}</p>}
                           </div>
                           <div className="flex gap-1 flex-shrink-0">

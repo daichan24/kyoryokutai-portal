@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect } from 'vitest';
 
 describe('SNS Account Management - Unit Tests', () => {
   describe('5.1 デフォルトアカウント設定のロジック', () => {

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { format } from 'date-fns';
 import { EventModal } from '../components/event/EventModal';
-import { useAuthStore } from '../stores/authStore';
 
 interface Event {
   id: string;
@@ -24,7 +23,6 @@ interface Event {
 }
 
 export const Events: React.FC = () => {
-  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [filterType, setFilterType] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all'); // 未実施/実施済み/すべて

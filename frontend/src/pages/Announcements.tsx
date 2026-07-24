@@ -52,6 +52,10 @@ type StaffAnnouncementRow = {
   memberCount: number;
 };
 
+const isStaffAnnouncement = (
+  row: MemberAnnouncementRow | StaffAnnouncementRow,
+): row is StaffAnnouncementRow => 'readCount' in row && 'memberCount' in row;
+
 export const Announcements: React.FC = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -465,7 +469,7 @@ export const Announcements: React.FC = () => {
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-xs text-gray-500">
                             投稿: {row.author.name}
-                            {'readCount' in row && ` ／ 確認済み ${row.readCount} / ${row.memberCount} 名`}
+                            {isStaffAnnouncement(row) && ` ／ 確認済み ${row.readCount} / ${row.memberCount} 名`}
                           </p>
                           <div className="flex gap-2 flex-wrap">
                             {/* 確認ボタン（自分が対象かつ未確認） */}

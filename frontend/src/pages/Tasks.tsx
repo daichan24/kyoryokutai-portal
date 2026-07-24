@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
@@ -10,7 +10,7 @@ import { ScheduleModal } from '../components/schedule/ScheduleModal';
 import { Button } from '../components/common/Button';
 import { UserFilter } from '../components/common/UserFilter';
 import { UsageGuideModal } from '../components/common/UsageGuideModal';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, PlayCircle, Calendar, Filter, ArrowUpDown, HelpCircle, LayoutGrid, List, X, GripVertical } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, ArrowUpDown, HelpCircle, LayoutGrid, List, X, GripVertical } from 'lucide-react';
 import { Task, Project, Mission } from '../types';
 
 export const Tasks: React.FC = () => {
@@ -165,7 +165,7 @@ export const Tasks: React.FC = () => {
 
   // フィルタリング・ソート
   const filteredAndSortedTasks = React.useMemo(() => {
-    let filtered = allTasks.filter(task => {
+    const filtered = allTasks.filter(task => {
       const matchesProject = filterProject === 'all' || task.projectId === filterProject;
       return matchesProject;
     });
@@ -285,22 +285,6 @@ export const Tasks: React.FC = () => {
     }
   };
 
-  const handleCompleteTask = async (task: Task) => {
-    try {
-      if (!task.missionId) {
-        throw new Error('Mission ID not found');
-      }
-      await api.put(`/api/missions/${task.missionId}/tasks/${task.id}`, {
-        status: 'COMPLETED',
-      });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-    } catch (error) {
-      console.error('Failed to complete task:', error);
-      alert('完了処理に失敗しました');
-    }
-  };
-
   const handleTaskSaved = () => {
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
     queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -340,28 +324,6 @@ export const Tasks: React.FC = () => {
       alert(error.response?.data?.error || '順番の入れ替えに失敗しました');
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case 'IN_PROGRESS':
-        return <PlayCircle className="h-5 w-5 text-blue-500" />;
-      default:
-        return <Circle className="h-5 w-5 text-gray-400" />;
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return '完了';
-      case 'IN_PROGRESS':
-        return '進行中';
-      default:
-        return '未着手';
     }
   };
 

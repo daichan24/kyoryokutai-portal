@@ -1,6 +1,5 @@
 import prisma from '../lib/prisma';
 import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 
 interface ActivityItem {
   date: string;
@@ -317,7 +316,7 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
     if (!task.dueDate) continue;
     const reportSourceDate = task.dueDate;
     const reportDate = format(reportSourceDate, 'yyyy-MM-dd');
-    let activityText = task.title;
+    const activityText = task.title;
     activities.push({
       date: reportDate,
       activity: activityText,

@@ -429,7 +429,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       // リストにある場合はそのまま設定
       setLocationText(existingLoc);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations, schedule?.id, schedule?.locationText, task?.id, (task as any)?.locationText]);
 
   useEffect(() => {

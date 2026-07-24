@@ -6,6 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { Schedule as ScheduleType } from '../../types';
 import { api } from '../../utils/api';
 import { isHolidayDate, isSaturday, isSunday } from '../../utils/date';
+import { addDaysToDateOnly } from '../../utils/dateOnly';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
 interface DraggableCalendarViewProps {
@@ -160,11 +161,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
             title: (schedule as any).title || schedule.activityDescription || '(タイトルなし)',
             start: isAllDay ? startDate : startDateTime,
             // allDay イベントの end は exclusive（終了日の翌日）なので +1日
-            end: isAllDay ? (() => {
-              const d = new Date(endDate + 'T00:00:00');
-              d.setDate(d.getDate() + 1);
-              return d.toISOString().slice(0, 10);
-            })() : endDateTime,
+            end: isAllDay ? addDaysToDateOnly(endDate, 1) : endDateTime,
             backgroundColor: color,
             borderColor: color,
             textColor: textColor,
@@ -566,7 +563,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         moreLinkClick={(arg) => {
           if (isMobileMonth && onMoreClick) {
             onMoreClick(arg.date);
-            return false;
+            return;
           }
           return 'popover';
         }}

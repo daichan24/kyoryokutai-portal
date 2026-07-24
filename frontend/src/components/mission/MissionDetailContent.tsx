@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Circle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Task, Project } from '../../types';
 import { TaskModal } from '../project/TaskModal';
 import { ProjectModal } from '../project/ProjectModal';
@@ -40,14 +40,6 @@ export const MissionDetailContent: React.FC<MissionDetailContentProps> = ({ miss
         ...project,
         relatedTasks: project.relatedTasks || [],
       }));
-    },
-  });
-
-  const { data: tasksWithoutProject = [] } = useQuery<Task[]>({
-    queryKey: ['tasks', missionId, 'without-project'],
-    queryFn: async () => {
-      const response = await api.get(`/api/missions/${missionId}/tasks`);
-      return (response.data || []).filter((task: Task) => !task.projectId);
     },
   });
 

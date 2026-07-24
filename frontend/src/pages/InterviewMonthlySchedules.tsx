@@ -188,16 +188,6 @@ function progressBarColor(progress: number) {
   return 'bg-gray-400';
 }
 
-function phaseLabelJa(phase: string): string {
-  const map: Record<string, string> = {
-    PREPARATION: '準備',
-    EXECUTION: '実行',
-    COMPLETED: '完了',
-    REVIEW: '振り返り',
-  };
-  return map[phase] ?? phase;
-}
-
 function consultationAudienceJa(a: string): string {
   const m: Record<string, string> = {
     ANY: '誰でも',
@@ -214,105 +204,6 @@ function formatYenInterview(n: number) {
 
 function formatFollowerCount(n: number | null) {
   return n == null ? '未記録' : n.toLocaleString('ja-JP');
-}
-
-function MissionProjectCompact({
-  missions,
-  projects,
-}: {
-  missions: MissionKpiRow[];
-  projects: ProjectKpiRow[];
-}) {
-  const [openMissionIds, setOpenMissionIds] = useState<Set<string>>(() => new Set());
-  const unlinkedProjects = projects.filter((p) => !p.mission);
-
-  if (missions.length === 0 && projects.length === 0) {
-    return <p className="text-sm text-gray-500 dark:text-gray-400">該当するミッション・プロジェクトはありません。</p>;
-  }
-
-  const toggleMission = (id: string) => {
-    setOpenMissionIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  return (
-    <div className="space-y-3">
-      {missions.map((mission) => {
-        const relatedProjects = projects.filter((p) => p.mission?.id === mission.id);
-        const isOpen = openMissionIds.has(mission.id);
-        return (
-          <div key={mission.id} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-            <button
-              type="button"
-              onClick={() => toggleMission(mission.id)}
-              className="w-full text-left"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">{mission.missionName}</p>
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    タスク {mission.goalTasks.completed + mission.standaloneTasks.completed}/
-                    {mission.goalTasks.total + mission.standaloneTasks.total}・プロジェクト {relatedProjects.length}件
-                  </p>
-                </div>
-                <span className="shrink-0 text-sm font-bold tabular-nums text-gray-900 dark:text-gray-100">{mission.progress}%</span>
-              </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                <div className={`h-full ${progressBarColor(mission.progress)}`} style={{ width: `${Math.min(100, mission.progress)}%` }} />
-              </div>
-              {relatedProjects.length > 0 && (
-                <p className="mt-2 text-xs text-blue-600 dark:text-blue-300">
-                  {isOpen ? 'プロジェクトを閉じる' : 'プロジェクトを開く'}
-                </p>
-              )}
-            </button>
-            {isOpen && relatedProjects.length > 0 && (
-              <div className="mt-3 space-y-2 border-t border-gray-100 pt-3 dark:border-gray-700">
-                {relatedProjects.map((project) => (
-                  <div key={project.id} className="rounded-md bg-gray-50 p-2 dark:bg-gray-900/40">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: project.themeColor || '#6366f1' }} />
-                        <span className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">{project.projectName}</span>
-                      </div>
-                      <span className="text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-200">{project.progress}%</span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
-                      <span>{phaseLabelJa(project.phase)}</span>
-                      <span>関連 {project.relatedTasks.completed}/{project.relatedTasks.total}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {unlinkedProjects.length > 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-          <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">ミッション未設定のプロジェクト</p>
-          <div className="space-y-2">
-            {unlinkedProjects.map((project) => (
-              <div key={project.id} className="flex items-center justify-between gap-2 rounded-md bg-gray-50 p-2 dark:bg-gray-900/40">
-                <span className="truncate text-xs font-medium text-gray-900 dark:text-gray-100">{project.projectName}</span>
-                <span className="text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-200">{project.progress}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-3 text-xs">
-        <Link to="/goals" className="text-blue-600 hover:underline dark:text-blue-400">ミッションを開く</Link>
-        <Link to="/projects" className="text-blue-600 hover:underline dark:text-blue-400">プロジェクトを開く</Link>
-      </div>
-    </div>
-  );
 }
 
 function MissionProjectScheduleSection({

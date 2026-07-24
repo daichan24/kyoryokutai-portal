@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import axios from 'axios';
 import { User, AuthResponse } from '../types';
 import { api } from '../utils/api';
 
@@ -69,14 +70,25 @@ export const useAuthStore = create<AuthState>((set) => ({
       return;
     }
 
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
       api.setToken(token);
       const response = await api.get<User>('/api/auth/me');
-      set({ user: response.data, isAuthenticated: true, isLoading: false });
+      set({ user: response.data, isAuthenticated: true, isLoading: false, error: null });
     } catch (error) {
-      api.setToken(null);
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+
+      // 認証が実際に失効した場合だけトークンを消す。通信障害や一時的な5xxでは保持する。
+      if (status === 401 || status === 403) {
+        api.setToken(null);
+        set({ user: null, isAuthenticated: false, isLoading: false, error: null });
+        return;
+      }
+
+      set({
+        isLoading: false,
+        error: 'サーバーに接続できませんでした。通信状況を確認して再試行してください。',
+      });
     }
   },
 }));

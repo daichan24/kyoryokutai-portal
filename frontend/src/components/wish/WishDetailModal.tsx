@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, MessageSquare } from 'lucide-react';
+import React, { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { X, Plus } from 'lucide-react';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
 import { Wish, WishCheckin, WishCheckinType } from '../../types';
@@ -18,7 +18,6 @@ export const WishDetailModal: React.FC<WishDetailModalProps> = ({
   onClose,
   onUpdated,
 }) => {
-  const queryClient = useQueryClient();
   const [checkinType, setCheckinType] = useState<WishCheckinType>('REFLECTION');
   const [checkinContent, setCheckinContent] = useState('');
   const [isAddingCheckin, setIsAddingCheckin] = useState(false);
@@ -296,4 +295,3 @@ export const WishDetailModal: React.FC<WishDetailModalProps> = ({
     </div>
   );
 };
-

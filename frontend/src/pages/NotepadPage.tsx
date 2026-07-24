@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { NotebookPen, Plus, Trash2, ArrowLeft, Save } from 'lucide-react';
+import { NotebookPen, Plus, Trash2, Save } from 'lucide-react';
 import { api } from '../utils/api';
 import { SimpleRichTextEditor } from '../components/editor/SimpleRichTextEditor';
 import { Button } from '../components/common/Button';

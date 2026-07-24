@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { Menu, Box } from 'lucide-react';
-import { Button } from '../common/Button';
 import { api } from '../../utils/api';
 import { BUILD_COMMIT_COUNT, BUILD_COMMIT_SHA, BUILD_VERSION } from '../../buildVersion';
 import { NotepadDropdown } from '../notepad/NotepadDropdown';

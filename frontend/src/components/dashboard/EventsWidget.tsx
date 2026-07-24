@@ -31,7 +31,6 @@ interface EventsWidgetProps {
 export const EventsWidget: React.FC<EventsWidgetProps> = ({
   displayMode = 'view-with-add',
   showAddButton = false,
-  onAddClick,
 }) => {
   const { user } = useAuthStore();
 
@@ -146,4 +145,3 @@ export const EventsWidget: React.FC<EventsWidgetProps> = ({
     </div>
   );
 };
-

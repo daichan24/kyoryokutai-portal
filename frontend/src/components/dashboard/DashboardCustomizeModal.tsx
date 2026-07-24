@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { X, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { api } from '../../utils/api';
 import { Button } from '../common/Button';
@@ -45,7 +45,7 @@ const widgetLabels: Record<string, string> = {
 };
 
 // カスタマイズ画面に必ず表示する全ウィジェットのテンプレート
-const getFullWidgetTemplate = (role: string): Omit<WidgetConfig, 'order'>[] => {
+const getFullWidgetTemplate = (_role: string): Omit<WidgetConfig, 'order'>[] => {
   const tail = [
     { key: 'projects', enabled: false, displayMode: 'view-only' as const, showAddButton: false, size: 'M' as const, columnSpan: 2 as const },
     { key: 'tasks', enabled: false, displayMode: 'view-with-add' as const, showAddButton: true, size: 'M' as const, columnSpan: 2 as const },
@@ -238,22 +238,6 @@ export const DashboardCustomizeModal: React.FC<DashboardCustomizeModalProps> = (
         w.key === key ? { ...w, contactCount: count } : w
       ),
     });
-  };
-
-  const handleMoveOrder = (key: string, direction: 'up' | 'down') => {
-    if (!config) return;
-    const widgets = [...config.widgets];
-    const index = widgets.findIndex((w) => w.key === key);
-    if (index === -1) return;
-
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= widgets.length) return;
-
-    [widgets[index], widgets[newIndex]] = [widgets[newIndex], widgets[index]];
-    widgets[index].order = index + 1;
-    widgets[newIndex].order = newIndex + 1;
-
-    setConfig({ ...config, widgets });
   };
 
   const handleDragEnd = (result: DropResult) => {

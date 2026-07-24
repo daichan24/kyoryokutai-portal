@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck -- ルート登録のExpress型移行は段階対応中。lint予算で新規追加を禁止する。
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -94,35 +94,27 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+const slowRequestThresholdMs = Number(process.env.SLOW_REQUEST_THRESHOLD_MS || 2_000);
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    const durationMs = Date.now() - startedAt;
+    if (durationMs >= slowRequestThresholdMs || res.statusCode >= 500) {
+      console.warn('HTTP request issue', {
+        method: req.method,
+        path: req.originalUrl.split('?')[0],
+        statusCode: res.statusCode,
+        durationMs,
+        userId: req.user?.id || null,
+      });
+    }
+  });
+  next();
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// DB診断エンドポイント（一時的・認証不要）
-app.get('/api/debug/sns-test', async (req, res) => {
-  try {
-    const prismaModule = await import('./lib/prisma');
-    const prisma = prismaModule.default;
-    const count = await prisma.sNSPost.count();
-    // SNSPostのインデックス一覧
-    const indexes = await prisma.$queryRaw`
-      SELECT indexname, indexdef 
-      FROM pg_indexes 
-      WHERE tablename = 'SNSPost'
-      ORDER BY indexname;
-    `;
-    // 最新の投稿1件も確認
-    const latest = await prisma.sNSPost.findFirst({ orderBy: { createdAt: 'desc' } });
-    res.json({ 
-      status: 'ok', 
-      snsPostCount: count,
-      indexes,
-      latestPost: latest ? { id: latest.id, postType: latest.postType, week: latest.week } : null,
-    });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message, code: e.code, name: e.name });
-  }
 });
 
 // Routes

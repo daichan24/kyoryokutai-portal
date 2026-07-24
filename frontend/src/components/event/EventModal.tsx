@@ -7,16 +7,17 @@ import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { useAuthStore } from '../../stores/authStore';
+import type { User } from '../../types';
 
 interface Event {
   id: string;
   eventName: string;
   eventType: 'TOWN_OFFICIAL' | 'TEAM' | 'OTHER';
   date: string;
-  startTime?: string;
-  endTime?: string;
-  locationText?: string;
-  description?: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  locationText?: string | null;
+  description?: string | null;
   maxParticipants?: number;
   supportSlotsNeeded?: number | null;
   endDate?: string;
@@ -35,12 +36,6 @@ interface Event {
 interface Project {
   id: string;
   projectName: string;
-}
-
-interface User {
-  id: string;
-  name: string;
-  avatarColor?: string;
 }
 
 interface EventModalProps {
@@ -547,4 +542,3 @@ export const EventModal: React.FC<EventModalProps> = ({
     </>
   );
 };
-

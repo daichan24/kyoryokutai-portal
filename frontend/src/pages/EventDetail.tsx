@@ -8,6 +8,7 @@ import { ArrowLeft, Edit2, Trash2, Plus, X } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { EventModal } from '../components/event/EventModal';
 import { useAuthStore } from '../stores/authStore';
+import type { User } from '../types';
 
 interface EventDetail {
   id: string;
@@ -36,8 +37,8 @@ interface EventDetail {
   project?: { id: string; projectName: string } | null;
   participations: Array<{
     id: string;
-    userId?: string;
-    participationType: string;
+    userId: string;
+    participationType: 'PARTICIPATION' | 'PREPARATION';
     status?: 'PENDING' | 'APPROVED' | 'REJECTED';
     user: {
       id: string;
@@ -46,13 +47,6 @@ interface EventDetail {
       avatarLetter?: string;
     };
   }>;
-}
-
-interface User {
-  id: string;
-  name: string;
-  avatarColor?: string;
-  avatarLetter?: string;
 }
 
 export const EventDetail: React.FC = () => {

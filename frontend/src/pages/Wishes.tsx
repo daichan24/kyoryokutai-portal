@@ -6,24 +6,11 @@ import { useStaffWorkspace } from '../stores/workspaceStore';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { Wish, WishStatus } from '../types';
-import { Plus, Search, Filter, CheckCircle2, Pause, Circle, Calendar, Tag, Edit2, Trash2, Eye, HelpCircle, X, PlayCircle, BookOpen, Info, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Plus, Search, Filter, CheckCircle2, Pause, Calendar, Tag, Edit2, Trash2, Eye, X, PlayCircle, BookOpen, Info, ChevronRight, ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { WishModal } from '../components/wish/WishModal';
 import { WishDetailModal } from '../components/wish/WishDetailModal';
-
-const CATEGORY_SUGGESTIONS = [
-  '体験（旅・イベント）',
-  '学び（資格・読書・スキル）',
-  '健康（運動・食・睡眠）',
-  '仕事（収益・制作・発信）',
-  '人間関係（家族・友人・地域）',
-  'お金（貯蓄・投資・買い物）',
-  '生活（家・整理・ルーティン）',
-  '創作（動画・文章・作品）',
-  '地域貢献（協力隊活動・企画）',
-  'その他',
-];
 
 export const Wishes: React.FC = () => {
   const { user } = useAuthStore();

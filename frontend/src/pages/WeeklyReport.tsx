@@ -533,22 +533,11 @@ export const WeeklyReport: React.FC = () => {
                   className="w-full md:w-64 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">週を選択してください</option>
-                  {availableWeeks.map(week => {
-                    try {
-                      const weekStart = parseWeekString(week);
-                      return (
-                        <option key={week} value={week}>
-                          {formatWeekLabel(week)}
-                        </option>
-                      );
-                    } catch (error) {
-                      return (
-                        <option key={week} value={week}>
-                          {week}
-                        </option>
-                      );
-                    }
-                  })}
+                  {availableWeeks.map(week => (
+                    <option key={week} value={week}>
+                      {formatWeekLabel(week)}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -583,13 +572,6 @@ export const WeeklyReport: React.FC = () => {
               {Array.from(memberReportMap.entries()).map(([userId, report]) => {
                 const member = users.find(u => u.id === userId);
                 if (!member) return null;
-
-                let weekStart: Date;
-                try {
-                  weekStart = parseWeekString(selectedWeek);
-                } catch (error) {
-                  weekStart = new Date();
-                }
 
                 return (
                   <div

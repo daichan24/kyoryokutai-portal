@@ -4,6 +4,8 @@ import { sendPendingEmailJobs } from '../services/emailService';
 import { queueLeaveExpiryReminderEmails, queueSnsWeeklySummaryEmail } from '../services/reminderEmailService';
 import { enqueuePollAndWatchRenewalJobs, processGoogleCalendarSyncJobs } from '../services/googleCalendarService';
 
+let isQueueJobRunning = false;
+
 /**
  * バッチジョブスケジューラ
  */
@@ -22,11 +24,19 @@ export function startCronJobs() {
 
   // メール送信キュー: 1分ごと
   cron.schedule('* * * * *', async () => {
+    if (isQueueJobRunning) {
+      console.warn('Queue job skipped because the previous run is still in progress');
+      return;
+    }
+
+    isQueueJobRunning = true;
     try {
       await sendPendingEmailJobs();
       await processGoogleCalendarSyncJobs();
     } catch (error) {
       console.error('Queue job failed:', error);
+    } finally {
+      isQueueJobRunning = false;
     }
   });
 

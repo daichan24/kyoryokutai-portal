@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
-import { PostType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { getCurrentWeekBoundary, getWeekBoundaryForDate, jstWallToUtcDate } from '../utils/weekBoundary';
+import { getCurrentWeekBoundary, getWeekBoundaryForDate } from '../utils/weekBoundary';
 import { snsPostCreateSchema, snsPostUpdateSchema, parsePostedAtInput } from '../utils/snsValidation';
 
 const router = Router();

@@ -411,12 +411,14 @@ export const TimeAxisView: React.FC<TimeAxisViewProps> = ({
           const endsInWeek = ed.getTime() <= weekEnd.getTime();
 
           let rowIdx = 0;
-          while (true) {
-            if (!rows[rowIdx]) { rows[rowIdx] = []; }
-            const conflict = rows[rowIdx].some((b) => !(ec < b.startCol || sc > b.endCol));
-            if (!conflict) { rows[rowIdx].push({ scheduleId: s.id, startCol: sc, endCol: ec }); break; }
+          while (
+            rows[rowIdx]
+            && rows[rowIdx].some((b) => !(ec < b.startCol || sc > b.endCol))
+          ) {
             rowIdx++;
           }
+          if (!rows[rowIdx]) rows[rowIdx] = [];
+          rows[rowIdx].push({ scheduleId: s.id, startCol: sc, endCol: ec });
 
           return { s, sc, ec, rowIdx, startsInWeek, endsInWeek };
         });

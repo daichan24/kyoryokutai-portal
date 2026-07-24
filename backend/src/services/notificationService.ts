@@ -135,7 +135,7 @@ export async function notifyScheduleInvite(
   scheduleTitle: string,
   scheduleId: string,
   startAt: Date,
-  endAt: Date
+  _endAt: Date
 ) {
   const startAtStr = startAt.toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   return await createNotification(

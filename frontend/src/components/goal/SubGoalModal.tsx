@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../../utils/api';
-import { formatDate } from '../../utils/date';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 
@@ -102,4 +101,3 @@ export const SubGoalModal: React.FC<SubGoalModalProps> = ({
     </div>
   );
 };
-

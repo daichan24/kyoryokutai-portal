@@ -8,7 +8,10 @@
     "build": "vite build",
     "build:version": "node -e \"const {execSync} = require('child_process'); try { const hash = execSync('git rev-parse --short HEAD', {encoding: 'utf-8'}).trim(); const ts = new Date().toISOString().replace(/[-:T]/g,'').split('.')[0].slice(0,14); process.stdout.write(hash + '-' + ts); } catch(e) { const ts = new Date().toISOString().replace(/[-:T]/g,'').split('.')[0].slice(0,14); process.stdout.write(ts); }\" | xargs -I {} sh -c 'VITE_BUILD_ID={} vite build'",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 && npm run lint:any-budget",
+    "lint:any-budget": "node scripts/check-explicit-any-budget.cjs 193 28",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.20",
@@ -46,12 +49,14 @@
     "@typescript-eslint/parser": "^7.7.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
+    "caniuse-lite": "^1.0.30001806",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",
-    "vite": "^5.2.10"
+    "vite": "^5.2.10",
+    "vitest": "^2.1.9"
   }
 }

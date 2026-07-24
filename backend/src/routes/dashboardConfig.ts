@@ -60,9 +60,6 @@ const getFullWidgetTemplate = (role: string) => {
   ];
 };
 
-// 後方互換性のため、MEMBER用のテンプレートを保持
-const FULL_WIDGET_TEMPLATE = getFullWidgetTemplate('MEMBER');
-
 // デフォルト設定（role別）
 const getDefaultConfig = (role: string) => {
   const template = getFullWidgetTemplate(role);

@@ -20,7 +20,6 @@ interface TasksWidgetProps {
 export const TasksWidget: React.FC<TasksWidgetProps> = ({
   displayMode = 'view-with-add',
   showAddButton = false,
-  onAddClick,
 }) => {
   const { user } = useAuthStore();
   const { isStaff, workspaceMode } = useStaffWorkspace();

@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 
 // Simulate the upsert logic from POST /api/sns-posts
 interface PostRecord {

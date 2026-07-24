@@ -8,7 +8,6 @@ import { ContactModal } from '../components/contact/ContactModal';
 import { ContactHistoryModal } from '../components/contact/ContactHistoryModal';
 import { ContactDetailModal } from '../components/contact/ContactDetailModal';
 import { Button } from '../components/common/Button';
-import { useAuthStore } from '../stores/authStore';
 import { LayoutGrid, List, HelpCircle, X, Trash2, Instagram } from 'lucide-react';
 
 interface Contact {
@@ -93,7 +92,6 @@ export const Contacts: React.FC = () => {
       // URLパラメータをクリア
       setSearchParams({}, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, contacts]);
 
   const filteredContacts = contacts?.filter(contact => {

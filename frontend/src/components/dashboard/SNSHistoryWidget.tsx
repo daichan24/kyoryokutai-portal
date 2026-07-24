@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { Button } from '../common/Button';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface SNSPost {
   id: string;
@@ -112,4 +112,3 @@ export const SNSHistoryWidget: React.FC<SNSHistoryWidgetProps> = ({
     </div>
   );
 };
-

@@ -695,8 +695,8 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
         <section class="page">
           <div class="sheet-header">協力隊活動ヒアリングシート</div>
           <div style="margin-bottom: 28px;">
-            <div class="member-name">氏名　${escapeHtmlForPdf(sheet.userName || `隊員${index + 1}`)}　${escapeHtmlForPdf(monthLabel)}分</div>
-            <div>令和${escapeHtmlForPdf(String(reiwaYear))}年　${escapeHtmlForPdf(String(monthNum))}月　${escapeHtmlForPdf(String(dayNum))}日</div>
+            <div class="member-name">氏名&#x3000;${escapeHtmlForPdf(sheet.userName || `隊員${index + 1}`)}&#x3000;${escapeHtmlForPdf(monthLabel)}分</div>
+            <div>令和${escapeHtmlForPdf(String(reiwaYear))}年&#x3000;${escapeHtmlForPdf(String(monthNum))}月&#x3000;${escapeHtmlForPdf(String(dayNum))}日</div>
           </div>
 
           <div class="section">

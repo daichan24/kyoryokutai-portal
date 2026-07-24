@@ -6,6 +6,7 @@ import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { useQuery } from '@tanstack/react-query';
+import type { User } from '../../types';
 
 interface SupportRecord {
   id: string;
@@ -20,11 +21,6 @@ interface SupportRecordModalProps {
   record?: SupportRecord | null;
   onClose: () => void;
   onSaved: () => void;
-}
-
-interface User {
-  id: string;
-  name: string;
 }
 
 export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
@@ -45,18 +41,6 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
       return response.data.filter((user: User) => 
         user.role === 'MEMBER' && (user.displayOrder ?? 0) !== 0
       );
-    },
-  });
-
-  const { data: monthlyReports = [] } = useQuery<any[]>({
-    queryKey: ['monthly-reports'],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/api/monthly-reports');
-        return response.data || [];
-      } catch {
-        return [];
-      }
     },
   });
 
@@ -168,4 +152,3 @@ export const SupportRecordModal: React.FC<SupportRecordModalProps> = ({
     </div>
   );
 };
-

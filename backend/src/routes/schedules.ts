@@ -110,8 +110,7 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
       return res.status(404).json({ error: '隊員が見つかりません' });
     }
 
-    const [ys, ms] = month.split('-');
-    const y = parseInt(ys, 10);
+    const [, ms] = month.split('-');
     const m = parseInt(ms, 10);
     if (m < 1 || m > 12) {
       return res.status(400).json({ error: '無効な月です' });

@@ -6,8 +6,6 @@ import { Button } from '../common/Button';
 import { Link } from 'react-router-dom';
 import { Wish } from '../../types';
 import { RefreshCw, CheckCircle2, Calendar, Tag } from 'lucide-react';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 
 interface NextWishWidgetProps {
   showAddButton?: boolean;
@@ -191,4 +189,3 @@ export const NextWishWidget: React.FC<NextWishWidgetProps> = ({
     </div>
   );
 };
-

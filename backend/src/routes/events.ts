@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
@@ -26,13 +27,34 @@ const eventSchema = z.object({
   })).optional(),
 });
 
+const eventListQuerySchema = z.object({
+  eventType: z.enum(['TOWN_OFFICIAL', 'TEAM', 'OTHER']).optional(),
+  status: z.enum(['upcoming', 'past']).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+}).refine(
+  ({ startDate, endDate }) => !startDate || !endDate || startDate <= endDate,
+  { message: 'startDate must be before or equal to endDate' },
+);
+
 // イベント一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { eventType, status } = req.query;
-    const where: any = {};
+    const parsedQuery = eventListQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      return res.status(400).json({ error: 'Invalid event query', details: parsedQuery.error.flatten() });
+    }
+
+    const { eventType, status, startDate, endDate } = parsedQuery.data;
+    const where: Prisma.EventWhereInput = {};
 
     if (eventType) where.eventType = eventType;
+    if (startDate || endDate) {
+      where.AND = [
+        ...(endDate ? [{ startDate: { lte: new Date(`${endDate}T00:00:00.000Z`) } }] : []),
+        ...(startDate ? [{ endDate: { gte: new Date(`${startDate}T00:00:00.000Z`) } }] : []),
+      ];
+    }
 
     const events = await prisma.event.findMany({
       where,
@@ -238,7 +260,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       updateData.startDate = existingStartDate;
     }
     
-    const updated = await prisma.event.update({
+    await prisma.event.update({
       where: { id },
       data: updateData,
       include: { creator: true, project: true, updater: true },

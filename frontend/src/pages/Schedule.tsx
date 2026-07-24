@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType, Project, Task, User } from '../types';
@@ -73,6 +73,8 @@ export const Schedule: React.FC = () => {
     return user?.id ? new Set([user.id]) : new Set();
   });
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
+  const scheduleRequestIdRef = useRef(0);
+  const scheduleRefreshRef = useRef<() => Promise<void>>(async () => {});
   const scheduleWeekStartsOn: WeekStartsOn = user?.scheduleWeekStartsOn === 1 ? 1 : 0;
 
   const projectsByMission = useMemo(() => {
@@ -127,11 +129,99 @@ export const Schedule: React.FC = () => {
   useEffect(() => {
     if (weekDates.length > 0) {
       fetchSchedules();
-      fetchEvents();
-      fetchProjects();
-      fetchMissions();
     }
-  }, [weekDates, user?.id, isStaff, workspaceMode, visibleMemberIds, projectViewMode]);
+  }, [weekDates, viewMode, visibleMemberIds]);
+
+  useEffect(() => {
+    if (weekDates.length > 0) {
+      let cancelled = false;
+
+      const loadEvents = async () => {
+        setLoading(true);
+        try {
+          const startDate = formatDate(weekDates[0]);
+          const endDate = formatDate(weekDates[weekDates.length - 1]);
+          const params = new URLSearchParams({ startDate, endDate });
+          const response = await api.get<Event[]>(`/api/events?${params}`);
+          if (!cancelled) setEvents(response.data || []);
+        } catch (error) {
+          console.error('Failed to fetch events:', error);
+          if (!cancelled) setEvents([]);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      };
+
+      loadEvents();
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [weekDates]);
+
+  useEffect(() => {
+    if (weekDates.length > 0) {
+      let cancelled = false;
+
+      const loadProjects = async () => {
+        try {
+          const startDate = formatDate(weekDates[0]);
+          const endDate = formatDate(weekDates[weekDates.length - 1]);
+
+          let url = '/api/projects';
+          if (user?.role !== 'MEMBER' && projectViewMode === 'personal') {
+            url = `/api/projects?userId=${user?.id}`;
+          }
+
+          const response = await api.get<Project[]>(url);
+          const allProjects = response.data || [];
+          const filteredProjects = allProjects.filter((project) => {
+            if (!project.startDate && !project.endDate) return false;
+            const projectStartDate = project.startDate ? new Date(project.startDate) : null;
+            const projectEndDate = project.endDate ? new Date(project.endDate) : null;
+            const viewStartDate = new Date(startDate);
+            const viewEndDate = new Date(endDate);
+
+            if (projectStartDate && projectEndDate) {
+              return projectStartDate <= viewEndDate && projectEndDate >= viewStartDate;
+            }
+            if (projectStartDate) return projectStartDate <= viewEndDate;
+            if (projectEndDate) return projectEndDate >= viewStartDate;
+            return false;
+          });
+
+          if (!cancelled) setProjects(filteredProjects);
+        } catch (error) {
+          console.error('Failed to fetch projects:', error);
+          if (!cancelled) setProjects([]);
+        }
+      };
+
+      loadProjects();
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [weekDates, user?.id, user?.role, projectViewMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMissions = async () => {
+      try {
+        const response = await api.get('/api/missions');
+        if (!cancelled) setMissions(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch missions:', error);
+        if (!cancelled) setMissions([]);
+      }
+    };
+
+    loadMissions();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // メンバーリストを取得（週表示・月表示共通）
   useEffect(() => {
@@ -162,13 +252,14 @@ export const Schedule: React.FC = () => {
   // スケジュール更新イベントをリッスン
   useEffect(() => {
     const handleScheduleUpdate = () => {
-      fetchSchedules();
+      void scheduleRefreshRef.current();
     };
     window.addEventListener('schedule-updated', handleScheduleUpdate);
     return () => window.removeEventListener('schedule-updated', handleScheduleUpdate);
   }, []);
 
   const fetchSchedules = async () => {
+    const requestId = ++scheduleRequestIdRef.current;
     try {
       const params = new URLSearchParams({
         startDate: formatDate(weekDates[0]),
@@ -181,99 +272,20 @@ export const Schedule: React.FC = () => {
         visibleMemberIds.forEach(id => params.append('userIds', id));
       } else {
         // チェックが1つもない場合は何も表示しない
-        setSchedules([]);
+        if (requestId === scheduleRequestIdRef.current) setSchedules([]);
         return;
       }
 
       const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
       const data = response.data;
-      setSchedules(Array.isArray(data) ? data : []);
+      if (requestId === scheduleRequestIdRef.current) {
+        setSchedules(Array.isArray(data) ? data : []);
+      }
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
     }
   };
-
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const startDate = formatDate(weekDates[0]);
-      const endDate = formatDate(weekDates[weekDates.length - 1]);
-      const response = await api.get<Event[]>('/api/events');
-      const allEvents = response.data || [];
-      
-      // 表示期間内のイベントのみフィルタリング
-      const filteredEvents = allEvents.filter((event) => {
-        const eventDate = new Date(event.date);
-        return eventDate >= new Date(startDate) && eventDate <= new Date(endDate);
-      });
-      
-      setEvents(filteredEvents);
-    } catch (error) {
-      console.error('Failed to fetch events:', error);
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProjects = async () => {
-    try {
-      // weekDatesが空の場合は実行しない
-      if (weekDates.length === 0) {
-        return;
-      }
-      
-      const startDate = formatDate(weekDates[0]);
-      const endDate = formatDate(weekDates[weekDates.length - 1]);
-      
-      // プロジェクト表示モードに応じて取得
-      let url = '/api/projects';
-      if (user?.role !== 'MEMBER') {
-        if (projectViewMode === 'personal') {
-          // 個人モード: 自分のプロジェクトのみ
-          url = `/api/projects?userId=${user?.id}`;
-        }
-      }
-      
-      const response = await api.get<Project[]>(url);
-      const allProjects = response.data || [];
-      
-      // 表示期間内のプロジェクトのみフィルタリング（開始日または終了日が期間内にあるもの）
-      const filteredProjects = allProjects.filter((project) => {
-        if (!project.startDate && !project.endDate) return false;
-        const projectStartDate = project.startDate ? new Date(project.startDate) : null;
-        const projectEndDate = project.endDate ? new Date(project.endDate) : null;
-        const viewStartDate = new Date(startDate);
-        const viewEndDate = new Date(endDate);
-        
-        // プロジェクトの期間が表示期間と重なっているかチェック
-        if (projectStartDate && projectEndDate) {
-          return projectStartDate <= viewEndDate && projectEndDate >= viewStartDate;
-        } else if (projectStartDate) {
-          return projectStartDate <= viewEndDate;
-        } else if (projectEndDate) {
-          return projectEndDate >= viewStartDate;
-        }
-        return false;
-      });
-      
-      // relatedTasksが含まれているプロジェクトをそのまま使用
-      setProjects(filteredProjects);
-    } catch (error) {
-      console.error('Failed to fetch projects:', error);
-      setProjects([]);
-    }
-  };
-
-  const fetchMissions = async () => {
-    try {
-      const response = await api.get('/api/missions');
-      setMissions(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch missions:', error);
-      setMissions([]);
-    }
-  };
+  scheduleRefreshRef.current = fetchSchedules;
 
   const handlePrev = () => {
     const newDate = new Date(currentDate);
