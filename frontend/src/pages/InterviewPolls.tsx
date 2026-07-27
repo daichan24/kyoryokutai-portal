@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { CalendarCheck, Check, Circle, Plus, RefreshCw, Users, X } from 'lucide-react';
+import { CalendarCheck, Check, Circle, Pencil, Plus, RefreshCw, Users, X } from 'lucide-react';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import type { InterviewAvailabilityStatus, InterviewPoll, InterviewPollAssignment, User } from '../types';
@@ -84,6 +84,8 @@ export const InterviewPolls: React.FC = () => {
   const [dateRows, setDateRows] = useState(() => defaultDateRows(currentMonth()));
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [draftAvailability, setDraftAvailability] = useState<Record<string, InterviewAvailabilityStatus>>({});
+  const [editingDepartments, setEditingDepartments] = useState(false);
+  const [departmentDrafts, setDepartmentDrafts] = useState<Record<string, string>>({});
 
   const selectedPoll = useMemo(
     () => polls.find((poll) => poll.id === selectedId) || polls[0] || null,
@@ -261,6 +263,76 @@ export const InterviewPolls: React.FC = () => {
     );
   };
 
+  const openDepartmentEditor = () => {
+    setDepartmentDrafts(Object.fromEntries(departments.map((department) => [department, department])));
+    setEditingDepartments(true);
+  };
+
+  const saveDepartments = async () => {
+    const draftNames = departments.map((department) => (departmentDrafts[department] || '').trim());
+    if (draftNames.some((name) => !name)) {
+      setError('課名を空欄にはできません');
+      return;
+    }
+    if (new Set(draftNames).size !== draftNames.length) {
+      setError('同じ課名を複数設定することはできません');
+      return;
+    }
+
+    const renames = departments
+      .map((oldName) => ({ oldName, newName: (departmentDrafts[oldName] || '').trim() }))
+      .filter(({ oldName, newName }) => oldName !== newName);
+    if (renames.length === 0) {
+      setEditingDepartments(false);
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      await api.put('/api/interview-polls/departments', { renames });
+      const renameMap = new Map(renames.map(({ oldName, newName }) => [oldName, newName]));
+      const renameValue = (value?: string | null) => {
+        if (!value) return value;
+        return renameMap.get(value.trim()) ?? value;
+      };
+      const renameList = (values: string[]) =>
+        [...new Set(values.map((value) => renameValue(value)).filter((value): value is string => !!value))];
+
+      setMembers((prev) => prev.map((member) => ({ ...member, department: renameValue(member.department) || undefined })));
+      setDateRows((prev) =>
+        prev.map((row) => ({ ...row, unavailableDepartments: renameList(row.unavailableDepartments) })),
+      );
+      setPolls((prev) =>
+        prev.map((poll) => ({
+          ...poll,
+          dates: poll.dates.map((date) => ({
+            ...date,
+            unavailableDepartments: renameList(date.unavailableDepartments),
+          })),
+          participants: poll.participants.map((participant) => ({
+            ...participant,
+            member: {
+              ...participant.member,
+              department: renameValue(participant.member.department) || undefined,
+            },
+          })),
+          assignments: poll.assignments.map((assignment) => ({
+            ...assignment,
+            member: assignment.member
+              ? { ...assignment.member, department: renameValue(assignment.member.department) || undefined }
+              : assignment.member,
+          })),
+        })),
+      );
+      setEditingDepartments(false);
+    } catch (err) {
+      setError(getErrorMessage(err, '課名を変更できませんでした'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-6 text-gray-600 dark:text-gray-300">読み込み中...</div>;
   }
@@ -332,17 +404,69 @@ export const InterviewPolls: React.FC = () => {
                 </div>
 
                 <div>
-                  <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-300">候補日・定員・上長NG課</div>
-                    <button
-                      type="button"
-                      onClick={addDateRow}
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      追加
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {departments.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={openDepartmentEditor}
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          課名を編集
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={addDateRow}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        追加
+                      </button>
+                    </div>
                   </div>
+                  {editingDepartments && (
+                    <div className="mb-3 space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
+                      <p className="text-xs text-blue-800 dark:text-blue-200">
+                        課名を変更すると、隊員の所属と既存候補日のNG設定にも反映されます。
+                      </p>
+                      {departments.map((department) => (
+                        <label key={department} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs">
+                          <span className="truncate text-gray-500 dark:text-gray-400">{department}</span>
+                          <span aria-hidden="true">→</span>
+                          <input
+                            value={departmentDrafts[department] || ''}
+                            onChange={(e) =>
+                              setDepartmentDrafts((prev) => ({ ...prev, [department]: e.target.value }))
+                            }
+                            maxLength={100}
+                            aria-label={`${department}の新しい課名`}
+                            className="min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900"
+                          />
+                        </label>
+                      ))}
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingDepartments(false)}
+                          disabled={saving}
+                          className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
+                        >
+                          キャンセル
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveDepartments}
+                          disabled={saving}
+                          className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          {saving ? '保存中...' : '課名を保存'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                     {dateRows.map((row, index) => (
                       <div key={row.id} className="rounded-lg border border-gray-200 p-2 dark:border-gray-700">
@@ -386,9 +510,11 @@ export const InterviewPolls: React.FC = () => {
                                   key={department}
                                   type="button"
                                   onClick={() => toggleUnavailableDepartment(index, department)}
+                                  aria-pressed={active}
+                                  title={active ? `${department}をNGから戻す` : `${department}をNGにする`}
                                   className={`rounded-full px-2 py-1 text-xs ${
                                     active
-                                      ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100'
+                                      ? 'bg-red-100 text-red-700 line-through decoration-2 dark:bg-red-900 dark:text-red-100'
                                       : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-200'
                                   }`}
                                 >
