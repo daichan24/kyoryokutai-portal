@@ -99,6 +99,7 @@ export const InterviewPolls: React.FC = () => {
   const [draftAvailability, setDraftAvailability] = useState<Record<string, InterviewAvailabilityStatus>>({});
   const [editingDepartments, setEditingDepartments] = useState(false);
   const [departmentDrafts, setDepartmentDrafts] = useState<Record<string, string>>({});
+  const [deletedDepartments, setDeletedDepartments] = useState<Set<string>>(new Set());
   const [editingPoll, setEditingPoll] = useState(false);
   const [editMonth, setEditMonth] = useState('');
   const [editTitle, setEditTitle] = useState('');
@@ -397,35 +398,47 @@ export const InterviewPolls: React.FC = () => {
 
   const openDepartmentEditor = () => {
     setDepartmentDrafts(Object.fromEntries(departments.map((department) => [department, department])));
+    setDeletedDepartments(new Set());
     setEditingDepartments(true);
   };
 
   const saveDepartments = async () => {
-    const draftNames = departments.map((department) => (departmentDrafts[department] || '').trim());
+    const remainingDepartments = departments.filter((department) => !deletedDepartments.has(department));
+    const draftNames = remainingDepartments.map((department) => (departmentDrafts[department] || '').trim());
     if (draftNames.some((name) => !name)) {
-      setError('課名を空欄にはできません');
+      setError('課・係名を空欄にはできません');
       return;
     }
     if (new Set(draftNames).size !== draftNames.length) {
-      setError('同じ課名を複数設定することはできません');
+      setError('同じ課・係名を複数設定することはできません');
       return;
     }
 
-    const renames = departments
+    const renames = remainingDepartments
       .map((oldName) => ({ oldName, newName: (departmentDrafts[oldName] || '').trim() }))
       .filter(({ oldName, newName }) => oldName !== newName);
-    if (renames.length === 0) {
+    const deletions = [...deletedDepartments];
+    if (renames.length === 0 && deletions.length === 0) {
       setEditingDepartments(false);
+      return;
+    }
+    if (
+      deletions.length > 0
+      && !window.confirm(
+        `「${deletions.join('」「')}」を削除します。該当する隊員の所属は未設定になり、既存候補日の課・係NG設定からも削除されます。よろしいですか？`,
+      )
+    ) {
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
-      await api.put('/api/interview-polls/departments', { renames });
+      await api.put('/api/interview-polls/departments', { renames, deletions });
       const renameMap = new Map(renames.map(({ oldName, newName }) => [oldName, newName]));
       const renameValue = (value?: string | null) => {
         if (!value) return value;
+        if (deletedDepartments.has(value.trim())) return undefined;
         return renameMap.get(value.trim()) ?? value;
       };
       const renameList = (values: string[]) =>
@@ -458,8 +471,9 @@ export const InterviewPolls: React.FC = () => {
         })),
       );
       setEditingDepartments(false);
+      setDeletedDepartments(new Set());
     } catch (err) {
-      setError(getErrorMessage(err, '課名を変更できませんでした'));
+      setError(getErrorMessage(err, '課・係を変更できませんでした'));
     } finally {
       setSaving(false);
     }
@@ -546,7 +560,7 @@ export const InterviewPolls: React.FC = () => {
                           className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                          課名を編集
+                          課・係を編集
                         </button>
                       )}
                       <button
@@ -562,27 +576,78 @@ export const InterviewPolls: React.FC = () => {
                   {editingDepartments && (
                     <div className="mb-3 space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
                       <p className="text-xs text-blue-800 dark:text-blue-200">
-                        課名を変更すると、隊員の所属と既存候補日のNG設定にも反映されます。
+                        名称変更は隊員の所属と既存候補日のNG設定にも反映されます。削除すると、該当する隊員の所属は未設定になります。
                       </p>
-                      {departments.map((department) => (
-                        <label key={department} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 text-xs">
-                          <span className="truncate text-gray-500 dark:text-gray-400">{department}</span>
-                          <span aria-hidden="true">→</span>
-                          <input
-                            value={departmentDrafts[department] || ''}
-                            onChange={(e) =>
-                              setDepartmentDrafts((prev) => ({ ...prev, [department]: e.target.value }))
-                            }
-                            maxLength={100}
-                            aria-label={`${department}の新しい課名`}
-                            className="min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900"
-                          />
-                        </label>
-                      ))}
+                      {departments.map((department) => {
+                        const isDeleted = deletedDepartments.has(department);
+                        return (
+                          <div
+                            key={department}
+                            className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-2 text-xs"
+                          >
+                            <span
+                              className={`truncate ${
+                                isDeleted
+                                  ? 'text-red-600 line-through dark:text-red-300'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }`}
+                            >
+                              {department}
+                            </span>
+                            <span aria-hidden="true">→</span>
+                            {isDeleted ? (
+                              <span className="text-sm font-medium text-red-600 dark:text-red-300">削除予定</span>
+                            ) : (
+                              <input
+                                value={departmentDrafts[department] || ''}
+                                onChange={(e) =>
+                                  setDepartmentDrafts((prev) => ({ ...prev, [department]: e.target.value }))
+                                }
+                                maxLength={100}
+                                aria-label={`${department}の新しい課・係名`}
+                                className="min-w-0 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-900"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeletedDepartments((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(department)) next.delete(department);
+                                  else next.add(department);
+                                  return next;
+                                })
+                              }
+                              disabled={saving}
+                              aria-label={isDeleted ? `${department}の削除を取り消す` : `${department}を削除`}
+                              className={`inline-flex h-8 items-center justify-center gap-1 rounded-md border px-2 ${
+                                isDeleted
+                                  ? 'border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200'
+                                  : 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-300'
+                              } disabled:opacity-50`}
+                            >
+                              {isDeleted ? (
+                                <>
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                  元に戻す
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  削除
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => setEditingDepartments(false)}
+                          onClick={() => {
+                            setEditingDepartments(false);
+                            setDeletedDepartments(new Set());
+                          }}
                           disabled={saving}
                           className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
                         >
@@ -594,7 +659,7 @@ export const InterviewPolls: React.FC = () => {
                           disabled={saving}
                           className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                         >
-                          {saving ? '保存中...' : '課名を保存'}
+                          {saving ? '保存中...' : '課・係を保存'}
                         </button>
                       </div>
                     </div>

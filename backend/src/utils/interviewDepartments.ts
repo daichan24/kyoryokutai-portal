@@ -15,3 +15,28 @@ export function renameDepartmentValue(value: string | null | undefined, renameMa
 export function renameDepartmentList(values: string[], renameMap: Map<string, string>) {
   return [...new Set(values.map((value) => renameDepartmentValue(value, renameMap)).filter((value): value is string => !!value))];
 }
+
+export function updateDepartmentValue(
+  value: string | null | undefined,
+  renameMap: Map<string, string>,
+  deletedDepartments: Set<string>,
+) {
+  if (!value) return value;
+  const normalizedValue = value.trim();
+  if (deletedDepartments.has(normalizedValue)) return null;
+  return renameMap.get(normalizedValue) ?? value;
+}
+
+export function updateDepartmentList(
+  values: string[],
+  renameMap: Map<string, string>,
+  deletedDepartments: Set<string>,
+) {
+  return [
+    ...new Set(
+      values
+        .map((value) => updateDepartmentValue(value, renameMap, deletedDepartments))
+        .filter((value): value is string => !!value),
+    ),
+  ];
+}

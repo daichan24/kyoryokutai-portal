@@ -7,8 +7,8 @@ import { deleteScheduleFromGoogle } from '../services/googleCalendarService';
 import { createNotification } from '../services/notificationService';
 import {
   createDepartmentRenameMap,
-  renameDepartmentList,
-  renameDepartmentValue,
+  updateDepartmentList,
+  updateDepartmentValue,
 } from '../utils/interviewDepartments';
 import { getInterviewPollAssignmentConsistency } from '../utils/interviewPollConsistency';
 
@@ -233,21 +233,24 @@ router.put('/departments', async (req: AuthRequest, res) => {
     renames: z.array(z.object({
       oldName: z.string().trim().min(1).max(100),
       newName: z.string().trim().min(1).max(100),
-    })).min(1).max(100),
-  });
+    })).max(100).default([]),
+    deletions: z.array(z.string().trim().min(1).max(100)).max(100).default([]),
+  }).refine(({ renames, deletions }) => renames.length > 0 || deletions.length > 0);
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: '入力内容が不正です', details: parsed.error.flatten() });
   }
   const normalizedRenames = parsed.data.renames.filter(({ oldName, newName }) => oldName !== newName);
+  const deletions = [...new Set(parsed.data.deletions)];
   const oldNames = normalizedRenames.map(({ oldName }) => oldName);
   const newNames = normalizedRenames.map(({ newName }) => newName);
   if (
-    normalizedRenames.length === 0
+    (normalizedRenames.length === 0 && deletions.length === 0)
     || new Set(oldNames).size !== oldNames.length
     || new Set(newNames).size !== newNames.length
+    || oldNames.some((name) => deletions.includes(name))
   ) {
-    return res.status(400).json({ error: '課名の変更内容が重複しています' });
+    return res.status(400).json({ error: '課・係の変更内容が重複しています' });
   }
 
   try {
@@ -263,15 +266,19 @@ router.put('/departments', async (req: AuthRequest, res) => {
       ]);
 
       const renameMap = createDepartmentRenameMap(normalizedRenames);
+      const deletedDepartments = new Set(deletions);
       const currentDepartments = new Set(
         members.map(({ department }) => department?.trim()).filter((value): value is string => !!value),
       );
-      const missingDepartment = oldNames.find((name) => !currentDepartments.has(name));
+      const requestedDepartments = [...oldNames, ...deletions];
+      const missingDepartment = requestedDepartments.find((name) => !currentDepartments.has(name));
       if (missingDepartment) {
-        return { error: `「${missingDepartment}」は現在の課名にありません`, status: 404 as const };
+        return { error: `「${missingDepartment}」は現在の課・係にありません`, status: 404 as const };
       }
 
-      const unchangedDepartments = new Set([...currentDepartments].filter((name) => !renameMap.has(name)));
+      const unchangedDepartments = new Set(
+        [...currentDepartments].filter((name) => !renameMap.has(name) && !deletedDepartments.has(name)),
+      );
       const duplicateDepartment = newNames.find((name) => unchangedDepartments.has(name));
       if (duplicateDepartment) {
         return { error: `「${duplicateDepartment}」はすでに使用されています`, status: 409 as const };
@@ -280,17 +287,23 @@ router.put('/departments', async (req: AuthRequest, res) => {
       const memberUpdates = members
         .map((member) => ({
           id: member.id,
-          department: renameDepartmentValue(member.department, renameMap),
-          changed: renameMap.has(member.department?.trim() || ''),
+          department: updateDepartmentValue(member.department, renameMap, deletedDepartments),
+          changed:
+            renameMap.has(member.department?.trim() || '')
+            || deletedDepartments.has(member.department?.trim() || ''),
         }))
-        .filter((member) => member.changed && member.department);
+        .filter((member) => member.changed);
       const dateUpdates = dates
         .map((date) => ({
           id: date.id,
           before: date.unavailableDepartments,
-          after: renameDepartmentList(date.unavailableDepartments, renameMap),
+          after: updateDepartmentList(date.unavailableDepartments, renameMap, deletedDepartments),
         }))
-        .filter((date) => date.before.some((department) => renameMap.has(department.trim())));
+        .filter((date) =>
+          date.before.some((department) =>
+            renameMap.has(department.trim()) || deletedDepartments.has(department.trim()),
+          ),
+        );
 
       await Promise.all([
         ...memberUpdates.map(({ id, department }) => tx.user.update({ where: { id }, data: { department } })),
@@ -301,10 +314,11 @@ router.put('/departments', async (req: AuthRequest, res) => {
 
       return {
         departments: [...new Set(members
-          .map(({ department }) => renameDepartmentValue(department, renameMap)?.trim())
+          .map(({ department }) => updateDepartmentValue(department, renameMap, deletedDepartments)?.trim())
           .filter((value): value is string => !!value))].sort(),
         updatedMembers: memberUpdates.length,
         updatedDates: dateUpdates.length,
+        deletedDepartments: deletions.length,
       };
     });
 
@@ -313,8 +327,8 @@ router.put('/departments', async (req: AuthRequest, res) => {
     }
     res.json(result);
   } catch (error) {
-    console.error('Rename interview departments error:', error);
-    res.status(500).json({ error: '課名の変更に失敗しました' });
+    console.error('Update interview departments error:', error);
+    res.status(500).json({ error: '課・係の変更に失敗しました' });
   }
 });
 
