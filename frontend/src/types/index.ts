@@ -240,6 +240,15 @@ export interface InterviewPoll {
     totalParticipants: number;
     respondedParticipants: number;
   };
+  assignmentConsistency?: {
+    consistent: boolean;
+    issues: Array<{
+      assignmentId: string;
+      memberId: string;
+      dateId: string;
+      reasons: string[];
+    }>;
+  };
   createdAt: string;
   updatedAt: string;
 }

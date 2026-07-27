@@ -1,13 +1,16 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { deleteScheduleFromGoogle } from '../services/googleCalendarService';
 import { createNotification } from '../services/notificationService';
 import {
   createDepartmentRenameMap,
   renameDepartmentList,
   renameDepartmentValue,
 } from '../utils/interviewDepartments';
+import { getInterviewPollAssignmentConsistency } from '../utils/interviewPollConsistency';
 
 const router = Router();
 
@@ -19,6 +22,19 @@ const isStaff = (role?: string) => !!role && staffRoles.includes(role);
 const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const monthSchema = z.string().regex(/^\d{4}-\d{2}$/);
 const timeSchema = z.string().regex(/^\d{2}:\d{2}$/);
+const pollMutationSchema = z.object({
+  title: z.string().min(1).max(200),
+  month: monthSchema,
+  startTime: timeSchema.default('09:00'),
+  endTime: timeSchema.default('17:00'),
+  memo: z.string().optional().nullable(),
+  dates: z.array(z.object({
+    date: dateStringSchema,
+    capacity: z.number().int().min(1).max(20).default(4),
+    unavailableDepartments: z.array(z.string()).default([]),
+  })).min(1),
+  memberIds: z.array(z.string()).min(1),
+});
 
 const pollInclude = {
   createdBy: { select: { id: true, name: true, role: true } },
@@ -48,11 +64,32 @@ function formatDateOnly(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
+function hasDuplicateDates(dates: Array<{ date: string }>) {
+  return new Set(dates.map(({ date }) => date)).size !== dates.length;
+}
+
 function normalizePoll(poll: any, viewerId?: string, viewerRole?: string) {
+  const availabilityRows = (poll.availability || []) as Array<{
+    memberId: string;
+    dateId: string;
+    status: 'OK' | 'NG';
+  }>;
+  const assignmentRows = (poll.assignments || []) as Array<{
+    id: string;
+    memberId: string;
+    dateId: string;
+    member?: { department?: string | null };
+    date?: { unavailableDepartments?: string[] };
+  }>;
   const responsesByMember = new Map<string, number>();
-  for (const a of poll.availability || []) {
+  for (const a of availabilityRows) {
     responsesByMember.set(a.memberId, (responsesByMember.get(a.memberId) || 0) + 1);
   }
+  const assignmentConsistency = getInterviewPollAssignmentConsistency({
+    availability: availabilityRows,
+    assignments: assignmentRows,
+    dates: poll.dates || [],
+  });
   return {
     ...poll,
     dates: (poll.dates || []).map((d: any) => ({ ...d, date: formatDateOnly(d.date) })),
@@ -64,7 +101,37 @@ function normalizePoll(poll: any, viewerId?: string, viewerRole?: string) {
       viewerId && !isStaff(viewerRole)
         ? (poll.availability || []).filter((a: any) => a.memberId === viewerId)
         : poll.availability || [],
+    assignmentConsistency,
   };
+}
+
+async function resetAssignments(
+  tx: Prisma.TransactionClient,
+  pollId: string,
+  assignments: Array<{ memberId: string; scheduleId?: string | null }>,
+) {
+  const schedules = assignments.flatMap((assignment) =>
+    assignment.scheduleId
+      ? [{ scheduleId: assignment.scheduleId, userId: assignment.memberId }]
+      : [],
+  );
+  const scheduleIds = schedules.map(({ scheduleId }) => scheduleId);
+  if (scheduleIds.length > 0) {
+    await tx.schedule.updateMany({
+      where: { id: { in: scheduleIds } },
+      data: { deletedAt: new Date() },
+    });
+  }
+  await tx.interviewPollAssignment.deleteMany({ where: { pollId } });
+  return schedules;
+}
+
+function syncScheduleDeletions(schedules: Array<{ scheduleId: string; userId: string }>) {
+  for (const schedule of schedules) {
+    deleteScheduleFromGoogle(schedule.scheduleId, schedule.userId).catch((error) => {
+      console.error(`Failed to delete interview schedule ${schedule.scheduleId} from Google Calendar:`, error);
+    });
+  }
 }
 
 function buildAssignments(poll: any) {
@@ -172,7 +239,6 @@ router.put('/departments', async (req: AuthRequest, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: '入力内容が不正です', details: parsed.error.flatten() });
   }
-
   const normalizedRenames = parsed.data.renames.filter(({ oldName, newName }) => oldName !== newName);
   const oldNames = normalizedRenames.map(({ oldName }) => oldName);
   const newNames = normalizedRenames.map(({ newName }) => newName);
@@ -257,23 +323,12 @@ router.post('/', async (req: AuthRequest, res) => {
     return res.status(403).json({ error: '権限がありません' });
   }
 
-  const schema = z.object({
-    title: z.string().min(1).max(200),
-    month: monthSchema,
-    startTime: timeSchema.default('09:00'),
-    endTime: timeSchema.default('17:00'),
-    memo: z.string().optional().nullable(),
-    dates: z.array(z.object({
-      date: dateStringSchema,
-      capacity: z.number().int().min(1).max(20).default(4),
-      unavailableDepartments: z.array(z.string()).default([]),
-    })).min(1),
-    memberIds: z.array(z.string()).min(1),
-  });
-
-  const parsed = schema.safeParse(req.body);
+  const parsed = pollMutationSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: '入力内容が不正です', details: parsed.error.flatten() });
+  }
+  if (hasDuplicateDates(parsed.data.dates)) {
+    return res.status(400).json({ error: '同じ候補日を複数登録することはできません' });
   }
 
   try {
@@ -341,11 +396,175 @@ router.get('/:id', async (req: AuthRequest, res) => {
   }
 });
 
+router.put('/:id', async (req: AuthRequest, res) => {
+  if (!isStaff(req.user!.role)) {
+    return res.status(403).json({ error: '権限がありません' });
+  }
+
+  const parsed = pollMutationSchema.extend({
+    resetConfirmed: z.boolean().default(false),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: '入力内容が不正です', details: parsed.error.flatten() });
+  }
+  if (hasDuplicateDates(parsed.data.dates)) {
+    return res.status(400).json({ error: '同じ候補日を複数登録することはできません' });
+  }
+
+  try {
+    const data = parsed.data;
+    const poll = await prisma.interviewPoll.findUnique({
+      where: { id: req.params.id },
+      include: pollInclude,
+    });
+    if (!poll) return res.status(404).json({ error: '面談日程調整が見つかりません' });
+    if (poll.status === 'CANCELLED') {
+      return res.status(400).json({ error: '取消済みの調整は編集できません' });
+    }
+    if (poll.status === 'CONFIRMED' && !data.resetConfirmed) {
+      return res.status(409).json({
+        error: '確定済みです。反映済みスケジュールを取り消して再調整する確認が必要です',
+      });
+    }
+
+    const members = await prisma.user.findMany({
+      where: { id: { in: data.memberIds }, role: 'MEMBER' },
+      select: { id: true },
+    });
+    if (members.length !== data.memberIds.length) {
+      return res.status(400).json({ error: '隊員以外のユーザーが含まれています' });
+    }
+
+    const retainedMemberIds = new Set(data.memberIds);
+    const availabilityToPreserve = poll.availability
+      .filter((availability) => retainedMemberIds.has(availability.memberId))
+      .map((availability) => ({
+        date: formatDateOnly(poll.dates.find((date) => date.id === availability.dateId)!.date),
+        memberId: availability.memberId,
+        status: availability.status,
+      }));
+    const existingMemberIds = new Set(poll.participants.map((participant) => participant.memberId));
+    const addedMemberIds = data.memberIds.filter((memberId) => !existingMemberIds.has(memberId));
+
+    let removedSchedules: Array<{ scheduleId: string; userId: string }> = [];
+    await prisma.$transaction(async (tx) => {
+      removedSchedules = await resetAssignments(tx, poll.id, poll.assignments);
+      await tx.interviewPollAvailability.deleteMany({ where: { pollId: poll.id } });
+      await tx.interviewPollDate.deleteMany({ where: { pollId: poll.id } });
+      await tx.interviewPollParticipant.deleteMany({ where: { pollId: poll.id } });
+
+      const dateIdByDate = new Map<string, string>();
+      for (const date of data.dates) {
+        const createdDate = await tx.interviewPollDate.create({
+          data: {
+            pollId: poll.id,
+            date: toDateOnly(date.date),
+            capacity: date.capacity,
+            unavailableDepartments: [...new Set(
+              date.unavailableDepartments.map((value) => value.trim()).filter(Boolean),
+            )],
+          },
+        });
+        dateIdByDate.set(date.date, createdDate.id);
+      }
+
+      await tx.interviewPollParticipant.createMany({
+        data: data.memberIds.map((memberId) => ({ pollId: poll.id, memberId })),
+      });
+      const preservedAvailability = availabilityToPreserve.flatMap((availability) => {
+        const dateId = dateIdByDate.get(availability.date);
+        return dateId
+          ? [{
+            pollId: poll.id,
+            dateId,
+            memberId: availability.memberId,
+            status: availability.status,
+          }]
+          : [];
+      });
+      if (preservedAvailability.length > 0) {
+        await tx.interviewPollAvailability.createMany({ data: preservedAvailability });
+      }
+
+      await tx.interviewPoll.update({
+        where: { id: poll.id },
+        data: {
+          title: data.title,
+          month: data.month,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          memo: data.memo,
+          status: 'COLLECTING',
+          confirmedById: null,
+          confirmedAt: null,
+        },
+      });
+    });
+    syncScheduleDeletions(removedSchedules);
+
+    await Promise.all(
+      addedMemberIds.map((memberId) =>
+        createNotification(
+          memberId,
+          'SCHEDULE_SUGGESTION',
+          '面談候補日の回答依頼',
+          `${data.month}の面談候補日を回答してください`,
+          '/interview/polls',
+        ).catch((error) => console.error('Interview poll update notification error:', error)),
+      ),
+    );
+
+    const updated = await prisma.interviewPoll.findUnique({ where: { id: poll.id }, include: pollInclude });
+    if (!updated) return res.status(404).json({ error: '面談日程調整が見つかりません' });
+    res.json(normalizePoll(updated, req.user!.id, req.user!.role));
+  } catch (error) {
+    console.error('Update interview poll error:', error);
+    res.status(500).json({ error: '面談日程調整の編集に失敗しました' });
+  }
+});
+
+router.delete('/:id', async (req: AuthRequest, res) => {
+  if (!isStaff(req.user!.role)) {
+    return res.status(403).json({ error: '権限がありません' });
+  }
+
+  const parsed = z.object({ deleteConfirmed: z.boolean().default(false) }).safeParse(req.body || {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: '入力内容が不正です', details: parsed.error.flatten() });
+  }
+
+  try {
+    const poll = await prisma.interviewPoll.findUnique({
+      where: { id: req.params.id },
+      include: { assignments: true },
+    });
+    if (!poll) return res.status(404).json({ error: '面談日程調整が見つかりません' });
+    if (poll.status === 'CONFIRMED' && !parsed.data.deleteConfirmed) {
+      return res.status(409).json({
+        error: '確定済みです。反映済みスケジュールも取り消す確認が必要です',
+      });
+    }
+
+    let removedSchedules: Array<{ scheduleId: string; userId: string }> = [];
+    await prisma.$transaction(async (tx) => {
+      removedSchedules = await resetAssignments(tx, poll.id, poll.assignments);
+      await tx.interviewPoll.delete({ where: { id: poll.id } });
+    });
+    syncScheduleDeletions(removedSchedules);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete interview poll error:', error);
+    res.status(500).json({ error: '面談日程調整の削除に失敗しました' });
+  }
+});
+
 router.put('/:id/availability', async (req: AuthRequest, res) => {
   const schema = z.object({
+    memberId: z.string().optional(),
+    resetConfirmed: z.boolean().default(false),
     availability: z.array(z.object({
       dateId: z.string(),
-      status: z.enum(['OK', 'NG']),
+      status: z.enum(['OK', 'NG']).nullable(),
     })),
   });
   const parsed = schema.safeParse(req.body);
@@ -356,15 +575,22 @@ router.put('/:id/availability', async (req: AuthRequest, res) => {
   try {
     const poll = await prisma.interviewPoll.findUnique({
       where: { id: req.params.id },
-      include: { dates: true, participants: true },
+      include: { dates: true, participants: true, availability: true, assignments: true },
     });
     if (!poll) return res.status(404).json({ error: '面談日程調整が見つかりません' });
-    if (poll.status === 'CONFIRMED' || poll.status === 'CANCELLED') {
+    if (poll.status === 'CANCELLED') {
       return res.status(400).json({ error: '確定または取消済みの調整には回答できません' });
     }
-    const canAnswer = poll.participants.some((p) => p.memberId === req.user!.id);
-    if (!canAnswer && !isStaff(req.user!.role)) {
+    const staffEditingMember = isStaff(req.user!.role) && !!parsed.data.memberId;
+    const targetMemberId = staffEditingMember ? parsed.data.memberId! : req.user!.id;
+    const canAnswer = poll.participants.some((participant) => participant.memberId === targetMemberId);
+    if (!canAnswer || (!staffEditingMember && targetMemberId !== req.user!.id)) {
       return res.status(403).json({ error: '権限がありません' });
+    }
+    if (poll.status === 'CONFIRMED' && (!staffEditingMember || !parsed.data.resetConfirmed)) {
+      return res.status(409).json({
+        error: '確定済みです。反映済みスケジュールを取り消して再調整する確認が必要です',
+      });
     }
 
     const dateIds = new Set(poll.dates.map((d) => d.id));
@@ -372,15 +598,58 @@ router.put('/:id/availability', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: '候補日に含まれない日付があります' });
     }
 
-    await prisma.$transaction(
-      parsed.data.availability.map((a) =>
-        prisma.interviewPollAvailability.upsert({
-          where: { pollId_dateId_memberId: { pollId: poll.id, dateId: a.dateId, memberId: req.user!.id } },
-          update: { status: a.status },
-          create: { pollId: poll.id, dateId: a.dateId, memberId: req.user!.id, status: a.status },
-        }),
-      ),
+    const currentAvailability = new Map(
+      poll.availability
+        .filter((availability) => availability.memberId === targetMemberId)
+        .map((availability) => [availability.dateId, availability.status]),
     );
+    const hasChanges = parsed.data.availability.some(
+      (availability) => (currentAvailability.get(availability.dateId) || null) !== availability.status,
+    );
+
+    if (hasChanges) {
+      let removedSchedules: Array<{ scheduleId: string; userId: string }> = [];
+      await prisma.$transaction(async (tx) => {
+        for (const availability of parsed.data.availability) {
+          if (availability.status === null) {
+            await tx.interviewPollAvailability.deleteMany({
+              where: { pollId: poll.id, dateId: availability.dateId, memberId: targetMemberId },
+            });
+          } else {
+            await tx.interviewPollAvailability.upsert({
+              where: {
+                pollId_dateId_memberId: {
+                  pollId: poll.id,
+                  dateId: availability.dateId,
+                  memberId: targetMemberId,
+                },
+              },
+              update: { status: availability.status },
+              create: {
+                pollId: poll.id,
+                dateId: availability.dateId,
+                memberId: targetMemberId,
+                status: availability.status,
+              },
+            });
+          }
+        }
+        if (poll.assignments.length > 0) {
+          removedSchedules = await resetAssignments(tx, poll.id, poll.assignments);
+        }
+        if (poll.status === 'PROPOSED' || poll.status === 'CONFIRMED') {
+          await tx.interviewPoll.update({
+            where: { id: poll.id },
+            data: {
+              status: 'COLLECTING',
+              confirmedById: null,
+              confirmedAt: null,
+            },
+          });
+        }
+      });
+      syncScheduleDeletions(removedSchedules);
+    }
 
     const updated = await prisma.interviewPoll.findUnique({ where: { id: poll.id }, include: pollInclude });
     if (!updated) return res.status(404).json({ error: '面談日程調整が見つかりません' });
