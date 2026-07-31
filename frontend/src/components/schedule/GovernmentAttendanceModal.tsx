@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { X, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, CalendarDays, ChevronLeft, ChevronRight, CheckCircle2, Save } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { api } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../common/Button';
-import { formatTime } from '../../utils/date';
+import { formatTime, isHolidayDate } from '../../utils/date';
+import { getBusinessDaysInMonth } from '../../utils/governmentAttendance';
 
 type AttendanceStatus = 'PRESENT' | 'REMOTE' | 'ABSENT' | 'HALF_DAY';
 
@@ -82,6 +83,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
   const [editNote, setEditNote] = useState('');
   const [draftAttendances, setDraftAttendances] = useState<Record<string, DraftEntry | null>>({});
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const draftCount = Object.keys(draftAttendances).length;
 
   React.useEffect(() => {
     if (isOpen) fetchMembers();
@@ -204,11 +206,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
 
   const handleSetWeekdays = () => {
     const newDrafts = { ...draftAttendances };
-    for (let day = 1; day <= days; day++) {
-      const date = new Date(year, month, day);
-      const dateStr = format(date, 'yyyy-MM-dd');
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-      if (isWeekend) continue; // 土日はスキップ
+    for (const dateStr of getBusinessDaysInMonth(year, month)) {
       // 既にサーバーデータがある日はスキップ（上書きしない）
       const hasServerData = attendances.some(
         (a) => a.userId === user?.id && isDateInRange(dateStr, a.date.slice(0, 10), a.endDate?.slice(0, 10))
@@ -225,16 +223,22 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl m-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b dark:border-gray-700 flex-shrink-0">
-          <h2 className="text-lg font-bold dark:text-gray-100 flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-blue-500" />
-            行政出勤カレンダー
-          </h2>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-5xl m-3 sm:m-4 max-h-[94vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 border-b dark:border-gray-700 flex-shrink-0">
+          <div>
+            <h2 className="text-lg font-bold dark:text-gray-100 flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-blue-500" />
+              行政出勤カレンダー
+            </h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {user?.name}さんの予定を入力します。まとめて設定した後、日付を押して個別に調整できます。
+            </p>
+          </div>
           <div className="flex gap-2">
-            {canEdit && Object.keys(draftAttendances).length > 0 && (
+            {canEdit && draftCount > 0 && (
               <Button size="sm" onClick={() => bulkSaveMutation.mutate(draftAttendances)} disabled={bulkSaveMutation.isPending}>
-                {bulkSaveMutation.isPending ? '保存中...' : '変更を保存'}
+                <Save className="mr-1.5 h-4 w-4" />
+                {bulkSaveMutation.isPending ? '保存中...' : `${draftCount}件を保存`}
               </Button>
             )}
             <button onClick={onClose} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -243,22 +247,56 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
+          {canEdit && (
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40">
+                <div className="flex items-center gap-2 text-sm font-semibold text-blue-950 dark:text-blue-100">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs text-white">1</span>
+                  平日をまとめて設定
+                </div>
+                <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">土日祝を除く未登録日のみ追加します。</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/40">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-600 text-xs text-white">2</span>
+                  日付を押して調整
+                </div>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">出張・休み・時刻・メモを日ごとに変更します。</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/40">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-600 text-xs text-white">3</span>
+                  変更を保存
+                </div>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">黄色い「未保存」を確認してまとめて保存します。</p>
+              </div>
+            </div>
+          )}
+
           {/* メンバー選択 */}
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">表示:</label>
-            <select
-              value={selectedMemberId || ''}
-              onChange={(e) => setSelectedMemberId(e.target.value || null)}
-              className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
-            >
-              <option value="">全員</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="government-attendance-member" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                表示する行政担当
+              </label>
+              <select
+                id="government-attendance-member"
+                value={selectedMemberId || ''}
+                onChange={(e) => setSelectedMemberId(e.target.value || null)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
+              >
+                <option value="">全員</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
             {canEdit && (!selectedMemberId || selectedMemberId === user?.id) && (
-              <Button variant="outline" size="sm" onClick={handleSetWeekdays}>平日勤務一括設定</Button>
+              <Button variant="outline" size="sm" onClick={handleSetWeekdays}>
+                <CheckCircle2 className="mr-1.5 h-4 w-4 text-green-600" />
+                土日祝を除く平日を一括設定
+              </Button>
             )}
           </div>
 
@@ -291,7 +329,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
 
             <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
               {Array.from({ length: firstDay }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-20 bg-white dark:bg-gray-800" />
+                <div key={`empty-${i}`} className="h-24 sm:h-28 bg-gray-50/60 dark:bg-gray-900/30" />
               ))}
               {Array.from({ length: days }).map((_, i) => {
                 const day = i + 1;
@@ -301,13 +339,17 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                 const myAttendance = getEffectiveMyAttendance(dateStr);
                 const hasDraft = draftAttendances[dateStr] !== undefined;
                 const isEditable = canEdit && (!selectedMemberId || selectedMemberId === user?.id);
+                const weekday = new Date(year, month, day).getDay();
+                const isHoliday = isHolidayDate(new Date(year, month, day));
+                const isSundayOrHoliday = weekday === 0 || isHoliday;
+                const isSaturday = weekday === 6;
 
                 return (
                   <div
                     key={day}
-                    className={`h-20 p-1 relative transition-colors ${
+                    className={`h-24 sm:h-28 p-1.5 relative transition-colors ${
                       isEditable ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'cursor-default'
-                    } ${isToday ? 'z-10 bg-blue-50 ring-2 ring-inset ring-blue-500 dark:bg-blue-900/30' : 'bg-white dark:bg-gray-800'} ${
+                    } ${isToday ? 'z-10 bg-blue-50 ring-2 ring-inset ring-blue-500 dark:bg-blue-900/30' : isSundayOrHoliday ? 'bg-red-50/60 dark:bg-red-950/20' : isSaturday ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'bg-white dark:bg-gray-800'} ${
                       hasDraft ? 'ring-2 ring-inset ring-yellow-400' : ''
                     }`}
                     onClick={() => {
@@ -319,11 +361,14 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                     }}
                   >
                     <div className="flex justify-between items-start">
-                      <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                        isToday ? 'bg-blue-600 text-white' : isSundayOrHoliday ? 'text-red-600' : isSaturday ? 'text-blue-600' : 'text-gray-700 dark:text-gray-300'
+                      }`}>
                         {day}
                       </span>
                       <div className="flex flex-col items-end gap-0.5">
                         {isToday && <span className="text-[9px] font-bold text-blue-600 dark:text-blue-300">今日</span>}
+                        {isHoliday && <span className="text-[9px] font-bold text-red-600 dark:text-red-300">祝日</span>}
                         {hasDraft && <span className="text-[9px] text-yellow-600 font-bold">未保存</span>}
                       </div>
                     </div>
@@ -361,7 +406,7 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                         const myIsMultiDay = myStartStr !== myEndStr;
                         return (
                           <div
-                            className={`text-[10px] px-1 py-0.5 flex items-center gap-1 truncate border ${STATUS_COLORS[myAttendance.status]} ${
+                            className={`text-[10px] px-1.5 py-1 flex items-center gap-1 truncate border ${STATUS_COLORS[myAttendance.status]} ${
                               myIsMultiDay
                                 ? myIsStart ? 'rounded-l border-r-0' : myIsEnd ? 'rounded-r border-l-0' : 'rounded-none border-x-0'
                                 : 'rounded'
@@ -468,14 +513,14 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
                   <button type="button" onClick={handleDeleteDraft}
                     className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded font-medium"
                   >削除</button>
-                  <Button size="sm" onClick={handleApplyDraft}>仮決定</Button>
+                  <Button size="sm" onClick={handleApplyDraft}>この日の変更を反映</Button>
                 </div>
               </div>
             </div>
           )}
 
           {/* 閲覧用ポップアップ（非行政ユーザー向け） */}
-          {viewPopupDate && !canEdit && (
+          {viewPopupDate && (!canEdit || (!!selectedMemberId && selectedMemberId !== user?.id)) && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
@@ -531,6 +576,17 @@ export const GovernmentAttendanceModal: React.FC<GovernmentAttendanceModalProps>
             <span className="text-gray-400 dark:text-gray-500">※ 時刻は出勤時間（半休・時短）または連絡可能時間</span>
           </div>
         </div>
+        {canEdit && draftCount > 0 && (
+          <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-yellow-200 bg-yellow-50 px-4 py-3 dark:border-yellow-800 dark:bg-yellow-950/40">
+            <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+              未保存の変更が{draftCount}件あります
+            </p>
+            <Button onClick={() => bulkSaveMutation.mutate(draftAttendances)} disabled={bulkSaveMutation.isPending}>
+              <Save className="mr-1.5 h-4 w-4" />
+              {bulkSaveMutation.isPending ? '保存中...' : 'すべて保存'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

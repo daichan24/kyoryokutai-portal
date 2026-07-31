@@ -612,6 +612,24 @@ export const Schedule: React.FC = () => {
               </Button>
             </div>
           </div>
+          {user?.role === 'GOVERNMENT' && (
+            <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-950/40">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-blue-950 dark:text-blue-100">行政出勤カレンダー</p>
+                <p className="truncate text-xs text-blue-700 dark:text-blue-300">
+                  自分の出勤・出張・休みを月単位で登録できます
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setIsGovernmentAttendanceModalOpen(true)}
+                className="shrink-0"
+              >
+                <CalendarDays className="mr-1.5 h-4 w-4" />
+                出勤情報を入力
+              </Button>
+            </div>
+          )}
           <div className="lg:hidden mt-2 -mx-3 px-3 flex gap-2 overflow-x-auto pb-1">
             <button
               type="button"

@@ -6,6 +6,7 @@ import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import type { InterviewAvailabilityStatus, InterviewPoll, InterviewPollAssignment, User } from '../types';
 import { sortUsersByDisplayOrder } from '../utils/userSort';
+import { canMemberEditInterviewAvailability } from '../utils/interviewAvailability';
 
 const staffRoles = ['MASTER', 'SUPPORT', 'GOVERNMENT'];
 const DEFAULT_CANDIDATE_DATE_COUNT = 3;
@@ -112,6 +113,9 @@ export const InterviewPolls: React.FC = () => {
     () => polls.find((poll) => poll.id === selectedId) || polls[0] || null,
     [polls, selectedId],
   );
+  const memberCanEditAvailability = selectedPoll
+    ? canMemberEditInterviewAvailability(selectedPoll.status)
+    : false;
 
   const departments = useMemo(
     () => [...new Set(members.map((m) => (m.department || '').trim()).filter(Boolean))].sort(),
@@ -1070,15 +1074,19 @@ export const InterviewPolls: React.FC = () => {
               {!isStaff && (
                 <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                   <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">候補日の回答</h3>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    定員や暫定日割りに関係なく、確定されるまでは希望日を変更できます。
+                  </p>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {selectedPoll.dates.map((d) => {
                       const value = draftAvailability[d.id] || 'NG';
-                      const blocked = user?.department && d.unavailableDepartments.includes(user.department);
+                      const hasDepartmentConflict =
+                        !!user?.department && d.unavailableDepartments.includes(user.department);
                       return (
                         <button
                           key={d.id}
                           type="button"
-                          disabled={selectedPoll.status === 'CONFIRMED' || !!blocked}
+                          disabled={!memberCanEditAvailability}
                           onClick={() =>
                             setDraftAvailability((prev) => ({
                               ...prev,
@@ -1086,13 +1094,20 @@ export const InterviewPolls: React.FC = () => {
                             }))
                           }
                           className={`flex items-center justify-between rounded-lg border px-3 py-3 text-left ${
-                            value === 'OK' && !blocked
+                            value === 'OK'
                               ? 'border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-100'
                               : 'border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
                           } disabled:opacity-60`}
                         >
-                          <span className="font-medium">{dateLabel(d.date)}</span>
-                          {blocked ? <X className="h-4 w-4 text-red-500" /> : value === 'OK' ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                          <span>
+                            <span className="block font-medium">{dateLabel(d.date)}</span>
+                            {hasDepartmentConflict && (
+                              <span className="mt-1 block text-xs text-amber-700 dark:text-amber-300">
+                                管理側の課・係NGあり（希望回答は可能）
+                              </span>
+                            )}
+                          </span>
+                          {value === 'OK' ? <Check className="h-4 w-4 shrink-0" /> : <Circle className="h-4 w-4 shrink-0" />}
                         </button>
                       );
                     })}
@@ -1100,12 +1115,17 @@ export const InterviewPolls: React.FC = () => {
                   <button
                     type="button"
                     onClick={saveAvailability}
-                    disabled={saving || selectedPoll.status === 'CONFIRMED'}
+                    disabled={saving || !memberCanEditAvailability}
                     className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     <Check className="h-4 w-4" />
                     回答を保存
                   </button>
+                  {!memberCanEditAvailability && (
+                    <p className="mt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                      この日程調整は確定または取消済みのため、回答を変更できません。
+                    </p>
+                  )}
                 </section>
               )}
 
