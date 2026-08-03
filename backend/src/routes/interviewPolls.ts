@@ -11,6 +11,7 @@ import {
   updateDepartmentValue,
 } from '../utils/interviewDepartments';
 import { getInterviewPollAssignmentConsistency } from '../utils/interviewPollConsistency';
+import { isCompleteAssignmentOrder } from '../utils/interviewAssignmentOrder';
 
 const router = Router();
 
@@ -703,6 +704,58 @@ router.post('/:id/propose', async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Propose interview assignments error:', error);
     res.status(500).json({ error: '暫定日割りの作成に失敗しました' });
+  }
+});
+
+router.put('/:id/assignments/order', async (req: AuthRequest, res) => {
+  if (!isStaff(req.user!.role)) {
+    return res.status(403).json({ error: '権限がありません' });
+  }
+
+  const schema = z.object({
+    dateId: z.string().min(1),
+    assignmentIds: z.array(z.string().min(1)).min(1),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: '入力内容が不正です', details: parsed.error.flatten() });
+  }
+
+  try {
+    const poll = await prisma.interviewPoll.findUnique({
+      where: { id: req.params.id },
+      include: pollInclude,
+    });
+    if (!poll) return res.status(404).json({ error: '面談日程調整が見つかりません' });
+    if (poll.status === 'CANCELLED') {
+      return res.status(400).json({ error: '取消済みの調整は並べ替えできません' });
+    }
+    if (!poll.dates.some((date) => date.id === parsed.data.dateId)) {
+      return res.status(400).json({ error: '候補日に含まれない日付です' });
+    }
+
+    const currentAssignmentIds = poll.assignments
+      .filter((assignment) => assignment.dateId === parsed.data.dateId)
+      .map((assignment) => assignment.id);
+    if (!isCompleteAssignmentOrder(currentAssignmentIds, parsed.data.assignmentIds)) {
+      return res.status(400).json({ error: '面談順の指定が現在の割当と一致しません' });
+    }
+
+    await prisma.$transaction(
+      parsed.data.assignmentIds.map((assignmentId, index) =>
+        prisma.interviewPollAssignment.update({
+          where: { id: assignmentId },
+          data: { slotOrder: index + 1 },
+        }),
+      ),
+    );
+
+    const updated = await prisma.interviewPoll.findUnique({ where: { id: poll.id }, include: pollInclude });
+    if (!updated) return res.status(404).json({ error: '面談日程調整が見つかりません' });
+    res.json(normalizePoll(updated, req.user!.id, req.user!.role));
+  } catch (error) {
+    console.error('Reorder interview assignments error:', error);
+    res.status(500).json({ error: '面談順の変更に失敗しました' });
   }
 });
 

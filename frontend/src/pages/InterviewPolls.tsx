@@ -1,12 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { AlertTriangle, CalendarCheck, Check, Circle, Pencil, Plus, RefreshCw, Trash2, Users, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarCheck,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Circle,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react';
 import { api } from '../utils/api';
 import { useAuthStore } from '../stores/authStore';
 import type { InterviewAvailabilityStatus, InterviewPoll, InterviewPollAssignment, User } from '../types';
 import { sortUsersByDisplayOrder } from '../utils/userSort';
-import { canMemberEditInterviewAvailability } from '../utils/interviewAvailability';
+import {
+  canMemberEditInterviewAvailability,
+  nextStaffInterviewAvailabilityStatus,
+} from '../utils/interviewAvailability';
 
 const staffRoles = ['MASTER', 'SUPPORT', 'GOVERNMENT'];
 const DEFAULT_CANDIDATE_DATE_COUNT = 3;
@@ -128,6 +144,9 @@ export const InterviewPolls: React.FC = () => {
       const items = map.get(assignment.dateId) || [];
       items.push(assignment);
       map.set(assignment.dateId, items);
+    }
+    for (const assignments of map.values()) {
+      assignments.sort((a, b) => a.slotOrder - b.slotOrder);
     }
     return map;
   }, [selectedPoll]);
@@ -339,8 +358,7 @@ export const InterviewPolls: React.FC = () => {
     const current = selectedPoll.availability.find(
       (availability) => availability.memberId === memberId && availability.dateId === dateId,
     )?.status;
-    const nextStatus: InterviewAvailabilityStatus | null =
-      current === undefined ? 'OK' : current === 'OK' ? 'NG' : null;
+    const nextStatus = nextStaffInterviewAvailabilityStatus(current);
     const resetConfirmed = selectedPoll.status === 'CONFIRMED';
     if (
       resetConfirmed
@@ -362,6 +380,31 @@ export const InterviewPolls: React.FC = () => {
       setPolls((prev) => prev.map((poll) => (poll.id === res.data.id ? res.data : poll)));
     } catch (err) {
       setError(getErrorMessage(err, '回答内容を変更できませんでした'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const moveAssignment = async (dateId: string, assignmentId: string, direction: -1 | 1) => {
+    if (!selectedPoll || !isStaff) return;
+    const assignments = [...(assignmentsByDate.get(dateId) || [])].sort((a, b) => a.slotOrder - b.slotOrder);
+    const currentIndex = assignments.findIndex((assignment) => assignment.id === assignmentId);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= assignments.length) return;
+
+    const reordered = [...assignments];
+    [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await api.put<InterviewPoll>(`/api/interview-polls/${selectedPoll.id}/assignments/order`, {
+        dateId,
+        assignmentIds: reordered.map((assignment) => assignment.id),
+      });
+      setPolls((prev) => prev.map((poll) => (poll.id === res.data.id ? res.data : poll)));
+    } catch (err) {
+      setError(getErrorMessage(err, '面談順を変更できませんでした'));
     } finally {
       setSaving(false);
     }
@@ -1135,12 +1178,12 @@ export const InterviewPolls: React.FC = () => {
                     <div>
                       <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">回答状況</h3>
                       <p className="mt-1 text-xs text-gray-500">
-                        本人回答と課NGを分けて表示しています。本人回答はセルを押すと「未回答→○→×」の順で強制変更できます。
+                        本人回答と課NGを分けて表示しています。日付セルを押すと、本人の回答後でも「ON（参加可能）/OFF（不可）」を強制変更できます。変更後は古い暫定日割りが破棄されるため、再度「暫定案を作成」してください。
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-1 text-[11px]">
-                      <span className="rounded bg-green-100 px-2 py-1 text-green-700">本人○</span>
-                      <span className="rounded bg-gray-100 px-2 py-1 text-gray-600">本人×</span>
+                      <span className="rounded bg-green-100 px-2 py-1 text-green-700">ON（本人○）</span>
+                      <span className="rounded bg-gray-100 px-2 py-1 text-gray-600">OFF（本人×）</span>
                       <span className="rounded bg-red-100 px-2 py-1 text-red-700">課NG</span>
                       <span className="rounded bg-blue-100 px-2 py-1 text-blue-700">割当</span>
                     </div>
@@ -1193,15 +1236,15 @@ export const InterviewPolls: React.FC = () => {
                                     {answered?.status === 'OK' ? (
                                       <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300">
                                         <Check className="h-4 w-4" />
-                                        本人○
+                                        ON（本人○）
                                       </span>
                                     ) : answered?.status === 'NG' ? (
                                       <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
                                         <X className="h-4 w-4" />
-                                        本人×
+                                        OFF（本人×）
                                       </span>
                                     ) : (
-                                      <span className="text-xs text-gray-400">未回答</span>
+                                      <span className="text-xs text-gray-400">未回答（押すとON）</span>
                                     )}
                                     <span className="flex flex-wrap justify-center gap-1">
                                       {unavailableByDept && (
@@ -1232,7 +1275,14 @@ export const InterviewPolls: React.FC = () => {
               )}
 
               <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">暫定日割り</h3>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">暫定日割り</h3>
+                    {isStaff && (
+                      <p className="mt-1 text-xs text-gray-500">各日付の上下ボタンで、面談の順番を変更できます。</p>
+                    )}
+                  </div>
+                </div>
                 <div className="mt-4 grid gap-3 lg:grid-cols-3">
                   {selectedPoll.dates.map((d) => {
                     const rows = assignmentsByDate.get(d.id) || [];
@@ -1246,10 +1296,39 @@ export const InterviewPolls: React.FC = () => {
                         </div>
                         <div className="mt-3 space-y-2">
                           {rows.length === 0 && <div className="text-sm text-gray-400">未割当</div>}
-                          {rows.map((a) => (
-                            <div key={a.id} className="rounded-md bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900">
-                              <span className="font-medium">{a.slotOrder}. {a.member?.name}</span>
-                              {a.scheduleId && <span className="ml-2 text-xs text-green-600">反映済み</span>}
+                          {rows.map((a, index) => (
+                            <div
+                              key={a.id}
+                              className="flex items-center justify-between gap-2 rounded-md bg-gray-50 px-3 py-2 text-sm dark:bg-gray-900"
+                            >
+                              <div className="min-w-0">
+                                <span className="font-medium">{a.slotOrder}. {a.member?.name}</span>
+                                {a.scheduleId && <span className="ml-2 text-xs text-green-600">反映済み</span>}
+                              </div>
+                              {isStaff && rows.length > 1 && selectedPoll.status !== 'CANCELLED' && (
+                                <div className="flex shrink-0 gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveAssignment(d.id, a.id, -1)}
+                                    disabled={saving || index === 0}
+                                    title={`${a.member?.name || '面談'}を上へ移動`}
+                                    aria-label={`${a.member?.name || '面談'}を上へ移動`}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-600 hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                                  >
+                                    <ChevronUp className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveAssignment(d.id, a.id, 1)}
+                                    disabled={saving || index === rows.length - 1}
+                                    title={`${a.member?.name || '面談'}を下へ移動`}
+                                    aria-label={`${a.member?.name || '面談'}を下へ移動`}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-300 text-gray-600 hover:bg-white disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                                  >
+                                    <ChevronDown className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
