@@ -50,6 +50,7 @@ import mcpHttpRoutes from './routes/mcpHttp';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 import { assertProductionSecurityConfiguration } from './config/security';
+import { createCorsOptionsDelegate } from './config/cors';
 
 dotenv.config();
 assertProductionSecurityConfiguration();
@@ -84,23 +85,10 @@ const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
   : ['http://localhost:5173'];
 
-const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // オリジンがない場合（Postman等の直接リクエスト）は許可
-    if (!origin) return callback(null, true);
-    
-    // 許可されたオリジンかチェック
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
-
-app.use(cors(corsOptions));
+app.use(cors(createCorsOptionsDelegate({
+  allowedOrigins,
+  isDevelopment: process.env.NODE_ENV === 'development',
+})));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
