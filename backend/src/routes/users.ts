@@ -4,17 +4,18 @@ import bcrypt from 'bcrypt';
 import prisma from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { ensureDefaultInstagramAccount } from '../services/defaultSnsAccountService';
+import { loginHintsRateLimit } from '../middleware/authRateLimit';
 
 const router = Router();
 
 /**
  * GET /api/users/login-hints
- * 開発環境でのみログイン用のテストアカウント一覧を返す
- * 認証不要、ただし本番環境では403を返す
+ * ログイン画面で従来のアカウント候補一覧を返す
+ * 認証前のため、取得回数を制限しMASTERの氏名・メールは伏せる
  * 
  * 注意: このエンドポイントは router.use(authenticate) の前に配置されているため認証不要
  */
-router.get('/login-hints', async (req, res) => {
+router.get('/login-hints', loginHintsRateLimit, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -107,10 +108,7 @@ router.get('/', authorize('MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT'), async (r
 
     const users = await prisma.user.findMany({
       where,
-      select:
-        req.user!.role === 'MASTER'
-          ? { ...baseSelect, passwordPlainForMaster: true, passwordUpdatedAt: true }
-          : baseSelect,
+      select: { ...baseSelect, passwordUpdatedAt: true },
       orderBy: [
         { displayOrder: 'asc' },
         { createdAt: 'desc' },
@@ -156,10 +154,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
 
     const user = await prisma.user.findUnique({
       where: { id },
-      select:
-        req.user!.role === 'MASTER'
-          ? { ...baseOneSelect, passwordPlainForMaster: true, passwordUpdatedAt: true }
-          : baseOneSelect,
+      select: { ...baseOneSelect, passwordUpdatedAt: true },
     });
 
     if (!user) {
@@ -187,6 +182,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    if (req.user!.role !== 'MASTER' && (req.body.role !== undefined || req.body.password !== undefined)) {
+      return res.status(403).json({ error: '権限とパスワードはMASTERのみ変更できます' });
+    }
+
     // displayOrderの更新権限チェック
     if (req.body.displayOrder !== undefined) {
       if (req.user!.role === 'MEMBER') {
@@ -212,7 +211,6 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10);
-      updateData.passwordPlainForMaster = data.password;
       updateData.passwordUpdatedAt = new Date();
     }
 
@@ -224,31 +222,38 @@ router.put('/:id', async (req: AuthRequest, res) => {
       updateData.termEnd = new Date(data.termEnd);
     }
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        missionType: true,
-        department: true,
-        termStart: true,
-        termEnd: true,
-        avatarColor: true,
-        displayOrder: true,
-        contactsSidebarEnabled: true,
-        emailNotificationsEnabled: true,
-        scheduleWeekStartsOn: true,
-        scheduleHiddenLocationIds: true,
-        snsLinks: true,
-        createdAt: true,
-        updatedAt: true,
-        ...(req.user!.role === 'MASTER'
-          ? { passwordPlainForMaster: true, passwordUpdatedAt: true }
-          : {}),
-      },
+    const user = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          missionType: true,
+          department: true,
+          termStart: true,
+          termEnd: true,
+          avatarColor: true,
+          displayOrder: true,
+          contactsSidebarEnabled: true,
+          emailNotificationsEnabled: true,
+          scheduleWeekStartsOn: true,
+          scheduleHiddenLocationIds: true,
+          snsLinks: true,
+          createdAt: true,
+          updatedAt: true,
+          passwordUpdatedAt: true,
+        },
+      });
+      if (data.password) {
+        await tx.aiAccessToken.updateMany({
+          where: { userId: id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
+      return updatedUser;
     });
 
     if (user.role === 'MEMBER') {

@@ -59,7 +59,7 @@ function getEmailProviderStatus() {
 
 /**
  * POST /api/admin/users
- * 管理者（MASTER / SUPPORT）のみがユーザーを作成できる
+ * MASTER / SUPPORTがユーザーを作成できる（SUPPORTはMASTERを作成不可）
  */
 router.post('/users', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, res) => {
   try {
@@ -68,6 +68,9 @@ router.post('/users', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, r
 
     // バリデーション
     const data = createUserSchema.parse(req.body);
+    if (req.user!.role === 'SUPPORT' && data.role === 'MASTER') {
+      return res.status(403).json({ error: 'MASTERアカウントを作成できるのはMASTERだけです' });
+    }
     console.log('✅ [API] バリデーション成功');
 
     // メールアドレスの重複チェック
@@ -89,7 +92,6 @@ router.post('/users', authorize('MASTER', 'SUPPORT'), async (req: AuthRequest, r
         name: data.name,
         email: data.email,
         password: hashedPassword,
-        passwordPlainForMaster: data.password,
         passwordUpdatedAt: new Date(),
         role: data.role,
         missionType: data.missionType,

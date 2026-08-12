@@ -7,6 +7,15 @@ import { notifyProjectResult } from '../services/approvalEmailService';
 const router = Router();
 router.use(authenticate);
 
+const publicUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  avatarColor: true,
+  avatarLetter: true,
+} as const;
+
 const projectSchema = z.object({
   projectName: z.string().min(1),
   description: z.string().optional(),
@@ -78,9 +87,9 @@ router.get('/:id', async (req: AuthRequest, res) => {
     const project = await prisma.project.findUnique({
       where: { id: req.params.id },
       include: {
-        user: true,
+        user: { select: publicUserSelect },
         mission: true,
-        members: { include: { user: true } },
+        members: { include: { user: { select: publicUserSelect } } },
         tasks: { include: { assignee: { select: { id: true, name: true } } } },
         relatedTasks: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] }, // このプロジェクトに関連するタスク（小目標、任意）
         schedules: { take: 10, orderBy: { date: 'desc' } },
@@ -173,7 +182,7 @@ router.post('/', async (req: AuthRequest, res) => {
         tags: data.tags || [],
         order,
       },
-      include: { user: true, mission: true },
+      include: { user: { select: publicUserSelect }, mission: true },
     });
 
     res.status(201).json(project);
@@ -269,7 +278,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         themeColor: data.themeColor !== undefined ? data.themeColor : undefined,
         tags: data.tags || [],
       },
-      include: { user: true, mission: true },
+      include: { user: { select: publicUserSelect }, mission: true },
     });
 
     res.json(project);
@@ -336,7 +345,7 @@ router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequ
         approvedBy: req.user!.id,
         approvedAt: approvalStatus === 'APPROVED' ? new Date() : null,
       },
-      include: { user: true },
+      include: { user: { select: publicUserSelect } },
     });
     await notifyProjectResult(project.id).catch((error) =>
       console.error('project result email failed:', error),
@@ -402,6 +411,9 @@ router.get('/:id/schedule-history', async (req: AuthRequest, res) => {
       select: { id: true, userId: true, missionId: true },
     });
     if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (req.user!.role === 'MEMBER' && project.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     const schedules = await prisma.schedule.findMany({
       where: { projectId: req.params.id, isTemplate: false },

@@ -187,7 +187,7 @@ export const ProfileSettings: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">パスワード変更</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          ログインに使うパスワードを変更します。マスターはユーザー一覧で全員の現在のパスワードと最終更新日時を確認できます。
+          ログインに使うパスワードを変更します。パスワードは本人を含め誰にも表示されません。
         </p>
         <div className="space-y-3 max-w-md">
           <Input

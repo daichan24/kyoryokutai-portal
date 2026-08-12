@@ -12,8 +12,6 @@ model User {
   name     String
   email    String @unique
   password String
-  /// マスターがユーザー一覧で確認するための平文（本人変更・マスター設定時に更新）
-  passwordPlainForMaster String?   @db.Text
   passwordUpdatedAt      DateTime?
 
   role     Role   @default(MEMBER)
@@ -142,6 +140,9 @@ model User {
 
   inventoryItemsUpdated InventoryItem[]   @relation("InventoryItemUpdater")
   inventoryUpdates      InventoryUpdate[] @relation("InventoryUpdateUpdater")
+
+  aiAccessTokens    AiAccessToken[]
+  aiOperationAudits AiOperationAudit[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1754,6 +1755,70 @@ model Notepad {
   updatedAt DateTime @updatedAt
 
   @@index([userId, order])
+}
+
+// ========================================
+// AI連携（Codex / ChatGPT / MCP）
+// ========================================
+
+model AiAccessToken {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   @db.VarChar(100)
+  tokenPrefix String   @db.VarChar(24)
+  tokenHash   String   @unique @db.VarChar(64)
+  scopes      String[]
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  audits         AiOperationAudit[]
+  idempotencyKeys AiIdempotencyKey[]
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model AiOperationAudit {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessTokenId String?
+  accessToken   AiAccessToken? @relation(fields: [accessTokenId], references: [id], onDelete: SetNull)
+  method        String         @db.VarChar(10)
+  path          String         @db.VarChar(500)
+  action        String         @db.VarChar(100)
+  resourceType  String?        @db.VarChar(100)
+  resourceId    String?        @db.VarChar(100)
+  requestId     String?        @db.VarChar(100)
+  statusCode    Int
+  success       Boolean
+  inputSummary  Json?
+  createdAt     DateTime       @default(now())
+
+  @@index([userId, createdAt])
+  @@index([accessTokenId, createdAt])
+}
+
+model AiIdempotencyKey {
+  id            String        @id @default(uuid())
+  accessTokenId String
+  accessToken   AiAccessToken @relation(fields: [accessTokenId], references: [id], onDelete: Cascade)
+  key           String        @db.VarChar(100)
+  method        String        @db.VarChar(10)
+  path          String        @db.VarChar(500)
+  status        String        @default("PENDING") @db.VarChar(20)
+  statusCode    Int?
+  responseBody  Json?
+  expiresAt     DateTime
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([accessTokenId, key])
+  @@index([expiresAt])
 }
 
 // ========================================

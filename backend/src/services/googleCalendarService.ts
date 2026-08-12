@@ -1,6 +1,11 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma';
+import {
+  getGoogleTokenDecryptionSecrets,
+  getGoogleTokenEncryptionSecret,
+  getJwtSecret,
+} from '../config/security';
 
 const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created';
 const GOOGLE_CALENDAR_NAME = 'クリアベース｜活動予定';
@@ -40,9 +45,8 @@ function oauthRedirectUri() {
   return process.env.GOOGLE_REDIRECT_URI || `${backendPublicUrl()}/api/integrations/google-calendar/oauth/callback`;
 }
 
-function encryptionKey() {
-  const source = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY || process.env.JWT_SECRET || 'secret';
-  return crypto.createHash('sha256').update(source).digest();
+function encryptionKey(secret = getGoogleTokenEncryptionSecret()) {
+  return crypto.createHash('sha256').update(secret).digest();
 }
 
 function encrypt(value: string | null | undefined) {
@@ -58,25 +62,32 @@ function decrypt(value: string | null | undefined) {
   if (!value) return null;
   if (!value.startsWith('v1:')) return value;
   const [, ivRaw, tagRaw, encryptedRaw] = value.split(':');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', encryptionKey(), Buffer.from(ivRaw, 'base64'));
-  decipher.setAuthTag(Buffer.from(tagRaw, 'base64'));
-  const decrypted = Buffer.concat([
-    decipher.update(Buffer.from(encryptedRaw, 'base64')),
-    decipher.final(),
-  ]);
-  return decrypted.toString('utf8');
+  for (const secret of getGoogleTokenDecryptionSecrets()) {
+    try {
+      const decipher = crypto.createDecipheriv('aes-256-gcm', encryptionKey(secret), Buffer.from(ivRaw, 'base64'));
+      decipher.setAuthTag(Buffer.from(tagRaw, 'base64'));
+      const decrypted = Buffer.concat([
+        decipher.update(Buffer.from(encryptedRaw, 'base64')),
+        decipher.final(),
+      ]);
+      return decrypted.toString('utf8');
+    } catch {
+      // Try the explicitly configured previous rotation key.
+    }
+  }
+  throw new Error('Google token could not be decrypted with the configured keys');
 }
 
 function signState(userId: string) {
   return jwt.sign(
     { userId, nonce: crypto.randomBytes(16).toString('hex') },
-    process.env.JWT_SECRET || 'secret',
+    getJwtSecret(),
     { expiresIn: '10m' },
   );
 }
 
 function verifyState(state: string) {
-  const decoded = jwt.verify(state, process.env.JWT_SECRET || 'secret') as { userId: string };
+  const decoded = jwt.verify(state, getJwtSecret()) as { userId: string };
   if (!decoded.userId) throw new Error('Invalid OAuth state');
   return decoded.userId;
 }

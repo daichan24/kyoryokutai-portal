@@ -29,6 +29,7 @@ import {
   FolderOpen,
   Mail,
   Package,
+  KeyRound,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { cn } from '../../utils/cn';
@@ -235,6 +236,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     to: '/settings/profile',
     icon: Settings,
     label: 'プロフィール設定',
+  });
+
+  userMenuItems.push({
+    to: '/settings/ai-connections',
+    icon: KeyRound,
+    label: 'AI接続',
   });
 
   if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {

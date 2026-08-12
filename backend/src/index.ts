@@ -44,10 +44,13 @@ import googleCalendarRoutes from './routes/googleCalendar';
 import interviewNotesRoutes from './routes/interviewNotes';
 import interviewPollsRoutes from './routes/interviewPolls';
 import inventoryRoutes from './routes/inventory';
+import aiAccessRoutes from './routes/aiAccess';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
+import { assertProductionSecurityConfiguration } from './config/security';
 
 dotenv.config();
+assertProductionSecurityConfiguration();
 
 // DATABASE_URLの情報をログ出力（資格情報は出さない）
 const dbUrl = process.env.DATABASE_URL || '';
@@ -69,6 +72,10 @@ if (dbUrl) {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
+}
 
 // CORS設定（本番環境対応）
 const allowedOrigins = process.env.FRONTEND_URL
@@ -160,6 +167,7 @@ app.use('/api/integrations/google-calendar', googleCalendarRoutes);
 app.use('/api/interview-notes', interviewNotesRoutes);
 app.use('/api/interview-polls', interviewPollsRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/ai', aiAccessRoutes);
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');

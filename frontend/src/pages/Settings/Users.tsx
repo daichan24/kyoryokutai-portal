@@ -246,9 +246,6 @@ export const UsersSettings: React.FC = () => {
                 {currentUser?.role === 'MASTER' && (
                   <>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                      パスワード（確認用）
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                       パスワード更新
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
@@ -301,12 +298,6 @@ export const UsersSettings: React.FC = () => {
                   </td>
                   {currentUser?.role === 'MASTER' && (
                     <>
-                      <td
-                        className="px-6 py-4 text-sm font-mono text-gray-800 dark:text-gray-200 max-w-[160px] truncate"
-                        title={user.passwordPlainForMaster || undefined}
-                      >
-                        {user.passwordPlainForMaster ?? '（未登録）'}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
                         {user.passwordUpdatedAt
                           ? formatDate(user.passwordUpdatedAt, 'yyyy/M/d HH:mm')

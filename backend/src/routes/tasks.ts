@@ -333,8 +333,11 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
       },
     });
 
-    // dueDateが指定されている場合、スケジュールを自動生成
+    let linkedScheduleId: string | null = null;
+
+    // dueDateが指定されている場合、スケジュールを必ず連動生成
     if (data.dueDate) {
+      let createdScheduleId: string | null = null;
       try {
         const startDate = new Date(data.dueDate);
         const endDate = data.endDate ? new Date(data.endDate) : startDate;
@@ -366,6 +369,8 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
             projectId: effectiveProjectId,
           },
         });
+        createdScheduleId = schedule.id;
+        linkedScheduleId = schedule.id;
         await syncAutoCompensatoryFromTaskSchedule({
           scheduleId: schedule.id,
           userId: mission.userId,
@@ -388,10 +393,15 @@ router.post('/missions/:missionId/tasks', async (req: AuthRequest, res) => {
         }
       } catch (scheduleError) {
         console.error('Failed to create schedule for task:', scheduleError);
+        if (createdScheduleId) {
+          await prisma.schedule.delete({ where: { id: createdScheduleId } }).catch(() => undefined);
+        }
+        await prisma.task.delete({ where: { id: task.id } }).catch(() => undefined);
+        throw scheduleError;
       }
     }
 
-    res.status(201).json(task);
+    res.status(201).json({ ...task, linkedScheduleId });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
@@ -499,43 +509,31 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
       updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     }
 
-    const updated = await prisma.task.update({
-      where: { id },
-      data: updateData,
-      include: {
-        project: {
-          select: {
-            id: true,
-            projectName: true,
-            missionId: true,
-          },
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id },
+        data: updateData,
+        include: {
+          project: { select: { id: true, projectName: true, missionId: true } },
+          mission: { select: { id: true, missionName: true, userId: true } },
         },
-        mission: {
-          select: {
-            id: true,
-            missionName: true,
-            userId: true,
-          },
-        },
-      },
-    });
-
-    // dueDateが新しく設定された場合、既存のスケジュールがない場合はスケジュールを自動生成
-    if (data.dueDate && updateData.dueDate) {
-      const existingSchedule = await prisma.schedule.findFirst({
-        where: { taskId: id },
       });
 
-      if (!existingSchedule) {
-        try {
-          const startDate = new Date(data.dueDate);
+      let linkedSchedule = null;
+      if (updated.dueDate) {
+        const existingSchedule = await tx.schedule.findFirst({
+          where: { taskId: id, deletedAt: null },
+        });
+
+        if (!existingSchedule) {
+          const startDate = new Date(updated.dueDate);
           const endDate = data.endDate ? new Date(data.endDate) : startDate;
-          const schedule = await prisma.schedule.create({
+          linkedSchedule = await tx.schedule.create({
             data: {
               userId: updated.mission.userId,
               date: startDate,
-              startDate: startDate,
-              endDate: endDate,
+              startDate,
+              endDate,
               startTime: normalizeTimeValue(data.startTime, '09:00'),
               endTime: normalizeTimeValue(data.endTime, '17:00'),
               title: updated.title,
@@ -556,85 +554,74 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
               isPending: false,
               taskId: updated.id,
               projectId: updated.projectId || null,
+              scheduleParticipants: data.participantsUserIds?.length ? {
+                create: data.participantsUserIds.map((userId) => ({ userId, status: 'PENDING' })),
+              } : undefined,
             },
           });
-          await syncAutoCompensatoryFromTaskSchedule({
-            scheduleId: schedule.id,
-            userId: updated.mission.userId,
-            grantedAt: startDate,
-            startTime: normalizeTimeValue(data.startTime, '09:00'),
-            endTime: normalizeTimeValue(data.endTime, '17:00'),
-            leaveType: data.compensatoryLeaveType,
-            enabled: !!data.isHolidayWork && !!data.compensatoryLeaveRequired,
-            requesterRole: req.user!.role,
-          });
-          if (data.participantsUserIds && data.participantsUserIds.length > 0) {
-            await prisma.scheduleParticipant.createMany({
-              data: data.participantsUserIds.map((uid: string) => ({
-                scheduleId: schedule.id,
-                userId: uid,
-                status: 'PENDING',
-              })),
-            });
-          }
-        } catch (scheduleError) {
-          console.error('Failed to create schedule for task:', scheduleError);
-        }
-      } else {
-        // 既存スケジュールを更新
-        try {
-          const updateData: any = {
+        } else {
+          const scheduleUpdateData: any = {
             title: updated.title,
             activityDescription: data.description || updated.description || updated.title,
           };
           if (data.dueDate) {
             const startDate = new Date(data.dueDate);
-            const endDate = data.endDate ? new Date(data.endDate) : startDate;
-            updateData.date = startDate;
-            updateData.startDate = startDate;
-            updateData.endDate = endDate;
+            scheduleUpdateData.date = startDate;
+            scheduleUpdateData.startDate = startDate;
+            scheduleUpdateData.endDate = data.endDate ? new Date(data.endDate) : startDate;
           }
-          if (data.startTime) updateData.startTime = normalizeTimeValue(data.startTime, '09:00');
-          if (data.endTime) updateData.endTime = normalizeTimeValue(data.endTime, '17:00');
-          if (data.locationText !== undefined) updateData.locationText = data.locationText || null;
-          if (data.freeNote !== undefined) updateData.freeNote = data.freeNote || null;
-          if (data.referenceUrl !== undefined) updateData.referenceUrl = normalizeReferenceUrl(data.referenceUrl);
-          if (data.customColor !== undefined) updateData.customColor = data.customColor || null;
-          if (data.supportEventId !== undefined) updateData.supportEventId = data.supportEventId || null;
-          if (data.isAllDay !== undefined) updateData.isAllDay = data.isAllDay;
-          if (data.isTimeUnspecified !== undefined) updateData.isTimeUnspecified = data.isTimeUnspecified;
-          if (data.reportable !== undefined) updateData.reportable = data.reportable;
-          if (data.isHolidayWork !== undefined) updateData.isHolidayWork = data.isHolidayWork;
-          if (data.compensatoryLeaveRequired !== undefined) updateData.compensatoryLeaveRequired = data.compensatoryLeaveRequired;
-          if (data.compensatoryLeaveType !== undefined) updateData.compensatoryLeaveType = data.compensatoryLeaveRequired ? data.compensatoryLeaveType ?? null : null;
-          if (data.isDayOff !== undefined) updateData.isDayOff = data.isDayOff;
-          if (data.dayOffType !== undefined) updateData.dayOffType = data.isDayOff ? data.dayOffType ?? null : null;
-          if (data.projectId !== undefined || shouldResolveDefaultWorkProject) updateData.projectId = updated.projectId || null;
-          const savedSchedule = await prisma.schedule.update({ where: { id: existingSchedule.id }, data: updateData });
-          await syncAutoCompensatoryFromTaskSchedule({
-            scheduleId: savedSchedule.id,
-            userId: savedSchedule.userId,
-            grantedAt: savedSchedule.startDate || savedSchedule.date,
-            startTime: savedSchedule.startTime,
-            endTime: savedSchedule.endTime,
-            leaveType: data.compensatoryLeaveType,
-            enabled: !!data.isHolidayWork && !!data.compensatoryLeaveRequired,
-            requesterRole: req.user!.role,
+          if (data.startTime) scheduleUpdateData.startTime = normalizeTimeValue(data.startTime, '09:00');
+          if (data.endTime) scheduleUpdateData.endTime = normalizeTimeValue(data.endTime, '17:00');
+          if (data.locationText !== undefined) scheduleUpdateData.locationText = data.locationText || null;
+          if (data.freeNote !== undefined) scheduleUpdateData.freeNote = data.freeNote || null;
+          if (data.referenceUrl !== undefined) scheduleUpdateData.referenceUrl = normalizeReferenceUrl(data.referenceUrl);
+          if (data.customColor !== undefined) scheduleUpdateData.customColor = data.customColor || null;
+          if (data.supportEventId !== undefined) scheduleUpdateData.supportEventId = data.supportEventId || null;
+          if (data.isAllDay !== undefined) scheduleUpdateData.isAllDay = data.isAllDay;
+          if (data.isTimeUnspecified !== undefined) scheduleUpdateData.isTimeUnspecified = data.isTimeUnspecified;
+          if (data.reportable !== undefined) scheduleUpdateData.reportable = data.reportable;
+          if (data.isHolidayWork !== undefined) scheduleUpdateData.isHolidayWork = data.isHolidayWork;
+          if (data.compensatoryLeaveRequired !== undefined) scheduleUpdateData.compensatoryLeaveRequired = data.compensatoryLeaveRequired;
+          if (data.compensatoryLeaveType !== undefined) scheduleUpdateData.compensatoryLeaveType = data.compensatoryLeaveRequired ? data.compensatoryLeaveType ?? null : null;
+          if (data.isDayOff !== undefined) scheduleUpdateData.isDayOff = data.isDayOff;
+          if (data.dayOffType !== undefined) scheduleUpdateData.dayOffType = data.isDayOff ? data.dayOffType ?? null : null;
+          if (data.projectId !== undefined || shouldResolveDefaultWorkProject) scheduleUpdateData.projectId = updated.projectId || null;
+          linkedSchedule = await tx.schedule.update({
+            where: { id: existingSchedule.id },
+            data: scheduleUpdateData,
           });
-        } catch (scheduleError) {
-          console.error('Failed to update schedule for task:', scheduleError);
         }
+      } else if (data.dueDate === null) {
+        await tx.schedule.updateMany({
+          where: { taskId: id, deletedAt: null },
+          data: { deletedAt: new Date() },
+        });
       }
+
+      if (data.projectId !== undefined || shouldResolveDefaultWorkProject) {
+        await tx.schedule.updateMany({
+          where: { taskId: id },
+          data: { projectId: updated.projectId || null },
+        });
+      }
+
+      return { updated, linkedSchedule };
+    });
+
+    if (result.linkedSchedule) {
+      await syncAutoCompensatoryFromTaskSchedule({
+        scheduleId: result.linkedSchedule.id,
+        userId: result.linkedSchedule.userId,
+        grantedAt: result.linkedSchedule.startDate || result.linkedSchedule.date,
+        startTime: result.linkedSchedule.startTime,
+        endTime: result.linkedSchedule.endTime,
+        leaveType: data.compensatoryLeaveType,
+        enabled: !!data.isHolidayWork && !!data.compensatoryLeaveRequired,
+        requesterRole: req.user!.role,
+      }).catch((error) => console.error('Failed to sync compensatory leave for task schedule:', error));
     }
 
-    if (data.projectId !== undefined || shouldResolveDefaultWorkProject) {
-      await prisma.schedule.updateMany({
-        where: { taskId: id },
-        data: { projectId: updated.projectId || null },
-      });
-    }
-
-    res.json(updated);
+    res.json({ ...result.updated, linkedScheduleId: result.linkedSchedule?.id ?? null });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
@@ -681,9 +668,13 @@ router.delete('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) =>
       return res.status(403).json({ error: '権限がありません' });
     }
 
-    await prisma.task.delete({
-      where: { id },
-    });
+    await prisma.$transaction([
+      prisma.schedule.updateMany({
+        where: { taskId: id, deletedAt: null },
+        data: { deletedAt: new Date() },
+      }),
+      prisma.task.delete({ where: { id } }),
+    ]);
 
     res.json({ message: 'タスクを削除しました' });
   } catch (error) {

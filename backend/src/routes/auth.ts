@@ -5,6 +5,8 @@ import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { ensureDefaultInstagramAccount } from '../services/defaultSnsAccountService';
+import { getJwtSecret, isPublicRegistrationAllowed } from '../config/security';
+import { loginRateLimit, registrationRateLimit } from '../middleware/authRateLimit';
 
 const router = Router();
 
@@ -12,7 +14,6 @@ const registerSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['MASTER', 'MEMBER', 'SUPPORT', 'GOVERNMENT']).optional(),
   missionType: z.enum(['FREE', 'MISSION']).optional(),
   department: z.string().optional(),
   termStart: z.string().optional(),
@@ -24,8 +25,11 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', registrationRateLimit, async (req, res) => {
   try {
+    if (!isPublicRegistrationAllowed()) {
+      return res.status(403).json({ error: '新規ユーザーは管理者が作成してください' });
+    }
     const data = registerSchema.parse(req.body);
 
     const existingUser = await prisma.user.findUnique({
@@ -43,9 +47,8 @@ router.post('/register', async (req, res) => {
         name: data.name,
         email: data.email,
         password: hashedPassword,
-        passwordPlainForMaster: data.password,
         passwordUpdatedAt: new Date(),
-        role: data.role || 'MEMBER',
+        role: 'MEMBER',
         missionType: data.missionType,
         department: data.department,
         termStart: data.termStart ? new Date(data.termStart) : null,
@@ -70,6 +73,7 @@ router.post('/register', async (req, res) => {
         emailNotificationsEnabled: true,
         scheduleWeekStartsOn: true,
         scheduleHiddenLocationIds: true,
+        passwordUpdatedAt: true,
         createdAt: true,
       },
     });
@@ -79,8 +83,13 @@ router.post('/register', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'secret',
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        passwordUpdatedAt: user.passwordUpdatedAt?.getTime() ?? null,
+      },
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 
@@ -94,7 +103,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimit, async (req, res) => {
   try {
     const data = loginSchema.parse(req.body);
 
@@ -123,6 +132,7 @@ router.post('/login', async (req, res) => {
           emailNotificationsEnabled: true,
           scheduleWeekStartsOn: true,
           scheduleHiddenLocationIds: true,
+          passwordUpdatedAt: true,
           createdAt: true,
         },
       });
@@ -133,7 +143,7 @@ router.post('/login', async (req, res) => {
         // 基本的なフィールドのみで取得を試みる
         const result = await prisma.$queryRaw`
           SELECT id, name, email, password, role, "missionType", department, "termStart", "termEnd", 
-                 "avatarColor", "avatarLetter", "darkMode", "createdAt"
+                 "avatarColor", "avatarLetter", "darkMode", "passwordUpdatedAt", "createdAt"
           FROM "User"
           WHERE email = ${data.email}
         `;
@@ -154,8 +164,13 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'secret',
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        passwordUpdatedAt: user.passwordUpdatedAt?.getTime() ?? null,
+      },
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 
@@ -217,14 +232,19 @@ router.put('/me/password', authenticate, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: '現在のパスワードが正しくありません' });
     }
     const hashed = await bcrypt.hash(body.newPassword, 10);
-    await prisma.user.update({
-      where: { id: req.user!.id },
-      data: {
-        password: hashed,
-        passwordPlainForMaster: body.newPassword,
-        passwordUpdatedAt: new Date(),
-      },
-    });
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: req.user!.id },
+        data: {
+          password: hashed,
+          passwordUpdatedAt: new Date(),
+        },
+      }),
+      prisma.aiAccessToken.updateMany({
+        where: { userId: req.user!.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
     res.json({ message: 'パスワードを更新しました' });
   } catch (error) {
     if (error instanceof z.ZodError) {

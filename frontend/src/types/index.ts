@@ -26,7 +26,6 @@ export interface User {
   scheduleWeekStartsOn?: 0 | 1;
   scheduleHiddenLocationIds?: string[];
   /** MASTER のユーザー一覧 API のみ */
-  passwordPlainForMaster?: string | null;
   passwordUpdatedAt?: string | null;
   snsLinks?: any;
   createdAt: string;

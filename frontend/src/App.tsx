@@ -22,6 +22,9 @@ const EmailJobsSettings = lazy(() => import('./pages/Settings/EmailJobs').then((
 const GoogleCalendarSettings = lazy(() =>
   import('./pages/Settings/GoogleCalendar').then((m) => ({ default: m.GoogleCalendarSettings })),
 );
+const AiConnectionsSettings = lazy(() =>
+  import('./pages/Settings/AiConnections').then((m) => ({ default: m.AiConnectionsSettings })),
+);
 const Nudges = lazy(() => import('./pages/Nudges').then((m) => ({ default: m.Nudges })));
 const Projects = lazy(() => import('./pages/Projects').then((m) => ({ default: m.Projects })));
 const Events = lazy(() => import('./pages/Events').then((m) => ({ default: m.Events })));
@@ -139,6 +142,7 @@ const App: React.FC = () => {
             <Route path="/settings/drive-links" element={<DriveLinksSettings />} />
             <Route path="/settings/profile" element={<ProfileSettings />} />
             <Route path="/settings/google-calendar" element={<GoogleCalendarSettings />} />
+            <Route path="/settings/ai-connections" element={<AiConnectionsSettings />} />
             <Route path="/goals" element={<Goals />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/tasks" element={<Tasks />} />

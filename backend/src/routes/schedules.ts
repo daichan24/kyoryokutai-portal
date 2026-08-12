@@ -386,6 +386,32 @@ const updateScheduleSchema = scheduleFieldsSchema.partial().extend({
   ),
 });
 
+async function validateOwnedScheduleLinks(
+  userId: string,
+  projectId: string | null | undefined,
+  taskId: string | null | undefined,
+): Promise<string | null> {
+  if (projectId) {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { userId: true },
+    });
+    if (!project || project.userId !== userId) {
+      return '本人以外のプロジェクトには連携できません';
+    }
+  }
+  if (taskId) {
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { mission: { select: { userId: true } } },
+    });
+    if (!task || task.mission.userId !== userId) {
+      return '本人以外のタスクには連携できません';
+    }
+  }
+  return null;
+}
+
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const { userId, date, startDate, endDate, view, allMembers, userIds, reportable } = req.query;
@@ -616,6 +642,9 @@ router.post('/', async (req: AuthRequest, res) => {
       const resolved = await ensureDefaultWorkMissionProject(creatorId, data.linkKind);
       effectiveProjectId = resolved.project.id;
     }
+
+    const linkError = await validateOwnedScheduleLinks(creatorId, effectiveProjectId, data.taskId);
+    if (linkError) return res.status(403).json({ error: linkError });
     
     console.log('Creating schedule with:', {
       inputDate: data.date,
@@ -769,7 +798,6 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log('=== Schedule PUT Request ===');
     console.log('Schedule ID:', id);
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
     console.log('Request body keys:', Object.keys(req.body));
     
     const data = updateScheduleSchema.parse(req.body);
@@ -798,6 +826,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
       const resolved = await ensureDefaultWorkMissionProject(existingSchedule.userId, requestedLinkKind);
       effectiveProjectId = resolved.project.id;
     }
+
+    const nextTaskId = data.taskId !== undefined ? data.taskId || null : existingSchedule.taskId;
+    const linkError = await validateOwnedScheduleLinks(existingSchedule.userId, effectiveProjectId, nextTaskId);
+    if (linkError) return res.status(403).json({ error: linkError });
 
     // 日付フィールドの処理
     // YYYY-MM-DD 形式の文字列を Date オブジェクトに変換

@@ -6,6 +6,8 @@
   "scripts": {
     "postinstall": "node -e \"if(process.env.PUPPETEER_SKIP_DOWNLOAD!=='true'){require('child_process').execSync('npx puppeteer browsers install chrome',{stdio:'inherit'})}\"",
     "dev": "tsx watch src/index.ts",
+    "mcp": "node dist/mcp/stdio.js",
+    "mcp:dev": "tsx src/mcp/stdio.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
     "start:prod": "echo 'WAIT FOR DB' && npx tsx scripts/wait-for-db.ts && echo 'RECOVER FAILED MIGRATION IF NEEDED' && npx prisma migrate resolve --rolled-back 20260516001000_link_leave_to_schedules 2>/dev/null || true && echo 'RUN MIGRATE' && npx prisma migrate deploy && echo 'MIGRATE DONE' && if [ \"$RUN_SEED\" = \"true\" ]; then echo '=== RUN SEED ===' && npm run seed && echo 'SEED DONE'; fi && node dist/index.js",
@@ -33,6 +35,7 @@
   },
   "dependencies": {
     "@fontsource/noto-sans-jp": "^5.2.9",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@prisma/client": "^5.21.1",
     "@types/node-cron": "^3.0.11",
     "bcrypt": "^6.0.0",
@@ -41,11 +44,12 @@
     "date-fns-tz": "^3.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.6.2",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^4.2.1",
     "prisma": "^5.21.1",
     "puppeteer": "^24.34.0",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

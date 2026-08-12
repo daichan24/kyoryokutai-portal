@@ -51,6 +51,10 @@ const createTaskSchema = z.object({
   order: z.number().optional(),
 });
 
+function canEditOwnedMission(req: AuthRequest, ownerUserId: string): boolean {
+  return req.user!.id === ownerUserId || req.user!.role === 'MASTER';
+}
+
 // ミッション一覧取得
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -255,10 +259,19 @@ router.post('/:id/approve', authorize('MASTER', 'SUPPORT'), async (req: AuthRequ
 });
 
 // 中目標作成
-router.post('/:missionId/mid-goals', async (req, res) => {
+router.post('/:missionId/mid-goals', async (req: AuthRequest, res) => {
   try {
     const { missionId } = req.params;
     const data = createMidGoalSchema.parse(req.body);
+
+    const mission = await prisma.mission.findUnique({
+      where: { id: missionId },
+      select: { userId: true },
+    });
+    if (!mission) return res.status(404).json({ error: 'Mission not found' });
+    if (!canEditOwnedMission(req, mission.userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     const midGoal = await prisma.midGoal.create({
       data: {
@@ -280,10 +293,19 @@ router.post('/:missionId/mid-goals', async (req, res) => {
 });
 
 // 小目標作成
-router.post('/mid-goals/:midGoalId/sub-goals', async (req, res) => {
+router.post('/mid-goals/:midGoalId/sub-goals', async (req: AuthRequest, res) => {
   try {
     const { midGoalId } = req.params;
     const data = createSubGoalSchema.parse(req.body);
+
+    const midGoal = await prisma.midGoal.findUnique({
+      where: { id: midGoalId },
+      select: { mission: { select: { userId: true } } },
+    });
+    if (!midGoal) return res.status(404).json({ error: 'Mid goal not found' });
+    if (!canEditOwnedMission(req, midGoal.mission.userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     const subGoal = await prisma.subGoal.create({
       data: {
@@ -305,10 +327,19 @@ router.post('/mid-goals/:midGoalId/sub-goals', async (req, res) => {
 });
 
 // タスク作成（GoalTask - ミッション階層内のタスク）
-router.post('/sub-goals/:subGoalId/tasks', async (req, res) => {
+router.post('/sub-goals/:subGoalId/tasks', async (req: AuthRequest, res) => {
   try {
     const { subGoalId } = req.params;
     const data = createTaskSchema.parse(req.body);
+
+    const subGoal = await prisma.subGoal.findUnique({
+      where: { id: subGoalId },
+      select: { midGoal: { select: { mission: { select: { userId: true } } } } },
+    });
+    if (!subGoal) return res.status(404).json({ error: 'Sub goal not found' });
+    if (!canEditOwnedMission(req, subGoal.midGoal.mission.userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     const task = await prisma.goalTask.create({
       data: {
@@ -330,10 +361,19 @@ router.post('/sub-goals/:subGoalId/tasks', async (req, res) => {
 });
 
 // タスク進捗更新
-router.put('/tasks/:id/progress', async (req, res) => {
+router.put('/tasks/:id/progress', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { progress } = req.body;
+
+    const task = await prisma.goalTask.findUnique({
+      where: { id },
+      select: { subGoal: { select: { midGoal: { select: { mission: { select: { userId: true } } } } } } },
+    });
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    if (!canEditOwnedMission(req, task.subGoal.midGoal.mission.userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     const missionProgress = await updateGoalTaskProgress(id, progress);
 
@@ -345,10 +385,19 @@ router.put('/tasks/:id/progress', async (req, res) => {
 });
 
 // 重み再計算
-router.post('/:id/recalculate-weights', async (req, res) => {
+router.post('/:id/recalculate-weights', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { method } = req.body;
+
+    const mission = await prisma.mission.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (!mission) return res.status(404).json({ error: 'Mission not found' });
+    if (!canEditOwnedMission(req, mission.userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     if (!['EQUAL', 'PERIOD'].includes(method)) {
       return res.status(400).json({ error: 'Invalid method' });
