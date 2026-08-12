@@ -11,6 +11,7 @@ import { calculateMissionProgress, calculateProjectProgress } from '../services/
 import { getActivityExpenseSummaryLite } from '../services/activityExpenseService';
 import { deleteScheduleFromGoogle, syncScheduleToGoogle } from '../services/googleCalendarService';
 import { ensureDefaultWorkMissionProject, isDefaultWorkLinkKind } from '../services/defaultWorkProjectService';
+import { requiresScheduleLocation } from '../utils/scheduleValidation';
 
 const router = Router();
 
@@ -321,12 +322,15 @@ router.get('/for-interview-month', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'),
   }
 });
 
-const createScheduleSchema = z.object({
+const scheduleFieldsSchema = z.object({
   date: z.string(),
   endDate: z.string().optional(),
   startTime: z.preprocess(normalizeTimeInput, z.string().regex(/^\d{2}:\d{2}$/)),
   endTime: z.preprocess(normalizeTimeInput, z.string().regex(/^\d{2}:\d{2}$/)),
-  locationText: z.string().trim().min(1, '場所を入力してください'),
+  locationText: z.preprocess(
+    emptyStringToNull,
+    z.string().trim().min(1, '場所を入力してください').optional().nullable(),
+  ),
   title: z.string().max(200).min(1, 'タイトルを入力してください'),
   activityDescription: z.preprocess(
     emptyStringToUndefined,
@@ -357,14 +361,24 @@ const createScheduleSchema = z.object({
   dayOffType: z.enum(['PAID', 'UNPAID', 'COMPENSATORY', 'TIME_ADJUST']).optional().nullable(),
 });
 
-const updateScheduleSchema = createScheduleSchema.partial().extend({
+const createScheduleSchema = scheduleFieldsSchema.superRefine((data, ctx) => {
+  if (requiresScheduleLocation(data)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['locationText'],
+      message: '場所を入力してください',
+    });
+  }
+});
+
+const updateScheduleSchema = scheduleFieldsSchema.partial().extend({
   date: z.preprocess(nullOrEmptyStringToUndefined, z.string().optional()),
   endDate: z.preprocess(nullOrEmptyStringToUndefined, z.string().optional()),
   startTime: z.preprocess(normalizeOptionalTimeInput, z.string().regex(/^\d{2}:\d{2}$/).optional()),
   endTime: z.preprocess(normalizeOptionalTimeInput, z.string().regex(/^\d{2}:\d{2}$/).optional()),
   locationText: z.preprocess(
-    nullOrEmptyStringToUndefined,
-    z.string().trim().min(1, '場所を入力してください').optional(),
+    emptyStringToNull,
+    z.string().trim().min(1, '場所を入力してください').optional().nullable(),
   ),
   title: z.preprocess(
     nullOrEmptyStringToUndefined,

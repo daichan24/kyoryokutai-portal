@@ -504,13 +504,29 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     setHasEditedTime(true);
   };
 
+  const setScheduleType = (type: 'NORMAL' | 'DAY_OFF') => {
+    const dayOff = type === 'DAY_OFF';
+    setIsDayOff(dayOff);
+    if (!dayOff) return;
+
+    if (!title.trim() || QUICK_TITLE_OPTIONS.includes(title.trim())) setTitle('休み');
+    setIsAllDay(true);
+    setIsTimeUnspecified(false);
+    setStartTime('00:00');
+    setEndTime('23:59');
+    setReportable(false);
+    setIsHolidayWork(false);
+    setCompensatoryLeaveRequired(false);
+    setIsCollaborative(false);
+  };
+
   const showAdvanced = !isMobile || showAdvancedFields || readOnly || Boolean(schedule || task);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { alert('タイトルを入力してください'); return; }
-    if (!isScheduleMode && !locationText) { alert('場所を選択してください'); return; }
-    if (locationText === '__OTHER__' && !locationOther.trim()) { alert('場所を入力してください'); return; }
+    if (!isDayOff && !isScheduleMode && !locationText) { alert('場所を選択してください'); return; }
+    if (!isDayOff && locationText === '__OTHER__' && !locationOther.trim()) { alert('場所を入力してください'); return; }
     setLoading(true);
     try {
       if (isScheduleMode && schedule) {
@@ -536,11 +552,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           compensatoryLeaveType: compensatoryLeaveRequired ? compensatoryLeaveType : null,
           isDayOff,
           dayOffType: isDayOff ? dayOffType : null,
+          locationText: isDayOff ? null : (effectiveLoc.trim() || null),
+          taskId: isDayOff ? null : undefined,
         };
-        if (effectiveLoc.trim()) {
-          data.locationText = effectiveLoc.trim();
-        }
-        data.participantsUserIds = isCollaborative ? selectedParticipantIds : [];
+        data.participantsUserIds = !isDayOff && isCollaborative ? selectedParticipantIds : [];
         let savedScheduleId = schedule.id;
         if (isDuplicateMode) {
           const res = await api.post('/api/schedules', data);
@@ -583,44 +598,69 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           setLoading(false);
           return;
         }
-        if (isCalendarCreate && attachMode === 'UNSET') {
+        if (isCalendarCreate && !isDayOff && attachMode === 'UNSET') {
           alert('連携先を選択してください');
           setLoading(false);
           return;
         }
-        // ミッションの必須チェック（KYORYOKUTAI、YAKUBA、TRIAGE以外は必須）
-        if (!effectiveMissionId && attachMode !== 'KYORYOKUTAI' && attachMode !== 'YAKUBA' && attachMode !== 'TRIAGE') { 
-          alert('ミッションを選択してください'); 
-          setLoading(false); 
-          return; 
+        if (isCalendarCreate && isDayOff) {
+          await api.post('/api/schedules', {
+            date: dueDate,
+            endDate: endDate && endDate !== dueDate ? endDate : undefined,
+            startTime: '00:00',
+            endTime: '23:59',
+            title: title.trim(),
+            activityDescription: memo.trim() || title.trim(),
+            freeNote: memo.trim() || null,
+            referenceUrl: referenceUrl.trim() || null,
+            customColor: customColor || null,
+            locationText: null,
+            projectId: null,
+            linkKind: 'UNSET',
+            isAllDay: true,
+            isTimeUnspecified: false,
+            reportable: false,
+            isHolidayWork: false,
+            compensatoryLeaveRequired: false,
+            compensatoryLeaveType: null,
+            isDayOff: true,
+            dayOffType,
+          });
+        } else {
+          // ミッションの必須チェック（KYORYOKUTAI、YAKUBA、TRIAGE以外は必須）
+          if (!effectiveMissionId && attachMode !== 'KYORYOKUTAI' && attachMode !== 'YAKUBA' && attachMode !== 'TRIAGE') {
+            alert('ミッションを選択してください');
+            setLoading(false);
+            return;
+          }
+          // プロジェクトモードの場合はプロジェクトも必須
+          if (attachMode === 'PROJECT' && !projectId) { alert('プロジェクトを選んでください'); setLoading(false); return; }
+          const linkKind = attachMode === 'PROJECT' ? 'PROJECT' : attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI_WORK' : attachMode === 'YAKUBA' ? 'YAKUBA_WORK' : attachMode === 'TRIAGE' ? 'TRIAGE_PENDING' : 'UNSET';
+          const targetMissionId = effectiveMissionId || (missions.length > 0 ? missions[0].id : '');
+          if (!targetMissionId) { alert('ミッションを選択してください'); setLoading(false); return; }
+          const data: any = {
+            title: title.trim(), description: memo.trim() || undefined,
+            projectId: attachMode === 'PROJECT' ? projectId : null, linkKind,
+            dueDate: dueDate || null, endDate: endDate || dueDate || null,
+            startTime: isAllDay || isTimeUnspecified ? '00:00' : normalizeTimeValue(startTime),
+            endTime: isAllDay || isTimeUnspecified ? '23:59' : normalizeTimeValue(endTime, '17:30'),
+            locationText: effectiveLoc.trim() || undefined,
+            freeNote: memo.trim() || undefined,
+            referenceUrl: referenceUrl.trim() || null,
+            customColor: customColor || undefined, supportEventId: supportEventId || undefined,
+            isAllDay: isCalendarCreate ? isAllDay : undefined,
+            isTimeUnspecified: isCalendarCreate ? isTimeUnspecified : undefined,
+            reportable: isCalendarCreate ? reportable : undefined,
+            isHolidayWork: isCalendarCreate ? isHolidayWork : undefined,
+            compensatoryLeaveRequired: isCalendarCreate ? compensatoryLeaveRequired : undefined,
+            compensatoryLeaveType: isCalendarCreate && compensatoryLeaveRequired ? compensatoryLeaveType : null,
+            isDayOff: isCalendarCreate ? isDayOff : undefined,
+            dayOffType: isCalendarCreate && isDayOff ? dayOffType : null,
+            participantsUserIds: isCollaborative && selectedParticipantIds.length > 0 ? selectedParticipantIds : undefined,
+          };
+          if (task) { await api.put(`/api/missions/${targetMissionId}/tasks/${task.id}`, data); }
+          else { await api.post(`/api/missions/${targetMissionId}/tasks`, data); }
         }
-        // プロジェクトモードの場合はプロジェクトも必須
-        if (attachMode === 'PROJECT' && !projectId) { alert('プロジェクトを選んでください'); setLoading(false); return; }
-        const linkKind = attachMode === 'PROJECT' ? 'PROJECT' : attachMode === 'KYORYOKUTAI' ? 'KYORYOKUTAI_WORK' : attachMode === 'YAKUBA' ? 'YAKUBA_WORK' : attachMode === 'TRIAGE' ? 'TRIAGE_PENDING' : 'UNSET';
-        const targetMissionId = effectiveMissionId || (missions.length > 0 ? missions[0].id : '');
-        if (!targetMissionId) { alert('ミッションを選択してください'); setLoading(false); return; }
-        const data: any = {
-          title: title.trim(), description: memo.trim() || undefined,
-          projectId: attachMode === 'PROJECT' ? projectId : null, linkKind,
-          dueDate: dueDate || null, endDate: endDate || dueDate || null,
-          startTime: isAllDay || isTimeUnspecified ? '00:00' : normalizeTimeValue(startTime),
-          endTime: isAllDay || isTimeUnspecified ? '23:59' : normalizeTimeValue(endTime, '17:30'),
-          locationText: effectiveLoc.trim() || undefined,
-          freeNote: memo.trim() || undefined,
-          referenceUrl: referenceUrl.trim() || null,
-          customColor: customColor || undefined, supportEventId: supportEventId || undefined,
-          isAllDay: isCalendarCreate ? isAllDay : undefined,
-          isTimeUnspecified: isCalendarCreate ? isTimeUnspecified : undefined,
-          reportable: isCalendarCreate ? reportable : undefined,
-          isHolidayWork: isCalendarCreate ? isHolidayWork : undefined,
-          compensatoryLeaveRequired: isCalendarCreate ? compensatoryLeaveRequired : undefined,
-          compensatoryLeaveType: isCalendarCreate && compensatoryLeaveRequired ? compensatoryLeaveType : null,
-          isDayOff: isCalendarCreate ? isDayOff : undefined,
-          dayOffType: isCalendarCreate && isDayOff ? dayOffType : null,
-          participantsUserIds: isCollaborative && selectedParticipantIds.length > 0 ? selectedParticipantIds : undefined,
-        };
-        if (task) { await api.put(`/api/missions/${targetMissionId}/tasks/${task.id}`, data); }
-        else { await api.post(`/api/missions/${targetMissionId}/tasks`, data); }
       }
       onSaved();
     } catch (err: any) {
@@ -729,6 +769,48 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               </div>
             )}
             <Input label="タイトル *" type="text" value={title} onChange={e => setTitle(e.target.value)} required placeholder={isCalendarCreate || schedule ? '予定のタイトルを入力' : 'タスクのタイトルを入力'} disabled={readOnly} readOnly={readOnly} />
+            {isScheduleForm && (
+              <div>
+                <p className="mb-2 text-xs font-medium text-gray-600 dark:text-gray-400">予定種別</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScheduleType('NORMAL')}
+                    disabled={readOnly}
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${!isDayOff
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'} disabled:cursor-not-allowed`}
+                  >
+                    通常予定
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleType('DAY_OFF')}
+                    disabled={readOnly}
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${isDayOff
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'} disabled:cursor-not-allowed`}
+                  >
+                    休み（場所・連携不要）
+                  </button>
+                </div>
+                {isDayOff && (
+                  <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/70 p-3 dark:border-blue-900 dark:bg-blue-900/20">
+                    <p className="text-xs text-blue-700 dark:text-blue-200">休みの予定は、場所・ミッション・プロジェクトの入力は不要です。</p>
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      {(['PAID', 'UNPAID', 'COMPENSATORY', 'TIME_ADJUST'] as const).map(t => (
+                        <label key={t} className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={dayOffType === t} onChange={() => setDayOffType(t)} className="h-4 w-4 text-blue-500" disabled={readOnly} />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {t === 'PAID' ? '有給' : t === 'UNPAID' ? '無休' : t === 'COMPENSATORY' ? '代休' : '時間調整'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {!readOnly && !title.trim() && (
               <div className="-mt-2 flex gap-2 overflow-x-auto pb-1">
                 {QUICK_TITLE_OPTIONS.map((label) => (
@@ -762,7 +844,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                       }
                     }}
                     className="h-4 w-4 rounded border-gray-300 text-primary"
-                    disabled={readOnly}
+                    disabled={readOnly || isDayOff}
                   />
                   終日予定
                 </label>
@@ -779,7 +861,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                       }
                     }}
                     className="h-4 w-4 rounded border-gray-300 text-primary"
-                    disabled={readOnly}
+                    disabled={readOnly || isDayOff}
                   />
                   時間未定
                 </label>
@@ -789,7 +871,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     checked={reportable}
                     onChange={(e) => setReportable(e.target.checked)}
                     className="h-4 w-4 rounded border-gray-300 text-primary"
-                    disabled={readOnly}
+                    disabled={readOnly || isDayOff}
                   />
                   週次報告の自動取得対象
                 </label>
@@ -805,7 +887,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 <TimePicker value={endTime} onChange={v => { setEndTime(v); if (!task && !schedule && !hasEditedTime) { setStartTime(addHour(v, -60)); } setHasEditedTime(true); }} disabled={readOnly || isAllDay || isTimeUnspecified} />
               </div>
             </div>
-            {!readOnly && (
+            {!readOnly && !isDayOff && (
               <div className="-mt-1 flex gap-2 overflow-x-auto pb-1">
                 {QUICK_DURATION_OPTIONS.map((opt) => (
                   <button
@@ -819,7 +901,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 ))}
               </div>
             )}
-            <div>
+            {!isDayOff && <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">場所 *</label>
               <select value={locationText} onChange={e => setLocationText(e.target.value)}
                 className="w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" disabled={readOnly}>
@@ -833,7 +915,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   className="mt-2 w-full px-3 py-2 border border-border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm" />
               )}
               {locationText === '__OTHER__' && readOnly && locationOther && <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{locationOther}</p>}
-            </div>
+            </div>}
             {isScheduleForm && (
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">参考URL（任意）</label>
@@ -857,7 +939,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 )}
               </div>
             )}
-            <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30">
+            {!isDayOff && <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30">
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                 連携 {isCalendarCreate && <span className="text-red-500">*</span>}
               </p>
@@ -908,7 +990,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   )}
                 </div>
               </div>
-            </div>
+            </div>}
             {!readOnly && isMobile && (
               <button
                 type="button"
@@ -941,6 +1023,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     </div>
                   </div>
                 )}
+                {(!isScheduleForm || !isDayOff) && <>
                 <div>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={showSupportEvents} onChange={e => { setShowSupportEvents(e.target.checked); if (!e.target.checked) setSupportEventId(null); }} className="h-4 w-4 text-primary border-gray-300 rounded" disabled={readOnly} />
@@ -994,7 +1077,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 )}
               </div>
               {/* 休日（有給・無休・代休） */}
-              <div>
+              {!isScheduleForm && <div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={isDayOff}
                     onChange={e => setIsDayOff(e.target.checked)}
@@ -1016,7 +1099,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     ))}
                   </div>
                 )}
-              </div>
+              </div>}
               {/* 共同作業 */}
               <div>
                 <label className="flex items-center gap-2 cursor-pointer mb-2">
@@ -1046,6 +1129,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               )}
               </div>
                 </div>
+                </>}
               </>
             )}
             {schedule?.scheduleParticipants && schedule.scheduleParticipants.length > 0 && readOnly && (
