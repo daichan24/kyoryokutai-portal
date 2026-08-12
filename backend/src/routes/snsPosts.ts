@@ -4,6 +4,7 @@ import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getCurrentWeekBoundary, getWeekBoundaryForDate } from '../utils/weekBoundary';
 import { snsPostCreateSchema, snsPostUpdateSchema, parsePostedAtInput } from '../utils/snsValidation';
+import { canModifyOwnSnsPost } from '../utils/snsAuthorization';
 
 const router = Router();
 router.use(authenticate);
@@ -307,7 +308,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
 
     // 自分の投稿のみ更新可能（MEMBERの場合）
-    if (req.user!.role === 'MEMBER' && existingPost.userId !== req.user!.id) {
+    if (!canModifyOwnSnsPost(req.user!, existingPost.userId)) {
       return res.status(403).json({ error: '権限がありません' });
     }
 
@@ -387,7 +388,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     }
 
     // 自分の投稿のみ削除可能（MEMBERの場合）
-    if (req.user!.role === 'MEMBER' && post.userId !== req.user!.id) {
+    if (!canModifyOwnSnsPost(req.user!, post.userId)) {
       return res.status(403).json({ error: '権限がありません' });
     }
 

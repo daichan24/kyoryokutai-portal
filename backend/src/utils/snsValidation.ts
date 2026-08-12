@@ -46,7 +46,11 @@ export const snsPostCreateSchema = z.object({
 /**
  * SNS投稿更新スキーマ（部分更新）
  */
-export const snsPostUpdateSchema = snsPostCreateSchema.partial();
+export const snsPostUpdateSchema = snsPostCreateSchema.partial().extend({
+  // 既存のBOTHレコードを日付だけ更新する旧クライアントとの互換性を維持する。
+  // 新規作成では引き続き STORY / FEED のみを受け付ける。
+  postType: z.enum(['STORY', 'FEED', 'BOTH']).optional(),
+});
 
 /**
  * 投稿日時の入力をパース

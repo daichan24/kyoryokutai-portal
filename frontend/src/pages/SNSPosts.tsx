@@ -19,7 +19,7 @@ interface SNSPost {
   id: string;
   week: string;
   postedAt: string;
-  postType: 'STORY' | 'FEED';
+  postType: 'STORY' | 'FEED' | 'BOTH';
   url?: string | null;
   note?: string | null;
   followerCount?: number | null;
@@ -34,6 +34,15 @@ interface SNSPost {
     url?: string | null;
   } | null;
 }
+
+const postIncludesType = (postType: SNSPost['postType'], targetType: 'STORY' | 'FEED') =>
+  postType === targetType || postType === 'BOTH';
+
+const getPostTypeLabel = (postType: SNSPost['postType']) => {
+  if (postType === 'STORY') return 'ストーリーズ';
+  if (postType === 'FEED') return 'フィード';
+  return 'ストーリーズ・フィード両方（旧形式）';
+};
 
 interface SNSAccount {
   id: string;
@@ -153,8 +162,8 @@ export const SNSPosts: React.FC = () => {
       return t >= currentMonthStart.getTime() && t <= currentMonthEnd.getTime();
     };
     return {
-      story: list.some((p) => p.postType === 'STORY' && inMonth(p.postedAt)),
-      feed: list.some((p) => p.postType === 'FEED' && inMonth(p.postedAt)),
+      story: list.some((p) => postIncludesType(p.postType, 'STORY') && inMonth(p.postedAt)),
+      feed: list.some((p) => postIncludesType(p.postType, 'FEED') && inMonth(p.postedAt)),
     };
   }, [personalPosts, currentMonthStart, currentMonthEnd]);
 
@@ -163,7 +172,7 @@ export const SNSPosts: React.FC = () => {
     const list = personalPosts || [];
     return list
       .filter((p) => {
-        if (p.week !== weekKey || p.postType !== type) return false;
+        if (p.week !== weekKey || !postIncludesType(p.postType, type)) return false;
         // 特定アカウント選択時はそのアカウントのみ
         if (selectedAccountId !== null) return p.accountId === selectedAccountId;
         return true;
@@ -238,8 +247,8 @@ export const SNSPosts: React.FC = () => {
           new Date(p.postedAt) >= selectedWeekMeta.weekStart &&
           new Date(p.postedAt) < selectedWeekMeta.weekEnd)
       );
-      const feedPosts = memberPosts.filter(p => p.postType === 'FEED');
-      const storyPosts = memberPosts.filter(p => p.postType === 'STORY');
+      const feedPosts = memberPosts.filter(p => postIncludesType(p.postType, 'FEED'));
+      const storyPosts = memberPosts.filter(p => postIncludesType(p.postType, 'STORY'));
       return { userId: member.id, userName: member.name, hasFeed: feedPosts.length > 0, hasStory: storyPosts.length > 0, feedPosts, storyPosts };
     });
   }, [allPosts, members, selectedUserId, selectedWeek, selectedWeekMeta]);
@@ -262,8 +271,8 @@ export const SNSPosts: React.FC = () => {
       .sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime())[0]?.followerCount ?? null;
 
     return {
-      weekStory: weekPosts.some((p) => p.postType === 'STORY'),
-      weekFeed: weekPosts.some((p) => p.postType === 'FEED'),
+      weekStory: weekPosts.some((p) => postIncludesType(p.postType, 'STORY')),
+      weekFeed: weekPosts.some((p) => postIncludesType(p.postType, 'FEED')),
       monthCount: list.filter((p) => p.postedAt && new Date(p.postedAt).getTime() >= currentMonthStart.getTime() && new Date(p.postedAt).getTime() <= currentMonthEnd.getTime()).length,
       latestFollower,
     };
@@ -337,7 +346,7 @@ export const SNSPosts: React.FC = () => {
               onClick={() => { setAddModalDefaultType('STORY'); setAddModalDefaultDate(undefined); setIsAddModalOpen(true); }}
             >
               <Plus className="h-4 w-4 mr-1" />
-              投稿を記録
+              投稿日を記録
             </Button>
           </div>
         )}
@@ -514,10 +523,10 @@ export const SNSPosts: React.FC = () => {
                               p.accountId === acc.id &&
                               p.week === selectedWeek
                             );
-                            const hasFeed = accPosts.some(p => p.postType === 'FEED');
-                            const hasStory = accPosts.some(p => p.postType === 'STORY');
-                            const feedPosts = accPosts.filter(p => p.postType === 'FEED');
-                            const storyPosts = accPosts.filter(p => p.postType === 'STORY');
+                            const hasFeed = accPosts.some(p => postIncludesType(p.postType, 'FEED'));
+                            const hasStory = accPosts.some(p => postIncludesType(p.postType, 'STORY'));
+                            const feedPosts = accPosts.filter(p => postIncludesType(p.postType, 'FEED'));
+                            const storyPosts = accPosts.filter(p => postIncludesType(p.postType, 'STORY'));
                             const latestFollowerCount = getLatestFollowerCount(accPosts);
                             return (
                               <div key={acc.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
@@ -587,8 +596,8 @@ export const SNSPosts: React.FC = () => {
                     <div key={post.id} className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                       <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{format(new Date(post.postedAt), 'yyyy年M月d日')}</span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${post.postType === 'STORY' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'}`}>
-                          {post.postType === 'STORY' ? 'ストーリーズ' : 'フィード'}
+                        <span className={`text-xs px-2 py-1 rounded-full ${post.postType === 'STORY' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : post.postType === 'FEED' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'}`}>
+                          {getPostTypeLabel(post.postType)}
                         </span>
                         {post.user && <span className="text-xs font-medium text-gray-700 dark:text-gray-300">({post.user.name})</span>}
                         {acc && <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{acc.displayName || acc.accountName}</span>}
@@ -624,7 +633,7 @@ export const SNSPosts: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 overflow-hidden">
             <div className="px-4 py-3 border-b border-border dark:border-gray-700">
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">週次カレンダー（振り返り）</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">セルを押して記録・編集できます。</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">投稿日を押すと、メンバー本人が後から日付を変更できます。</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[520px]">
@@ -661,6 +670,7 @@ export const SNSPosts: React.FC = () => {
                             {p.followerCount != null && (
                               <span className="block text-gray-500 dark:text-gray-400 text-xs mt-0.5">{p.followerCount.toLocaleString()}人</span>
                             )}
+                            <span className="block text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">投稿日を変更</span>
                           </button>
                           <button
                             type="button"
@@ -761,8 +771,8 @@ export const SNSPosts: React.FC = () => {
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{format(new Date(post.postedAt), 'yyyy年M月d日')}</span>
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${post.postType === 'STORY' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'}`}>
-                                {post.postType === 'STORY' ? 'ストーリーズ' : 'フィード'}
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${post.postType === 'STORY' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : post.postType === 'FEED' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'}`}>
+                                {getPostTypeLabel(post.postType)}
                               </span>
                               {/* すべてタブのときはアカウント名を表示 */}
                               {selectedAccountId === null && accName && (
@@ -772,8 +782,9 @@ export const SNSPosts: React.FC = () => {
                               {post.url && <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1"><ExternalLink className="w-3 h-3" />リンク</a>}
                             </div>
                             <div className="flex gap-1 flex-shrink-0">
-                              <button onClick={() => setEditingPost(post)} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded" title="編集">
+                              <button onClick={() => setEditingPost(post)} className="inline-flex items-center gap-1 p-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded" title="投稿日を変更">
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                <span>投稿日を変更</span>
                               </button>
                               <button onClick={() => handleDelete(post.id)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded" title="削除">
                                 <Trash2 className="w-3.5 h-3.5" />

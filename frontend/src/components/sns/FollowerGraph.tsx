@@ -5,14 +5,14 @@ import { ja } from 'date-fns/locale';
 interface PostData {
   postedAt: string;
   followerCount?: number | null;
-  postType: 'STORY' | 'FEED';
+  postType: 'STORY' | 'FEED' | 'BOTH';
   accountId?: string | null;
 }
 
 interface DataPoint {
   date: string;
   count: number;
-  postType: 'STORY' | 'FEED';
+  postType: 'STORY' | 'FEED' | 'BOTH';
 }
 
 interface SeriesData {
@@ -109,7 +109,7 @@ export const FollowerGraph: React.FC<FollowerGraphProps> = ({ posts, accountName
                       cx={toX(d.date)}
                       cy={toY(d.count)}
                       r="4"
-                      fill={d.postType === 'FEED' ? '#22c55e' : '#3b82f6'}
+                      fill={d.postType === 'FEED' ? '#22c55e' : d.postType === 'STORY' ? '#3b82f6' : '#8b5cf6'}
                       stroke={color}
                       strokeWidth="1.5"
                     />
@@ -118,7 +118,7 @@ export const FollowerGraph: React.FC<FollowerGraphProps> = ({ posts, accountName
                         {format(new Date(d.date), 'M/d', { locale: ja })}
                       </text>
                     )}
-                    <title>{`${s.accountName} ${d.date} ${d.postType === 'FEED' ? 'フィード' : 'ストーリーズ'}: ${d.count.toLocaleString()}人`}</title>
+                    <title>{`${s.accountName} ${d.date} ${d.postType === 'FEED' ? 'フィード' : d.postType === 'STORY' ? 'ストーリーズ' : '両方（旧形式）'}: ${d.count.toLocaleString()}人`}</title>
                   </g>
                 ))}
               </g>
@@ -141,6 +141,11 @@ export const FollowerGraph: React.FC<FollowerGraphProps> = ({ posts, accountName
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />ストーリーズ
         </span>
+        {allPoints.some((point) => point.postType === 'BOTH') && (
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />両方（旧形式）
+          </span>
+        )}
         {series.length === 1 && (
           <span className="ml-auto">最新: {series[0].points[series[0].points.length - 1]?.count.toLocaleString()}人</span>
         )}
