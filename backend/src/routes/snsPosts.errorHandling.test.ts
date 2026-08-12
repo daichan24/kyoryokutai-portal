@@ -1,31 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { z } from 'zod';
-
-// Schemas extracted from snsPosts.ts
-const followerCountField = z
-  .union([z.number(), z.string(), z.null()])
-  .optional()
-  .transform((v) => {
-    if (v === undefined) return undefined;
-    if (v === null) return null;
-    if (v === '') return undefined;
-    const n = typeof v === 'string' ? parseInt(String(v).replace(/,/g, ''), 10) : Number(v);
-    if (!Number.isFinite(n) || Number.isNaN(n)) return undefined;
-    const t = Math.trunc(n);
-    if (t < 0 || t > 99_999_999) return undefined;
-    return t;
-  });
-
-const snsPostCreateSchema = z.object({
-  postedAt: z.string(),
-  postType: z.enum(['STORY', 'FEED']),
-  accountId: z.string().uuid().optional().nullable(),
-  url: z.string().optional().refine((val) => !val || val === '' || z.string().url().safeParse(val).success, {
-    message: 'Invalid URL format',
-  }),
-  note: z.string().max(2000).optional(),
-  followerCount: followerCountField,
-});
+import { snsPostCreateSchema } from '../utils/snsValidation';
 
 describe('Error Handling', () => {
   describe('24.1 バリデーションエラー（400）のテスト', () => {
@@ -117,7 +91,7 @@ describe('Error Handling', () => {
         expect(result.success).toBe(false);
         if (!result.success) {
           const urlIssue = result.error.issues.find((i) => i.path[0] === 'url');
-          expect(urlIssue?.message).toBe('Invalid URL format');
+          expect(urlIssue?.message).toBe('投稿リンクは https:// から始まるURLで入力してください');
         }
       });
 
@@ -231,6 +205,16 @@ describe('Error Handling', () => {
           note: 'Test note',
           followerCount: 1000,
         });
+        expect(result.success).toBe(true);
+      });
+
+      test('should accept provisioned member Instagram account IDs', () => {
+        const result = snsPostCreateSchema.safeParse({
+          postedAt: '2026-08-12',
+          postType: 'STORY',
+          accountId: 'default-instagram-550e8400-e29b-41d4-a716-446655440000',
+        });
+
         expect(result.success).toBe(true);
       });
     });

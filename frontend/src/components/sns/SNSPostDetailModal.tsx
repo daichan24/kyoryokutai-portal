@@ -5,7 +5,7 @@ import { api } from '../../utils/api';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { getPostTypeLabels } from './SNSAccountModal';
-import { buildSnsPostPayload, EditableSnsPostType } from '../../utils/snsPostForm';
+import { buildSnsPostPayload, EditableSnsPostType, getSnsPostSaveErrorMessage } from '../../utils/snsPostForm';
 
 interface SNSPost {
   id: string;
@@ -117,8 +117,7 @@ export const SNSPostDetailModal: React.FC<SNSPostDetailModalProps> = ({
       onSaved();
     } catch (error: any) {
       console.error('Failed to save SNS post:', error);
-      const errMsg = error.response?.data?.error || error.response?.data?.details || error.message || '不明なエラー';
-      alert(`保存に失敗しました: ${typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg)}`);
+      alert(`保存に失敗しました: ${getSnsPostSaveErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }

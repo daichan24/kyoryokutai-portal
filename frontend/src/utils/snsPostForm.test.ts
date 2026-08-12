@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSnsPostPayload } from './snsPostForm';
+import { buildSnsPostPayload, getSnsPostSaveErrorMessage } from './snsPostForm';
 
 describe('buildSnsPostPayload', () => {
   it('投稿日だけの編集では任意項目を再送しない', () => {
@@ -53,5 +53,24 @@ describe('buildSnsPostPayload', () => {
       note: '',
       followerCount: null,
     });
+  });
+});
+
+describe('getSnsPostSaveErrorMessage', () => {
+  it('Validation failedより具体的な詳細を表示する', () => {
+    expect(getSnsPostSaveErrorMessage({
+      response: {
+        data: {
+          error: 'Validation failed',
+          details: [{ message: 'SNSアカウントを選択してください' }],
+        },
+      },
+    })).toBe('SNSアカウントを選択してください');
+  });
+
+  it('具体的なAPIエラーはそのまま表示する', () => {
+    expect(getSnsPostSaveErrorMessage({
+      response: { data: { error: '指定されたSNSアカウントを利用できません' } },
+    })).toBe('指定されたSNSアカウントを利用できません');
   });
 });

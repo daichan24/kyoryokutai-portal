@@ -57,3 +57,24 @@ export function buildSnsPostPayload({
 
   return payload;
 }
+
+interface ApiValidationIssue {
+  message?: unknown;
+}
+
+export function getSnsPostSaveErrorMessage(error: unknown): string {
+  const apiData = (error as {
+    response?: { data?: { error?: unknown; details?: unknown } };
+    message?: unknown;
+  })?.response?.data;
+  const apiError = typeof apiData?.error === 'string' ? apiData.error : '';
+  const details = Array.isArray(apiData?.details) ? apiData.details as ApiValidationIssue[] : [];
+  const detailMessage = details.find((issue) => typeof issue?.message === 'string')?.message;
+
+  if (apiError && apiError !== 'Validation failed') return apiError;
+  if (typeof detailMessage === 'string') return detailMessage;
+  if (apiError) return '入力内容を確認してください';
+
+  const fallback = (error as { message?: unknown })?.message;
+  return typeof fallback === 'string' && fallback ? fallback : '不明なエラー';
+}

@@ -28,8 +28,14 @@ export const urlField = z
   .string()
   .optional()
   .refine((val) => !val || val === '' || z.string().url().safeParse(val).success, {
-    message: 'Invalid URL format',
+    message: '投稿リンクは https:// から始まるURLで入力してください',
   });
+
+/**
+ * SNSAccount.id は通常のUUIDだけでなく、既存メンバーの初期アカウントで
+ * `default-instagram-<userId>` 形式も使用している。実在・所有者はAPI側で確認する。
+ */
+export const snsAccountIdField = z.string().trim().min(1, 'SNSアカウントを選択してください');
 
 /**
  * SNS投稿作成スキーマ
@@ -37,7 +43,7 @@ export const urlField = z
 export const snsPostCreateSchema = z.object({
   postedAt: z.string(), // ISO 日時または YYYY-MM-DD
   postType: z.enum(['STORY', 'FEED']),
-  accountId: z.string().uuid().optional().nullable(),
+  accountId: snsAccountIdField.optional().nullable(),
   url: urlField,
   note: z.string().max(2000).optional(),
   followerCount: followerCountField,

@@ -10,4 +10,24 @@ describe('SNS投稿の作成・更新スキーマ', () => {
     expect(snsPostUpdateSchema.safeParse({ postedAt: '2026-08-12', postType: 'BOTH' }).success).toBe(true);
     expect(snsPostCreateSchema.safeParse({ postedAt: '2026-08-12', postType: 'BOTH' }).success).toBe(false);
   });
+
+  it('一括作成された初期InstagramアカウントIDで新規投稿できる', () => {
+    const result = snsPostCreateSchema.safeParse({
+      postedAt: '2026-08-12',
+      postType: 'STORY',
+      accountId: 'default-instagram-550e8400-e29b-41d4-a716-446655440000',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('空のSNSアカウントIDは拒否する', () => {
+    const result = snsPostCreateSchema.safeParse({
+      postedAt: '2026-08-12',
+      postType: 'STORY',
+      accountId: '  ',
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
