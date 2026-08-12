@@ -7,6 +7,7 @@ import {
 
 const productionInput = {
   allowedOrigins: ['https://clearbase.example.com'],
+  backendOrigin: 'https://api.clearbase.example.com',
   isDevelopment: false,
 };
 
@@ -47,6 +48,29 @@ describe('ClearBase CORS policy', () => {
     ).toBe(true);
   });
 
+  it('allows the ClearBase login form to post back to its exact OAuth endpoint', () => {
+    expect(
+      isCorsOriginAllowed({
+        origin: 'https://api.clearbase.example.com',
+        path: '/oauth/authorize',
+        ...productionInput,
+      })
+    ).toBe(true);
+  });
+
+  it.each(['/api/users', '/mcp', '/oauth/token', '/oauth/register'])(
+    'does not broaden the ClearBase backend origin to %s',
+    (path) => {
+      expect(
+        isCorsOriginAllowed({
+          origin: 'https://api.clearbase.example.com',
+          path,
+          ...productionInput,
+        })
+      ).toBe(false);
+    }
+  );
+
   it('allows requests without a browser origin and development origins', () => {
     expect(
       isCorsOriginAllowed({
@@ -70,6 +94,16 @@ describe('ClearBase CORS policy', () => {
       isCorsOriginAllowed({
         origin: 'https://evil.chatgpt.com',
         path: '/oauth/token',
+        ...productionInput,
+      })
+    ).toBe(false);
+  });
+
+  it('rejects lookalike ClearBase backend origins', () => {
+    expect(
+      isCorsOriginAllowed({
+        origin: 'https://api.clearbase.example.com.evil.example',
+        path: '/oauth/authorize',
         ...productionInput,
       })
     ).toBe(false);

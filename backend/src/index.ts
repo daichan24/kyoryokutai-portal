@@ -84,9 +84,13 @@ if (process.env.NODE_ENV === 'production') {
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
   : ['http://localhost:5173'];
+const backendOrigin = process.env.BACKEND_PUBLIC_URL
+  ? new URL(process.env.BACKEND_PUBLIC_URL).origin
+  : undefined;
 
 app.use(cors(createCorsOptionsDelegate({
   allowedOrigins,
+  backendOrigin,
   isDevelopment: process.env.NODE_ENV === 'development',
 })));
 app.use(express.json());

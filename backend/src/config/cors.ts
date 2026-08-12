@@ -10,6 +10,8 @@ const CHATGPT_CONNECTION_PATHS = [
   /^\/\.well-known\/oauth-protected-resource(?:\/mcp)?$/,
 ];
 
+const CLEARBASE_OAUTH_FORM_PATH = /^\/oauth\/authorize$/;
+
 export function isChatGptConnectionPath(path: string): boolean {
   return CHATGPT_CONNECTION_PATHS.some((pattern) => pattern.test(path));
 }
@@ -18,16 +20,21 @@ export function isCorsOriginAllowed(input: {
   origin: string | undefined;
   path: string;
   allowedOrigins: readonly string[];
+  backendOrigin?: string;
   isDevelopment: boolean;
 }): boolean {
-  const { origin, path, allowedOrigins, isDevelopment } = input;
+  const { origin, path, allowedOrigins, backendOrigin, isDevelopment } = input;
   if (!origin) return true;
   if (isDevelopment || allowedOrigins.includes(origin)) return true;
+  if (backendOrigin && origin === backendOrigin && CLEARBASE_OAUTH_FORM_PATH.test(path)) {
+    return true;
+  }
   return origin === CHATGPT_ORIGIN && isChatGptConnectionPath(path);
 }
 
 export function createCorsOptionsDelegate(input: {
   allowedOrigins: readonly string[];
+  backendOrigin?: string;
   isDevelopment: boolean;
 }): CorsOptionsDelegate<Request> {
   return (req, callback) => {
@@ -40,6 +47,7 @@ export function createCorsOptionsDelegate(input: {
             origin,
             path: req.path,
             allowedOrigins: input.allowedOrigins,
+            backendOrigin: input.backendOrigin,
             isDevelopment: input.isDevelopment,
           })
         ) {
