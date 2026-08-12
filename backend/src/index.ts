@@ -45,6 +45,8 @@ import interviewNotesRoutes from './routes/interviewNotes';
 import interviewPollsRoutes from './routes/interviewPolls';
 import inventoryRoutes from './routes/inventory';
 import aiAccessRoutes from './routes/aiAccess';
+import aiOAuthRoutes from './routes/aiOAuth';
+import mcpHttpRoutes from './routes/mcpHttp';
 import { errorHandler } from './middleware/errorHandler';
 import { startCronJobs } from './jobs';
 import { assertProductionSecurityConfiguration } from './config/security';
@@ -100,6 +102,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 const slowRequestThresholdMs = Number(process.env.SLOW_REQUEST_THRESHOLD_MS || 2_000);
 app.use((req, res, next) => {
@@ -168,6 +171,8 @@ app.use('/api/interview-notes', interviewNotesRoutes);
 app.use('/api/interview-polls', interviewPollsRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/ai', aiAccessRoutes);
+app.use(aiOAuthRoutes);
+app.use(mcpHttpRoutes);
 
 // ルート登録確認ログ
 console.log('✅ [ROUTES] Registered routes:');

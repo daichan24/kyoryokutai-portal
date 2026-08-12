@@ -4,8 +4,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const apiBaseUrl = (process.env.CLEARBASE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
-
 function loadAiToken(): string | undefined {
   const environmentToken = process.env.CLEARBASE_AI_TOKEN?.trim();
   if (environmentToken) return environmentToken;
@@ -23,13 +21,17 @@ function loadAiToken(): string | undefined {
   }
 }
 
-const aiToken = loadAiToken();
+export type ClearBaseMcpServerOptions = {
+  apiBaseUrl: string;
+  aiToken: string;
+};
 
-if (!aiToken) {
-  throw new Error('ClearBase AI token is required in CLEARBASE_AI_TOKEN or the macOS Keychain.');
-}
-if (!aiToken.startsWith('cbai_')) {
-  throw new Error('CLEARBASE_AI_TOKEN is not a ClearBase AI connection token. Never use a user password here.');
+export function createClearBaseMcpServer(options: ClearBaseMcpServerOptions): McpServer {
+const apiBaseUrl = options.apiBaseUrl.replace(/\/$/, '');
+const aiToken = options.aiToken.trim();
+
+if (!aiToken.startsWith('cbai_') && !aiToken.startsWith('cboa_')) {
+  throw new Error('A ClearBase AI connection token is required. Never use a user password here.');
 }
 
 type ApiOptions = {
@@ -456,11 +458,24 @@ registerTool('clearbase_my_notepad_delete', {
   method: 'DELETE', operationId,
 })));
 
+return server;
+}
+
 async function main(): Promise<void> {
+  const aiToken = loadAiToken();
+  if (!aiToken) {
+    throw new Error('ClearBase AI token is required in CLEARBASE_AI_TOKEN or the macOS Keychain.');
+  }
+  const server = createClearBaseMcpServer({
+    apiBaseUrl: process.env.CLEARBASE_API_URL || 'http://localhost:3001',
+    aiToken,
+  });
   await server.connect(new StdioServerTransport());
 }
 
+if (require.main === module) {
 main().catch((error) => {
   console.error('ClearBase MCP server failed:', error);
   process.exit(1);
 });
+}

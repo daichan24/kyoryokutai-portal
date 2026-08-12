@@ -1,0 +1,24 @@
+{
+  "name": "clearbase",
+  "version": "0.1.0",
+  "description": "ChatGPTやCodexから本人のClearBase予定・タスク・ミッション・プロジェクト・メモを安全に操作します。",
+  "author": {
+    "name": "協力隊クリアベース運営"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ClearBase",
+    "shortDescription": "自分の予定とタスクをAIから操作",
+    "longDescription": "ClearBaseへログインした本人の予定・休み・タスク・ミッション・プロジェクト・メモを、通常の管理画面と同じデータへ安全に反映します。他のメンバーのデータや管理機能にはアクセスしません。",
+    "developerName": "協力隊クリアベース運営",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://kyoryokutai-frontend.onrender.com",
+    "defaultPrompt": [
+      "明日の予定を確認して、空いている時間を教えてください。",
+      "明日14時に会議の予定を追加してください。",
+      "今週のタスクと予定をまとめてください。"
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

@@ -23,6 +23,7 @@ type AccessTokenRecord = {
   name: string;
   tokenPrefix: string;
   scopes: AiScope[];
+  authType: 'MANUAL' | 'OAUTH';
   expiresAt: string | null;
   revokedAt: string | null;
   lastUsedAt: string | null;
@@ -40,9 +41,8 @@ const SCOPE_GROUPS: Array<{ label: string; read: AiScope; write: AiScope }> = [
 export const AiConnectionsSettings: React.FC = () => {
   const [capabilities, setCapabilities] = useState<CapabilityResponse | null>(null);
   const [tokens, setTokens] = useState<AccessTokenRecord[]>([]);
-  const [name, setName] = useState('自分のCodex');
+  const [name, setName] = useState('自分のローカルCodex');
   const [password, setPassword] = useState('');
-  const [expiresInDays, setExpiresInDays] = useState(90);
   const [selectedScopes, setSelectedScopes] = useState<AiScope[]>([]);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -77,7 +77,7 @@ export const AiConnectionsSettings: React.FC = () => {
       const response = await api.post<{ token: string }>('/api/ai/access-tokens', {
         name,
         currentPassword: password,
-        expiresInDays,
+        expiresInDays: null,
         scopes: selectedScopes,
       });
       setNewToken(response.data.token);
@@ -121,16 +121,22 @@ export const AiConnectionsSettings: React.FC = () => {
         </div>
       </div>
 
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-900/20">
+        <p className="font-medium text-blue-950 dark:text-blue-100">ChatGPT Workは自動接続です</p>
+        <p className="mt-1 text-sm text-blue-800 dark:text-blue-200">
+          ChatGPT側でClearBaseを追加すると、この画面とは別のログイン画面が開きます。接続は自動更新され、7日ごとの再設定はありません。下のトークン発行はローカルCodexを使う場合だけ必要です。
+        </p>
+      </div>
+
       {capabilities && capabilities.availableScopes.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
           現在の役割で利用できるAI操作は、まだ開放されていません。
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">新しいAI接続を発行</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">ローカルCodex用の接続を発行</h2>
+          <div className="mt-4">
             <Input label="接続名" value={name} onChange={(event) => setName(event.target.value)} />
-            <Input label="有効日数" type="number" min={1} max={365} value={expiresInDays} onChange={(event) => setExpiresInDays(Number(event.target.value))} />
           </div>
           <div className="mt-4 space-y-2">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">許可する操作</p>
@@ -179,7 +185,7 @@ export const AiConnectionsSettings: React.FC = () => {
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">{token.name}</p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {token.tokenPrefix}… / 期限: {token.expiresAt ? new Date(token.expiresAt).toLocaleDateString('ja-JP') : '無期限'} / 最終利用: {token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString('ja-JP') : '未使用'}
+                  {token.authType === 'OAUTH' ? 'ChatGPT自動接続' : `${token.tokenPrefix}…`} / {token.expiresAt ? `期限: ${new Date(token.expiresAt).toLocaleDateString('ja-JP')}` : '手動で解除するまで有効'} / 最終利用: {token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString('ja-JP') : '未使用'}
                 </p>
               </div>
               {token.revokedAt ? (

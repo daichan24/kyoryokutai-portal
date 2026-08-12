@@ -14,7 +14,7 @@ const createTokenSchema = z.object({
   name: z.string().trim().min(1).max(100),
   currentPassword: z.string().min(1),
   scopes: z.array(z.enum(AI_SCOPES)).min(1),
-  expiresInDays: z.number().int().min(1).max(365).default(90),
+  expiresInDays: z.number().int().min(1).max(365).nullable().optional().default(null),
 });
 
 router.get('/capabilities', async (req: AuthRequest, res) => {
@@ -33,6 +33,7 @@ router.get('/access-tokens', async (req: AuthRequest, res) => {
       name: true,
       tokenPrefix: true,
       scopes: true,
+      authType: true,
       expiresAt: true,
       revokedAt: true,
       lastUsedAt: true,
@@ -67,13 +68,16 @@ router.post('/access-tokens', aiTokenIssueRateLimit, async (req: AuthRequest, re
         tokenPrefix: generated.tokenPrefix,
         tokenHash: generated.tokenHash,
         scopes: [...new Set(data.scopes)],
-        expiresAt: new Date(Date.now() + data.expiresInDays * 24 * 60 * 60 * 1000),
+        expiresAt: data.expiresInDays
+          ? new Date(Date.now() + data.expiresInDays * 24 * 60 * 60 * 1000)
+          : null,
       },
       select: {
         id: true,
         name: true,
         tokenPrefix: true,
         scopes: true,
+        authType: true,
         expiresAt: true,
         createdAt: true,
       },

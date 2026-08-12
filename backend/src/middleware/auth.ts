@@ -4,8 +4,8 @@ import jwt from 'jsonwebtoken';
 import type { Prisma, Role } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { getJwtSecret } from '../config/security';
-import { hashAiAccessToken, isAiAccessToken } from '../security/aiAccessToken';
-import { isAiWriteMethod, requiredAiScope } from '../security/aiPermissions';
+import { hashAiAccessToken, isAiAccessToken, isAiOAuthAccessToken } from '../security/aiAccessToken';
+import { isAiWriteMethod, requiredAiScope, scopesAllowedForRole } from '../security/aiPermissions';
 import { isSessionPasswordVersionValid } from '../security/sessionVersion';
 
 export type AuthContext =
@@ -170,8 +170,12 @@ function registerAiAudit(
 }
 
 async function authenticateAiToken(req: AuthRequest, res: Response, token: string): Promise<boolean> {
-  const tokenRecord = await prisma.aiAccessToken.findUnique({
-    where: { tokenHash: hashAiAccessToken(token) },
+  const tokenHash = hashAiAccessToken(token);
+  const oauthAccessToken = isAiOAuthAccessToken(token);
+  const tokenRecord = await prisma.aiAccessToken.findFirst({
+    where: oauthAccessToken
+      ? { authType: 'OAUTH', accessTokenHash: tokenHash }
+      : { authType: 'MANUAL', tokenHash },
     include: {
       user: { select: { id: true, email: true, role: true } },
     },
@@ -180,14 +184,21 @@ async function authenticateAiToken(req: AuthRequest, res: Response, token: strin
   if (
     !tokenRecord
     || tokenRecord.revokedAt
-    || (tokenRecord.expiresAt && tokenRecord.expiresAt <= new Date())
+    || (oauthAccessToken
+      ? !tokenRecord.accessTokenExpiresAt || tokenRecord.accessTokenExpiresAt <= new Date()
+      : tokenRecord.expiresAt && tokenRecord.expiresAt <= new Date())
   ) {
     res.status(401).json({ error: 'AI接続が無効または期限切れです' });
     return false;
   }
 
   const requiredScope = requiredAiScope(req.method, req.originalUrl);
-  if (!requiredScope || !tokenRecord.scopes.includes(requiredScope)) {
+  const currentlyAllowedScopes = new Set(scopesAllowedForRole(tokenRecord.user.role));
+  if (
+    !requiredScope
+    || !tokenRecord.scopes.includes(requiredScope)
+    || !currentlyAllowedScopes.has(requiredScope)
+  ) {
     res.status(403).json({ error: 'このAI接続には該当操作の権限がありません' });
     return false;
   }
@@ -199,6 +210,8 @@ async function authenticateAiToken(req: AuthRequest, res: Response, token: strin
       res.status(403).json({ error: 'AI接続では本人以外のスケジュールを取得できません' });
       return false;
     }
+    // 参加者として見える他人の予定もAIには返さず、必ず本人作成分へ固定する。
+    req.query.userId = tokenRecord.userId;
   }
 
   // AI接続は、MASTERでも初期段階では本人データのみを扱う。
