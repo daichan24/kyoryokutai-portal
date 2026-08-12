@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import prisma from '../src/lib/prisma';
+import { AI_SCOPES } from '../src/security/aiPermissions';
 
 const baseUrl = (process.env.CLEARBASE_SMOKE_BASE_URL || 'http://localhost:3012').replace(
   /\/$/,
@@ -53,6 +54,16 @@ async function main() {
   });
   userId = user.id;
 
+  const challengeResponse = await fetch(`${baseUrl}/mcp`);
+  assert(challengeResponse.status === 401, 'MCP did not issue an OAuth challenge');
+  const authenticateHeader = challengeResponse.headers.get('www-authenticate') || '';
+  const requestedScopeString = authenticateHeader.match(/\bscope="([^"]+)"/)?.[1] || '';
+  const requestedScopes = requestedScopeString.split(/\s+/).filter(Boolean);
+  assert(
+    JSON.stringify(requestedScopes) === JSON.stringify(AI_SCOPES),
+    `MCP OAuth challenge did not request every self-service scope: ${requestedScopeString}`
+  );
+
   const protectedMetadataResponse = await fetch(`${baseUrl}/.well-known/oauth-protected-resource`);
   const protectedMetadata = await readJson(protectedMetadataResponse);
   assert(protectedMetadataResponse.ok, 'Protected resource metadata failed');
@@ -89,6 +100,7 @@ async function main() {
   authorization.searchParams.set('code_challenge', challenge);
   authorization.searchParams.set('code_challenge_method', 'S256');
   authorization.searchParams.set('resource', `${baseUrl}/mcp`);
+  authorization.searchParams.set('scope', requestedScopeString);
   authorization.searchParams.set('state', 'smoke-state');
 
   const authorizationPage = await fetch(authorization);
@@ -135,6 +147,71 @@ async function main() {
     typeof tokens.refresh_token === 'string' && tokens.refresh_token.startsWith('cbor_'),
     'OAuth refresh token missing'
   );
+  assert(tokens.scope === requestedScopeString, 'OAuth token did not retain every requested scope');
+
+  const authHeaders = () => ({
+    Authorization: `Bearer ${tokens.access_token}`,
+    'Content-Type': 'application/json',
+    'Idempotency-Key': `oauth-smoke:${crypto.randomUUID()}`,
+    'X-Request-Id': crypto.randomUUID(),
+  });
+  const scheduleWriteResponse = await fetch(`${baseUrl}/api/schedules`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      date: '2099-12-01',
+      startTime: '09:00',
+      endTime: '10:00',
+      title: 'OAuth smoke schedule',
+      activityDescription: 'OAuth smoke schedule',
+      locationText: 'OAuth smoke location',
+      linkKind: 'UNSET',
+      reportable: false,
+    }),
+  });
+  const scheduleWriteBody = await scheduleWriteResponse.text();
+  assert(
+    scheduleWriteResponse.status === 201,
+    `OAuth token could not create its own schedule (${scheduleWriteResponse.status}): ${scheduleWriteBody.slice(0, 300)}`
+  );
+
+  const notepadWriteResponse = await fetch(`${baseUrl}/api/me/notepad`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ title: 'OAuth smoke memo', content: 'scope check' }),
+  });
+  const notepadWriteBody = await notepadWriteResponse.text();
+  assert(
+    notepadWriteResponse.status === 201,
+    `OAuth token could not create its own memo (${notepadWriteResponse.status}): ${notepadWriteBody.slice(0, 300)}`
+  );
+
+  const missionWriteResponse = await fetch(`${baseUrl}/api/missions`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ missionName: 'OAuth smoke mission', missionType: 'SUB' }),
+  });
+  const mission = await readJson(missionWriteResponse);
+  assert(missionWriteResponse.status === 201, 'OAuth token could not create its own mission');
+  assert(typeof mission.id === 'string', 'OAuth smoke mission id missing');
+
+  const projectWriteResponse = await fetch(`${baseUrl}/api/projects`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      projectName: 'OAuth smoke project',
+      missionId: mission.id,
+      tags: [],
+    }),
+  });
+  assert(projectWriteResponse.status === 201, 'OAuth token could not create its own project');
+
+  const taskWriteResponse = await fetch(`${baseUrl}/api/missions/${mission.id}/tasks`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ title: 'OAuth smoke task' }),
+  });
+  assert(taskWriteResponse.status === 201, 'OAuth token could not create its own task');
 
   const blockedOtherUser = await fetch(`${baseUrl}/api/schedules?userId=another-user`, {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
@@ -219,6 +296,12 @@ async function main() {
       metadata: 'ok',
       dcr: 'ok',
       pkce: 'ok',
+      allSelfScopes: 'ok',
+      scheduleWrite: 'ok',
+      taskWrite: 'ok',
+      notepadWrite: 'ok',
+      missionWrite: 'ok',
+      projectWrite: 'ok',
       selfOnly: 'ok',
       adminBlocked: 'ok',
       mcpInitialize: 'ok',

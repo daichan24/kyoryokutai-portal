@@ -3,6 +3,11 @@ import { execFileSync } from 'child_process';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import {
+  AI_SCOPE_STRING,
+  requiredAiScope,
+  type AiScope,
+} from '../security/aiPermissions';
 
 function loadAiToken(): string | undefined {
   const environmentToken = process.env.CLEARBASE_AI_TOKEN?.trim();
@@ -26,6 +31,79 @@ export type ClearBaseMcpServerOptions = {
   aiToken: string;
 };
 
+const fieldLabels: Record<string, string> = {
+  date: '日付',
+  endDate: '終了日',
+  startTime: '開始時刻',
+  endTime: '終了時刻',
+  title: 'タイトル',
+  locationText: '場所',
+  missionId: 'ミッション',
+  missionName: 'ミッション名',
+  missionType: 'ミッション種別',
+  projectId: 'プロジェクト',
+  projectName: 'プロジェクト名',
+  taskId: 'タスク',
+  scheduleId: '予定',
+  notepadId: 'メモ',
+  dueDate: '期限日',
+};
+
+type ValidationIssue = {
+  path?: unknown;
+  message?: unknown;
+};
+
+function issueDescription(issue: ValidationIssue): string | null {
+  if (typeof issue.message !== 'string') return null;
+  const rawPath = Array.isArray(issue.path) ? issue.path.map(String).join('.') : '';
+  const lastPath = rawPath.split('.').filter(Boolean).at(-1) || '';
+  const label = fieldLabels[lastPath] || rawPath;
+  return label ? `${label}: ${issue.message}` : issue.message;
+}
+
+export function formatClearBaseApiError(payload: unknown): string {
+  if (typeof payload === 'string') return payload;
+  if (Array.isArray(payload)) {
+    const issues = payload
+      .map((value) => (
+        typeof value === 'object' && value ? issueDescription(value as ValidationIssue) : null
+      ))
+      .filter((value): value is string => Boolean(value));
+    if (issues.length > 0) return issues.join('、');
+    return JSON.stringify(payload) ?? String(payload);
+  }
+  if (typeof payload === 'object' && payload) {
+    const record = payload as Record<string, unknown>;
+    if (Array.isArray(record.error)) return formatClearBaseApiError(record.error);
+    if (typeof record.details === 'string') return record.details;
+    if (typeof record.error === 'string') return record.error;
+  }
+  return JSON.stringify(payload) ?? String(payload);
+}
+
+class ClearBaseApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly requiredScope: AiScope | null,
+    detail: string,
+  ) {
+    const guidance = status === 400
+      ? '入力内容が不足または不正です。上記の項目をユーザーに確認してから、同じ操作をもう一度実行してください。'
+      : detail;
+    super(status === 400 ? `${guidance} 詳細: ${detail}` : `ClearBase API ${status}: ${detail}`);
+    this.name = 'ClearBaseApiError';
+  }
+}
+
+export function buildMcpReauthorizationChallenge(
+  apiBaseUrl: string,
+  requiredScope: AiScope,
+): string {
+  const normalizedBaseUrl = apiBaseUrl.replace(/\/$/, '');
+  return `Bearer resource_metadata="${normalizedBaseUrl}/.well-known/oauth-protected-resource", error="insufficient_scope", scope="${AI_SCOPE_STRING}", error_description="${requiredScope}を含むClearBase全本人操作権限での再接続が必要です"`;
+}
+
 export function createClearBaseMcpServer(options: ClearBaseMcpServerOptions): McpServer {
 const apiBaseUrl = options.apiBaseUrl.replace(/\/$/, '');
 const aiToken = options.aiToken.trim();
@@ -42,6 +120,7 @@ type ApiOptions = {
 
 async function callApi(path: string, options: ApiOptions = {}): Promise<unknown> {
   const method = options.method || 'GET';
+  const scope = requiredAiScope(method, path);
   const headers: Record<string, string> = {
     Authorization: `Bearer ${aiToken}`,
     Accept: 'application/json',
@@ -64,10 +143,7 @@ async function callApi(path: string, options: ApiOptions = {}): Promise<unknown>
     : { error: await response.text() };
 
   if (!response.ok) {
-    const detail = typeof payload === 'object' && payload && 'error' in payload
-      ? JSON.stringify((payload as { error: unknown }).error)
-      : JSON.stringify(payload);
-    throw new Error(`ClearBase API ${response.status}: ${detail}`);
+    throw new ClearBaseApiError(response.status, scope, formatClearBaseApiError(payload));
   }
   return payload;
 }
@@ -79,6 +155,20 @@ function toolResult(value: unknown) {
 }
 
 function toolError(error: unknown) {
+  if (error instanceof ClearBaseApiError && error.status === 403 && error.requiredScope) {
+    return {
+      isError: true,
+      content: [{
+        type: 'text' as const,
+        text: 'このAI接続には、この操作に必要な権限がありません。ClearBaseとの接続を解除して再接続し、表示された本人操作権限を許可してください。',
+      }],
+      _meta: {
+        'mcp/www_authenticate': [
+          buildMcpReauthorizationChallenge(apiBaseUrl, error.requiredScope),
+        ],
+      },
+    };
+  }
   return {
     isError: true,
     content: [{
@@ -153,7 +243,7 @@ const scheduleInput = {
   endDate: z.string().optional().describe('終了日 YYYY-MM-DD。省略時は開始日と同日'),
   startTime: z.string().regex(/^\d{2}:\d{2}$/).default('09:00'),
   endTime: z.string().regex(/^\d{2}:\d{2}$/).default('17:00'),
-  title: z.string().min(1).max(200),
+  title: z.string().min(1).max(200).describe('予定のタイトル。わからない場合は実行前にユーザーへ確認'),
   activityDescription: z.string().optional(),
   locationText: z.string().min(1).describe('通常予定では必須。休日には不要'),
   freeNote: z.string().optional(),
@@ -168,7 +258,7 @@ const scheduleInput = {
 
 registerTool('clearbase_my_schedule_create', {
   title: '自分の予定を追加',
-  description: '本人のカレンダーへ通常予定を追加します。通常予定は場所が必要です。',
+  description: '本人のカレンダーへ通常予定を追加します。日付・タイトル・場所が不足している場合は、保存を試みる前にユーザーへ確認してください。',
   inputSchema: scheduleInput,
   annotations: writeAnnotations,
 }, async ({ operationId, ...input }) => runTool(() => callApi('/api/schedules', {
@@ -177,7 +267,7 @@ registerTool('clearbase_my_schedule_create', {
 
 registerTool('clearbase_my_day_off_create', {
   title: '自分の休日を追加',
-  description: '本人のカレンダーへ休日・有給・無休・代休・時間調整を追加します。休日は場所とプロジェクト連携が不要です。',
+  description: '本人のカレンダーへ休日・有給・無休・代休・時間調整を追加します。日付が不明ならユーザーへ確認してください。休日は場所とプロジェクト連携が不要です。',
   inputSchema: {
     date: z.string().describe('開始日 YYYY-MM-DD'),
     endDate: z.string().optional().describe('終了日 YYYY-MM-DD'),
@@ -204,7 +294,7 @@ registerTool('clearbase_my_day_off_create', {
 
 registerTool('clearbase_my_schedule_update', {
   title: '自分の予定を更新',
-  description: '本人が作成した予定・休日を部分更新します。',
+  description: '本人が作成した予定・休日を部分更新します。対象が特定できない場合は予定一覧で候補を確認し、それでも不明ならユーザーへ確認してください。',
   inputSchema: {
     scheduleId: z.string(),
     date: z.string().optional(),
@@ -258,7 +348,7 @@ registerTool('clearbase_my_tasks_list', {
 }));
 
 const taskFields = {
-  title: z.string().min(1),
+  title: z.string().min(1).describe('タスクのタイトル。わからない場合は実行前にユーザーへ確認'),
   description: z.string().optional(),
   status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED']).optional(),
   projectId: z.string().nullable().optional(),
@@ -275,9 +365,9 @@ const taskFields = {
 
 registerTool('clearbase_my_task_create', {
   title: '自分のタスクを追加',
-  description: '本人のミッションにタスクを追加します。dueDateを指定した場合、既存の本体処理によりカレンダー予定も連動作成されます。',
+  description: '本人のミッションにタスクを追加します。ミッションまたはタイトルが不明な場合は、まず自分のミッション・プロジェクト一覧で候補を確認し、特定できなければユーザーへ質問してください。dueDateを指定するとカレンダー予定も連動作成されます。',
   inputSchema: {
-    missionId: z.string(),
+    missionId: z.string().describe('追加先ミッションのID。clearbase_my_contextで確認'),
     ...taskFields,
     operationId: z.string().max(80).optional(),
   },
@@ -288,10 +378,10 @@ registerTool('clearbase_my_task_create', {
 
 registerTool('clearbase_my_task_update', {
   title: '自分のタスクを更新',
-  description: '本人のタスクを更新します。期限の追加・変更は連動カレンダー予定にも反映されます。',
+  description: '本人のタスクを更新します。対象ミッション・タスクが特定できない場合は一覧で候補を確認し、それでも不明ならユーザーへ質問してください。期限の追加・変更は連動カレンダー予定にも反映されます。',
   inputSchema: {
-    missionId: z.string(),
-    taskId: z.string(),
+    missionId: z.string().describe('対象ミッションのID'),
+    taskId: z.string().describe('対象タスクのID'),
     ...Object.fromEntries(Object.entries(taskFields).map(([key, schema]) => [key, schema.optional()])),
     operationId: z.string().max(80).optional(),
   },
@@ -313,7 +403,7 @@ registerTool('clearbase_my_task_delete', {
 
 registerTool('clearbase_my_mission_create', {
   title: '自分のミッションを追加',
-  description: '本人のミッションを追加します。',
+  description: '本人のミッションを追加します。ミッション名または種別が不明ならユーザーへ確認してください。',
   inputSchema: {
     missionName: z.string().min(1),
     missionType: z.enum(['PRIMARY', 'SUB']),
@@ -368,7 +458,7 @@ const projectFields = {
 
 registerTool('clearbase_my_project_create', {
   title: '自分のプロジェクトを追加',
-  description: '本人のプロジェクトを追加し、必要なら本人のミッションに紐づけます。',
+  description: '本人のプロジェクトを追加し、必要なら本人のミッションに紐づけます。プロジェクト名が不明ならユーザーへ確認してください。',
   inputSchema: { ...projectFields, operationId: z.string().max(80).optional() },
   annotations: writeAnnotations,
 }, async ({ operationId, ...input }) => runTool(() => callApi('/api/projects', {

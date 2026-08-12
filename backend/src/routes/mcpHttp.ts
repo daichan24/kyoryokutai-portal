@@ -7,6 +7,7 @@ import {
   isAiAccessToken,
   isAiOAuthAccessToken,
 } from '../security/aiAccessToken';
+import { AI_SCOPE_STRING } from '../security/aiPermissions';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ function unauthorized(req: Request, res: Response): void {
   const metadataUrl = `${publicBaseUrl(req)}/.well-known/oauth-protected-resource`;
   res.setHeader(
     'WWW-Authenticate',
-    `Bearer resource_metadata="${metadataUrl}", scope="schedules:read:self"`
+    `Bearer resource_metadata="${metadataUrl}", scope="${AI_SCOPE_STRING}"`
   );
   res.status(401).json({
     jsonrpc: '2.0',

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AI_SCOPES, requiredAiScope, scopesAllowedForRole } from './aiPermissions';
+import {
+  AI_SCOPES,
+  AI_SCOPE_STRING,
+  requiredAiScope,
+  scopesAllowedForRole,
+} from './aiPermissions';
 
 describe('AI permission routing', () => {
   it('maps the core self-service endpoints to the narrowest scope', () => {
@@ -23,5 +28,11 @@ describe('AI permission routing', () => {
     expect(scopesAllowedForRole('GOVERNMENT')).toEqual([]);
     expect(scopesAllowedForRole('MEMBER')).toEqual(AI_SCOPES);
     expect(scopesAllowedForRole('MASTER')).toEqual(AI_SCOPES);
+  });
+
+  it('advertises every self-service scope during OAuth connection', () => {
+    expect(AI_SCOPE_STRING.split(' ')).toEqual(AI_SCOPES);
+    expect(AI_SCOPE_STRING).toContain('schedules:write:self');
+    expect(AI_SCOPE_STRING).toContain('tasks:write:self');
   });
 });

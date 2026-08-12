@@ -15,6 +15,8 @@ export const AI_SCOPES = [
 
 export type AiScope = (typeof AI_SCOPES)[number];
 
+export const AI_SCOPE_STRING = AI_SCOPES.join(' ');
+
 type ScopeRule = {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: RegExp;
