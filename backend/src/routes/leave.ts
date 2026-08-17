@@ -341,6 +341,7 @@ router.delete('/paid-leave/entries/:id', async (req: AuthRequest, res) => {
   if (!isStaff(req.user!.role)) return res.status(403).json({ error: '権限がありません' });
   try {
     const entry = await prisma.paidLeaveEntry.findUnique({ where: { id: req.params.id } });
+    if (!entry) return res.status(404).json({ error: '見つかりません' });
     await prisma.paidLeaveEntry.delete({ where: { id: req.params.id } });
     await deleteLinkedSchedule(entry?.scheduleId);
     res.json({ ok: true });

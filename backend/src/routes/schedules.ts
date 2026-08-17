@@ -1215,20 +1215,25 @@ router.post('/:id/respond', async (req: AuthRequest, res) => {
     });
 
     // 作成者へ通知
-    if (decision === 'APPROVED') {
-      await notifyScheduleInviteApproved(
-        participant.schedule.userId,
-        participant.user.name,
-        participant.schedule.activityDescription,
-        id
-      );
-    } else {
-      await notifyScheduleInviteRejected(
-        participant.schedule.userId,
-        participant.user.name,
-        participant.schedule.activityDescription,
-        id
-      );
+    try {
+      if (decision === 'APPROVED') {
+        await notifyScheduleInviteApproved(
+          participant.schedule.userId,
+          participant.user.name,
+          participant.schedule.activityDescription,
+          id
+        );
+      } else {
+        await notifyScheduleInviteRejected(
+          participant.schedule.userId,
+          participant.user.name,
+          participant.schedule.activityDescription,
+          id
+        );
+      }
+    } catch (notifyError) {
+      console.error('Failed to notify schedule invite response:', notifyError);
+      // 通知エラーは無視して続行
     }
 
     res.json(updatedParticipant);

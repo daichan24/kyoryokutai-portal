@@ -108,12 +108,12 @@ export async function calculateGoalProgress(goalId: string): Promise<number> {
  * プロジェクトタスクの進捗を更新
  */
 export async function updateProjectTaskProgress(taskId: string, newProgress: number) {
-  await prisma.projectTask.update({
+  const task = await prisma.projectTask.update({
     where: { id: taskId },
     data: { progress: newProgress },
   });
 
-  return await calculateProjectProgress(taskId);
+  return await calculateProjectProgress(task.projectId);
 }
 
 /**
