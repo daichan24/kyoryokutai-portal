@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Folder, FileText, Users
 import { api } from '../utils/api';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { Modal } from '../components/common/Modal';
 
 interface Contact {
   id: string;
@@ -397,83 +398,85 @@ export const Handover: React.FC = () => {
       </div>
 
       {/* カテゴリ作成ダイアログ */}
-      {categoryDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">カテゴリ追加</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">カテゴリ名</label>
-                <input
-                  type="text"
-                  value={categoryForm.name}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">説明</label>
-                <textarea
-                  value={categoryForm.description}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 mt-6">
-              <Button variant="outline" onClick={() => setCategoryDialog(false)}>
-                キャンセル
-              </Button>
-              <Button onClick={handleCreateCategory}>作成</Button>
-            </div>
+      <Modal
+        isOpen={categoryDialog}
+        onClose={() => setCategoryDialog(false)}
+        title="カテゴリ追加"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setCategoryDialog(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleCreateCategory}>作成</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">カテゴリ名</label>
+            <input
+              type="text"
+              value={categoryForm.name}
+              onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">説明</label>
+            <textarea
+              value={categoryForm.description}
+              onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+            />
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* フォルダ作成ダイアログ */}
-      {folderDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">年度フォルダ追加</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">年度</label>
-                <input
-                  type="number"
-                  value={folderForm.fiscalYear}
-                  onChange={(e) => setFolderForm({ ...folderForm, fiscalYear: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">フォルダ名</label>
-                <input
-                  type="text"
-                  value={folderForm.title}
-                  onChange={(e) => setFolderForm({ ...folderForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">説明</label>
-                <textarea
-                  value={folderForm.description}
-                  onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 mt-6">
-              <Button variant="outline" onClick={() => setFolderDialog(false)}>
-                キャンセル
-              </Button>
-              <Button onClick={handleCreateFolder}>作成</Button>
-            </div>
+      <Modal
+        isOpen={folderDialog}
+        onClose={() => setFolderDialog(false)}
+        title="年度フォルダ追加"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setFolderDialog(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleCreateFolder}>作成</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">年度</label>
+            <input
+              type="number"
+              value={folderForm.fiscalYear}
+              onChange={(e) => setFolderForm({ ...folderForm, fiscalYear: parseInt(e.target.value) })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">フォルダ名</label>
+            <input
+              type="text"
+              value={folderForm.title}
+              onChange={(e) => setFolderForm({ ...folderForm, title: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">説明</label>
+            <textarea
+              value={folderForm.description}
+              onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700"
+            />
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* 文書作成/編集ダイアログ */}
       {documentDialog && (
