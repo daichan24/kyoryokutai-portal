@@ -21,8 +21,9 @@ router.get('/categories', authenticate, async (req: AuthRequest, res) => {
       },
     });
     res.json(categories);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Fetch handover categories error:', error);
+    res.status(500).json({ error: 'カテゴリの取得に失敗しました' });
   }
 });
 
@@ -43,8 +44,9 @@ router.post('/categories', authenticate, async (req: AuthRequest, res) => {
       },
     });
     res.json(category);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Create handover category error:', error);
+    res.status(500).json({ error: 'カテゴリの作成に失敗しました' });
   }
 });
 
@@ -58,8 +60,9 @@ router.put('/categories/:id', authenticate, async (req: AuthRequest, res) => {
       data: { name, type, description },
     });
     res.json(category);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Update handover category error:', error);
+    res.status(500).json({ error: 'カテゴリの更新に失敗しました' });
   }
 });
 
@@ -69,8 +72,9 @@ router.delete('/categories/:id', authenticate, async (req: AuthRequest, res) => 
     const { id } = req.params;
     await prisma.handoverCategory.delete({ where: { id } });
     res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Delete handover category error:', error);
+    res.status(500).json({ error: 'カテゴリの削除に失敗しました' });
   }
 });
 
@@ -93,8 +97,9 @@ router.post('/folders', authenticate, async (req: AuthRequest, res) => {
       },
     });
     res.json(folder);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Create handover folder error:', error);
+    res.status(500).json({ error: 'フォルダの作成に失敗しました' });
   }
 });
 
@@ -108,8 +113,9 @@ router.put('/folders/:id', authenticate, async (req: AuthRequest, res) => {
       data: { title, description, fiscalYear },
     });
     res.json(folder);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Update handover folder error:', error);
+    res.status(500).json({ error: 'フォルダの更新に失敗しました' });
   }
 });
 
@@ -119,8 +125,9 @@ router.delete('/folders/:id', authenticate, async (req: AuthRequest, res) => {
     const { id } = req.params;
     await prisma.handoverFolder.delete({ where: { id } });
     res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Delete handover folder error:', error);
+    res.status(500).json({ error: 'フォルダの削除に失敗しました' });
   }
 });
 
@@ -137,8 +144,9 @@ router.get('/folders/:folderId/documents', authenticate, async (req: AuthRequest
       },
     });
     res.json(documents);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Fetch handover documents error:', error);
+    res.status(500).json({ error: '文書一覧の取得に失敗しました' });
   }
 });
 
@@ -159,8 +167,9 @@ router.get('/documents/:id', authenticate, async (req: AuthRequest, res) => {
       },
     });
     res.json(document);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Fetch handover document error:', error);
+    res.status(500).json({ error: '文書の取得に失敗しました' });
   }
 });
 
@@ -193,8 +202,9 @@ router.post('/documents', authenticate, async (req: AuthRequest, res) => {
       },
     });
     res.json(document);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Create handover document error:', error);
+    res.status(500).json({ error: '文書の作成に失敗しました' });
   }
 });
 
@@ -222,8 +232,9 @@ router.put('/documents/:id', authenticate, async (req: AuthRequest, res) => {
       },
     });
     res.json(document);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Update handover document error:', error);
+    res.status(500).json({ error: '文書の更新に失敗しました' });
   }
 });
 
@@ -233,8 +244,9 @@ router.delete('/documents/:id', authenticate, async (req: AuthRequest, res) => {
     const { id } = req.params;
     await prisma.handoverDocument.delete({ where: { id } });
     res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Delete handover document error:', error);
+    res.status(500).json({ error: '文書の削除に失敗しました' });
   }
 });
 

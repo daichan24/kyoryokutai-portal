@@ -265,7 +265,9 @@ router.get('/summary', async (req: AuthRequest, res) => {
       },
     });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message });
+    if (err.status === 400) return res.status(400).json({ error: '対象ユーザーの指定が必要です' });
+    console.error('Fetch leave summary error:', err);
+    res.status(500).json({ error: '休暇情報の取得に失敗しました' });
   }
 });
 
@@ -293,7 +295,8 @@ router.put('/paid-leave/allocation', async (req: AuthRequest, res) => {
     res.json(result);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Update paid leave allocation error:', err);
+    res.status(500).json({ error: '有給付与日数の設定に失敗しました' });
   }
 });
 
@@ -333,7 +336,8 @@ router.post('/paid-leave/entries', async (req: AuthRequest, res) => {
     res.json(entry);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Create paid leave entry error:', err);
+    res.status(500).json({ error: '有給使用記録の作成に失敗しました' });
   }
 });
 
@@ -346,7 +350,8 @@ router.delete('/paid-leave/entries/:id', async (req: AuthRequest, res) => {
     await deleteLinkedSchedule(entry?.scheduleId);
     res.json({ ok: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Delete paid leave entry error:', err);
+    res.status(500).json({ error: '有給使用記録の削除に失敗しました' });
   }
 });
 
@@ -378,7 +383,8 @@ router.post('/unpaid-leave/entries', async (req: AuthRequest, res) => {
     res.json(entry);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Create unpaid leave entry error:', err);
+    res.status(500).json({ error: '無休使用記録の作成に失敗しました' });
   }
 });
 
@@ -391,7 +397,8 @@ router.delete('/unpaid-leave/entries/:id', async (req: AuthRequest, res) => {
     await deleteLinkedSchedule(entry.scheduleId);
     res.json({ ok: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Delete unpaid leave entry error:', err);
+    res.status(500).json({ error: '無休使用記録の削除に失敗しました' });
   }
 });
 
@@ -422,7 +429,9 @@ router.get('/compensatory', async (req: AuthRequest, res) => {
     });
     res.json(leaves);
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message });
+    if (err.status === 400) return res.status(400).json({ error: '対象ユーザーの指定が必要です' });
+    console.error('Fetch compensatory leave error:', err);
+    res.status(500).json({ error: '代休情報の取得に失敗しました' });
   }
 });
 
@@ -456,7 +465,8 @@ router.post('/compensatory', async (req: AuthRequest, res) => {
     res.json(leave);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Create compensatory leave error:', err);
+    res.status(500).json({ error: '代休の作成に失敗しました' });
   }
 });
 
@@ -479,7 +489,8 @@ router.put('/compensatory/:id', async (req: AuthRequest, res) => {
     res.json(updated);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Update compensatory leave error:', err);
+    res.status(500).json({ error: '代休の更新に失敗しました' });
   }
 });
 
@@ -491,7 +502,8 @@ router.delete('/compensatory/:id', async (req: AuthRequest, res) => {
     await prisma.compensatoryLeave.delete({ where: { id: req.params.id } });
     res.json({ ok: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Delete compensatory leave error:', err);
+    res.status(500).json({ error: '代休の削除に失敗しました' });
   }
 });
 
@@ -509,7 +521,8 @@ router.post('/compensatory/:id/confirm', async (req: AuthRequest, res) => {
     );
     res.json(updated);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Confirm compensatory leave error:', err);
+    res.status(500).json({ error: '代休の確認処理に失敗しました' });
   }
 });
 
@@ -555,7 +568,8 @@ router.post('/compensatory/:id/usage', async (req: AuthRequest, res) => {
     res.json(usage);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Create compensatory leave usage error:', err);
+    res.status(500).json({ error: '代休使用記録の作成に失敗しました' });
   }
 });
 
@@ -575,7 +589,8 @@ router.delete('/compensatory/usage/:usageId', async (req: AuthRequest, res) => {
     }
     res.json({ ok: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Delete compensatory leave usage error:', err);
+    res.status(500).json({ error: '代休使用記録の削除に失敗しました' });
   }
 });
 
@@ -610,7 +625,9 @@ router.get('/time-adjustments', async (req: AuthRequest, res) => {
     });
     res.json(entries);
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message });
+    if (err.status === 400) return res.status(400).json({ error: '対象ユーザーの指定が必要です' });
+    console.error('Fetch time adjustments error:', err);
+    res.status(500).json({ error: '時間調整情報の取得に失敗しました' });
   }
 });
 
@@ -665,7 +682,8 @@ router.post('/time-adjustments', async (req: AuthRequest, res) => {
     res.json(entry);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Create time adjustment error:', err);
+    res.status(500).json({ error: '時間調整の作成に失敗しました' });
   }
 });
 
@@ -713,7 +731,8 @@ router.put('/time-adjustments/:id', async (req: AuthRequest, res) => {
     res.json(updated);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Update time adjustment error:', err);
+    res.status(500).json({ error: '時間調整の更新に失敗しました' });
   }
 });
 
@@ -726,7 +745,8 @@ router.delete('/time-adjustments/:id', async (req: AuthRequest, res) => {
     await deleteLinkedSchedule(existing.usedScheduleId);
     res.json({ ok: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Delete time adjustment error:', err);
+    res.status(500).json({ error: '時間調整の削除に失敗しました' });
   }
 });
 
@@ -743,7 +763,8 @@ router.post('/time-adjustments/:id/confirm', async (req: AuthRequest, res) => {
     );
     res.json(updated);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Confirm time adjustment error:', err);
+    res.status(500).json({ error: '時間調整の確認処理に失敗しました' });
   }
 });
 
@@ -797,7 +818,8 @@ router.delete('/compensatory/from-schedule/:scheduleId', async (req: AuthRequest
     await prisma.compensatoryLeave.deleteMany({ where: { scheduleId, userId } });
     res.json({ ok: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    console.error('Delete compensatory leave from schedule error:', err);
+    res.status(500).json({ error: 'スケジュール連動の代休解除に失敗しました' });
   }
 });
 
@@ -875,7 +897,8 @@ router.post('/compensatory/from-schedule', async (req: AuthRequest, res) => {
     res.json({ leave, workHours, leaveHours, timeAdjustmentHours, constraintMinutes, workMinutes });
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    console.error('Create compensatory leave from schedule error:', err);
+    res.status(500).json({ error: 'スケジュール連動の代休作成に失敗しました' });
   }
 });
 

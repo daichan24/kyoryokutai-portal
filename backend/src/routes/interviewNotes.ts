@@ -105,7 +105,9 @@ router.get('/', async (req: AuthRequest, res) => {
     res.json({ note, snsAccounts });
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
-    res.status(error.statusCode || 500).json({ error: error.message || '面談メモの取得に失敗しました' });
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    console.error('Fetch interview note error:', error);
+    res.status(500).json({ error: '面談メモの取得に失敗しました' });
   }
 });
 
@@ -137,7 +139,9 @@ router.put('/', async (req: AuthRequest, res) => {
     res.json(note);
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
-    res.status(error.statusCode || 500).json({ error: error.message || '面談メモの保存に失敗しました' });
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });
+    console.error('Save interview note error:', error);
+    res.status(500).json({ error: '面談メモの保存に失敗しました' });
   }
 });
 
