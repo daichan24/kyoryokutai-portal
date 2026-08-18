@@ -43,12 +43,6 @@ function fiscalYearRange(fyStartYear: number): { start: Date; end: Date } {
   return { start, end };
 }
 
-const HIDDEN_MATRIX_MEMBER_NAME = 'さとうだいち';
-
-function filterMatrixMembers<T extends { name: string }>(members: T[]): T[] {
-  return members.filter((m) => m.name !== HIDDEN_MATRIX_MEMBER_NAME);
-}
-
 const createSchema = z.object({
   title: z.string().min(1).max(400),
   description: z.string().max(10000).optional().nullable(),
@@ -76,12 +70,11 @@ router.get('/summary/year', async (req: AuthRequest, res) => {
       orderBy: [{ startDate: 'asc' }, { title: 'asc' }],
     });
 
-    const membersRaw = await prisma.user.findMany({
-      where: { role: 'MEMBER' },
+    const members = await prisma.user.findMany({
+      where: { role: 'MEMBER', isTestAccount: false },
       select: { id: true, name: true, displayOrder: true },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     });
-    const members = filterMatrixMembers(membersRaw);
     const visibleMemberIds = new Set(members.map((m) => m.id));
 
     const counts: Record<string, number> = {};
@@ -150,12 +143,11 @@ router.get('/matrix', async (req: AuthRequest, res) => {
       },
     });
 
-    const membersRaw = await prisma.user.findMany({
-      where: { role: 'MEMBER' },
+    const members = await prisma.user.findMany({
+      where: { role: 'MEMBER', isTestAccount: false },
       select: { id: true, name: true, displayOrder: true },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     });
-    const members = filterMatrixMembers(membersRaw);
     const visibleIds = new Set(members.map((m) => m.id));
 
     const cells: Record<string, boolean> = {};
@@ -281,9 +273,10 @@ router.get('/', async (req: AuthRequest, res) => {
       orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
     });
 
-    const matrixVisibleMembers = filterMatrixMembers(
-      await prisma.user.findMany({ where: { role: 'MEMBER' }, select: { id: true, name: true } }),
-    );
+    const matrixVisibleMembers = await prisma.user.findMany({
+      where: { role: 'MEMBER', isTestAccount: false },
+      select: { id: true, name: true },
+    });
     const matrixVisibleIds = new Set(matrixVisibleMembers.map((m) => m.id));
 
     res.json(
@@ -320,12 +313,11 @@ router.get('/:id/detail', async (req: AuthRequest, res) => {
 
     await ensureAttendanceRows(eventId);
 
-    const membersRaw = await prisma.user.findMany({
-      where: { role: 'MEMBER' },
+    const members = await prisma.user.findMany({
+      where: { role: 'MEMBER', isTestAccount: false },
       select: { id: true, name: true, displayOrder: true, avatarColor: true, avatarLetter: true },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     });
-    const members = filterMatrixMembers(membersRaw);
 
     const attendances = await prisma.mandatedTeamEventAttendance.findMany({
       where: { eventId },

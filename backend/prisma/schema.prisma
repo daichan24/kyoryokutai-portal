@@ -15,6 +15,7 @@ model User {
   passwordUpdatedAt      DateTime?
 
   role     Role   @default(MEMBER)
+  isTestAccount Boolean @default(false) // テスト用アカウント（月次報告・出欠マトリクス・支援記録の対象選択から除外）
 
   // 協力隊属性
   missionType MissionType?

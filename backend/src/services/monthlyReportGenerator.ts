@@ -45,12 +45,12 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
       if (template.monthlyReportSender) coverSender = template.monthlyReportSender;
     }
 
-    // 現在のメンバー分（テスト用のメンバー属性のさとうだいち以外）を作成
+    // 現在のメンバー分（テストアカウントを除く）を作成
     // displayOrderでソート
     const users = await prisma.user.findMany({
-      where: { 
+      where: {
         role: 'MEMBER',
-        name: { not: 'さとうだいち' }, // さとうだいちを除外
+        isTestAccount: false,
       },
       orderBy: [
         { displayOrder: 'asc' },
@@ -61,11 +61,6 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
     const memberSheets = [];
 
     for (const user of users) {
-      // テスト用のメンバー属性のさとうだいちを除外
-      if (user.name === 'さとうだいち' && user.role === 'MEMBER') {
-        continue;
-      }
-
       try {
         // 対象月に含まれる週を計算
         const weeksInMonth = getWeeksInMonth(month);

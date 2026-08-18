@@ -319,20 +319,21 @@ async function main() {
   if (existingSatoMember) {
     await prisma.user.update({
       where: { id: existingSatoMember.id },
-      data: { name: 'さとうだいち' },
+      data: { name: 'さとうだいち', isTestAccount: true },
     });
     console.log('✅ Updated existing member 佐藤大地 to さとうだいち');
   } else {
     // メンバーの「さとうだいち」を作成（テスト用）
     const testMember = await prisma.user.upsert({
       where: { email: 'sato.daichi.member@test.com' },
-      update: { name: 'さとうだいち' },
+      update: { name: 'さとうだいち', isTestAccount: true },
       create: {
         name: 'さとうだいち',
         email: 'sato.daichi.member@test.com',
         password: hashedPassword,
         passwordUpdatedAt: new Date(),
         role: 'MEMBER',
+        isTestAccount: true,
         missionType: 'FREE',
         department: '企画課',
         termStart: new Date('2024-04-01'),

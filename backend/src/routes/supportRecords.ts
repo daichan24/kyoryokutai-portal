@@ -60,14 +60,10 @@ router.get('/member-timeline', authorize('SUPPORT', 'MASTER'), async (req: AuthR
 
     const target = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, role: true, avatarColor: true, avatarLetter: true },
+      select: { id: true, name: true, role: true, isTestAccount: true, avatarColor: true, avatarLetter: true },
     });
 
-    if (!target || target.role !== 'MEMBER') {
-      return res.status(404).json({ error: '隊員が見つかりません' });
-    }
-
-    if (target.name === 'さとうだいち' && target.role === 'MEMBER') {
+    if (!target || target.role !== 'MEMBER' || target.isTestAccount) {
       return res.status(404).json({ error: '隊員が見つかりません' });
     }
 
@@ -342,15 +338,14 @@ router.post('/', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res) =
     // 支援対象者がメンバーか確認
     const targetUser = await prisma.user.findUnique({
       where: { id: data.userId },
-      select: { role: true, name: true },
+      select: { role: true, isTestAccount: true },
     });
 
     if (!targetUser || targetUser.role !== 'MEMBER') {
       return res.status(400).json({ error: '支援対象者はメンバーのみです' });
     }
 
-    // テスト用メンバー（さとうだいち）を除外
-    if (targetUser.name === 'さとうだいち' && targetUser.role === 'MEMBER') {
+    if (targetUser.isTestAccount) {
       return res.status(400).json({ error: 'このユーザーは選択できません' });
     }
 
@@ -405,15 +400,14 @@ router.put('/:id', authorize('SUPPORT', 'MASTER'), async (req: AuthRequest, res)
     // 支援対象者がメンバーか確認
     const targetUser = await prisma.user.findUnique({
       where: { id: data.userId },
-      select: { role: true, name: true },
+      select: { role: true, isTestAccount: true },
     });
 
     if (!targetUser || targetUser.role !== 'MEMBER') {
       return res.status(400).json({ error: '支援対象者はメンバーのみです' });
     }
 
-    // テスト用メンバー（さとうだいち）を除外
-    if (targetUser.name === 'さとうだいち' && targetUser.role === 'MEMBER') {
+    if (targetUser.isTestAccount) {
       return res.status(400).json({ error: 'このユーザーは選択できません' });
     }
 
