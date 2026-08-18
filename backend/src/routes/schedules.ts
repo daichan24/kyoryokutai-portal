@@ -924,89 +924,96 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if ((data as any).isDayOff !== undefined) updateData.isDayOff = (data as any).isDayOff;
     if ((data as any).dayOffType !== undefined) updateData.dayOffType = (data as any).dayOffType ?? null;
 
-    const schedule = await prisma.schedule.update({
-      where: { id },
-      data: updateData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            avatarColor: true,
+    // スケジュール本体・タスクの連動更新・参加者の入れ替えは、
+    // 途中で失敗した場合に参加者データだけが欠けた状態にならないよう
+    // 1つのトランザクションにまとめて実行する
+    const schedule = await prisma.$transaction(async (tx) => {
+      const updatedSchedule = await tx.schedule.update({
+        where: { id },
+        data: updateData,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              avatarColor: true,
+            },
           },
-        },
-        supportEvent: {
-          select: {
-            id: true,
-            eventName: true,
-            startDate: true,
-            endDate: true,
-            supportSlotsNeeded: true,
+          supportEvent: {
+            select: {
+              id: true,
+              eventName: true,
+              startDate: true,
+              endDate: true,
+              supportSlotsNeeded: true,
+            },
           },
-        },
-        scheduleParticipants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                role: true,
-                avatarColor: true,
+          scheduleParticipants: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  role: true,
+                  avatarColor: true,
+                },
               },
             },
           },
         },
-      },
-    });
-
-    if (existingSchedule.taskId && (data.projectId !== undefined || shouldResolveDefaultWorkProject)) {
-      const nextProjectId = effectiveProjectId;
-      await prisma.task.update({
-        where: { id: existingSchedule.taskId },
-        data: {
-          projectId: nextProjectId,
-          ...(nextProjectId ? { linkKind: 'PROJECT' as const } : {}),
-        },
       });
-    }
+
+      if (existingSchedule.taskId && (data.projectId !== undefined || shouldResolveDefaultWorkProject)) {
+        const nextProjectId = effectiveProjectId;
+        await tx.task.update({
+          where: { id: existingSchedule.taskId },
+          data: {
+            projectId: nextProjectId,
+            ...(nextProjectId ? { linkKind: 'PROJECT' as const } : {}),
+          },
+        });
+      }
+
+      // 参加者の更新（participantsUserIdsが指定された場合）
+      const participantsUserIds = (data as any).participantsUserIds as string[] | undefined;
+      if (participantsUserIds !== undefined) {
+        const creatorId = req.user!.id;
+        const newParticipantIds = participantsUserIds.filter((uid) => uid !== creatorId);
+        const existingParticipants = await tx.scheduleParticipant.findMany({
+          where: { scheduleId: id },
+          select: { userId: true },
+        });
+        const existingParticipantIds = new Set(existingParticipants.map((p) => p.userId));
+        const desiredParticipantIds = new Set(newParticipantIds);
+
+        await tx.scheduleParticipant.deleteMany({
+          where: {
+            scheduleId: id,
+            userId: { notIn: newParticipantIds },
+          },
+        });
+
+        const participantsToCreate = [...desiredParticipantIds].filter((userId) => !existingParticipantIds.has(userId));
+        if (participantsToCreate.length > 0) {
+          await tx.scheduleParticipant.createMany({
+            data: participantsToCreate.map((userId) => ({
+              scheduleId: id,
+              userId,
+              status: 'PENDING',
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return updatedSchedule;
+    });
 
     syncScheduleToGoogle(schedule.id).catch((syncError) => {
       console.error(`Failed to sync updated schedule ${schedule.id} to Google:`, syncError);
     });
-
-    // 参加者の更新（participantsUserIdsが指定された場合）
-    const participantsUserIds = (data as any).participantsUserIds as string[] | undefined;
-    if (participantsUserIds !== undefined) {
-      const creatorId = req.user!.id;
-      const newParticipantIds = participantsUserIds.filter((uid) => uid !== creatorId);
-      const existingParticipants = await prisma.scheduleParticipant.findMany({
-        where: { scheduleId: id },
-        select: { userId: true },
-      });
-      const existingParticipantIds = new Set(existingParticipants.map((p) => p.userId));
-      const desiredParticipantIds = new Set(newParticipantIds);
-
-      await prisma.scheduleParticipant.deleteMany({
-        where: {
-          scheduleId: id,
-          userId: { notIn: newParticipantIds },
-        },
-      });
-
-      const participantsToCreate = [...desiredParticipantIds].filter((userId) => !existingParticipantIds.has(userId));
-      if (participantsToCreate.length > 0) {
-        await prisma.scheduleParticipant.createMany({
-          data: participantsToCreate.map((userId) => ({
-            scheduleId: id,
-            userId,
-            status: 'PENDING',
-          })),
-          skipDuplicates: true,
-        });
-      }
-    }
 
     res.json(schedule);
   } catch (error) {
