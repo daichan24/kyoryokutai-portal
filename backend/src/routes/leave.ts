@@ -773,13 +773,17 @@ router.post('/time-adjustments/:id/confirm', async (req: AuthRequest, res) => {
 // ============================================================
 
 /** 拘束時間（分）から実勤務時間（分）を計算するルール
- * 5h30m以下 → そのまま
+ * 6h00m未満 → そのまま
  * 6h00m → 5h00m（-1h）
  * 6h30m → 5h30m（-1h）
  * 6h以上 → 拘束 - 1h
+ *
+ * 旧しきい値（拘束330分＝5h30m）だと5h31m〜5h59mの拘束時間が
+ * 5h30mちょうどより少なく計算される逆転（非単調）が発生していたため、
+ * コメントに明記された2つの基準点（6h00m/6h30m）に合わせて360分に修正。
  */
-function calcWorkMinutes(constraintMinutes: number): number {
-  if (constraintMinutes <= 330) return constraintMinutes; // 5h30m以下
+export function calcWorkMinutes(constraintMinutes: number): number {
+  if (constraintMinutes < 360) return constraintMinutes; // 6h未満
   return constraintMinutes - 60; // 6h以上は1時間引く
 }
 

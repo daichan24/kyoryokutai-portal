@@ -439,7 +439,7 @@ export const ActivityExpenses: React.FC = () => {
               <h2 className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">予算・メモの設定（行政・サポート・マスター）</h2>
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">上限金額（円）</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">上限金額（円）</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -449,7 +449,7 @@ export const ActivityExpenses: React.FC = () => {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">メモ（年度や用途の目安など）</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">メモ（年度や用途の目安など）</label>
                   <textarea
                     value={budgetMemo}
                     onChange={(e) => setBudgetMemo(e.target.value)}
@@ -498,7 +498,7 @@ export const ActivityExpenses: React.FC = () => {
             )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium mb-1">日付</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">日付</label>
                 <input
                   type="date"
                   value={spentAt}
@@ -507,7 +507,7 @@ export const ActivityExpenses: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">登録方法</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">登録方法</label>
                 <div className="grid grid-cols-2 rounded-md border border-gray-300 dark:border-gray-600 p-1 bg-gray-50 dark:bg-gray-900/40">
                   {[
                     ['PENDING', '申請する'],
@@ -517,7 +517,7 @@ export const ActivityExpenses: React.FC = () => {
                       key={mode}
                       type="button"
                       onClick={() => setEntryMode(mode as EntryMode)}
-                      className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                      className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
                         entryMode === mode
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -534,7 +534,7 @@ export const ActivityExpenses: React.FC = () => {
                 )}
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium mb-1">紐づくプロジェクト（必須）</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">紐づくプロジェクト（必須）</label>
                 <select
                   value={projectIdForEntry}
                   onChange={(e) => setProjectIdForEntry(e.target.value)}
@@ -554,7 +554,7 @@ export const ActivityExpenses: React.FC = () => {
                 )}
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium mb-1">内容</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">内容</label>
                 <input
                   type="text"
                   value={description}
@@ -565,7 +565,7 @@ export const ActivityExpenses: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">金額（円）</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">金額（円）</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -651,23 +651,26 @@ export const ActivityExpenses: React.FC = () => {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">一覧（新しい順）</h2>
               <div className="flex flex-wrap gap-1 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-900/40">
                 {[
-                  ['ALL', `すべて ${statusCounts.ALL}`],
-                  ['PLANNED', `予定 ${statusCounts.PLANNED}`],
-                  ['PENDING', `未承認 ${statusCounts.PENDING}`],
-                  ['APPROVED', `承認済み ${statusCounts.APPROVED}`],
-                  ['REJECTED', `差し戻し ${statusCounts.REJECTED}`],
-                ].map(([key, label]) => (
+                  ['ALL', 'すべて', statusCounts.ALL],
+                  ['PLANNED', '予定', statusCounts.PLANNED],
+                  ['PENDING', '未承認', statusCounts.PENDING],
+                  ['APPROVED', '承認済み', statusCounts.APPROVED],
+                  ['REJECTED', '差し戻し', statusCounts.REJECTED],
+                ].map(([key, label, count]) => (
                   <button
                     key={key}
                     type="button"
                     onClick={() => setExpenseStatusFilter(key as typeof expenseStatusFilter)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       expenseStatusFilter === key
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                     }`}
                   >
-                    {label}
+                    <span>{label}</span>
+                    <span className={`text-base font-bold tabular-nums ${expenseStatusFilter === key ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`}>
+                      {count}
+                    </span>
                   </button>
                 ))}
               </div>
