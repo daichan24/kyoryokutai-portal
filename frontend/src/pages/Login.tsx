@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Copy, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
@@ -25,32 +26,22 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loginHints, setLoginHints] = useState<LoginHint[]>([]);
-  const [loadingHints, setLoadingHints] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [accountListOpen, setAccountListOpen] = useState(false);
-  const [hintsLoaded, setHintsLoaded] = useState(false);
 
   /** 初回表示で API / DB を叩かない（Render コールドスタート対策）。開いたときだけ取得 */
-  const fetchLoginHints = useCallback(async () => {
-    if (hintsLoaded) return;
-    setLoadingHints(true);
-    try {
+  const { data: loginHints = [], isFetching: loadingHints } = useQuery({
+    queryKey: ['login-hints'],
+    queryFn: async () => {
       const response = await api.get<LoginHint[]>('/api/users/login-hints');
-      setLoginHints(response.data || []);
-      setHintsLoaded(true);
-    } catch (error) {
-      console.error('Failed to fetch login hints:', error);
-      setLoginHints([]);
-      setHintsLoaded(true);
-    } finally {
-      setLoadingHints(false);
-    }
-  }, [hintsLoaded]);
+      return response.data || [];
+    },
+    enabled: accountListOpen,
+    staleTime: Infinity,
+  });
 
   const toggleAccountList = () => {
     setAccountListOpen((o) => !o);
-    if (!accountListOpen) void fetchLoginHints();
   };
 
   const handleCopyEmail = async (emailToCopy: string) => {

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import {
@@ -100,10 +101,8 @@ export const InterviewPolls: React.FC = () => {
   const { user } = useAuthStore();
   const isStaff = !!user && staffRoles.includes(user.role);
 
-  const [polls, setPolls] = useState<InterviewPoll[]>([]);
+  const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [members, setMembers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,6 +123,47 @@ export const InterviewPolls: React.FC = () => {
   const [editEndTime, setEditEndTime] = useState('17:00');
   const [editDateRows, setEditDateRows] = useState<DateRow[]>([]);
   const [editMemberIds, setEditMemberIds] = useState<Set<string>>(new Set());
+
+  const {
+    data: polls = [],
+    isLoading: pollsLoading,
+    error: pollsQueryError,
+  } = useQuery<InterviewPoll[]>({
+    queryKey: ['interview-polls'],
+    queryFn: async () => {
+      const res = await api.get<InterviewPoll[]>('/api/interview-polls');
+      return res.data;
+    },
+  });
+
+  const {
+    data: members = [],
+    isLoading: membersLoading,
+    error: membersQueryError,
+  } = useQuery<User[]>({
+    queryKey: ['interview-poll-members'],
+    queryFn: async () => {
+      const res = await api.get<User[]>('/api/users?role=MEMBER');
+      return sortUsersByDisplayOrder(res.data || []);
+    },
+  });
+
+  const loading = pollsLoading || membersLoading;
+
+  // 一覧取得の失敗を画面上部のエラー表示に反映する
+  useEffect(() => {
+    const queryError = pollsQueryError || membersQueryError;
+    if (queryError) setError(getErrorMessage(queryError, '面談日程調整を取得できませんでした'));
+  }, [pollsQueryError, membersQueryError]);
+
+  // 初回取得時のみ、デフォルトの選択状態を設定する（以降の再取得では上書きしない）
+  const didInitSelectionRef = useRef(false);
+  useEffect(() => {
+    if (didInitSelectionRef.current || loading) return;
+    didInitSelectionRef.current = true;
+    setSelectedMemberIds(new Set(members.map((m) => m.id)));
+    if (!selectedId && polls[0]) setSelectedId(polls[0].id);
+  }, [loading, members, polls, selectedId]);
 
   const selectedPoll = useMemo(
     () => polls.find((poll) => poll.id === selectedId) || polls[0] || null,
@@ -155,30 +195,6 @@ export const InterviewPolls: React.FC = () => {
     () => new Map((selectedPoll?.assignments || []).map((assignment) => [assignment.memberId, assignment])),
     [selectedPoll],
   );
-
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [pollRes, userRes] = await Promise.all([
-        api.get<InterviewPoll[]>('/api/interview-polls'),
-        api.get<User[]>('/api/users?role=MEMBER'),
-      ]);
-      setPolls(pollRes.data);
-      const orderedMembers = sortUsersByDisplayOrder(userRes.data || []);
-      setMembers(orderedMembers);
-      setSelectedMemberIds(new Set(orderedMembers.map((m) => m.id)));
-      if (!selectedId && pollRes.data[0]) setSelectedId(pollRes.data[0].id);
-    } catch (err) {
-      setError(getErrorMessage(err, '面談日程調整を取得できませんでした'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
 
   useEffect(() => {
     if (!selectedPoll || !user) return;
@@ -217,7 +233,7 @@ export const InterviewPolls: React.FC = () => {
         })),
         memberIds: [...selectedMemberIds],
       });
-      setPolls((prev) => [res.data, ...prev]);
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], (prev = []) => [res.data, ...prev]);
       setSelectedId(res.data.id);
     } catch (err) {
       setError(getErrorMessage(err, '面談日程調整を作成できませんでした'));
@@ -234,7 +250,9 @@ export const InterviewPolls: React.FC = () => {
       const res = await api.put<InterviewPoll>(`/api/interview-polls/${selectedPoll.id}/availability`, {
         availability: selectedPoll.dates.map((d) => ({ dateId: d.id, status: draftAvailability[d.id] || 'NG' })),
       });
-      setPolls((prev) => prev.map((p) => (p.id === res.data.id ? res.data : p)));
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], (prev = []) =>
+        prev.map((p) => (p.id === res.data.id ? res.data : p))
+      );
     } catch (err) {
       setError(getErrorMessage(err, '回答を保存できませんでした'));
     } finally {
@@ -248,7 +266,9 @@ export const InterviewPolls: React.FC = () => {
     setError(null);
     try {
       const res = await api.post<{ poll: InterviewPoll }>(`/api/interview-polls/${selectedPoll.id}/propose`);
-      setPolls((prev) => prev.map((p) => (p.id === res.data.poll.id ? res.data.poll : p)));
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], (prev = []) =>
+        prev.map((p) => (p.id === res.data.poll.id ? res.data.poll : p))
+      );
     } catch (err) {
       setError(getErrorMessage(err, '暫定日割りを作成できませんでした'));
     } finally {
@@ -263,7 +283,9 @@ export const InterviewPolls: React.FC = () => {
     setError(null);
     try {
       const res = await api.post<InterviewPoll>(`/api/interview-polls/${selectedPoll.id}/confirm`);
-      setPolls((prev) => prev.map((p) => (p.id === res.data.id ? res.data : p)));
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], (prev = []) =>
+        prev.map((p) => (p.id === res.data.id ? res.data : p))
+      );
     } catch (err) {
       setError(getErrorMessage(err, '面談日程を確定できませんでした'));
     } finally {
@@ -321,7 +343,9 @@ export const InterviewPolls: React.FC = () => {
         memberIds: [...editMemberIds],
         resetConfirmed,
       });
-      setPolls((prev) => prev.map((poll) => (poll.id === res.data.id ? res.data : poll)));
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], (prev = []) =>
+        prev.map((poll) => (poll.id === res.data.id ? res.data : poll))
+      );
       setEditingPoll(false);
     } catch (err) {
       setError(getErrorMessage(err, '面談日程調整を編集できませんでした'));
@@ -343,7 +367,7 @@ export const InterviewPolls: React.FC = () => {
     try {
       await api.delete(`/api/interview-polls/${selectedPoll.id}`, { data: { deleteConfirmed } });
       const remainingPolls = polls.filter((poll) => poll.id !== selectedPoll.id);
-      setPolls(remainingPolls);
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], remainingPolls);
       setSelectedId(remainingPolls[0]?.id || null);
       setEditingPoll(false);
     } catch (err) {
@@ -377,7 +401,9 @@ export const InterviewPolls: React.FC = () => {
         resetConfirmed,
         availability: [{ dateId, status: nextStatus }],
       });
-      setPolls((prev) => prev.map((poll) => (poll.id === res.data.id ? res.data : poll)));
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], (prev = []) =>
+        prev.map((poll) => (poll.id === res.data.id ? res.data : poll))
+      );
     } catch (err) {
       setError(getErrorMessage(err, '回答内容を変更できませんでした'));
     } finally {
@@ -402,7 +428,9 @@ export const InterviewPolls: React.FC = () => {
         dateId,
         assignmentIds: reordered.map((assignment) => assignment.id),
       });
-      setPolls((prev) => prev.map((poll) => (poll.id === res.data.id ? res.data : poll)));
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], (prev = []) =>
+        prev.map((poll) => (poll.id === res.data.id ? res.data : poll))
+      );
     } catch (err) {
       setError(getErrorMessage(err, '面談順を変更できませんでした'));
     } finally {
@@ -491,11 +519,13 @@ export const InterviewPolls: React.FC = () => {
       const renameList = (values: string[]) =>
         [...new Set(values.map((value) => renameValue(value)).filter((value): value is string => !!value))];
 
-      setMembers((prev) => prev.map((member) => ({ ...member, department: renameValue(member.department) || undefined })));
+      queryClient.setQueryData<User[]>(['interview-poll-members'], (prev = []) =>
+        prev.map((member) => ({ ...member, department: renameValue(member.department) || undefined }))
+      );
       setDateRows((prev) =>
         prev.map((row) => ({ ...row, unavailableDepartments: renameList(row.unavailableDepartments) })),
       );
-      setPolls((prev) =>
+      queryClient.setQueryData<InterviewPoll[]>(['interview-polls'], (prev = []) =>
         prev.map((poll) => ({
           ...poll,
           dates: poll.dates.map((date) => ({
@@ -535,7 +565,10 @@ export const InterviewPolls: React.FC = () => {
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={load}
+          onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['interview-polls'] });
+            queryClient.invalidateQueries({ queryKey: ['interview-poll-members'] });
+          }}
           className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
         >
           <RefreshCw className="h-4 w-4" />

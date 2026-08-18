@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Eye } from 'lucide-react';
 import { api } from '../utils/api';
 import { WeeklyReport as WeeklyReportType } from '../types';
@@ -19,17 +20,12 @@ type MemberUserOption = {
 
 export const WeeklyReport: React.FC = () => {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [reports, setReports] = useState<WeeklyReportType[]>([]);
-  const [allWeekReports, setAllWeekReports] = useState<WeeklyReportType[]>([]); // 選択した週の全員分の報告
-  const [allReports, setAllReports] = useState<WeeklyReportType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingWeekView, setLoadingWeekView] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<WeeklyReportType | null>(null);
   const [modalViewMode, setModalViewMode] = useState<'edit' | 'preview'>('edit');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [users, setUsers] = useState<MemberUserOption[]>([]);
   const [selectedFiscalYear, setSelectedFiscalYear] = useState<number>(() => getFiscalYear()); // 年度のフィルタ
   const [selectedWeek, setSelectedWeek] = useState<string>(''); // 週の選択（全員分表示用）
   const [viewMode, setViewMode] = useState<'individual' | 'weekly'>('individual'); // 表示モード
@@ -38,33 +34,22 @@ export const WeeklyReport: React.FC = () => {
   const openedWeekFromQueryRef = React.useRef<string | null>(null);
 
   // ユーザー一覧の取得（メンバー以外のみ）
-  useEffect(() => {
-    const loadUsers = async () => {
-      if (user?.role === 'MEMBER') {
-        setUsers([]);
-        return;
-      }
-      
-      try {
-        const response = await api.get<MemberUserOption[]>('/api/users');
-        const memberUsers = response.data.filter((u) =>
-          u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
-        ).sort((a, b) => {
-          // displayOrderでソート（小さい順）、同じ場合は名前でソート
-          if (a.displayOrder !== b.displayOrder) {
-            return (a.displayOrder || 0) - (b.displayOrder || 0);
-          }
-          return (a.name || '').localeCompare(b.name || '');
-        });
-        setUsers(memberUsers);
-      } catch (error) {
-        console.error('Failed to fetch users:', error);
-        setUsers([]);
-      }
-    };
-    
-    loadUsers();
-  }, [user]);
+  const { data: users = [] } = useQuery<MemberUserOption[]>({
+    queryKey: ['weekly-report-users'],
+    queryFn: async () => {
+      const response = await api.get<MemberUserOption[]>('/api/users');
+      return response.data.filter((u) =>
+        u.role === 'MEMBER' && (u.displayOrder ?? 0) !== 0
+      ).sort((a, b) => {
+        // displayOrderでソート（小さい順）、同じ場合は名前でソート
+        if (a.displayOrder !== b.displayOrder) {
+          return (a.displayOrder || 0) - (b.displayOrder || 0);
+        }
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    },
+    enabled: user?.role !== 'MEMBER',
+  });
 
   // selectedUserIdの初期設定（ユーザー一覧が取得できた場合のみ）
   useEffect(() => {
@@ -80,54 +65,30 @@ export const WeeklyReport: React.FC = () => {
     }
   }, [selectedUserId, user?.role, userIdFromQuery]);
 
-  const fetchReports = useCallback(async () => {
-    setLoading(true);
-    try {
-      // MEMBERの場合は自分の報告のみ、他は選択したユーザーの報告
-      const url = user?.role === 'MEMBER' 
+  // 週次報告の取得（MEMBERの場合は自分の報告のみ、他は選択したユーザーの報告）
+  const { data: reports = [], isLoading: loading } = useQuery<WeeklyReportType[]>({
+    queryKey: ['weekly-reports', 'individual', user?.role === 'MEMBER' ? user.id : selectedUserId],
+    queryFn: async () => {
+      const url = user?.role === 'MEMBER'
         ? `/api/weekly-reports?userId=${user.id}`
         : selectedUserId
         ? `/api/weekly-reports?userId=${selectedUserId}`
         : '/api/weekly-reports';
       const response = await api.get<WeeklyReportType[]>(url);
-      setReports(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch reports:', error);
-      setReports([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, selectedUserId]);
+      return response.data || [];
+    },
+    enabled: viewMode === 'individual' && !!user,
+  });
 
   // 特定週の全員分の報告を取得
-  const fetchAllWeekReports = useCallback(async (week: string) => {
-    if (!week || user?.role === 'MEMBER') return;
-    
-    setLoadingWeekView(true);
-    try {
-      const response = await api.get<WeeklyReportType[]>(`/api/weekly-reports?week=${week}`);
-      setAllWeekReports(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch all week reports:', error);
-      setAllWeekReports([]);
-    } finally {
-      setLoadingWeekView(false);
-    }
-  }, [user]);
-
-  // 週次報告の取得
-  useEffect(() => {
-    if (viewMode === 'individual') {
-      fetchReports();
-    }
-  }, [fetchReports, viewMode]);
-
-  // 全員分表示モードで週が選択された場合
-  useEffect(() => {
-    if (viewMode === 'weekly' && selectedWeek) {
-      fetchAllWeekReports(selectedWeek);
-    }
-  }, [viewMode, selectedWeek, fetchAllWeekReports]);
+  const { data: allWeekReports = [], isFetching: loadingWeekView } = useQuery<WeeklyReportType[]>({
+    queryKey: ['weekly-reports', 'week', selectedWeek],
+    queryFn: async () => {
+      const response = await api.get<WeeklyReportType[]>(`/api/weekly-reports?week=${selectedWeek}`);
+      return response.data || [];
+    },
+    enabled: viewMode === 'weekly' && !!selectedWeek && user?.role !== 'MEMBER',
+  });
 
   const handleCreateReport = () => {
     setSelectedReport(null);
@@ -153,10 +114,7 @@ export const WeeklyReport: React.FC = () => {
   };
 
   const handleSaved = () => {
-    fetchReports();
-    if (viewMode === 'weekly' && selectedWeek) {
-      fetchAllWeekReports(selectedWeek);
-    }
+    queryClient.invalidateQueries({ queryKey: ['weekly-reports'] });
     handleCloseModal();
   };
 
@@ -200,6 +158,16 @@ export const WeeklyReport: React.FC = () => {
     }
   };
 
+  // 全員の報告を取得（週別表示用）
+  const { data: allReports = [] } = useQuery<WeeklyReportType[]>({
+    queryKey: ['weekly-reports', 'all'],
+    queryFn: async () => {
+      const response = await api.get<WeeklyReportType[]>('/api/weekly-reports');
+      return response.data || [];
+    },
+    enabled: viewMode === 'weekly' && user?.role !== 'MEMBER',
+  });
+
   // 年度でフィルタリングされた報告
   const filteredReports = useMemo(() => {
     return reports.filter(report => isReportInFiscalYear(report, selectedFiscalYear));
@@ -218,25 +186,6 @@ export const WeeklyReport: React.FC = () => {
     });
     return Array.from(years).sort((a, b) => b - a);
   }, [reports, allReports]);
-
-  // 全員の報告を取得（週別表示用）
-  useEffect(() => {
-    const fetchAllReports = async () => {
-      if (user?.role === 'MEMBER') return;
-      
-      try {
-        const response = await api.get<WeeklyReportType[]>('/api/weekly-reports');
-        setAllReports(response.data || []);
-      } catch (error) {
-        console.error('Failed to fetch all reports:', error);
-        setAllReports([]);
-      }
-    };
-    
-    if (viewMode === 'weekly') {
-      fetchAllReports();
-    }
-  }, [viewMode, user]);
 
   // 利用可能な週の一覧（週別表示の場合は全員の報告から、個人別表示の場合は選択したユーザーの報告から）
   const availableWeeks = useMemo(() => {

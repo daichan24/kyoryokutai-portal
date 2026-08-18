@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Folder, FileText, Users } from 'lucide-react';
 import { api } from '../utils/api';
 import { Button } from '../components/common/Button';
@@ -49,11 +50,10 @@ interface HandoverDocument {
 }
 
 export const Handover: React.FC = () => {
-  const [categories, setCategories] = useState<HandoverCategory[]>([]);
+  const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<'EVENT' | 'MEETING'>('EVENT');
   const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
-  const [loading, setLoading] = useState(true);
-  
+
   // ダイアログ状態
   const [categoryDialog, setCategoryDialog] = useState(false);
   const [folderDialog, setFolderDialog] = useState(false);
@@ -78,56 +78,40 @@ export const Handover: React.FC = () => {
   const [selectedDocument, setSelectedDocument] = useState<HandoverDocument | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // 町民・メンバーデータ
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([fetchCategories(), fetchContacts(), fetchUsers()]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<HandoverCategory[]>({
+    queryKey: ['handover-categories'],
+    queryFn: async () => {
       const response = await api.get('/api/handover/categories');
-      setCategories(response.data);
-    } catch (error) {
-      console.error('カテゴリ取得エラー:', error);
-    }
-  };
+      return response.data;
+    },
+  });
 
-  const fetchContacts = async () => {
-    try {
+  const { data: contacts = [], isLoading: contactsLoading } = useQuery<Contact[]>({
+    queryKey: ['contacts'],
+    queryFn: async () => {
       const response = await api.get('/api/contacts');
-      setContacts(response.data);
-    } catch (error) {
-      console.error('町民データ取得エラー:', error);
-    }
-  };
+      return response.data;
+    },
+  });
 
-  const fetchUsers = async () => {
-    try {
+  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ['users'],
+    queryFn: async () => {
       const response = await api.get('/api/users');
-      setUsers(response.data);
-    } catch (error) {
-      console.error('ユーザーデータ取得エラー:', error);
-    }
-  };
+      return response.data;
+    },
+  });
+
+  const loading = categoriesLoading || contactsLoading || usersLoading;
+
+  const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: ['handover-categories'] });
 
   const handleCreateCategory = async () => {
     try {
       await api.post('/api/handover/categories', categoryForm);
       setCategoryDialog(false);
       setCategoryForm({ name: '', type: 'EVENT', description: '' });
-      fetchCategories();
+      invalidateCategories();
     } catch (error) {
       console.error('カテゴリ作成エラー:', error);
     }
@@ -138,7 +122,7 @@ export const Handover: React.FC = () => {
       await api.post('/api/handover/folders', folderForm);
       setFolderDialog(false);
       setFolderForm({ categoryId: '', fiscalYear: new Date().getFullYear(), title: '', description: '' });
-      fetchCategories();
+      invalidateCategories();
     } catch (error) {
       console.error('フォルダ作成エラー:', error);
     }
@@ -172,7 +156,7 @@ export const Handover: React.FC = () => {
 
       setDocumentDialog(false);
       resetDocumentForm();
-      fetchCategories();
+      invalidateCategories();
     } catch (error) {
       console.error('文書作成/更新エラー:', error);
     }
@@ -206,7 +190,7 @@ export const Handover: React.FC = () => {
     if (!confirm('この文書を削除しますか？')) return;
     try {
       await api.delete(`/api/handover/documents/${docId}`);
-      fetchCategories();
+      invalidateCategories();
     } catch (error) {
       console.error('文書削除エラー:', error);
     }
