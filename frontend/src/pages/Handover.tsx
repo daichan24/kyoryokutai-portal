@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Folder, FileText, Users } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../utils/api';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface Contact {
   id: string;
@@ -99,10 +97,7 @@ export const Handover: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/handover/categories`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get('/api/handover/categories');
       setCategories(response.data);
     } catch (error) {
       console.error('カテゴリ取得エラー:', error);
@@ -111,10 +106,7 @@ export const Handover: React.FC = () => {
 
   const fetchContacts = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/contacts`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get('/api/contacts');
       setContacts(response.data);
     } catch (error) {
       console.error('町民データ取得エラー:', error);
@@ -123,10 +115,7 @@ export const Handover: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get('/api/users');
       setUsers(response.data);
     } catch (error) {
       console.error('ユーザーデータ取得エラー:', error);
@@ -135,10 +124,7 @@ export const Handover: React.FC = () => {
 
   const handleCreateCategory = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/api/handover/categories`, categoryForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post('/api/handover/categories', categoryForm);
       setCategoryDialog(false);
       setCategoryForm({ name: '', type: 'EVENT', description: '' });
       fetchCategories();
@@ -149,10 +135,7 @@ export const Handover: React.FC = () => {
 
   const handleCreateFolder = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/api/handover/folders`, folderForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post('/api/handover/folders', folderForm);
       setFolderDialog(false);
       setFolderForm({ categoryId: '', fiscalYear: new Date().getFullYear(), title: '', description: '' });
       fetchCategories();
@@ -176,22 +159,17 @@ export const Handover: React.FC = () => {
 
   const handleCreateDocument = async () => {
     try {
-      const token = localStorage.getItem('token');
       const data = {
         ...documentForm,
         budget: documentForm.budget ? parseInt(documentForm.budget) : null,
       };
-      
+
       if (editingId) {
-        await axios.put(`${API_URL}/api/handover/documents/${editingId}`, data, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await api.put(`/api/handover/documents/${editingId}`, data);
       } else {
-        await axios.post(`${API_URL}/api/handover/documents`, data, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await api.post('/api/handover/documents', data);
       }
-      
+
       setDocumentDialog(false);
       resetDocumentForm();
       fetchCategories();
@@ -202,10 +180,7 @@ export const Handover: React.FC = () => {
 
   const handleViewDocument = async (docId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/handover/documents/${docId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get(`/api/handover/documents/${docId}`);
       setSelectedDocument(response.data);
       setDocumentViewDialog(true);
     } catch (error) {
@@ -230,10 +205,7 @@ export const Handover: React.FC = () => {
   const handleDeleteDocument = async (docId: string) => {
     if (!confirm('この文書を削除しますか？')) return;
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_URL}/api/handover/documents/${docId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/api/handover/documents/${docId}`);
       fetchCategories();
     } catch (error) {
       console.error('文書削除エラー:', error);
