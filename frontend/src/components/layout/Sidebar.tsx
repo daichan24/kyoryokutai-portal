@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Home,
   Calendar,
   FileText,
   Settings,
@@ -25,6 +24,8 @@ import {
   Banknote,
   ChevronDown,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   CalendarClock,
   FolderOpen,
   Mail,
@@ -37,6 +38,8 @@ import { X } from 'lucide-react';
 
 interface SidebarProps {
   onClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 type NavIcon = React.ComponentType<{ className?: string }>;
@@ -78,12 +81,19 @@ function CollapsibleBlock({
   open,
   onOpenChange,
   children,
+  iconOnly,
 }: {
   title: string;
   open: boolean;
   onOpenChange: (next: boolean) => void;
   children: React.ReactNode;
+  iconOnly?: boolean;
 }) {
+  if (iconOnly) {
+    // アイコンのみ表示時はセクション見出しの意味がないため、常に開いた状態でアイコン列だけ並べる
+    return <div className="pt-2 space-y-1">{children}</div>;
+  }
+
   return (
     <div className="pt-2">
       <button
@@ -112,21 +122,25 @@ function NavRow({
   label,
   end,
   onNavigate,
+  iconOnly,
 }: {
   to: string;
   icon: NavIcon;
   label: string;
   end?: boolean;
   onNavigate?: () => void;
+  iconOnly?: boolean;
 }) {
   return (
     <NavLink
       to={to}
       end={end}
       onClick={onNavigate}
+      title={iconOnly ? label : undefined}
       className={({ isActive }) =>
         cn(
-          'flex items-center space-x-2 md:space-x-3 px-3 md:px-4 py-2.5 md:py-3 rounded-lg transition-colors text-sm md:text-base',
+          'flex items-center rounded-lg transition-colors text-sm md:text-base',
+          iconOnly ? 'justify-center px-2 py-2.5 md:py-3' : 'space-x-2 md:space-x-3 px-3 md:px-4 py-2.5 md:py-3',
           isActive
             ? 'bg-primary text-white'
             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
@@ -134,12 +148,21 @@ function NavRow({
       }
     >
       <Icon className="h-[1.125rem] w-[1.125rem] md:h-5 md:w-5 shrink-0" />
-      <span className="font-medium leading-snug">{label}</span>
+      {!iconOnly && <span className="font-medium leading-snug">{label}</span>}
     </NavLink>
   );
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
+function matchesGoalsPath(pathname: string) {
+  return (
+    pathname.startsWith('/goals') ||
+    pathname.startsWith('/projects') ||
+    pathname.startsWith('/tasks') ||
+    pathname.startsWith('/events')
+  );
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggleCollapse }) => {
   const { user } = useAuthStore();
   const location = useLocation();
 
@@ -147,11 +170,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const supportActive = matchesSupportPath(location.pathname);
   const adminActive = matchesAdminPath(location.pathname);
   const statusActive = matchesStatusPath(location.pathname);
+  const goalsActive = matchesGoalsPath(location.pathname);
 
   const [docOpen, setDocOpen] = useState(false);
   const [supportMenuOpen, setSupportMenuOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [goalsOpen, setGoalsOpen] = useState(false);
 
   useEffect(() => {
     if (docActive) setDocOpen(true);
@@ -169,8 +194,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     if (statusActive) setStatusOpen(true);
   }, [statusActive]);
 
+  useEffect(() => {
+    if (goalsActive) setGoalsOpen(true);
+  }, [goalsActive]);
+
   const commonItems = [
-    { to: '/dashboard', icon: Home, label: 'ダッシュボード' },
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
     ...(user?.wishesEnabled !== false ? [{ to: '/wishes', icon: ListChecks, label: 'やりたいこと100' }] : []),
   ];
@@ -307,7 +335,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const closeMobile = () => onClose?.();
 
   return (
-    <aside className="w-64 bg-card dark:bg-gray-800 border-r border-border dark:border-gray-700 h-full flex flex-col shadow-lg md:shadow-none">
+    <aside
+      className={cn(
+        'bg-card dark:bg-gray-800 border-r border-border dark:border-gray-700 h-full flex flex-col shadow-lg md:shadow-none transition-[width] duration-200',
+        collapsed ? 'w-16' : 'w-64',
+      )}
+    >
       <div className="flex justify-between items-center p-4 border-b border-border dark:border-gray-700 md:hidden">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">メニュー</h2>
         <button
@@ -319,39 +352,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </button>
       </div>
 
-      <nav className="p-4 space-y-2 overflow-y-auto flex-1">
+      {onToggleCollapse && (
+        <div className={cn('hidden md:flex p-2 border-b border-border dark:border-gray-700', collapsed ? 'justify-center' : 'justify-end')}>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+            title={collapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
+            aria-label={collapsed ? 'サイドバーを開く' : 'サイドバーを閉じる'}
+          >
+            {collapsed ? <ChevronsRight className="h-5 w-5" /> : <ChevronsLeft className="h-5 w-5" />}
+          </button>
+        </div>
+      )}
+
+      <nav className={cn('space-y-2 overflow-y-auto flex-1', collapsed ? 'p-2' : 'p-4')}>
         {commonItems.map((item) => (
-          <NavRow key={item.to} {...item} onNavigate={closeMobile} />
+          <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
         ))}
 
-        <div className="pt-4 pb-2">
-          <p className="px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            目標・オーガナイザー
-          </p>
-        </div>
-        {goalsAndEventsItems.map((item) => (
-          <NavRow key={item.to} {...item} onNavigate={closeMobile} />
-        ))}
+        <CollapsibleBlock title="目標・オーガナイザー" open={goalsOpen} onOpenChange={setGoalsOpen} iconOnly={collapsed}>
+          {goalsAndEventsItems.map((item) => (
+            <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
+          ))}
+        </CollapsibleBlock>
 
         {reportDocumentItems.length > 0 && (
-          <CollapsibleBlock title="報告書" open={docOpen} onOpenChange={setDocOpen}>
+          <CollapsibleBlock title="報告書" open={docOpen} onOpenChange={setDocOpen} iconOnly={collapsed}>
             {reportDocumentItems.map((item) => (
-              <NavRow key={item.to} {...item} onNavigate={closeMobile} />
+              <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
             ))}
           </CollapsibleBlock>
         )}
 
         {supportWorkflowItems.length > 0 && (
-          <CollapsibleBlock title="サポート・連絡" open={supportMenuOpen} onOpenChange={setSupportMenuOpen}>
+          <CollapsibleBlock title="サポート・連絡" open={supportMenuOpen} onOpenChange={setSupportMenuOpen} iconOnly={collapsed}>
             {supportWorkflowItems.map((item) => (
-              <NavRow key={`${item.to}-${item.label}`} {...item} onNavigate={closeMobile} />
+              <NavRow key={`${item.to}-${item.label}`} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
             ))}
           </CollapsibleBlock>
         )}
 
-        <CollapsibleBlock title="状況" open={statusOpen} onOpenChange={setStatusOpen}>
+        <CollapsibleBlock title="状況" open={statusOpen} onOpenChange={setStatusOpen} iconOnly={collapsed}>
           {statusItems.map((item) => (
-            <NavRow key={item.to} {...item} onNavigate={closeMobile} />
+            <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
           ))}
         </CollapsibleBlock>
 
@@ -360,9 +404,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             title={user?.role === 'MASTER' ? '管理' : '管理・情報'}
             open={adminOpen}
             onOpenChange={setAdminOpen}
+            iconOnly={collapsed}
           >
             {userMenuItems.map((item) => (
-              <NavRow key={item.to} {...item} onNavigate={closeMobile} />
+              <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
             ))}
           </CollapsibleBlock>
         )}

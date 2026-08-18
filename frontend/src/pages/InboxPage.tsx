@@ -389,6 +389,7 @@ export const InboxPage: React.FC = () => {
       await api.post(`/api/schedules/${scheduleId}/respond`, { decision });
       queryClient.invalidateQueries({ queryKey: ['reception-box'] });
       queryClient.invalidateQueries({ queryKey: ['reception-box', 'unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
     } catch (e: any) {
       alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
     } finally {

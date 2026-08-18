@@ -12,6 +12,13 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('sidebarCollapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const user = useAuthStore((s) => s.user);
   const hydrateForUser = useWorkspaceStore((s) => s.hydrateForUser);
   const clearHydration = useWorkspaceStore((s) => s.clearHydration);
@@ -23,6 +30,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
     hydrateForUser(user.id, user.role);
   }, [user, hydrateForUser, clearHydration]);
+
+  const toggleSidebarCollapsed = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sidebarCollapsed', String(next));
+      } catch {
+        /* ignore storage errors */
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="h-screen flex flex-col bg-background dark:bg-gray-900">
@@ -47,7 +66,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           `}
         >
-          <Sidebar onClose={() => setIsMobileMenuOpen(false)} />
+          <Sidebar
+            onClose={() => setIsMobileMenuOpen(false)}
+            collapsed={isSidebarCollapsed}
+            onToggleCollapse={toggleSidebarCollapsed}
+          />
         </div>
         
         {/* メインコンテンツエリア（モバイル: 全画面、デスクトップ: サイドバー横） */}

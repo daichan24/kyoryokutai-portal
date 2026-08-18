@@ -263,19 +263,6 @@ export interface ParsedSchedule {
   missingFields: string[];
 }
 
-export interface DashboardWidget {
-  id: string;
-  name: string;
-  isVisible: boolean;
-  order: number;
-  isFixed?: boolean;
-}
-
-export interface DashboardSettings {
-  userId: string;
-  widgets: DashboardWidget[];
-}
-
 // Phase 4 Types
 export type ApprovalStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
 

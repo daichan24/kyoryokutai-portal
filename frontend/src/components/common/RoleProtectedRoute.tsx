@@ -16,7 +16,7 @@ interface RoleProtectedRouteProps {
 export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
   children,
   allowedRoles,
-  fallbackPath = '/dashboard',
+  fallbackPath = '/schedule',
 }) => {
   const { user, isAuthenticated } = useAuthStore();
 

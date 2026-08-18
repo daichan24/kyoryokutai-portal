@@ -8,7 +8,6 @@ import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
 /** 初回バンドル縮小のためページを遅延読み込み（ログイン後の各画面で分割チャンクを取得） */
 const Layout = lazy(() => import('./components/layout/Layout').then((m) => ({ default: m.Layout })));
 const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
-const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Schedule = lazy(() => import('./pages/Schedule').then((m) => ({ default: m.Schedule })));
 const WeeklyReport = lazy(() => import('./pages/WeeklyReport').then((m) => ({ default: m.WeeklyReport })));
 const UsersSettings = lazy(() => import('./pages/Settings/Users').then((m) => ({ default: m.UsersSettings })));
@@ -57,12 +56,7 @@ const PrivateRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) =>
   return isAuthenticated ? <>{children ?? <Outlet />}</> : <Navigate to="/login" replace />;
 };
 
-const getDefaultAuthenticatedPath = () => {
-  if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
-    return '/schedule';
-  }
-  return '/dashboard';
-};
+const getDefaultAuthenticatedPath = () => '/schedule';
 
 const App: React.FC = () => {
   const { isLoading, error, fetchMe, logout, user } = useAuthStore();
@@ -134,7 +128,8 @@ const App: React.FC = () => {
         <Route element={<PrivateRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Navigate to={getDefaultAuthenticatedPath()} replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            {/* ダッシュボード廃止。旧ブックマーク/リンク対策でスケジュールへリダイレクト */}
+            <Route path="/dashboard" element={<Navigate to="/schedule" replace />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/reports/weekly" element={<WeeklyReport />} />
             <Route path="/settings/users" element={<UsersSettings />} />
