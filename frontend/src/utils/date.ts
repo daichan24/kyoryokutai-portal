@@ -13,6 +13,22 @@ export const formatTime = (time: string): string => {
   return `${parseInt(h, 10)}:${m}`;
 };
 
+/** ISO日時文字列を「MM/DD HH:mm」（includeYear指定時は「YYYY/MM/DD HH:mm」）形式に整形する */
+export const formatDateTime = (
+  value?: string | null,
+  options: { includeYear?: boolean; emptyLabel?: string } = {}
+): string => {
+  const { includeYear = false, emptyLabel = '-' } = options;
+  if (!value) return emptyLabel;
+  return new Intl.DateTimeFormat('ja-JP', {
+    ...(includeYear ? { year: 'numeric' as const } : {}),
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+};
+
 export type WeekStartsOn = 0 | 1;
 
 export const getWeekRange = (date: Date = new Date(), weekStartsOn: WeekStartsOn = 0): { start: Date; end: Date } => {

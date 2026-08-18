@@ -1,20 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, CalendarCheck, CheckCircle2, ExternalLink, RefreshCw, Unlink } from 'lucide-react';
 import { api } from '../../utils/api';
+import { formatDateTime } from '../../utils/date';
 import { Button } from '../../components/common/Button';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { GoogleCalendarStatus } from '../../types';
-
-function formatDateTime(value?: string | null) {
-  if (!value) return '未同期';
-  return new Intl.DateTimeFormat('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
-}
 
 export const GoogleCalendarSettings: React.FC = () => {
   const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
@@ -134,11 +124,11 @@ export const GoogleCalendarSettings: React.FC = () => {
                 </div>
                 <div>
                   <dt className="text-gray-500 dark:text-gray-400">最終同期</dt>
-                  <dd className="font-medium text-gray-900 dark:text-gray-100">{formatDateTime(connection?.lastSyncedAt)}</dd>
+                  <dd className="font-medium text-gray-900 dark:text-gray-100">{formatDateTime(connection?.lastSyncedAt, { includeYear: true, emptyLabel: '未同期' })}</dd>
                 </div>
                 <div>
                   <dt className="text-gray-500 dark:text-gray-400">watch期限</dt>
-                  <dd className="font-medium text-gray-900 dark:text-gray-100">{formatDateTime(connection?.watchExpiration)}</dd>
+                  <dd className="font-medium text-gray-900 dark:text-gray-100">{formatDateTime(connection?.watchExpiration, { includeYear: true, emptyLabel: '未同期' })}</dd>
                 </div>
               </dl>
               {connection?.lastError && (

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Mail, RefreshCw, RotateCcw, StopCircle } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../utils/api';
+import { formatDateTime } from '../../utils/date';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../../components/common/Button';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -88,18 +89,6 @@ const eventLabels: Record<string, string> = {
   TIME_ADJUSTMENT_EXPIRY_REMINDER: '時間調整期限リマインド',
   SNS_WEEKLY_SUMMARY: 'SNS週次まとめ',
 };
-
-const dateTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
-function formatDateTime(value?: string | null) {
-  if (!value) return '-';
-  return dateTimeFormatter.format(new Date(value));
-}
 
 export const EmailJobsSettings: React.FC = () => {
   const { user } = useAuthStore();
