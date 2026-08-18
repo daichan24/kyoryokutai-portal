@@ -85,9 +85,16 @@
   width: 100% !important;
 }
 
+/* FullCalendar標準の「今日」ハイライト（黄色）を無効化し、下の独自ルールに一本化する */
+.fc {
+  --fc-today-bg-color: transparent;
+  --fc-border-color: #e5e7eb;
+}
+
 /* ダークモード対応 */
 .dark .fc {
   @apply bg-gray-800 text-gray-100;
+  --fc-border-color: #374151;
 }
 
 .dark .fc-theme-standard td,
@@ -107,10 +114,6 @@
   @apply bg-gray-800;
 }
 
-.dark .fc-daygrid-day.fc-day-today {
-  @apply bg-blue-900/20;
-}
-
 .dark .fc-timegrid-slot {
   @apply border-gray-700;
 }
@@ -119,39 +122,41 @@
   @apply bg-gray-900 text-gray-400;
 }
 
-.dark .fc-timegrid-col.fc-day-today {
-  @apply bg-blue-900/20;
-}
-
 /* イベントのホバー効果 */
 .fc-event {
   @apply cursor-pointer transition-opacity;
+  border-radius: 5px;
 }
 
 .fc-event:hover {
   @apply opacity-90;
 }
 
-/* 今日の日付を強調 */
-.fc-day-today {
-  @apply bg-blue-50;
+/* 今日の列（週・日表示）はごく薄いトーンだけ。セル全体を塗りつぶさない */
+.fc-timegrid-col.fc-day-today {
+  @apply bg-blue-50/60;
 }
 
-.dark .fc-day-today {
-  @apply bg-blue-900/20;
+.dark .fc-timegrid-col.fc-day-today {
+  @apply bg-blue-900/10;
 }
 
-/* 土日祝の表示（日・週・月で共通） */
-.fc .cb-calendar-day-holiday,
-.fc .cb-calendar-day-holiday.fc-col-header-cell {
-  background: rgb(254 242 242) !important;
+/* 今日の日付（月表示）は日付番号だけを丸バッジで強調し、セル背景は塗らない（Googleカレンダー風） */
+.fc-daygrid-day-number {
+  border-radius: 9999px;
 }
 
-.fc .cb-calendar-day-saturday,
-.fc .cb-calendar-day-saturday.fc-col-header-cell {
-  background: rgb(240 249 255) !important;
+.fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: rgb(37 99 235);
+  color: white !important;
+  font-weight: 700;
 }
 
+.dark .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: rgb(59 130 246);
+}
+
+/* 土日祝は日付番号の色だけで示し、セル全体は塗らない（過度な色分けを避ける） */
 .fc .cb-calendar-day-holiday .fc-daygrid-day-number,
 .fc .cb-calendar-day-holiday .fc-col-header-cell-cushion {
   color: rgb(220 38 38) !important;
@@ -164,14 +169,9 @@
   font-weight: 700;
 }
 
-.dark .fc .cb-calendar-day-holiday,
-.dark .fc .cb-calendar-day-holiday.fc-col-header-cell {
-  background: rgb(69 10 10 / 0.3) !important;
-}
-
-.dark .fc .cb-calendar-day-saturday,
-.dark .fc .cb-calendar-day-saturday.fc-col-header-cell {
-  background: rgb(8 47 73 / 0.3) !important;
+.fc-daygrid-day.fc-day-today.cb-calendar-day-holiday .fc-daygrid-day-number,
+.fc-daygrid-day.fc-day-today.cb-calendar-day-saturday .fc-daygrid-day-number {
+  color: white !important;
 }
 
 .dark .fc .cb-calendar-day-holiday .fc-daygrid-day-number,
