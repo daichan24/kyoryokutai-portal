@@ -363,7 +363,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
 
         <div className="flex-1 overflow-y-auto min-h-0">
           {viewMode === 'preview' && previewReport ? (
-            <div className="p-4 bg-gray-100 flex justify-center">
+            <div className="p-4 bg-gray-100 dark:bg-gray-900 flex justify-center">
               <div className="shadow-lg">
                 <WeeklyReportPreview report={previewReport} />
               </div>
