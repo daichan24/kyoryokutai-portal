@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -40,11 +41,7 @@ export const Schedule: React.FC = () => {
   const { isStaff, workspaceMode } = useStaffWorkspace();
   const isMobile = useIsMobileBreakpoint();
   const navigate = useNavigate();
-  const [schedules, setSchedules] = useState<ScheduleType[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [missions, setMissions] = useState<Array<{ id: string; missionName: string }>>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
   const [calendarViewMode] = useState<'individual' | 'all'>('individual'); // カレンダー表示モード
@@ -63,7 +60,6 @@ export const Schedule: React.FC = () => {
       : 'personal'
     : 'personal';
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<Date | null>(null); // 詳細表示用の選択日
-  const [availableMembers, setAvailableMembers] = useState<User[]>([]); // 選択可能なメンバーリスト
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
   const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
   const [visibleMemberIds, setVisibleMemberIds] = useState<Set<string>>(() => {
@@ -79,9 +75,121 @@ export const Schedule: React.FC = () => {
     return user?.id ? new Set([user.id]) : new Set();
   });
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
-  const scheduleRequestIdRef = useRef(0);
-  const scheduleRefreshRef = useRef<() => Promise<void>>(async () => {});
   const scheduleWeekStartsOn: WeekStartsOn = user?.scheduleWeekStartsOn === 1 ? 1 : 0;
+
+  const sortProjectTasks = (tasks: Task[]) => {
+    const statusWeight = (task: Task) => (task.status === 'COMPLETED' ? 2 : task.status === 'IN_PROGRESS' ? 0 : 1);
+    return [...tasks].sort((a, b) =>
+      statusWeight(a) - statusWeight(b) ||
+      (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31') ||
+      (a.order ?? 9999) - (b.order ?? 9999)
+    );
+  };
+
+  useEffect(() => {
+    setDetailFilterUserId('');
+  }, [selectedDateForDetail]);
+
+  useEffect(() => {
+    if (viewMode === 'week') {
+      setWeekDates(getWeekDates(currentDate, scheduleWeekStartsOn));
+    } else if (viewMode === 'month') {
+      setWeekDates(getMonthDates(currentDate, scheduleWeekStartsOn));
+    } else if (viewMode === 'day') {
+      setWeekDates([currentDate]);
+    }
+  }, [currentDate, viewMode, scheduleWeekStartsOn]);
+
+  // 表示設定をローカルストレージに保存
+  useEffect(() => {
+    if (visibleMemberIds.size > 0) {
+      localStorage.setItem('calendarVisibleMembers', JSON.stringify([...visibleMemberIds]));
+    }
+  }, [visibleMemberIds]);
+
+  const rangeStartDate = weekDates.length > 0 ? formatDate(weekDates[0]) : '';
+  const rangeEndDate = weekDates.length > 0 ? formatDate(weekDates[weekDates.length - 1]) : '';
+
+  const { data: events = EMPTY_EVENTS, isLoading: loading } = useQuery<Event[]>({
+    queryKey: ['schedule-events', rangeStartDate, rangeEndDate],
+    queryFn: async () => {
+      const params = new URLSearchParams({ startDate: rangeStartDate, endDate: rangeEndDate });
+      const response = await api.get<Event[]>(`/api/events?${params}`);
+      return response.data || [];
+    },
+    enabled: weekDates.length > 0,
+  });
+
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ['schedule-projects', rangeStartDate, rangeEndDate, user?.id, user?.role, projectViewMode],
+    queryFn: async () => {
+      let url = '/api/projects';
+      if (user?.role !== 'MEMBER' && projectViewMode === 'personal') {
+        url = `/api/projects?userId=${user?.id}`;
+      }
+
+      const response = await api.get<Project[]>(url);
+      const allProjects = response.data || [];
+      return allProjects.filter((project) => {
+        if (!project.startDate && !project.endDate) return false;
+        const projectStartDate = project.startDate ? new Date(project.startDate) : null;
+        const projectEndDate = project.endDate ? new Date(project.endDate) : null;
+        const viewStartDate = new Date(rangeStartDate);
+        const viewEndDate = new Date(rangeEndDate);
+
+        if (projectStartDate && projectEndDate) {
+          return projectStartDate <= viewEndDate && projectEndDate >= viewStartDate;
+        }
+        if (projectStartDate) return projectStartDate <= viewEndDate;
+        if (projectEndDate) return projectEndDate >= viewStartDate;
+        return false;
+      });
+    },
+    enabled: weekDates.length > 0,
+  });
+
+  const { data: missions = [] } = useQuery<Array<{ id: string; missionName: string }>>({
+    queryKey: ['schedule-missions'],
+    queryFn: async () => {
+      const response = await api.get('/api/missions');
+      return response.data || [];
+    },
+  });
+
+  // メンバーリストを取得（週表示・月表示共通、他画面と共有キャッシュ）
+  const { data: allUsers = [] } = useQuery<User[]>({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const response = await api.get<User[]>('/api/users');
+      return response.data || [];
+    },
+  });
+  const availableMembers = useMemo(() => allUsers.filter((u) => u.role === 'MEMBER'), [allUsers]);
+
+  const visibleMemberIdsKey = useMemo(() => [...visibleMemberIds].sort().join(','), [visibleMemberIds]);
+
+  const { data: schedules = EMPTY_SCHEDULES } = useQuery<ScheduleType[]>({
+    queryKey: ['schedules', rangeStartDate, rangeEndDate, viewMode, visibleMemberIdsKey],
+    queryFn: async () => {
+      const params = new URLSearchParams({ startDate: rangeStartDate, endDate: rangeEndDate, view: viewMode });
+      visibleMemberIds.forEach((id) => params.append('userIds', id));
+      const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
+      return Array.isArray(response.data) ? response.data : [];
+    },
+    // チェックが1つもない場合は何も表示しない（フェッチ自体を行わない）
+    enabled: weekDates.length > 0 && visibleMemberIds.size > 0,
+  });
+
+  const refreshSchedules = () => {
+    queryClient.invalidateQueries({ queryKey: ['schedules'] });
+  };
+
+  // スケジュール更新イベントをリッスン（他画面からの通知）
+  useEffect(() => {
+    const handleScheduleUpdate = () => refreshSchedules();
+    window.addEventListener('schedule-updated', handleScheduleUpdate);
+    return () => window.removeEventListener('schedule-updated', handleScheduleUpdate);
+  }, []);
 
   const projectsByMission = useMemo(() => {
     const missionOrder = new Map(missions.map((mission, index) => [mission.id, index]));
@@ -108,190 +216,6 @@ export const Schedule: React.FC = () => {
         (missionOrder.get(a.id) ?? 9999) - (missionOrder.get(b.id) ?? 9999) || a.name.localeCompare(b.name, 'ja')
       );
   }, [missions, projects]);
-
-  const sortProjectTasks = (tasks: Task[]) => {
-    const statusWeight = (task: Task) => (task.status === 'COMPLETED' ? 2 : task.status === 'IN_PROGRESS' ? 0 : 1);
-    return [...tasks].sort((a, b) =>
-      statusWeight(a) - statusWeight(b) ||
-      (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31') ||
-      (a.order ?? 9999) - (b.order ?? 9999)
-    );
-  };
-
-  useEffect(() => {
-    setDetailFilterUserId('');
-  }, [selectedDateForDetail]);
-
-  useEffect(() => {
-    if (viewMode === 'week') {
-      setWeekDates(getWeekDates(currentDate, scheduleWeekStartsOn));
-    } else if (viewMode === 'month') {
-      setWeekDates(getMonthDates(currentDate, scheduleWeekStartsOn));
-    } else if (viewMode === 'day') {
-      setWeekDates([currentDate]);
-    }
-  }, [currentDate, viewMode, scheduleWeekStartsOn]);
-
-  useEffect(() => {
-    if (weekDates.length > 0) {
-      fetchSchedules();
-    }
-  }, [weekDates, viewMode, visibleMemberIds]);
-
-  useEffect(() => {
-    if (weekDates.length > 0) {
-      let cancelled = false;
-
-      const loadEvents = async () => {
-        setLoading(true);
-        try {
-          const startDate = formatDate(weekDates[0]);
-          const endDate = formatDate(weekDates[weekDates.length - 1]);
-          const params = new URLSearchParams({ startDate, endDate });
-          const response = await api.get<Event[]>(`/api/events?${params}`);
-          if (!cancelled) setEvents(response.data || []);
-        } catch (error) {
-          console.error('Failed to fetch events:', error);
-          if (!cancelled) setEvents([]);
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      };
-
-      loadEvents();
-      return () => {
-        cancelled = true;
-      };
-    }
-  }, [weekDates]);
-
-  useEffect(() => {
-    if (weekDates.length > 0) {
-      let cancelled = false;
-
-      const loadProjects = async () => {
-        try {
-          const startDate = formatDate(weekDates[0]);
-          const endDate = formatDate(weekDates[weekDates.length - 1]);
-
-          let url = '/api/projects';
-          if (user?.role !== 'MEMBER' && projectViewMode === 'personal') {
-            url = `/api/projects?userId=${user?.id}`;
-          }
-
-          const response = await api.get<Project[]>(url);
-          const allProjects = response.data || [];
-          const filteredProjects = allProjects.filter((project) => {
-            if (!project.startDate && !project.endDate) return false;
-            const projectStartDate = project.startDate ? new Date(project.startDate) : null;
-            const projectEndDate = project.endDate ? new Date(project.endDate) : null;
-            const viewStartDate = new Date(startDate);
-            const viewEndDate = new Date(endDate);
-
-            if (projectStartDate && projectEndDate) {
-              return projectStartDate <= viewEndDate && projectEndDate >= viewStartDate;
-            }
-            if (projectStartDate) return projectStartDate <= viewEndDate;
-            if (projectEndDate) return projectEndDate >= viewStartDate;
-            return false;
-          });
-
-          if (!cancelled) setProjects(filteredProjects);
-        } catch (error) {
-          console.error('Failed to fetch projects:', error);
-          if (!cancelled) setProjects([]);
-        }
-      };
-
-      loadProjects();
-      return () => {
-        cancelled = true;
-      };
-    }
-  }, [weekDates, user?.id, user?.role, projectViewMode]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadMissions = async () => {
-      try {
-        const response = await api.get('/api/missions');
-        if (!cancelled) setMissions(response.data || []);
-      } catch (error) {
-        console.error('Failed to fetch missions:', error);
-        if (!cancelled) setMissions([]);
-      }
-    };
-
-    loadMissions();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // メンバーリストを取得（週表示・月表示共通）
-  useEffect(() => {
-    fetchMembers();
-  }, []);
-
-  // 表示設定をローカルストレージに保存
-  useEffect(() => {
-    if (visibleMemberIds.size > 0) {
-      localStorage.setItem('calendarVisibleMembers', JSON.stringify([...visibleMemberIds]));
-    }
-  }, [visibleMemberIds]);
-
-  const fetchMembers = async () => {
-    try {
-      const response = await api.get<User[]>('/api/users');
-      // メンバーのみを取得（新規追加メンバーも表示対象にする）
-      const members = (response.data || []).filter(u => 
-        u.role === 'MEMBER'
-      );
-      setAvailableMembers(members);
-    } catch (error) {
-      console.error('Failed to fetch members:', error);
-      setAvailableMembers([]);
-    }
-  };
-
-  // スケジュール更新イベントをリッスン
-  useEffect(() => {
-    const handleScheduleUpdate = () => {
-      void scheduleRefreshRef.current();
-    };
-    window.addEventListener('schedule-updated', handleScheduleUpdate);
-    return () => window.removeEventListener('schedule-updated', handleScheduleUpdate);
-  }, []);
-
-  const fetchSchedules = async () => {
-    const requestId = ++scheduleRequestIdRef.current;
-    try {
-      const params = new URLSearchParams({
-        startDate: formatDate(weekDates[0]),
-        endDate: formatDate(weekDates[weekDates.length - 1]),
-        view: viewMode,
-      });
-
-      // すべてのビューモードで visibleMemberIds を使用
-      if (visibleMemberIds.size > 0) {
-        visibleMemberIds.forEach(id => params.append('userIds', id));
-      } else {
-        // チェックが1つもない場合は何も表示しない
-        if (requestId === scheduleRequestIdRef.current) setSchedules([]);
-        return;
-      }
-
-      const response = await api.get<ScheduleType[]>(`/api/schedules?${params}`);
-      const data = response.data;
-      if (requestId === scheduleRequestIdRef.current) {
-        setSchedules(Array.isArray(data) ? data : []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch schedules:', error);
-    }
-  };
-  scheduleRefreshRef.current = fetchSchedules;
 
   const handlePrev = () => {
     const newDate = new Date(currentDate);
@@ -359,7 +283,7 @@ export const Schedule: React.FC = () => {
   };
 
   const handleSaved = () => {
-    fetchSchedules();
+    refreshSchedules();
     handleCloseModal();
   };
 
@@ -738,7 +662,7 @@ export const Schedule: React.FC = () => {
                 setCurrentDate(date);
                 setViewMode('day');
               }}
-              onScheduleUpdate={fetchSchedules}
+              onScheduleUpdate={refreshSchedules}
               firstDay={scheduleWeekStartsOn}
             />
           </Suspense>
