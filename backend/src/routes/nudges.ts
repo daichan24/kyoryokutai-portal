@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import prisma from '../lib/prisma';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 router.use(authenticate);
@@ -101,13 +101,8 @@ router.get('/:fiscalYear', async (req: AuthRequest, res) => {
  * POST /api/nudges
  * 新年度の協力隊細則を作成（MASTER/SUPPORT/GOVERNMENTのみ）
  */
-router.post('/', async (req: AuthRequest, res) => {
+router.post('/', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, res) => {
   try {
-    // 権限チェック
-    if (!['MASTER', 'SUPPORT', 'GOVERNMENT'].includes(req.user!.role)) {
-      return res.status(403).json({ error: '権限がありません' });
-    }
-
     const data = nudgeDocumentSchema.parse(req.body);
     const userId = req.user!.id;
 
@@ -166,13 +161,8 @@ router.post('/', async (req: AuthRequest, res) => {
  * PUT /api/nudges/:fiscalYear
  * 協力隊細則を更新（MASTER/SUPPORT/GOVERNMENTのみ）
  */
-router.put('/:fiscalYear', async (req: AuthRequest, res) => {
+router.put('/:fiscalYear', authorize('MASTER', 'SUPPORT', 'GOVERNMENT'), async (req: AuthRequest, res) => {
   try {
-    // 権限チェック
-    if (!['MASTER', 'SUPPORT', 'GOVERNMENT'].includes(req.user!.role)) {
-      return res.status(403).json({ error: '権限がありません' });
-    }
-
     const fiscalYear = parseInt(req.params.fiscalYear);
     const { title, content } = req.body;
     const userId = req.user!.id;
@@ -237,13 +227,8 @@ router.put('/:fiscalYear', async (req: AuthRequest, res) => {
  * DELETE /api/nudges/:fiscalYear
  * 協力隊細則を削除（MASTERのみ）
  */
-router.delete('/:fiscalYear', async (req: AuthRequest, res) => {
+router.delete('/:fiscalYear', authorize('MASTER'), async (req: AuthRequest, res) => {
   try {
-    // 権限チェック
-    if (req.user!.role !== 'MASTER') {
-      return res.status(403).json({ error: '権限がありません' });
-    }
-
     const fiscalYear = parseInt(req.params.fiscalYear);
 
     await prisma.nudgeDocument.delete({

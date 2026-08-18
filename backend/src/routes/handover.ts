@@ -1,8 +1,40 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import prisma from '../lib/prisma';
 
 const router = Router();
+
+const categorySchema = z.object({
+  name: z.string().min(1).max(200),
+  type: z.enum(['EVENT', 'MEETING']).optional(),
+  description: z.string().max(10000).optional().nullable(),
+});
+
+const folderSchema = z.object({
+  categoryId: z.string().uuid(),
+  fiscalYear: z.number().int().min(2000).max(2100),
+  title: z.string().min(1).max(200),
+  description: z.string().max(10000).optional().nullable(),
+});
+
+const folderUpdateSchema = z.object({
+  title: z.string().min(1).max(200),
+  fiscalYear: z.number().int().min(2000).max(2100),
+  description: z.string().max(10000).optional().nullable(),
+});
+
+const documentSchema = z.object({
+  folderId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  content: z.string().max(100000),
+  relatedContactIds: z.array(z.string().uuid()).optional(),
+  relatedMemberIds: z.array(z.string().uuid()).optional(),
+  budget: z.number().int().min(0).optional().nullable(),
+  venue: z.string().max(200).optional().nullable(),
+});
+
+const documentUpdateSchema = documentSchema.omit({ folderId: true });
 
 // カテゴリ一覧取得
 router.get('/categories', authenticate, async (req: AuthRequest, res) => {
@@ -30,7 +62,7 @@ router.get('/categories', authenticate, async (req: AuthRequest, res) => {
 // カテゴリ作成
 router.post('/categories', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { name, type, description } = req.body;
+    const { name, type, description } = categorySchema.parse(req.body);
     const maxOrder = await prisma.handoverCategory.findFirst({
       orderBy: { sortOrder: 'desc' },
       select: { sortOrder: true },
@@ -45,6 +77,7 @@ router.post('/categories', authenticate, async (req: AuthRequest, res) => {
     });
     res.json(category);
   } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
     console.error('Create handover category error:', error);
     res.status(500).json({ error: 'カテゴリの作成に失敗しました' });
   }
@@ -54,13 +87,14 @@ router.post('/categories', authenticate, async (req: AuthRequest, res) => {
 router.put('/categories/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, type, description } = req.body;
+    const { name, type, description } = categorySchema.parse(req.body);
     const category = await prisma.handoverCategory.update({
       where: { id },
       data: { name, type, description },
     });
     res.json(category);
   } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
     console.error('Update handover category error:', error);
     res.status(500).json({ error: 'カテゴリの更新に失敗しました' });
   }
@@ -81,7 +115,7 @@ router.delete('/categories/:id', authenticate, async (req: AuthRequest, res) => 
 // フォルダ作成
 router.post('/folders', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { categoryId, fiscalYear, title, description } = req.body;
+    const { categoryId, fiscalYear, title, description } = folderSchema.parse(req.body);
     const maxOrder = await prisma.handoverFolder.findFirst({
       where: { categoryId },
       orderBy: { sortOrder: 'desc' },
@@ -98,6 +132,7 @@ router.post('/folders', authenticate, async (req: AuthRequest, res) => {
     });
     res.json(folder);
   } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
     console.error('Create handover folder error:', error);
     res.status(500).json({ error: 'フォルダの作成に失敗しました' });
   }
@@ -107,13 +142,14 @@ router.post('/folders', authenticate, async (req: AuthRequest, res) => {
 router.put('/folders/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { title, description, fiscalYear } = req.body;
+    const { title, description, fiscalYear } = folderUpdateSchema.parse(req.body);
     const folder = await prisma.handoverFolder.update({
       where: { id },
       data: { title, description, fiscalYear },
     });
     res.json(folder);
   } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
     console.error('Update handover folder error:', error);
     res.status(500).json({ error: 'フォルダの更新に失敗しました' });
   }
@@ -177,8 +213,8 @@ router.get('/documents/:id', authenticate, async (req: AuthRequest, res) => {
 router.post('/documents', authenticate, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
-    const { folderId, title, content, relatedContactIds, relatedMemberIds, budget, venue } = req.body;
-    
+    const { folderId, title, content, relatedContactIds, relatedMemberIds, budget, venue } = documentSchema.parse(req.body);
+
     const maxOrder = await prisma.handoverDocument.findFirst({
       where: { folderId },
       orderBy: { sortOrder: 'desc' },
@@ -203,6 +239,7 @@ router.post('/documents', authenticate, async (req: AuthRequest, res) => {
     });
     res.json(document);
   } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
     console.error('Create handover document error:', error);
     res.status(500).json({ error: '文書の作成に失敗しました' });
   }
@@ -213,8 +250,8 @@ router.put('/documents/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
     const { id } = req.params;
-    const { title, content, relatedContactIds, relatedMemberIds, budget, venue } = req.body;
-    
+    const { title, content, relatedContactIds, relatedMemberIds, budget, venue } = documentUpdateSchema.parse(req.body);
+
     const document = await prisma.handoverDocument.update({
       where: { id },
       data: {
@@ -233,6 +270,7 @@ router.put('/documents/:id', authenticate, async (req: AuthRequest, res) => {
     });
     res.json(document);
   } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
     console.error('Update handover document error:', error);
     res.status(500).json({ error: '文書の更新に失敗しました' });
   }
