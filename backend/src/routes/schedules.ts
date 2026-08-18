@@ -501,6 +501,14 @@ router.get('/', async (req: AuthRequest, res) => {
         where.startDate = { lte: end };
         where.endDate = { gte: start };
       }
+    } else {
+      // 期間指定が一切ない場合、絞り込みなしの全件取得になってしまうのを防ぐため
+      // 既定で「前月〜翌月」の3ヶ月分に絞る
+      const defaultNow = new Date();
+      const rangeStart = new Date(defaultNow.getFullYear(), defaultNow.getMonth() - 1, 1);
+      const rangeEnd = new Date(defaultNow.getFullYear(), defaultNow.getMonth() + 2, 0);
+      where.startDate = { lte: rangeEnd };
+      where.endDate = { gte: rangeStart };
     }
 
     where.deletedAt = null;
@@ -595,6 +603,7 @@ router.get('/', async (req: AuthRequest, res) => {
         },
       },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+      take: 3000, // 想定外の絞り込み漏れがあっても全件取得にならないための安全弁
     });
 
     res.json(schedules.map((schedule) => sanitizeScheduleForViewer(schedule, req.user!)));
