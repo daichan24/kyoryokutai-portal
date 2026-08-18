@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit2 } from 'lucide-react';
+import { X, Edit2, Upload, Trash2, FileDown } from 'lucide-react';
 import { api } from '../../utils/api';
 import { format } from 'date-fns';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { Button } from '../common/Button';
 import { useAuthStore } from '../../stores/authStore';
 import { InspectionPreview } from './InspectionPreview';
+import { InspectionAttachmentImage } from './InspectionAttachmentImage';
+
+interface InspectionAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+}
 
 interface Inspection {
   id: string;
   date: string;
+  startTime?: string | null;
+  endTime?: string | null;
   destination: string;
   purpose: string;
   inspectionPurpose: string;
@@ -24,6 +34,19 @@ interface Inspection {
   approvalComment?: string | null;
   approvedAt?: string | null;
   approver?: { id: string; name: string } | null;
+  attachments?: InspectionAttachment[];
+}
+
+const ALLOWED_ATTACHMENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 interface InspectionDetailModalProps {
@@ -45,6 +68,8 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>(initialViewMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [showPDFConfirm, setShowPDFConfirm] = useState(false);
 
   // 編集用の状態
   const [inspectionPurpose, setInspectionPurpose] = useState('');
@@ -96,6 +121,69 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       alert('保存に失敗しました');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
+      alert('対応していない画像形式です（JPEG・PNG・WebP・HEICのみ）');
+      return;
+    }
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      alert('画像サイズは8MB以下にしてください');
+      return;
+    }
+
+    setUploadingAttachment(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      await api.post(`/api/inspections/${inspectionId}/attachments`, {
+        fileName: file.name,
+        mimeType: file.type,
+        dataBase64: dataUrl,
+      });
+      await fetchInspection();
+      onUpdated?.();
+    } catch (error) {
+      console.error('Failed to upload attachment:', error);
+      alert('画像の添付に失敗しました');
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!confirm('この画像を削除しますか？')) return;
+    try {
+      await api.delete(`/api/inspections/${inspectionId}/attachments/${attachmentId}`);
+      await fetchInspection();
+      onUpdated?.();
+    } catch (error) {
+      console.error('Failed to delete attachment:', error);
+      alert('画像の削除に失敗しました');
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const response = await api.get(`/api/inspections/${inspectionId}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `復命書_${inspection?.destination || inspectionId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      link.remove();
+      setShowPDFConfirm(false);
+    } catch (error) {
+      console.error('Failed to download inspection PDF:', error);
+      alert('PDF出力に失敗しました');
+      setShowPDFConfirm(false);
     }
   };
 
@@ -214,7 +302,14 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">視察日</label>
-              <div className="text-gray-900 dark:text-gray-100">{format(new Date(inspection.date), 'yyyy年M月d日')}</div>
+              <div className="text-gray-900 dark:text-gray-100">
+                {format(new Date(inspection.date), 'yyyy年M月d日')}
+                {inspection.startTime && (
+                  <span className="ml-1 text-gray-600 dark:text-gray-400">
+                    {inspection.startTime}{inspection.endTime ? `〜${inspection.endTime}` : ''}
+                  </span>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">視察先</label>
@@ -242,6 +337,51 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
                 {inspection.participants.length > 0 && `、${inspection.participants.join('、')}`}
               </div>
             </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">添付画像</label>
+              {canEdit && (
+                <label className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded cursor-pointer ${uploadingAttachment ? 'opacity-50 pointer-events-none' : ''} bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30`}>
+                  <Upload className="w-3.5 h-3.5" />
+                  {uploadingAttachment ? 'アップロード中...' : '画像を追加'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/heic"
+                    className="hidden"
+                    onChange={handleUploadAttachment}
+                    disabled={uploadingAttachment}
+                  />
+                </label>
+              )}
+            </div>
+            {inspection.attachments && inspection.attachments.length > 0 ? (
+              <div className="flex flex-wrap gap-3">
+                {inspection.attachments.map((a) => (
+                  <div key={a.id} className="relative group">
+                    <InspectionAttachmentImage
+                      inspectionId={inspection.id}
+                      attachmentId={a.id}
+                      alt={a.fileName}
+                      className="w-24 h-24 rounded border border-gray-200 dark:border-gray-700 object-cover"
+                    />
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAttachment(a.id)}
+                        className="absolute -top-2 -right-2 p-1 rounded-full bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="削除"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 dark:text-gray-400">添付画像はありません</p>
+            )}
           </div>
 
           {isEditing ? (
@@ -327,7 +467,37 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
             </div>
           )}
         </div>
+
+        {viewMode === 'preview' && previewInspection && (
+          <div className="flex justify-end p-4 sm:p-6 border-t dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
+            <Button type="button" variant="outline" onClick={() => setShowPDFConfirm(true)}>
+              <FileDown className="w-4 h-4 mr-2" />
+              PDF出力
+            </Button>
+          </div>
+        )}
       </div>
+
+      {showPDFConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full m-4 p-6">
+            <h3 className="text-xl font-bold dark:text-gray-100 mb-4">
+              ローカルに保存しますか？
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              PDFファイルをローカルPCに保存します。
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowPDFConfirm(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleDownloadPDF}>
+                OK
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

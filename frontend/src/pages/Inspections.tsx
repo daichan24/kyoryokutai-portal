@@ -13,6 +13,8 @@ import { useAuthStore } from '../stores/authStore';
 interface Inspection {
   id: string;
   date: string;
+  startTime?: string | null;
+  endTime?: string | null;
   destination: string;
   purpose: string;
   inspectionPurpose: string;
@@ -47,6 +49,8 @@ export const Inspections: React.FC = () => {
       scheduleId: scheduleIdFromQuery,
       userId: searchParams.get('userId') || undefined,
       date: searchParams.get('date') || undefined,
+      startTime: searchParams.get('startTime') || undefined,
+      endTime: searchParams.get('endTime') || undefined,
       destination,
       purpose,
       inspectionPurpose: purpose ? `${purpose}について確認・報告するため。` : '',
@@ -86,7 +90,7 @@ export const Inspections: React.FC = () => {
   const clearScheduleParams = () => {
     if (!scheduleIdFromQuery) return;
     const next = new URLSearchParams(searchParams);
-    ['scheduleId', 'userId', 'date', 'destination', 'purpose', 'projectId'].forEach((key) => next.delete(key));
+    ['scheduleId', 'userId', 'date', 'startTime', 'endTime', 'destination', 'purpose', 'projectId'].forEach((key) => next.delete(key));
     setSearchParams(next, { replace: true });
   };
 
@@ -143,6 +147,7 @@ export const Inspections: React.FC = () => {
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {format(new Date(inspection.date), 'yyyy年M月d日')}
+                  {inspection.startTime && ` ${inspection.startTime}${inspection.endTime ? `〜${inspection.endTime}` : ''}`}
                 </p>
                 {inspection.approver && inspection.approvedAt && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

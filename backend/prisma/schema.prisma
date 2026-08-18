@@ -1384,6 +1384,8 @@ model Inspection {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   date         DateTime @db.Date
+  startTime    String?
+  endTime      String?
   destination  String
   purpose      String   @db.Text
   participants String[]
@@ -1404,6 +1406,8 @@ model Inspection {
   scheduleId String?
   schedule   Schedule? @relation("InspectionSchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
 
+  attachments InspectionAttachment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1411,6 +1415,21 @@ model Inspection {
   @@index([date])
   @@index([scheduleId])
   @@index([approvalStatus])
+}
+
+model InspectionAttachment {
+  id           String     @id @default(uuid())
+  inspectionId String
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  fileName   String
+  mimeType   String
+  fileSize   Int
+  dataBase64 String     @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([inspectionId])
 }
 
 // ========================================

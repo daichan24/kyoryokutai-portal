@@ -139,6 +139,7 @@ export interface WeeklyReport {
   week: string;
   thisWeekActivities: Array<{
     date: string;
+    endDate?: string;
     activity: string;
     projectId?: string | null;
     projectName?: string;

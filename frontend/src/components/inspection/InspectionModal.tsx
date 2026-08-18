@@ -13,6 +13,8 @@ interface Project {
 interface InspectionModalProps {
   initialData?: {
     date?: string;
+    startTime?: string;
+    endTime?: string;
     destination?: string;
     purpose?: string;
     inspectionPurpose?: string;
@@ -31,6 +33,8 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
   onSaved,
 }) => {
   const [date, setDate] = useState(initialData?.date || formatDate(new Date()));
+  const [startTime, setStartTime] = useState(initialData?.startTime || '');
+  const [endTime, setEndTime] = useState(initialData?.endTime || '');
   const [destination, setDestination] = useState(initialData?.destination || '');
   const [purpose, setPurpose] = useState(initialData?.purpose || '');
   const [participants, setParticipants] = useState('');
@@ -65,6 +69,8 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
     try {
       const data = {
         date,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
         destination,
         purpose,
         participants: participants.split(',').map(p => p.trim()).filter(p => p),
@@ -124,6 +130,21 @@ export const InspectionModal: React.FC<InspectionModalProps> = ({
               onChange={(e) => setDestination(e.target.value)}
               required
               placeholder="視察先を入力"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="開始時刻（任意・復命書の日時欄に使用）"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+            <Input
+              label="終了時刻（任意）"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
             />
           </div>
 

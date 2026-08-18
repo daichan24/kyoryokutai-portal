@@ -1,8 +1,10 @@
 import prisma from '../lib/prisma';
 import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
 
 interface ActivityItem {
   date: string;
+  endDate?: string;
   activity: string;
   projectId?: string | null;
   projectName?: string;
@@ -25,8 +27,10 @@ interface ReportScheduleProgress {
 interface ReportSchedule {
   date: Date;
   startDate?: Date | null;
+  endDate?: Date | null;
   startTime: string;
   endTime: string;
+  isAllDay?: boolean;
   title?: string | null;
   activityDescription?: string | null;
   locationText?: string | null;
@@ -95,10 +99,18 @@ function endOfRange(start: Date, days: number) {
   return end;
 }
 
+function formatSchedulePeriod(schedule: ReportSchedule): string {
+  if (schedule.isAllDay) return '終日';
+  const startHour = parseInt((schedule.startTime || '').split(':')[0] || '0', 10);
+  const endHour = parseInt((schedule.endTime || '').split(':')[0] || '0', 10);
+  const startsAM = startHour < 12;
+  const endsPM = endHour >= 12;
+  if (startsAM && endsPM) return 'AM・PM';
+  return startsAM ? 'AM' : 'PM';
+}
+
 function formatScheduleActivity(schedule: ReportSchedule) {
   const title = schedule.title || schedule.activityDescription || '予定';
-  const missionName = schedule.task?.mission?.missionName || schedule.project?.mission?.missionName;
-  const projectName = schedule.project?.projectName;
   const location = schedule.location?.name || schedule.locationText;
   const participants = (schedule.scheduleParticipants || [])
     .filter((p) => p.status === 'APPROVED')
@@ -112,16 +124,21 @@ function formatScheduleActivity(schedule: ReportSchedule) {
     })
     .filter(Boolean);
 
-  const parts = [
-    missionName ? `ミッション: ${missionName}` : null,
-    projectName ? `プロジェクト: ${projectName}` : null,
-    location ? `場所: ${location}` : null,
-    `内容: ${title}`,
-    participants.length > 0 ? `共同: ${participants.join('、')}` : null,
-    progressNotes.length > 0 ? `進捗: ${progressNotes.join(' / ')}` : null,
+  const headlineParts = [
+    `${formatSchedulePeriod(schedule)}：${title}`,
+    location ? `場所：${location}` : null,
+    participants.length > 0 ? `参加者：${participants.join('、')}` : null,
   ].filter(Boolean);
 
-  return parts.join(' / ');
+  const detail = schedule.activityDescription && schedule.activityDescription.trim() !== title.trim()
+    ? schedule.activityDescription.trim()
+    : null;
+
+  const lines = [headlineParts.join('、')];
+  if (detail) lines.push(`⇒${detail}`);
+  if (progressNotes.length > 0) lines.push(`進捗：${progressNotes.join(' / ')}`);
+
+  return lines.join('\n');
 }
 
 /**
@@ -193,8 +210,11 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
   for (const schedule of schedules) {
     const projectName = schedule.project?.projectName || schedule.task?.mission?.missionName || schedule.project?.mission?.missionName;
     const missionName = schedule.project?.mission?.missionName || schedule.task?.mission?.missionName;
+    const startDateStr = format(schedule.startDate || schedule.date, 'yyyy-MM-dd');
+    const endDateStr = schedule.endDate ? format(schedule.endDate, 'yyyy-MM-dd') : null;
     activities.push({
-      date: format(schedule.startDate || schedule.date, 'yyyy-MM-dd'),
+      date: startDateStr,
+      endDate: endDateStr && endDateStr !== startDateStr ? endDateStr : undefined,
       activity: formatScheduleActivity(schedule),
       projectId: schedule.project?.id || null,
       projectName: activityProjectLabel(projectName),
@@ -400,8 +420,8 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
   });
 
   const nextWeekPlan = nextWeekSchedules
-    .map(s => formatScheduleActivity(s))
-    .join('\n');
+    .map(s => `・${format(s.startDate || s.date, 'M月d日（E）', { locale: ja })} ${formatScheduleActivity(s)}`)
+    .join('\n\n');
 
   return {
     week: normalizedWeek,

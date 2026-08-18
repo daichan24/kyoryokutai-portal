@@ -62,6 +62,18 @@ function stripHtmlForPdf(value?: string | null): string {
     .trim();
 }
 
+/** 全角スペース。テンプレートリテラル内へ直接埋め込むとlintのno-irregular-whitespaceに触れるため変数経由で使う */
+const IDEOGRAPHIC_SPACE = '　';
+
+/** 西暦の日付を和暦（令和）表記に変換する（復命書など公文書フォーマット用） */
+function toReiwaDateLabel(date: Date, withWeekday = false): string {
+  const reiwaYear = date.getFullYear() - 2018; // 2019年 = 令和元年
+  const yearLabel = reiwaYear === 1 ? '元' : String(reiwaYear);
+  const base = `令和${yearLabel}年${date.getMonth() + 1}月${date.getDate()}日`;
+  if (!withWeekday) return base;
+  return `${base}（${format(date, 'E', { locale: ja })}）`;
+}
+
 /**
  * HTML文字列からPDFを生成
  */
@@ -298,6 +310,7 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       include: {
         user: true,
         project: true,
+        attachments: { select: { id: true, mimeType: true, dataBase64: true, fileName: true } },
       },
     });
 
@@ -310,13 +323,52 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       throw new Error('Inspection user information is missing for PDF generation.');
     }
 
+  const template = await prisma.documentTemplate.findFirst({ orderBy: { updatedAt: 'desc' } });
+
   const plain = (htmlish: string) =>
     escapeHtmlForPdf((htmlish || '').replace(/<[^>]*>/g, '').replace(/\r\n/g, '\n')).replace(/\n/g, '<br/>');
 
-  const participantsExtra =
+  const recipient = template?.inspectionRecipient || '長沼町長　齋　藤　良　彦　様';
+  const title = template?.inspectionTitle || '復命書';
+  const titleSpaced = Array.from(title).join('　');
+  const department = inspection.user.department || '';
+  const namePrefix = department ? `${department}${IDEOGRAPHIC_SPACE}地域おこし協力隊` : (template?.inspectionNamePrefix || '〇〇課　地域おこし協力隊');
+  const text1 = template?.inspectionText1 || 'このたび、出張を命ぜられましたので、次のとおり復命します。';
+
+  const now = new Date();
+  const inspectionDate = new Date(inspection.date);
+  const timeRange = inspection.startTime && inspection.endTime
+    ? `${IDEOGRAPHIC_SPACE}${inspection.startTime}〜${inspection.endTime}`
+    : inspection.startTime
+    ? `${IDEOGRAPHIC_SPACE}${inspection.startTime}〜`
+    : '';
+
+  const participantsNote =
     Array.isArray(inspection.participants) && inspection.participants.length > 0
-      ? '、' + inspection.participants.map((p) => escapeHtmlForPdf(String(p))).join('、')
+      ? `（参加者：${escapeHtmlForPdf(inspection.user.name)}、${inspection.participants.map((p) => escapeHtmlForPdf(String(p))).join('、')}）`
       : '';
+
+  const item4Paragraphs = [inspection.inspectionPurpose, inspection.inspectionContent, inspection.reflection]
+    .map((v) => (v || '').replace(/<[^>]*>/g, '').trim())
+    .filter(Boolean);
+  const item4Text = item4Paragraphs.length > 0
+    ? item4Paragraphs.join('\n')
+    : (template?.inspectionItem6 || '（参考: 処理の経過や結果を記入してください）');
+  const item5Text = (inspection.futureAction || '').replace(/<[^>]*>/g, '').trim()
+    || template?.inspectionItem7
+    || '（参考: 所感や今後の予定を記入してください）';
+
+  const attachmentsHtml = inspection.attachments.length > 0
+    ? `
+      <div class="section" style="margin-top: 30px;">
+        <div class="label">添付資料</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
+          ${inspection.attachments.map((a) => `
+            <img src="data:${a.mimeType};base64,${a.dataBase64}" alt="${escapeHtmlForPdf(a.fileName)}" style="width: 260px; height: 260px; border: 1px solid #ccc; object-fit: contain;" />
+          `).join('')}
+        </div>
+      </div>
+    ` : '';
 
   const html = `
     <!DOCTYPE html>
@@ -325,59 +377,57 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
       <meta charset="UTF-8" />
       ${getEmbeddedNotoSansJpStyle()}
       <style>
-        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 12pt; margin: 40px; color: #111; }
-        h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; font-weight: 700; }
-        .section { margin: 25px 0; page-break-inside: avoid; }
+        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 12pt; margin: 40px; color: #111; line-height: 1.8; }
+        h1 { text-align: center; font-size: 20pt; margin-bottom: 24px; font-weight: 700; letter-spacing: 4px; }
+        .section { margin: 18px 0; page-break-inside: avoid; }
         .label { font-weight: bold; margin-bottom: 8px; background-color: #f0f0f0; padding: 5px; }
         .content { margin-left: 15px; white-space: pre-wrap; line-height: 1.8; }
-        .info { margin: 10px 0; }
       </style>
     </head>
     <body>
-      <h1>復命書</h1>
+      <h1>${escapeHtmlForPdf(titleSpaced)}</h1>
 
-      <div class="info">
-        <strong>日付:</strong> ${escapeHtmlForPdf(format(new Date(inspection.date), 'yyyy年M月d日(E)', { locale: ja }))}
+      <div style="text-align: right; margin-bottom: 24px;">${escapeHtmlForPdf(toReiwaDateLabel(now))}</div>
+
+      <div style="margin-bottom: 20px;">${escapeHtmlForPdf(recipient)}</div>
+
+      <div style="text-align: right; margin-bottom: 24px;">
+        <div>${escapeHtmlForPdf(namePrefix)}</div>
+        <div>${escapeHtmlForPdf(inspection.user.name)}${IDEOGRAPHIC_SPACE}㊞</div>
       </div>
 
-      <div class="info">
-        <strong>視察先:</strong> ${escapeHtmlForPdf(inspection.destination)}
-      </div>
+      <div style="margin-bottom: 20px;">${escapeHtmlForPdf(text1)}</div>
 
-      <div class="info">
-        <strong>参加者:</strong> ${escapeHtmlForPdf(inspection.user.name)}${participantsExtra}
-      </div>
-
-      ${inspection.project ? `
-      <div class="info">
-        <strong>関連プロジェクト:</strong> ${escapeHtmlForPdf(inspection.project.projectName)}
-      </div>
-      ` : ''}
+      <div style="text-align: center; margin: 24px 0; font-size: 14pt; font-weight: bold;">記</div>
 
       <div class="section">
-        <div class="label">1. 視察目的</div>
-        <div class="content">${plain(inspection.inspectionPurpose || '')}</div>
+        <div class="label">1${IDEOGRAPHIC_SPACE}日時</div>
+        <div class="content">${escapeHtmlForPdf(toReiwaDateLabel(inspectionDate, true))}${escapeHtmlForPdf(timeRange)}</div>
       </div>
 
       <div class="section">
-        <div class="label">2. 視察内容</div>
-        <div class="content">${plain(inspection.inspectionContent || '')}</div>
+        <div class="label">2${IDEOGRAPHIC_SPACE}場所</div>
+        <div class="content">${escapeHtmlForPdf(inspection.destination)}</div>
       </div>
 
       <div class="section">
-        <div class="label">3. 所感</div>
-        <div class="content">${plain(inspection.reflection || '')}</div>
+        <div class="label">3${IDEOGRAPHIC_SPACE}用務</div>
+        <div class="content">${escapeHtmlForPdf(inspection.purpose)}${participantsNote}</div>
       </div>
 
       <div class="section">
-        <div class="label">4. 今後のアクション</div>
-        <div class="content">${plain(inspection.futureAction || '')}</div>
+        <div class="label">4${IDEOGRAPHIC_SPACE}処理てん末</div>
+        <div class="content">${plain(item4Text)}</div>
       </div>
 
-      <div style="margin-top: 60px; text-align: right;">
-        <div>${escapeHtmlForPdf(format(new Date(), 'yyyy年M月d日'))}</div>
-        <div style="margin-top: 10px;">${escapeHtmlForPdf(inspection.user.name)}</div>
+      <div class="section">
+        <div class="label">5${IDEOGRAPHIC_SPACE}今後の処理</div>
+        <div class="content">${plain(item5Text)}</div>
       </div>
+
+      ${attachmentsHtml}
+
+      <div style="margin-top: 40px; text-align: right;">以上</div>
     </body>
     </html>
   `;
@@ -435,32 +485,44 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
 
   const activities = report.thisWeekActivities as Array<{
     date: string;
+    endDate?: string;
     activity: string;
     projectName?: string;
     missionName?: string;
   }>;
-  const groupedActivities = activities.reduce<Array<{ missionName: string; projects: Array<{ projectName: string; items: typeof activities }> }>>((groups, activity) => {
-    const missionName = activity.missionName?.trim() || 'ミッション未設定';
-    const projectName = activity.projectName?.trim() || 'プロジェクト未設定';
-    let mission = groups.find((item) => item.missionName === missionName);
-    if (!mission) {
-      mission = { missionName, projects: [] };
-      groups.push(mission);
+  const groupedByDate = Array.from(
+    activities.reduce<Map<string, typeof activities>>((map, activity) => {
+      if (!activity.date) return map;
+      if (!map.has(activity.date)) map.set(activity.date, []);
+      map.get(activity.date)!.push(activity);
+      return map;
+    }, new Map())
+  )
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, items]) => {
+      const latestEndDate = items.reduce<string | undefined>((max, item) => {
+        if (!item.endDate) return max;
+        return !max || item.endDate > max ? item.endDate : max;
+      }, undefined);
+      return { date, endDate: latestEndDate, items };
+    });
+
+  const formatDateHeader = (dateStr: string, endDateStr?: string) => {
+    try {
+      const start = new Date(`${dateStr}T00:00:00`);
+      const startLabel = format(start, 'M月d日（EEE）', { locale: ja });
+      if (!endDateStr) return startLabel;
+      const end = new Date(`${endDateStr}T00:00:00`);
+      return `${startLabel}〜${format(end, 'M月d日（EEE）', { locale: ja })}`;
+    } catch (error) {
+      return dateStr;
     }
-    let project = mission.projects.find((item) => item.projectName === projectName);
-    if (!project) {
-      project = { projectName, items: [] };
-      mission.projects.push(project);
-    }
-    project.items.push(activity);
-    return groups;
-  }, []).map((mission) => ({
-    ...mission,
-    projects: mission.projects.map((project) => ({
-      ...project,
-      items: [...project.items].sort((a, b) => (a.date || '').localeCompare(b.date || '')),
-    })),
-  }));
+  };
+
+  const nextScheduleItems = (report.nextWeekPlan || '')
+    .split(/\n\s*\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   const weekStart = (() => {
     const match = report.week.match(/^(\d{4})-(\d{2})$/);
@@ -475,9 +537,7 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
     result.setDate(firstIsoMonday.getDate() + (weekNum - 1) * 7);
     return result;
   })();
-  const weekLabel = weekStart
-    ? `${format(weekStart, 'yyyy年M月d日(E)', { locale: ja })}の週`
-    : report.week;
+  const weekStartLabel = weekStart ? format(weekStart, 'M/d', { locale: ja }) : report.week;
 
   const html = `
     <!DOCTYPE html>
@@ -486,69 +546,60 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
       <meta charset="UTF-8">
       ${getEmbeddedNotoSansJpStyle()}
       <style>
-        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 12pt; margin: 40px; color: #111; }
+        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 12pt; margin: 40px; color: #111; line-height: 1.8; }
         h1 { text-align: center; font-size: 18pt; margin-bottom: 30px; }
-        .section { margin: 25px 0; }
-        .label { font-weight: bold; background-color: #f0f0f0; padding: 5px; margin-bottom: 10px; }
-        .project-group { margin: 14px 0 18px; page-break-inside: avoid; }
-        .project-title { font-weight: bold; margin-bottom: 6px; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        td, th { border: 1px solid #000; padding: 8px; }
-        th { background-color: #f0f0f0; font-weight: bold; }
-        .content { white-space: pre-wrap; line-height: 1.8; margin-left: 15px; }
+        .section-title { font-weight: bold; margin-bottom: 10px; }
+        .date-group { margin: 0 0 14px; page-break-inside: avoid; }
+        .date-header { font-weight: bold; }
+        .date-items { margin-left: 1.6em; white-space: pre-wrap; }
+        .content { white-space: pre-wrap; margin-left: 15px; }
       </style>
     </head>
     <body>
-        <div style="text-align: right; margin-bottom: 24px;">${escapeHtmlForPdf(format(new Date(), 'yyyy年M月d日'))}</div>
-      <div style="margin-bottom: 24px;">${renderPlainTextForPdf(weeklyTemplate.recipient)}</div>
+      <div style="margin-bottom: 4px;">${escapeHtmlForPdf(format(new Date(), 'yyyy年M月d日'))}</div>
+      <div style="margin-bottom: 30px;">${escapeHtmlForPdf(report.user.name)}</div>
       <h1>${escapeHtmlForPdf(weeklyTemplate.title)}</h1>
 
-      <div style="margin-bottom: 30px;">
-        <div><strong>報告者:</strong> ${escapeHtmlForPdf(report.user.name)}</div>
-        <div><strong>対象週:</strong> ${escapeHtmlForPdf(weekLabel)}</div>
-        <div><strong>提出日:</strong> ${report.submittedAt ? escapeHtmlForPdf(format(new Date(report.submittedAt), 'yyyy年M月d日')) : '未提出'}</div>
-      </div>
+      <div class="section-title">■${escapeHtmlForPdf(weekStartLabel)}週振り返り</div>
+      <div style="margin-bottom: 18px;">先週行った主な活動内容をご報告いたします。</div>
 
-      <div class="section">
-        <div class="label">1. ${escapeHtmlForPdf(weeklyTemplate.activityLabel)}</div>
-        ${groupedActivities.length > 0 ? groupedActivities.map((mission) => `
-        <div class="project-group">
-          <div class="project-title">${escapeHtmlForPdf(mission.missionName)}</div>
-          ${mission.projects.map((project) => `
-          <div class="project-title" style="font-size: 11pt; margin-left: 10px;">${escapeHtmlForPdf(project.projectName)}</div>
-          <table>
-            <tr>
-              <th>活動内容</th>
-            </tr>
-            ${project.items.map(activity => `
-              <tr>
-                <td>${escapeHtmlForPdf(activity.activity || '')}</td>
-              </tr>
-            `).join('')}
-          </table>
+      ${groupedByDate.length > 0 ? `
+      <div style="margin-bottom: 30px;">
+        ${groupedByDate.map((group) => `
+        <div class="date-group">
+          <div class="date-header">・${escapeHtmlForPdf(formatDateHeader(group.date, group.endDate))}</div>
+          ${group.items.map((activity) => `
+          <div class="date-items">${renderPlainTextForPdf(activity.activity || '')}</div>
           `).join('')}
         </div>
-        `).join('') : '<p>活動内容がありません</p>'}
+        `).join('')}
       </div>
+      ` : '<p style="margin-left: 15px; margin-bottom: 30px;">活動内容がありません</p>'}
 
-      ${report.nextWeekPlan ? `
-      <div class="section">
-        <div class="label">2. ${escapeHtmlForPdf(weeklyTemplate.nextPlanLabel)}</div>
-        <div class="content">${renderPlainTextForPdf(report.nextWeekPlan)}</div>
+      <div class="section-title">■今後の主なスケジュール</div>
+      <div style="margin-bottom: 30px;">
+        ${nextScheduleItems.length > 0
+          ? nextScheduleItems.map((item) => `<div style="margin-bottom: 10px; white-space: pre-wrap;">${renderPlainTextForPdf(item)}</div>`).join('')
+          : '<p style="margin-left: 15px;">（未記入）</p>'}
       </div>
-      ` : ''}
 
       ${report.reflection ? `
-      <div class="section">
-        <div class="label">3. ${escapeHtmlForPdf(weeklyTemplate.reflectionLabel)}</div>
-        <div class="content">${renderPlainTextForPdf(report.reflection)}</div>
+      <div class="section" style="margin-bottom: 30px;">
+        <div class="section-title">■${escapeHtmlForPdf(weeklyTemplate.reflectionLabel)}</div>
+        <div style="white-space: pre-wrap;">${renderPlainTextForPdf(report.reflection)}</div>
       </div>
       ` : ''}
 
       ${report.note ? `
-      <div class="section">
-        <div class="label">4. ${escapeHtmlForPdf(weeklyTemplate.noteLabel)}</div>
-        <div class="content">${renderPlainTextForPdf(stripHtmlForPdf(report.note))}</div>
+      <div class="section" style="margin-bottom: 30px;">
+        <div class="section-title">■${escapeHtmlForPdf(weeklyTemplate.noteLabel)}</div>
+        <div style="white-space: pre-wrap;">${renderPlainTextForPdf(stripHtmlForPdf(report.note))}</div>
+      </div>
+      ` : ''}
+
+      ${report.submittedAt ? `
+      <div style="margin-top: 60px; text-align: right;">
+        <strong>提出日:</strong> ${escapeHtmlForPdf(format(new Date(report.submittedAt), 'yyyy年M月d日'))}
       </div>
       ` : ''}
     </body>

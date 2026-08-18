@@ -391,6 +391,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
       purpose: scheduleTitleForLink,
     });
     if (schedule.projectId) params.set('projectId', schedule.projectId);
+    if (schedule.startTime && !schedule.isAllDay) params.set('startTime', schedule.startTime);
+    if (schedule.endTime && !schedule.isAllDay) params.set('endTime', schedule.endTime);
     navigate(`/inspections?${params.toString()}`);
     onClose();
   };

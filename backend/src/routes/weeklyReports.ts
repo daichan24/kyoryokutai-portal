@@ -19,6 +19,7 @@ const createWeeklyReportSchema = z.object({
   thisWeekActivities: z.array(
     z.object({
       date: z.string(),
+      endDate: z.string().optional(),
       activity: z.string(),
       projectId: z.string().nullable().optional(),
       projectName: z.string().optional(),

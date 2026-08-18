@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { format } from 'date-fns';
+import express from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { generateInspectionPDF } from '../services/pdfGenerator';
@@ -9,10 +10,16 @@ import { notifyInspectionResult, notifyInspectionSubmitted } from '../services/a
 const router = Router();
 router.use(authenticate);
 
+const ALLOWED_ATTACHMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024; // 8MB
+const MAX_ATTACHMENTS_PER_INSPECTION = 10;
+
 // バリデーションスキーマ
 const createInspectionSchema = z.object({
   userId: z.string().uuid().optional(),
   date: z.string(),
+  startTime: z.string().optional().nullable(),
+  endTime: z.string().optional().nullable(),
   destination: z.string().min(1),
   purpose: z.string().min(1),
   participants: z.array(z.string()).default([]),
@@ -22,6 +29,12 @@ const createInspectionSchema = z.object({
   futureAction: z.string().default(''),
   projectId: z.string().optional(),
   scheduleId: z.string().uuid().optional().nullable(),
+});
+
+const attachmentUploadSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  mimeType: z.enum(ALLOWED_ATTACHMENT_MIME_TYPES as [string, ...string[]]),
+  dataBase64: z.string().min(1),
 });
 
 const approvalSchema = z.object({
@@ -71,6 +84,7 @@ router.get('/', async (req: AuthRequest, res) => {
         },
         schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
         approver: { select: { id: true, name: true } },
+        attachments: { select: { id: true, fileName: true, mimeType: true, fileSize: true, createdAt: true } },
       },
       orderBy: { date: 'desc' },
     });
@@ -101,6 +115,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
         project: true,
         schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
         approver: { select: { id: true, name: true } },
+        attachments: { select: { id: true, fileName: true, mimeType: true, fileSize: true, createdAt: true } },
       },
     });
 
@@ -158,6 +173,8 @@ router.post('/', async (req: AuthRequest, res) => {
       data: {
         userId: targetUserId,
         date: new Date(data.date),
+        startTime: data.startTime || null,
+        endTime: data.endTime || null,
         destination: data.destination,
         purpose: data.purpose,
         participants: data.participants,
@@ -212,6 +229,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     const updateData: any = {};
     if (data.date !== undefined) updateData.date = new Date(data.date);
+    if (data.startTime !== undefined) updateData.startTime = data.startTime || null;
+    if (data.endTime !== undefined) updateData.endTime = data.endTime || null;
     if (data.destination !== undefined) updateData.destination = data.destination;
     if (data.purpose !== undefined) updateData.purpose = data.purpose;
     if (data.participants !== undefined) updateData.participants = data.participants;
@@ -430,6 +449,112 @@ router.get('/:id/pdf', async (req: AuthRequest, res) => {
     console.error('Generate inspection PDF error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate PDF';
     res.status(500).json({ error: `PDF出力に失敗しました: ${errorMessage}` });
+  }
+});
+
+// 添付画像アップロード（作成者のみ）
+router.post('/:id/attachments', express.json({ limit: '12mb' }), async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const inspection = await prisma.inspection.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+    if (!inspection) {
+      return res.status(404).json({ error: 'Inspection not found' });
+    }
+    if (inspection.userId !== req.user!.id && req.user!.role !== 'MASTER') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const data = attachmentUploadSchema.parse(req.body);
+
+    const existingCount = await prisma.inspectionAttachment.count({ where: { inspectionId: id } });
+    if (existingCount >= MAX_ATTACHMENTS_PER_INSPECTION) {
+      return res.status(400).json({ error: `添付できる画像は最大${MAX_ATTACHMENTS_PER_INSPECTION}枚までです` });
+    }
+
+    const base64Payload = data.dataBase64.includes(',') ? data.dataBase64.split(',').pop()! : data.dataBase64;
+    const fileSize = Math.ceil((base64Payload.length * 3) / 4);
+    if (fileSize > MAX_ATTACHMENT_BYTES) {
+      return res.status(400).json({ error: '画像サイズは8MB以下にしてください' });
+    }
+
+    const attachment = await prisma.inspectionAttachment.create({
+      data: {
+        inspectionId: id,
+        fileName: data.fileName,
+        mimeType: data.mimeType,
+        fileSize,
+        dataBase64: base64Payload,
+      },
+      select: { id: true, fileName: true, mimeType: true, fileSize: true, createdAt: true },
+    });
+
+    res.status(201).json(attachment);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error('Upload inspection attachment error:', error);
+    res.status(500).json({ error: '画像の添付に失敗しました' });
+  }
+});
+
+// 添付画像の取得（実データ）
+router.get('/:id/attachments/:attachmentId', async (req: AuthRequest, res) => {
+  try {
+    const { id, attachmentId } = req.params;
+    const inspection = await prisma.inspection.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (!inspection) {
+      return res.status(404).json({ error: 'Inspection not found' });
+    }
+    if (req.user!.role === 'MEMBER' && inspection.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const attachment = await prisma.inspectionAttachment.findFirst({
+      where: { id: attachmentId, inspectionId: id },
+    });
+    if (!attachment) {
+      return res.status(404).json({ error: 'Attachment not found' });
+    }
+
+    res.setHeader('Content-Type', attachment.mimeType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(Buffer.from(attachment.dataBase64, 'base64'));
+  } catch (error) {
+    console.error('Get inspection attachment error:', error);
+    res.status(500).json({ error: 'Failed to get attachment' });
+  }
+});
+
+// 添付画像の削除（作成者のみ）
+router.delete('/:id/attachments/:attachmentId', async (req: AuthRequest, res) => {
+  try {
+    const { id, attachmentId } = req.params;
+    const inspection = await prisma.inspection.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (!inspection) {
+      return res.status(404).json({ error: 'Inspection not found' });
+    }
+    if (inspection.userId !== req.user!.id && req.user!.role !== 'MASTER') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    await prisma.inspectionAttachment.deleteMany({
+      where: { id: attachmentId, inspectionId: id },
+    });
+
+    res.json({ message: 'Attachment deleted successfully' });
+  } catch (error) {
+    console.error('Delete inspection attachment error:', error);
+    res.status(500).json({ error: 'Failed to delete attachment' });
   }
 });
 
