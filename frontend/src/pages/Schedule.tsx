@@ -1,9 +1,9 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
-import { Schedule as ScheduleType, Project, Task, User } from '../types';
+import { Schedule as ScheduleType, User } from '../types';
 import { formatDate, getWeekDates, getMonthDates, isHolidayDate, isSunday, isSaturday, formatTime } from '../utils/date';
 import type { WeekStartsOn } from '../utils/date';
 import { Button } from '../components/common/Button';
@@ -17,7 +17,6 @@ const DraggableCalendarView = lazy(() =>
   import('../components/schedule/DraggableCalendarView').then((m) => ({ default: m.DraggableCalendarView }))
 );
 import { useAuthStore } from '../stores/authStore';
-import { useStaffWorkspace } from '../stores/workspaceStore';
 import { useIsMobileBreakpoint } from '../hooks/useIsMobileBreakpoint';
 
 type ViewMode = 'week' | 'month' | 'day';
@@ -38,7 +37,6 @@ const EMPTY_EVENTS: Event[] = [];
 
 export const Schedule: React.FC = () => {
   const { user } = useAuthStore();
-  const { isStaff, workspaceMode } = useStaffWorkspace();
   const isMobile = useIsMobileBreakpoint();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -52,13 +50,6 @@ export const Schedule: React.FC = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleType | null>(null);
   const [defaultStartTime, setDefaultStartTime] = useState<string | undefined>(undefined);
   const [defaultEndTime, setDefaultEndTime] = useState<string | undefined>(undefined);
-  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
-  const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>([]);
-  const projectViewMode: 'view' | 'personal' = isStaff
-    ? workspaceMode === 'browse'
-      ? 'view'
-      : 'personal'
-    : 'personal';
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<Date | null>(null); // 詳細表示用の選択日
   const [isGovernmentAttendanceModalOpen, setIsGovernmentAttendanceModalOpen] = useState(false);
   const [detailFilterUserId, setDetailFilterUserId] = useState<string>('');
@@ -76,15 +67,6 @@ export const Schedule: React.FC = () => {
   });
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
   const scheduleWeekStartsOn: WeekStartsOn = user?.scheduleWeekStartsOn === 1 ? 1 : 0;
-
-  const sortProjectTasks = (tasks: Task[]) => {
-    const statusWeight = (task: Task) => (task.status === 'COMPLETED' ? 2 : task.status === 'IN_PROGRESS' ? 0 : 1);
-    return [...tasks].sort((a, b) =>
-      statusWeight(a) - statusWeight(b) ||
-      (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31') ||
-      (a.order ?? 9999) - (b.order ?? 9999)
-    );
-  };
 
   useEffect(() => {
     setDetailFilterUserId('');
@@ -116,34 +98,6 @@ export const Schedule: React.FC = () => {
       const params = new URLSearchParams({ startDate: rangeStartDate, endDate: rangeEndDate });
       const response = await api.get<Event[]>(`/api/events?${params}`);
       return response.data || [];
-    },
-    enabled: weekDates.length > 0,
-  });
-
-  const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ['schedule-projects', rangeStartDate, rangeEndDate, user?.id, user?.role, projectViewMode],
-    queryFn: async () => {
-      let url = '/api/projects';
-      if (user?.role !== 'MEMBER' && projectViewMode === 'personal') {
-        url = `/api/projects?userId=${user?.id}`;
-      }
-
-      const response = await api.get<Project[]>(url);
-      const allProjects = response.data || [];
-      return allProjects.filter((project) => {
-        if (!project.startDate && !project.endDate) return false;
-        const projectStartDate = project.startDate ? new Date(project.startDate) : null;
-        const projectEndDate = project.endDate ? new Date(project.endDate) : null;
-        const viewStartDate = new Date(rangeStartDate);
-        const viewEndDate = new Date(rangeEndDate);
-
-        if (projectStartDate && projectEndDate) {
-          return projectStartDate <= viewEndDate && projectEndDate >= viewStartDate;
-        }
-        if (projectStartDate) return projectStartDate <= viewEndDate;
-        if (projectEndDate) return projectEndDate >= viewStartDate;
-        return false;
-      });
     },
     enabled: weekDates.length > 0,
   });
@@ -190,32 +144,6 @@ export const Schedule: React.FC = () => {
     window.addEventListener('schedule-updated', handleScheduleUpdate);
     return () => window.removeEventListener('schedule-updated', handleScheduleUpdate);
   }, []);
-
-  const projectsByMission = useMemo(() => {
-    const missionOrder = new Map(missions.map((mission, index) => [mission.id, index]));
-    const missionName = new Map(missions.map((mission) => [mission.id, mission.missionName]));
-    const groups = new Map<string, { id: string; name: string; projects: Project[] }>();
-
-    for (const project of projects) {
-      const missionId = project.missionId || project.mission?.id || 'unassigned';
-      const name = project.mission?.missionName || missionName.get(missionId) || 'ミッション未設定';
-      if (!groups.has(missionId)) {
-        groups.set(missionId, { id: missionId, name, projects: [] });
-      }
-      groups.get(missionId)!.projects.push(project);
-    }
-
-    return Array.from(groups.values())
-      .map((group) => ({
-        ...group,
-        projects: group.projects.sort((a, b) =>
-          (a.order ?? 9999) - (b.order ?? 9999) || a.projectName.localeCompare(b.projectName, 'ja')
-        ),
-      }))
-      .sort((a, b) =>
-        (missionOrder.get(a.id) ?? 9999) - (missionOrder.get(b.id) ?? 9999) || a.name.localeCompare(b.name, 'ja')
-      );
-  }, [missions, projects]);
 
   const handlePrev = () => {
     const newDate = new Date(currentDate);
@@ -348,12 +276,6 @@ export const Schedule: React.FC = () => {
 
   const handleEventClick = (eventId: string) => {
     navigate(`/events/${eventId}`);
-  };
-
-  const toggleProjectExpanded = (projectId: string) => {
-    setExpandedProjectIds((prev) =>
-      prev.includes(projectId) ? prev.filter((id) => id !== projectId) : [...prev, projectId],
-    );
   };
 
   const toggleMemberVisibility = (memberId: string) => {
@@ -808,8 +730,6 @@ export const Schedule: React.FC = () => {
                         let dayTextColor = `${tone.text} font-semibold`;
                         if (isToday) dayTextColor = 'text-primary dark:text-blue-400 font-bold';
 
-                        const isHighlightedByTask = hoveredTaskId != null && getSchedulesForDate(date).some((s) => s.taskId === hoveredTaskId);
-
                         const MAX_SINGLE = 3;
                         const visibleSingle = singleDaySchedules.slice(0, MAX_SINGLE);
                         const remainingSingle = singleDaySchedules.length > MAX_SINGLE ? singleDaySchedules.length - MAX_SINGLE : 0;
@@ -821,8 +741,8 @@ export const Schedule: React.FC = () => {
                         return (
                           <div key={dayIndex}
                             className={`border-r border-b border-border dark:border-gray-700 min-w-0 w-full flex flex-col p-1 ${
-                              isHighlightedByTask ? 'ring-2 ring-blue-400 relative z-10' : ''
-                            } ${isToday ? 'bg-primary/10 dark:bg-primary/20' : tone.cellBg} ${
+                              isToday ? 'bg-primary/10 dark:bg-primary/20' : tone.cellBg
+                            } ${
                               calendarViewMode !== 'all' ? 'cursor-pointer' : 'cursor-default'
                             }`}
                             style={{ minHeight: `${HEADER_HEIGHT + multiDayBarHeight + 40}px` }}
@@ -951,131 +871,6 @@ export const Schedule: React.FC = () => {
           />
         )}
           </div>
-        </div>
-      </div>
-
-      {/* プロジェクトの複数日にわたるスケジュール表示（＋タスク一覧） */}
-      <div className="bg-white dark:bg-gray-800 shadow border-y border-border dark:border-gray-700 min-w-0 w-full px-3 sm:px-4 md:px-6 py-6">
-        <div className="space-y-2">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              進行中のプロジェクト
-            </h3>
-          </div>
-          {projectsByMission.length > 0 ? (
-            projectsByMission.map((group) => (
-              <div key={group.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/30 p-3">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                    {group.name}
-                  </h4>
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400">{group.projects.length}件</span>
-                </div>
-                <div className="space-y-2">
-                  {group.projects.map((project) => {
-                    const projectStartDate = project.startDate ? new Date(project.startDate) : null;
-                    const projectEndDate = project.endDate ? new Date(project.endDate) : null;
-                    const viewStartDate = weekDates[0];
-                    const viewEndDate = weekDates[weekDates.length - 1];
-                    const projectTasks = sortProjectTasks((project.relatedTasks || (project as any).tasks || []) as Task[]);
-                    const isExpanded = expandedProjectIds.includes(project.id);
-                    const displayStartDate = projectStartDate && projectStartDate > viewStartDate ? projectStartDate : viewStartDate;
-                    const displayEndDate = projectEndDate && projectEndDate < viewEndDate ? projectEndDate : viewEndDate;
-
-                    return (
-                      <div
-                        key={project.id}
-                        className="rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800 overflow-hidden"
-                      >
-                        <div
-                          className="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                          onClick={() => toggleProjectExpanded(project.id)}
-                        >
-                          <div className="flex-shrink-0">
-                            {isExpanded ? (
-                              <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                            ) : (
-                              <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="truncate text-base font-semibold text-gray-900 dark:text-gray-100">
-                                {project.projectName}
-                              </p>
-                              {user?.role !== 'MEMBER' && projectViewMode === 'view' && project.user && (
-                                <span className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                                  （{project.user.name}）
-                                </span>
-                              )}
-                            </div>
-                            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                              {formatDate(displayStartDate, 'M月d日')} 〜 {formatDate(displayEndDate, 'M月d日')} まで進行中
-                            </p>
-                          </div>
-                          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate('/projects', { state: { projectId: project.id } })}
-                              className="whitespace-nowrap"
-                            >
-                              <ListChecks className="h-4 w-4 mr-1" />
-                              詳細へ
-                            </Button>
-                          </div>
-                        </div>
-
-                        {isExpanded && projectTasks.length > 0 && (
-                          <div className="space-y-2 border-t border-gray-200 px-4 pb-4 pt-3 dark:border-gray-700">
-                            {projectTasks.map((task) => {
-                              const isCompleted = task.status === 'COMPLETED';
-                              let statusClass = 'text-gray-600 dark:text-gray-300';
-                              let statusBgClass = 'bg-gray-50 dark:bg-gray-700/50';
-                              if (task.status === 'IN_PROGRESS') {
-                                statusClass = 'text-blue-700 dark:text-blue-300';
-                                statusBgClass = 'bg-blue-50 dark:bg-blue-900/20';
-                              } else if (isCompleted) {
-                                statusClass = 'text-gray-400 dark:text-gray-500 line-through';
-                                statusBgClass = 'bg-gray-50/70 dark:bg-gray-800/70 opacity-75';
-                              }
-                              return (
-                                <div
-                                  key={task.id}
-                                  className={`flex items-center justify-between rounded-md px-3 py-2 text-sm transition-opacity hover:opacity-80 cursor-pointer ${statusBgClass}`}
-                                  onMouseEnter={() => setHoveredTaskId(task.id)}
-                                  onMouseLeave={() => setHoveredTaskId(null)}
-                                >
-                                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                                    {task.status === 'NOT_STARTED' && <Circle className="h-4 w-4 flex-shrink-0 text-gray-400" />}
-                                    {task.status === 'IN_PROGRESS' && <PlayCircle className="h-4 w-4 flex-shrink-0 text-blue-500" />}
-                                    {isCompleted && <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-gray-400" />}
-                                    <span className={`truncate font-medium ${statusClass}`}>{task.title}</span>
-                                  </div>
-                                  <span className="ml-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                                    {task.status === 'NOT_STARTED' ? '未着手' : task.status === 'IN_PROGRESS' ? '進行中' : '完了'}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        {isExpanded && projectTasks.length === 0 && (
-                          <div className="px-4 pb-4 py-3 text-center text-sm text-gray-500 dark:text-gray-400">
-                            このプロジェクトに紐づくタスクはありません
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center text-gray-500 dark:text-gray-400 py-4">
-              {projectViewMode === 'personal' ? '表示期間内に自分のプロジェクトはありません' : '表示期間内に進行中のプロジェクトはありません'}
-            </div>
-          )}
         </div>
       </div>
 

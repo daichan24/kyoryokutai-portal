@@ -68,19 +68,28 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
-    
+
     // 相対輝度を計算（WCAG 2.1基準）
     const toLinear = (c: number) => {
       const val = c / 255;
       return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
     };
-    
-    const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-    
-    // 輝度に基づいて適切なテキスト色を返す
-    // 明るい背景: 濃いグレー (#1F2937 - gray-800)
-    // 暗い背景: オフホワイト (#F9FAFB - gray-50)
-    return luminance > 0.5 ? '#1F2937' : '#F9FAFB';
+
+    const bgLuminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+
+    // 単純な輝度しきい値(0.5)だと、中間の明るさの背景色でどちらの文字色を
+    // 選んでもコントラスト不足になる境界ケースが発生する。
+    // 濃いグレー(#1F2937)・オフホワイト(#F9FAFB)それぞれとの実際のコントラスト比を
+    // 計算し、常により見やすい方を選ぶ。
+    const darkTextLuminance = 0.0319; // #1F2937 の相対輝度（概算）
+    const lightTextLuminance = 0.94; // #F9FAFB の相対輝度（概算）
+    const contrastRatio = (l1: number, l2: number) =>
+      (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+
+    const contrastWithDark = contrastRatio(bgLuminance, darkTextLuminance);
+    const contrastWithLight = contrastRatio(bgLuminance, lightTextLuminance);
+
+    return contrastWithDark >= contrastWithLight ? '#1F2937' : '#F9FAFB';
   };
 
   // FullCalendar用のイベントデータに変換

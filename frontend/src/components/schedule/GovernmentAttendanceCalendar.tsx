@@ -6,6 +6,7 @@ import { api } from '../../utils/api';
 import { useAuthStore } from '../../stores/authStore';
 import { X } from 'lucide-react';
 import { Button } from '../common/Button';
+import { Modal } from '../common/Modal';
 import { formatTime } from '../../utils/date';
 
 type AttendanceStatus = 'PRESENT' | 'REMOTE' | 'ABSENT' | 'HALF_DAY';
@@ -158,14 +159,18 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
 
           <button
             type="button"
-            onClick={() => setIsCalendarOpen((v) => !v)}
+            onClick={() => setIsCalendarOpen(true)}
             className="mb-3 inline-flex items-center rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
           >
-            {isCalendarOpen ? '行政カレンダーを閉じる' : '行政カレンダーを表示'}
+            行政カレンダーを表示
           </button>
 
-          {isCalendarOpen && (
-            <>
+          <Modal
+            isOpen={isCalendarOpen}
+            onClose={() => setIsCalendarOpen(false)}
+            title="行政出勤カレンダー"
+            maxWidthClassName="max-w-3xl"
+          >
           {/* 凡例 */}
           <div className="flex flex-wrap gap-3 mb-3">
             {(Object.entries(STATUS_LABELS) as [AttendanceStatus, string][]).map(([status, label]) => (
@@ -197,7 +202,7 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
                     key={dateStr}
                     type="button"
                     onClick={() => setPopupDate(dayAttendances.length > 0 ? dateStr : null)}
-                    className={`min-h-[54px] p-1.5 text-left transition-colors ${
+                    className={`min-h-[64px] p-1.5 text-left transition-colors ${
                       dayAttendances.length > 0 ? 'hover:bg-blue-50 dark:hover:bg-blue-900/20' : ''
                     } ${isToday ? 'relative z-10 bg-blue-50 ring-2 ring-inset ring-blue-500 dark:bg-blue-900/30' : 'bg-white dark:bg-gray-800'}`}
                   >
@@ -209,9 +214,17 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
                       </span>
                       {isToday && <span className="text-[9px] font-semibold text-blue-600 dark:text-blue-300">今日</span>}
                     </div>
-                    <div className="flex flex-wrap gap-0.5">
+                    <div className="flex flex-wrap gap-1">
                       {dayAttendances.slice(0, maxVisible).map((a) => (
-                        <span key={a.id} className={`h-2 w-2 rounded-full ${STATUS_DOT[a.status]}`} title={`${a.user.name}: ${STATUS_LABELS[a.status]}`} />
+                        <span
+                          key={a.id}
+                          className="relative inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                          style={{ backgroundColor: a.user.avatarColor }}
+                          title={`${a.user.name}: ${STATUS_LABELS[a.status]}`}
+                        >
+                          {(a.user.avatarLetter || a.user.name || '').charAt(0)}
+                          <span className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-1 ring-white dark:ring-gray-800 ${STATUS_DOT[a.status]}`} />
+                        </span>
                       ))}
                       {dayAttendances.length > maxVisible && (
                         <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400">+{dayAttendances.length - maxVisible}</span>
@@ -306,8 +319,7 @@ export const GovernmentAttendanceCalendar: React.FC<GovernmentAttendanceCalendar
               </div>
             </div>
           )}
-            </>
-          )}
+          </Modal>
         </div>
         {editingDate && canEdit && (
           <AttendanceEditModal
