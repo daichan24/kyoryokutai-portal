@@ -633,7 +633,6 @@ export const SNSPosts: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 overflow-hidden">
             <div className="px-4 py-3 border-b border-border dark:border-gray-700">
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">週次カレンダー（振り返り）</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">投稿日を押すと、メンバー本人が後から日付を変更できます。</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[520px]">
