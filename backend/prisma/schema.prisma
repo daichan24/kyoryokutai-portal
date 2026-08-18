@@ -241,6 +241,7 @@ model Schedule {
   @@index([taskId])
   @@index([locationId])
   @@index([supportEventId])
+  @@index([startDate, endDate])
 }
 
 model GoogleCalendarConnection {
