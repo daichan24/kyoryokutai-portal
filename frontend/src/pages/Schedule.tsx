@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, ListChecks, Circle, PlayCircle, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Schedule as ScheduleType, Project, Task, User } from '../types';
-import { formatDate, getWeekDates, getMonthDates, isSameDay, isHolidayDate, isSunday, isSaturday, formatTime } from '../utils/date';
+import { formatDate, getWeekDates, getMonthDates, isHolidayDate, isSunday, isSaturday, formatTime } from '../utils/date';
 import type { WeekStartsOn } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -11,7 +11,10 @@ import { TaskModal } from '../components/project/TaskModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { GovernmentAttendanceCalendar } from '../components/schedule/GovernmentAttendanceCalendar';
 import { GovernmentAttendanceModal } from '../components/schedule/GovernmentAttendanceModal';
-import { DraggableCalendarView } from '../components/schedule/DraggableCalendarView';
+// FullCalendar本体は重量級ライブラリのため、Scheduleページ自体の読み込みをブロックしないよう遅延読み込みにする
+const DraggableCalendarView = lazy(() =>
+  import('../components/schedule/DraggableCalendarView').then((m) => ({ default: m.DraggableCalendarView }))
+);
 import { useAuthStore } from '../stores/authStore';
 import { useStaffWorkspace } from '../stores/workspaceStore';
 import { useIsMobileBreakpoint } from '../hooks/useIsMobileBreakpoint';
@@ -28,6 +31,9 @@ interface Event {
   endAt?: string;
   isCompleted?: boolean;
 }
+
+const EMPTY_SCHEDULES: ScheduleType[] = [];
+const EMPTY_EVENTS: Event[] = [];
 
 export const Schedule: React.FC = () => {
   const { user } = useAuthStore();
@@ -357,15 +363,38 @@ export const Schedule: React.FC = () => {
     handleCloseModal();
   };
 
+  const dateKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+  // 日付ごとの予定・イベントを事前にグルーピングしておき、
+  // カレンダーのセルを描画するたびに配列を全走査しなくて済むようにする
+  const schedulesByDateKey = useMemo(() => {
+    const map = new Map<string, ScheduleType[]>();
+    for (const s of schedules) {
+      const key = dateKey(new Date(s.date));
+      const list = map.get(key);
+      if (list) list.push(s);
+      else map.set(key, [s]);
+    }
+    return map;
+  }, [schedules]);
+
+  const eventsByDateKey = useMemo(() => {
+    const map = new Map<string, Event[]>();
+    for (const e of events) {
+      const key = dateKey(new Date(e.date));
+      const list = map.get(key);
+      if (list) list.push(e);
+      else map.set(key, [e]);
+    }
+    return map;
+  }, [events]);
+
   const getSchedulesForDate = (date: Date) => {
-    return schedules.filter((s) => isSameDay(s.date, date));
+    return schedulesByDateKey.get(dateKey(date)) ?? EMPTY_SCHEDULES;
   };
 
   const getEventsForDate = (date: Date) => {
-    return events.filter((e) => {
-      const eventDate = new Date(e.date);
-      return isSameDay(eventDate, date);
-    });
+    return eventsByDateKey.get(dateKey(date)) ?? EMPTY_EVENTS;
   };
 
   const getCalendarDateTone = (date: Date) => {
@@ -681,7 +710,7 @@ export const Schedule: React.FC = () => {
         {loading ? (
           <LoadingSpinner />
         ) : useDraggable ? (
-          <>
+          <Suspense fallback={<LoadingSpinner />}>
             <DraggableCalendarView
               schedules={schedules}
               events={events}
@@ -712,7 +741,7 @@ export const Schedule: React.FC = () => {
               onScheduleUpdate={fetchSchedules}
               firstDay={scheduleWeekStartsOn}
             />
-          </>
+          </Suspense>
         ) : viewMode === 'week' || viewMode === 'day' ? (
           <>
             <TimeAxisView
