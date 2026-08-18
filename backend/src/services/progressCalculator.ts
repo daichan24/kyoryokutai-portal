@@ -105,18 +105,6 @@ export async function calculateGoalProgress(goalId: string): Promise<number> {
 }
 
 /**
- * プロジェクトタスクの進捗を更新
- */
-export async function updateProjectTaskProgress(taskId: string, newProgress: number) {
-  const task = await prisma.projectTask.update({
-    where: { id: taskId },
-    data: { progress: newProgress },
-  });
-
-  return await calculateProjectProgress(task.projectId);
-}
-
-/**
  * プロジェクトの全体進捗を計算
  */
 export async function calculateProjectProgress(projectId: string): Promise<number> {
