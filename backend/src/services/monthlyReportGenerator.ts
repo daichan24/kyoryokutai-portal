@@ -58,21 +58,32 @@ export async function generateMonthlyReport(month: string, createdBy: string) {
       ],
     });
 
+    // 対象月に含まれる週（全ユーザー共通）
+    const weeksInMonth = getWeeksInMonth(month);
+
+    // 各週の週次報告をユーザーごとにループせず、まとめて1回で取得してから振り分ける
+    const allWeeklyReports = await prisma.weeklyReport.findMany({
+      where: {
+        userId: { in: users.map((u) => u.id) },
+        week: { in: weeksInMonth },
+      },
+      orderBy: { week: 'asc' },
+    });
+    const weeklyReportsByUserId = new Map<string, typeof allWeeklyReports>();
+    for (const report of allWeeklyReports) {
+      const list = weeklyReportsByUserId.get(report.userId);
+      if (list) {
+        list.push(report);
+      } else {
+        weeklyReportsByUserId.set(report.userId, [report]);
+      }
+    }
+
     const memberSheets = [];
 
     for (const user of users) {
       try {
-        // 対象月に含まれる週を計算
-        const weeksInMonth = getWeeksInMonth(month);
-        
-        // 各週の週次報告を取得
-        const weeklyReports = await prisma.weeklyReport.findMany({
-          where: {
-            userId: user.id,
-            week: { in: weeksInMonth }
-          },
-          orderBy: { week: 'asc' }
-        });
+        const weeklyReports = weeklyReportsByUserId.get(user.id) ?? [];
 
         // 週次報告から活動内容を抽出
         const thisMonthActivities = extractActivitiesFromWeeklyReports(weeklyReports, month);

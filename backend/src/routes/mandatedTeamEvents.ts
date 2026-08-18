@@ -30,6 +30,47 @@ async function ensureAttendanceRows(eventId: string) {
   });
 }
 
+/**
+ * 複数イベント分の出欠行をまとめて補完し、eventId:userId をキーにした出欠マップを返す。
+ * イベント件数ぶんループでDB問い合わせするのを避けるため、まとめて1〜2回のクエリで処理する。
+ */
+async function ensureAttendanceRowsForEvents(
+  eventIds: string[]
+): Promise<Map<string, boolean>> {
+  const attendanceMap = new Map<string, boolean>();
+  if (eventIds.length === 0) return attendanceMap;
+
+  const [members, existingRows] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: 'MEMBER' },
+      select: { id: true },
+    }),
+    prisma.mandatedTeamEventAttendance.findMany({
+      where: { eventId: { in: eventIds } },
+      select: { eventId: true, userId: true, attended: true },
+    }),
+  ]);
+
+  for (const row of existingRows) {
+    attendanceMap.set(`${row.eventId}:${row.userId}`, row.attended);
+  }
+
+  const missingRows = eventIds.flatMap((eventId) =>
+    members
+      .filter((m) => !attendanceMap.has(`${eventId}:${m.id}`))
+      .map((m) => ({ eventId, userId: m.id, attended: false }))
+  );
+
+  if (missingRows.length > 0) {
+    await prisma.mandatedTeamEventAttendance.createMany({ data: missingRows, skipDuplicates: true });
+    for (const row of missingRows) {
+      attendanceMap.set(`${row.eventId}:${row.userId}`, row.attended);
+    }
+  }
+
+  return attendanceMap;
+}
+
 function overlapsYear(start: Date, end: Date, year: number): boolean {
   const ys = new Date(year, 0, 1);
   const ye = new Date(year, 11, 31, 23, 59, 59, 999);
@@ -150,17 +191,12 @@ router.get('/matrix', async (req: AuthRequest, res) => {
     });
     const visibleIds = new Set(members.map((m) => m.id));
 
+    const attendanceMap = await ensureAttendanceRowsForEvents(events.map((e) => e.id));
     const cells: Record<string, boolean> = {};
-    for (const ev of events) {
-      await ensureAttendanceRows(ev.id);
-      const rows = await prisma.mandatedTeamEventAttendance.findMany({
-        where: { eventId: ev.id },
-        select: { userId: true, attended: true },
-      });
-      for (const r of rows) {
-        if (!visibleIds.has(r.userId)) continue;
-        cells[`${ev.id}:${r.userId}`] = r.attended;
-      }
+    for (const [key, attended] of attendanceMap) {
+      const userId = key.split(':')[1];
+      if (!visibleIds.has(userId)) continue;
+      cells[key] = attended;
     }
 
     const fyAttendances = await prisma.mandatedTeamEventAttendance.findMany({
