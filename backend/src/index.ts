@@ -132,6 +132,9 @@ app.use('/api/inspections', inspectionsRoutes);
 app.use('/api/personal', personalRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/projects', projectsRoutes);
+// tasksRoutes は '/api' 全体にマッチし、内部で認証必須のミドルウェアを持つため、
+// 認証不要な公開エンドポイント（Google OAuthコールバック/Webhookなど）は必ずこれより前に登録する。
+app.use('/api/integrations/google-calendar', googleCalendarRoutes);
 app.use('/api', tasksRoutes); // /api/missions/:missionId/tasks のルート
 app.use('/api/events', eventsRoutes);
 app.use('/api/sns-posts', snsPostsRoutes);
@@ -158,7 +161,6 @@ app.use('/api/reception-box', receptionBoxRoutes);
 app.use('/api/me/notepad', notepadRoutes);
 app.use('/api/leave', leaveRoutes);
 app.use('/api/handover', handoverRoutes);
-app.use('/api/integrations/google-calendar', googleCalendarRoutes);
 app.use('/api/interview-notes', interviewNotesRoutes);
 app.use('/api/interview-polls', interviewPollsRoutes);
 app.use('/api/inventory', inventoryRoutes);
