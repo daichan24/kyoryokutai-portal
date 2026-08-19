@@ -613,6 +613,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
           const schedule = arg.event.extendedProps?.schedule as ScheduleType | undefined;
           const isGoogle = !!schedule?.googleCalendarEventLink;
           const needsProject = schedule?.googleCalendarEventLink?.origin === 'GOOGLE' && !schedule.projectId;
+          const needsLocation = schedule?.googleCalendarEventLink?.origin === 'GOOGLE' && !schedule.locationText;
           return (
             <div className="min-w-0 overflow-hidden">
               <div className="flex min-w-0 items-center gap-1">
@@ -623,8 +624,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
                 )}
                 <span className="truncate">{arg.event.title}</span>
               </div>
-              {needsProject && !isMobileMonth && (
-                <div className="truncate text-[10px] opacity-90">プロジェクト未設定</div>
+              {(needsProject || needsLocation) && !isMobileMonth && (
+                <div className="truncate text-[10px] opacity-90">
+                  {[needsProject && 'プロジェクト未設定', needsLocation && '場所未設定'].filter(Boolean).join(' / ')}
+                </div>
               )}
             </div>
           );

@@ -524,6 +524,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                     プロジェクト未設定
                   </span>
                 )}
+                {schedule.googleCalendarEventLink.origin === 'GOOGLE' && !schedule.locationText && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                    場所未設定
+                  </span>
+                )}
               </div>
               {schedule.googleCalendarEventLink.lastError && (
                 <p className="mt-2 text-xs">{schedule.googleCalendarEventLink.lastError}</p>
