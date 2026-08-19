@@ -64,7 +64,21 @@ function matchesSupportPath(pathname: string) {
 }
 
 function matchesAdminPath(pathname: string) {
-  return pathname.startsWith('/settings') || pathname.startsWith('/nudges');
+  return (
+    (pathname.startsWith('/settings') &&
+      !pathname.startsWith('/settings/ai-connections') &&
+      !pathname.startsWith('/settings/google-calendar') &&
+      !pathname.startsWith('/settings/drive-links')) ||
+    pathname.startsWith('/nudges')
+  );
+}
+
+function matchesExternalConnectionPath(pathname: string) {
+  return (
+    pathname.startsWith('/settings/ai-connections') ||
+    pathname.startsWith('/settings/google-calendar') ||
+    pathname.startsWith('/settings/drive-links')
+  );
 }
 
 function matchesStatusPath(pathname: string) {
@@ -90,7 +104,9 @@ function CollapsibleBlock({
   iconOnly?: boolean;
 }) {
   if (iconOnly) {
-    // アイコンのみ表示時はセクション見出しの意味がないため、常に開いた状態でアイコン列だけ並べる
+    // 折りたたみ時は、今いるページが属するセクションのアイコンだけを表示する
+    // （すべてのセクションを常時展開すると、アイコンが一列にすべて並んで見づらくなるため）
+    if (!open) return null;
     return <div className="pt-2 space-y-1">{children}</div>;
   }
 
@@ -171,12 +187,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
   const adminActive = matchesAdminPath(location.pathname);
   const statusActive = matchesStatusPath(location.pathname);
   const goalsActive = matchesGoalsPath(location.pathname);
+  const externalConnectionActive = matchesExternalConnectionPath(location.pathname);
 
   const [docOpen, setDocOpen] = useState(false);
   const [supportMenuOpen, setSupportMenuOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
+  const [externalConnectionOpen, setExternalConnectionOpen] = useState(false);
 
   useEffect(() => {
     if (docActive) setDocOpen(true);
@@ -197,6 +215,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
   useEffect(() => {
     if (goalsActive) setGoalsOpen(true);
   }, [goalsActive]);
+
+  useEffect(() => {
+    if (externalConnectionActive) setExternalConnectionOpen(true);
+  }, [externalConnectionActive]);
 
   const commonItems = [
     { to: '/schedule', icon: Calendar, label: 'スケジュール' },
@@ -266,12 +288,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
     label: 'プロフィール設定',
   });
 
-  userMenuItems.push({
-    to: '/settings/ai-connections',
-    icon: KeyRound,
-    label: 'AI接続',
-  });
-
   if (user?.role === 'SUPPORT' || user?.role === 'MASTER') {
     userMenuItems.push({
       to: '/settings/document-templates',
@@ -308,22 +324,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
   }
 
   userMenuItems.push({
-    to: '/settings/google-calendar',
-    icon: CalendarCheck,
-    label: 'Googleカレンダー',
-  });
-
-  userMenuItems.push({
-    to: '/settings/drive-links',
-    icon: HardDrive,
-    label: 'ドライブ',
-  });
-
-  userMenuItems.push({
     to: '/handover',
     icon: FolderOpen,
     label: '引き継ぎ',
   });
+
+  const externalConnectionItems: Array<{ to: string; icon: NavIcon; label: string }> = [
+    { to: '/settings/ai-connections', icon: KeyRound, label: 'AI接続' },
+    { to: '/settings/google-calendar', icon: CalendarCheck, label: 'Googleカレンダー' },
+    { to: '/settings/drive-links', icon: HardDrive, label: 'ドライブ' },
+  ];
 
   const statusItems: Array<{ to: string; icon: NavIcon; label: string; end?: boolean }> = [
     { to: '/sns-posts', icon: Share2, label: 'SNS投稿' },
@@ -371,14 +381,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
           <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
         ))}
 
-        <CollapsibleBlock title="目標・オーガナイザー" open={goalsOpen} onOpenChange={setGoalsOpen} iconOnly={collapsed}>
+        <CollapsibleBlock title="目標・オーガナイザー" open={collapsed ? goalsActive : goalsOpen} onOpenChange={setGoalsOpen} iconOnly={collapsed}>
           {goalsAndEventsItems.map((item) => (
             <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
           ))}
         </CollapsibleBlock>
 
         {reportDocumentItems.length > 0 && (
-          <CollapsibleBlock title="報告書" open={docOpen} onOpenChange={setDocOpen} iconOnly={collapsed}>
+          <CollapsibleBlock title="報告書" open={collapsed ? docActive : docOpen} onOpenChange={setDocOpen} iconOnly={collapsed}>
             {reportDocumentItems.map((item) => (
               <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
             ))}
@@ -386,14 +396,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
         )}
 
         {supportWorkflowItems.length > 0 && (
-          <CollapsibleBlock title="サポート・連絡" open={supportMenuOpen} onOpenChange={setSupportMenuOpen} iconOnly={collapsed}>
+          <CollapsibleBlock title="サポート・連絡" open={collapsed ? supportActive : supportMenuOpen} onOpenChange={setSupportMenuOpen} iconOnly={collapsed}>
             {supportWorkflowItems.map((item) => (
               <NavRow key={`${item.to}-${item.label}`} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
             ))}
           </CollapsibleBlock>
         )}
 
-        <CollapsibleBlock title="状況" open={statusOpen} onOpenChange={setStatusOpen} iconOnly={collapsed}>
+        <CollapsibleBlock title="状況" open={collapsed ? statusActive : statusOpen} onOpenChange={setStatusOpen} iconOnly={collapsed}>
           {statusItems.map((item) => (
             <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
           ))}
@@ -402,7 +412,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
         {userMenuItems.length > 0 && (
           <CollapsibleBlock
             title={user?.role === 'MASTER' ? '管理' : '管理・情報'}
-            open={adminOpen}
+            open={collapsed ? adminActive : adminOpen}
             onOpenChange={setAdminOpen}
             iconOnly={collapsed}
           >
@@ -411,6 +421,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
             ))}
           </CollapsibleBlock>
         )}
+
+        <CollapsibleBlock
+          title="外部接続"
+          open={collapsed ? externalConnectionActive : externalConnectionOpen}
+          onOpenChange={setExternalConnectionOpen}
+          iconOnly={collapsed}
+        >
+          {externalConnectionItems.map((item) => (
+            <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
+          ))}
+        </CollapsibleBlock>
       </nav>
     </aside>
   );
