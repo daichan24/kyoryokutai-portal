@@ -121,8 +121,8 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
       boxSizing: 'border-box'
     }}>
       {/* ヘッダー（日付・報告者） */}
-      <div style={{ marginBottom: '4px' }}>{currentDate}</div>
-      <div style={{ marginBottom: '30px' }}>{report.user?.name || ''}</div>
+      <div style={{ textAlign: 'right', marginBottom: '4px' }}>{currentDate}</div>
+      <div style={{ textAlign: 'right', marginBottom: '30px' }}>{report.user?.name || ''}</div>
 
       {/* タイトル */}
       <h1 style={{
@@ -171,7 +171,16 @@ export const WeeklyReportPreview: React.FC<WeeklyReportPreviewProps> = ({ report
       <div style={{ marginBottom: '30px' }}>
         {nextScheduleItems.length > 0 ? (
           nextScheduleItems.map((item, index) => (
-            <div key={index} style={{ marginBottom: '10px', whiteSpace: 'pre-wrap' }}>
+            <div
+              key={index}
+              style={{
+                marginBottom: '10px',
+                padding: '8px 12px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
               {item}
             </div>
           ))

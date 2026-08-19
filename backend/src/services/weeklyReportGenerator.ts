@@ -99,12 +99,21 @@ function endOfRange(start: Date, days: number) {
   return end;
 }
 
+function toMinutesOfDay(time: string): number {
+  const [hourText, minuteText] = (time || '').split(':');
+  const hour = parseInt(hourText || '0', 10) || 0;
+  const minute = parseInt(minuteText || '0', 10) || 0;
+  return hour * 60 + minute;
+}
+
 function formatSchedulePeriod(schedule: ReportSchedule): string {
   if (schedule.isAllDay) return '終日';
-  const startHour = parseInt((schedule.startTime || '').split(':')[0] || '0', 10);
-  const endHour = parseInt((schedule.endTime || '').split(':')[0] || '0', 10);
-  const startsAM = startHour < 12;
-  const endsPM = endHour >= 12;
+  const NOON = 12 * 60;
+  const startMinutes = toMinutesOfDay(schedule.startTime);
+  const endMinutes = toMinutesOfDay(schedule.endTime);
+  const startsAM = startMinutes < NOON;
+  // ちょうど正午終了（9:00〜12:00など）は午後にまたがらないため「AM」扱いにする
+  const endsPM = endMinutes > NOON;
   if (startsAM && endsPM) return 'AM・PM';
   return startsAM ? 'AM' : 'PM';
 }

@@ -556,8 +556,8 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
       </style>
     </head>
     <body>
-      <div style="margin-bottom: 4px;">${escapeHtmlForPdf(format(new Date(), 'yyyy年M月d日'))}</div>
-      <div style="margin-bottom: 30px;">${escapeHtmlForPdf(report.user.name)}</div>
+      <div style="text-align: right; margin-bottom: 4px;">${escapeHtmlForPdf(format(new Date(), 'yyyy年M月d日'))}</div>
+      <div style="text-align: right; margin-bottom: 30px;">${escapeHtmlForPdf(report.user.name)}</div>
       <h1>${escapeHtmlForPdf(weeklyTemplate.title)}</h1>
 
       <div class="section-title">■${escapeHtmlForPdf(weekStartLabel)}週振り返り</div>
@@ -579,7 +579,7 @@ export async function generateWeeklyReportPDF(userId: string, week: string): Pro
       <div class="section-title">■今後の主なスケジュール</div>
       <div style="margin-bottom: 30px;">
         ${nextScheduleItems.length > 0
-          ? nextScheduleItems.map((item) => `<div style="margin-bottom: 10px; white-space: pre-wrap;">${renderPlainTextForPdf(item)}</div>`).join('')
+          ? nextScheduleItems.map((item) => `<div style="margin-bottom: 10px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 6px; white-space: pre-wrap;">${renderPlainTextForPdf(item)}</div>`).join('')
           : '<p style="margin-left: 15px;">（未記入）</p>'}
       </div>
 
