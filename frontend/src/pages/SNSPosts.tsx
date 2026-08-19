@@ -635,10 +635,10 @@ export const SNSPosts: React.FC = () => {
               <h2 className="font-semibold text-gray-900 dark:text-gray-100">週次カレンダー（振り返り）</h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[520px]">
+              <table className="w-full table-fixed text-sm min-w-[520px]">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-gray-100">週（月曜起算）</th>
+                    <th className="w-32 text-left py-3 px-4 font-semibold text-gray-900 dark:text-gray-100">週（月曜起算）</th>
                     <th className="text-center py-3 px-2 font-semibold text-blue-700 dark:text-blue-300">
                       {getPostTypeLabels(selectedAccountId ? myAccounts.find(a => a.id === selectedAccountId)?.platform : myAccounts[0]?.platform).story}
                     </th>

@@ -442,9 +442,17 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 flex-shrink-0">
-          <h2 className="text-2xl font-bold dark:text-gray-100">
-            {isDuplicateMode ? 'スケジュール複製（新規作成）' : schedule ? 'スケジュール編集' : 'スケジュール作成'}
-          </h2>
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-2xl font-bold dark:text-gray-100 truncate">
+              {isDuplicateMode ? 'スケジュール複製（新規作成）' : schedule ? 'スケジュール編集' : 'スケジュール作成'}
+            </h2>
+            {schedule?.googleCalendarEventLink && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-200">
+                <CalendarCheck className="h-3.5 w-3.5" />
+                Google同期
+              </span>
+            )}
+          </div>
           <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <X className="h-6 w-6" />
           </button>
@@ -500,41 +508,32 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               )}
             </div>
           )}
-          {schedule?.googleCalendarEventLink && (
-            <div className={`rounded-lg border p-3 ${
-              schedule.googleCalendarEventLink.syncStatus === 'ERROR'
-                ? 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200'
-                : 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-200'
-            }`}>
-              <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                {schedule.googleCalendarEventLink.syncStatus === 'ERROR' ? (
-                  <AlertCircle className="h-4 w-4" />
-                ) : (
-                  <CalendarCheck className="h-4 w-4" />
-                )}
-                <span>Google同期</span>
-                <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs dark:bg-gray-900/40">
-                  {schedule.googleCalendarEventLink.origin === 'GOOGLE' ? 'Googleから取込' : 'クリアベースから同期'}
-                </span>
-                <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs dark:bg-gray-900/40">
-                  {schedule.googleCalendarEventLink.syncStatus}
-                </span>
-                {schedule.googleCalendarEventLink.origin === 'GOOGLE' && !schedule.projectId && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                    プロジェクト未設定
-                  </span>
-                )}
-                {schedule.googleCalendarEventLink.origin === 'GOOGLE' && !schedule.locationText && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                    場所未設定
-                  </span>
-                )}
+          {schedule?.googleCalendarEventLink?.syncStatus === 'ERROR' && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>Google同期でエラーが発生しています</span>
               </div>
               {schedule.googleCalendarEventLink.lastError && (
                 <p className="mt-2 text-xs">{schedule.googleCalendarEventLink.lastError}</p>
               )}
             </div>
           )}
+          {schedule?.googleCalendarEventLink?.origin === 'GOOGLE' &&
+            (!schedule.projectId || !schedule.locationText) && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>
+                    Googleカレンダーから取り込んだ予定です。
+                    {[!schedule.projectId && 'プロジェクト', !schedule.locationText && '場所']
+                      .filter(Boolean)
+                      .join('・')}
+                    を入力してください。
+                  </span>
+                </div>
+              </div>
+            )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="開始日"

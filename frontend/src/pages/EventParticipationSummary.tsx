@@ -329,7 +329,7 @@ export const EventParticipationSummary: React.FC = () => {
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 隊員名の下の数字は「{matrix.fiscalYearLabel ?? year}年度」（4月〜翌3月）の隊員参加枠への参加回数です。
               </p>
-              <div className="overflow-x-auto rounded-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800 shadow-sm">
+              <div className="inline-block max-w-full overflow-x-auto rounded-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800 shadow-sm">
               <table className="text-xs border-collapse min-w-max">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-900/80">
