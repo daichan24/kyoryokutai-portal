@@ -104,10 +104,23 @@ function CollapsibleBlock({
   iconOnly?: boolean;
 }) {
   if (iconOnly) {
-    // 折りたたみ時は、今いるページが属するセクションのアイコンだけを表示する
-    // （すべてのセクションを常時展開すると、アイコンが一列にすべて並んで見づらくなるため）
-    if (!open) return null;
-    return <div className="pt-2 space-y-1">{children}</div>;
+    // 折りたたみ時は、今いるページが属するセクションだけ自動で開くが、
+    // 矢印ボタンで他のセクションも個別に開閉できるようにする
+    return (
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={() => onOpenChange(!open)}
+          className="flex w-full items-center justify-center rounded-lg py-1.5 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          title={title}
+          aria-label={title}
+          aria-expanded={open}
+        >
+          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        </button>
+        {open && <div className="space-y-1">{children}</div>}
+      </div>
+    );
   }
 
   return (
@@ -381,14 +394,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
           <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
         ))}
 
-        <CollapsibleBlock title="目標・オーガナイザー" open={collapsed ? goalsActive : goalsOpen} onOpenChange={setGoalsOpen} iconOnly={collapsed}>
+        <CollapsibleBlock title="目標・オーガナイザー" open={goalsOpen} onOpenChange={setGoalsOpen} iconOnly={collapsed}>
           {goalsAndEventsItems.map((item) => (
             <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
           ))}
         </CollapsibleBlock>
 
         {reportDocumentItems.length > 0 && (
-          <CollapsibleBlock title="報告書" open={collapsed ? docActive : docOpen} onOpenChange={setDocOpen} iconOnly={collapsed}>
+          <CollapsibleBlock title="報告書" open={docOpen} onOpenChange={setDocOpen} iconOnly={collapsed}>
             {reportDocumentItems.map((item) => (
               <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
             ))}
@@ -396,14 +409,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
         )}
 
         {supportWorkflowItems.length > 0 && (
-          <CollapsibleBlock title="サポート・連絡" open={collapsed ? supportActive : supportMenuOpen} onOpenChange={setSupportMenuOpen} iconOnly={collapsed}>
+          <CollapsibleBlock title="サポート・連絡" open={supportMenuOpen} onOpenChange={setSupportMenuOpen} iconOnly={collapsed}>
             {supportWorkflowItems.map((item) => (
               <NavRow key={`${item.to}-${item.label}`} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
             ))}
           </CollapsibleBlock>
         )}
 
-        <CollapsibleBlock title="状況" open={collapsed ? statusActive : statusOpen} onOpenChange={setStatusOpen} iconOnly={collapsed}>
+        <CollapsibleBlock title="状況" open={statusOpen} onOpenChange={setStatusOpen} iconOnly={collapsed}>
           {statusItems.map((item) => (
             <NavRow key={item.to} {...item} onNavigate={closeMobile} iconOnly={collapsed} />
           ))}
@@ -412,7 +425,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
         {userMenuItems.length > 0 && (
           <CollapsibleBlock
             title={user?.role === 'MASTER' ? '管理' : '管理・情報'}
-            open={collapsed ? adminActive : adminOpen}
+            open={adminOpen}
             onOpenChange={setAdminOpen}
             iconOnly={collapsed}
           >
@@ -424,7 +437,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, on
 
         <CollapsibleBlock
           title="外部接続"
-          open={collapsed ? externalConnectionActive : externalConnectionOpen}
+          open={externalConnectionOpen}
           onOpenChange={setExternalConnectionOpen}
           iconOnly={collapsed}
         >
