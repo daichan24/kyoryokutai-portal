@@ -672,7 +672,11 @@ async function pushExistingSchedules(connection: CalendarConnection) {
     orderBy: [{ startDate: 'asc' }, { startTime: 'asc' }],
   });
   for (const schedule of schedules) {
-    await syncScheduleToGoogle(schedule.id);
+    try {
+      await syncScheduleToGoogle(schedule.id);
+    } catch (error) {
+      console.error(`Failed to push schedule ${schedule.id} to Google Calendar:`, error);
+    }
   }
 }
 
@@ -775,7 +779,7 @@ export async function processGoogleCalendarSyncJobs(limit = 10) {
         ? await prisma.googleCalendarConnection.findUnique({ where: { id: job.connectionId } })
         : null;
       if (!connection || !['ACTIVE', 'ERROR'].includes(connection.status)) throw new Error('Active Google Calendar connection not found');
-      if (job.jobType === 'INITIAL') await pushExistingSchedules(connection as CalendarConnection);
+      if (job.jobType === 'INITIAL' || job.jobType === 'MANUAL') await pushExistingSchedules(connection as CalendarConnection);
       await pullGoogleEvents(connection as CalendarConnection, job.jobType === 'INITIAL');
       if (job.jobType === 'INITIAL' || job.jobType === 'WATCH_RENEWAL') {
         const latest = await prisma.googleCalendarConnection.findUnique({ where: { id: connection.id } });
