@@ -59,6 +59,7 @@ interface ReceptionData {
     targetUser?: { id: string; name: string } | null;
   }>;
   expenses: Array<{ id: string; amount: number; description: string; spentAt: string; createdAt: string; status?: 'PENDING' | 'APPROVED' | 'REJECTED'; rejectionReason?: string | null; user: { id: string; name: string }; project?: { id: string; projectName: string } | null; updatedBy?: { id: string; name: string } | null }>;
+  requests: Array<{ id: string; requestTitle: string; requestDescription: string; deadline?: string | null; createdAt: string; approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'; approvalNote?: string | null; approvedAt?: string | null; requester: { id: string; name: string; avatarColor?: string }; requestee: { id: string; name: string }; project?: { id: string; projectName: string } | null }>;
   weeklyReports: Array<{ id: string; week: string; submittedAt: string; approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
   inspections: Array<{ id: string; destination: string; date: string; createdAt: string; approvalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; user: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
   monthlyReports: Array<{ id: string; month: string; submittedAt: string; approvalStatus?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; approvalComment?: string | null; approvedAt?: string | null; creator: { id: string; name: string }; approver?: { id: string; name: string } | null }>;
@@ -148,6 +149,70 @@ const ExpenseDetailModal: React.FC<{
             <Button size="sm" variant="outline" onClick={onReopen} disabled={actionLoading}>
               未承認に戻す
             </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+const RequestDetailModal: React.FC<{
+  request: ReceptionData['requests'][0];
+  onClose: () => void;
+  onAction: (approvalStatus: 'APPROVED' | 'REJECTED') => void;
+  actionLoading: boolean;
+  currentUserId?: string;
+}> = ({ request, onClose, onAction, actionLoading, currentUserId }) => (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+      <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">依頼</h3>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><X className="w-5 h-5" /></button>
+      </div>
+      <div className="p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div>
+            <p className="text-gray-500">依頼元</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{request.requester.name}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">依頼先</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{request.requestee.name}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">状態</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{statusLabel(request.approvalStatus)}</p>
+          </div>
+          {request.deadline && (
+            <div>
+              <p className="text-gray-500">期限</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100">{format(new Date(request.deadline), 'yyyy年M月d日', { locale: ja })}</p>
+            </div>
+          )}
+        </div>
+        {request.project && (
+          <div className="text-sm">
+            <p className="text-gray-500">プロジェクト</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{request.project.projectName}</p>
+          </div>
+        )}
+        <div className="text-sm">
+          <p className="text-gray-500">件名</p>
+          <p className="font-medium text-gray-900 dark:text-gray-100">{request.requestTitle}</p>
+        </div>
+        <div className="text-sm">
+          <p className="text-gray-500">内容</p>
+          <p className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">{request.requestDescription}</p>
+        </div>
+        {request.approvalNote && (
+          <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
+            差し戻し理由: {request.approvalNote}
+          </div>
+        )}
+        {request.approvalStatus === 'PENDING' && request.requestee.id === currentUserId && (
+          <div className="flex justify-end gap-2 pt-2">
+            <Button size="sm" onClick={() => onAction('APPROVED')} disabled={actionLoading}>承認</Button>
+            <Button size="sm" variant="outline" onClick={() => onAction('REJECTED')} disabled={actionLoading}>差し戻し</Button>
           </div>
         )}
       </div>
@@ -308,6 +373,7 @@ export const InboxPage: React.FC = () => {
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
   const [selectedMonthlyReportId, setSelectedMonthlyReportId] = useState<string | null>(null);
   const [selectedExpense, setSelectedExpense] = useState<ReceptionData['expenses'][0] | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<ReceptionData['requests'][0] | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // 相談送信フォーム（メンバー用）
@@ -398,7 +464,7 @@ export const InboxPage: React.FC = () => {
   };
 
   const handleApprovalAction = async (
-    item: { id: string; type: 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense' },
+    item: { id: string; type: 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense' | 'request' },
     approvalStatus: 'APPROVED' | 'REJECTED',
   ) => {
     setActionLoading(true);
@@ -424,6 +490,12 @@ export const InboxPage: React.FC = () => {
           comment: comment || null,
         });
         queryClient.invalidateQueries({ queryKey: ['monthly-reports'] });
+      } else if (item.type === 'request') {
+        await api.post(`/api/requests/${item.id}/respond`, {
+          approvalStatus,
+          approvalNote: comment || null,
+        });
+        queryClient.invalidateQueries({ queryKey: ['requests'] });
       } else if (approvalStatus === 'APPROVED') {
         await api.post(`/api/activity-expenses/entries/${item.id}/approve`);
         queryClient.invalidateQueries({ queryKey: ['activity-expenses'] });
@@ -437,6 +509,7 @@ export const InboxPage: React.FC = () => {
       if (item.type === 'inspection') setSelectedInspectionId(null);
       if (item.type === 'monthlyReport') setSelectedMonthlyReportId(null);
       if (item.type === 'expense') setSelectedExpense(null);
+      if (item.type === 'request') setSelectedRequest(null);
     } catch (e: any) {
       alert(`操作に失敗しました: ${e.response?.data?.error || e.message}`);
     } finally {
@@ -492,14 +565,14 @@ export const InboxPage: React.FC = () => {
   // ============================================================
   type UnifiedItem = {
     id: string;
-    type: 'scheduleInvite' | 'consultation' | 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense' | 'compensatoryLeave' | 'timeAdjustment';
+    type: 'scheduleInvite' | 'consultation' | 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense' | 'request' | 'compensatoryLeave' | 'timeAdjustment';
     status: 'pending' | 'unapproved' | 'resolved';
     from: string; // 誰から
     label: string; // 何月分・内容
     createdAt: string;
     raw: any;
   };
-  type ApprovalItemType = 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense';
+  type ApprovalItemType = 'weeklyReport' | 'inspection' | 'monthlyReport' | 'expense' | 'request';
   type LeaveItemType = 'compensatoryLeave' | 'timeAdjustment';
   const isApprovalItem = (
     item: UnifiedItem,
@@ -508,6 +581,7 @@ export const InboxPage: React.FC = () => {
     || item.type === 'inspection'
     || item.type === 'monthlyReport'
     || item.type === 'expense'
+    || item.type === 'request'
   );
   const isLeaveItem = (
     item: UnifiedItem,
@@ -554,6 +628,13 @@ export const InboxPage: React.FC = () => {
       from: e.user.name, label: `活動経費: ${e.description} ¥${e.amount.toLocaleString()}`,
       createdAt: e.createdAt, raw: e,
     })),
+    ...(receptionData?.requests || []).map(r => ({
+      id: r.id, type: 'request' as const,
+      status: r.approvalStatus === 'APPROVED' || r.approvalStatus === 'REJECTED' ? 'resolved' as const : 'unapproved' as const,
+      from: r.requester.name,
+      label: `依頼: ${r.requestTitle} → ${r.requestee.name}さん`,
+      createdAt: r.createdAt, raw: r,
+    })),
     ...(receptionData?.compensatoryLeaves || []).map(l => ({
       id: l.id, type: 'compensatoryLeave' as const,
       status: l.confirmedAt ? 'resolved' as const : 'unapproved' as const,
@@ -592,6 +673,7 @@ export const InboxPage: React.FC = () => {
     inspection: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200',
     monthlyReport: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200',
     expense: 'bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200',
+    request: 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200',
     compensatoryLeave: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-800 dark:text-cyan-200',
     timeAdjustment: 'bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-200',
   };
@@ -600,6 +682,7 @@ export const InboxPage: React.FC = () => {
     scheduleInvite: 'スケジュール招待', consultation: '相談',
     weeklyReport: '週次報告', inspection: '復命書',
     monthlyReport: '月次報告', expense: '活動経費',
+    request: '依頼',
     compensatoryLeave: '代休',
     timeAdjustment: '時間調整',
   };
@@ -701,6 +784,12 @@ export const InboxPage: React.FC = () => {
                     {item.raw.approvedAt && ` — ${format(new Date(item.raw.approvedAt), 'M/d HH:mm', { locale: ja })}`}
                   </p>
                 )}
+                {item.status === 'resolved' && item.type === 'request' && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                    対応: {item.raw.requestee.name}
+                    {item.raw.approvedAt && ` — ${format(new Date(item.raw.approvedAt), 'M/d HH:mm', { locale: ja })}`}
+                  </p>
+                )}
                 {item.status === 'resolved' && (item.type === 'compensatoryLeave' || item.type === 'timeAdjustment') && item.raw.confirmedBy && (
                   <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
                     確認: {item.raw.confirmedBy.name}
@@ -732,12 +821,22 @@ export const InboxPage: React.FC = () => {
                     {item.status === 'pending' ? '確認・対応' : '詳細'}
                   </Button>
                 )}
-                {isApprovalItem(item) && item.status === 'unapproved' && (
+                {isApprovalItem(item) && item.type !== 'request' && item.status === 'unapproved' && (
                   <>
                     <Button size="sm" onClick={() => handleApprovalAction({ id: item.id, type: item.type }, 'APPROVED')} disabled={actionLoading}>
                       承認
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => handleApprovalAction({ id: item.id, type: item.type }, 'REJECTED')} disabled={actionLoading}>
+                      差し戻し
+                    </Button>
+                  </>
+                )}
+                {item.type === 'request' && item.status === 'unapproved' && item.raw.requestee.id === user?.id && (
+                  <>
+                    <Button size="sm" onClick={() => handleApprovalAction({ id: item.id, type: 'request' }, 'APPROVED')} disabled={actionLoading}>
+                      承認
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleApprovalAction({ id: item.id, type: 'request' }, 'REJECTED')} disabled={actionLoading}>
                       差し戻し
                     </Button>
                   </>
@@ -757,12 +856,13 @@ export const InboxPage: React.FC = () => {
                     戻す
                   </Button>
                 )}
-                {(item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'weeklyReport' || item.type === 'expense') && (
+                {(item.type === 'inspection' || item.type === 'monthlyReport' || item.type === 'weeklyReport' || item.type === 'expense' || item.type === 'request') && (
                   <Button size="sm" variant="outline" onClick={() => {
                     if (item.type === 'weeklyReport') setSelectedWeekly(item.raw);
                     if (item.type === 'inspection') setSelectedInspectionId(item.id);
                     if (item.type === 'monthlyReport') setSelectedMonthlyReportId(item.id);
                     if (item.type === 'expense') setSelectedExpense(item.raw);
+                    if (item.type === 'request') setSelectedRequest(item.raw);
                   }}>
                     詳細
                   </Button>
@@ -944,6 +1044,15 @@ export const InboxPage: React.FC = () => {
           onClose={() => setSelectedExpense(null)}
           onAction={(approvalStatus) => handleApprovalAction({ id: selectedExpense.id, type: 'expense' }, approvalStatus)}
           onReopen={() => handleReopenAction({ id: selectedExpense.id, type: 'expense' })}
+          actionLoading={actionLoading}
+          currentUserId={user?.id}
+        />
+      )}
+      {selectedRequest && (
+        <RequestDetailModal
+          request={selectedRequest}
+          onClose={() => setSelectedRequest(null)}
+          onAction={(approvalStatus) => handleApprovalAction({ id: selectedRequest.id, type: 'request' }, approvalStatus)}
           actionLoading={actionLoading}
           currentUserId={user?.id}
         />

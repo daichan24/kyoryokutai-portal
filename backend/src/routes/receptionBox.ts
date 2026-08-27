@@ -8,6 +8,11 @@ router.use(authenticate);
 const unreadCountCache = new Map<string, { count: number; expiresAt: number }>();
 const UNREAD_COUNT_CACHE_MS = 30_000;
 
+function requestMatchesStaff(r: any, staffId: string, staffRole: string) {
+  if (staffRole === 'MASTER') return true;
+  return r.requestedTo === staffId;
+}
+
 function consultationMatchesStaff(c: any, staffId: string, staffRole: string) {
   if (c.audience === 'SPECIFIC_USER') {
     const isAssigned = c.assignedUsers?.some((u: any) => u.id === staffId);
@@ -71,6 +76,7 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
         monthlyReportCount,
         compensatoryLeaveCount,
         timeAdjustmentCount,
+        pendingRequests,
       ] = await Promise.all([
         prisma.scheduleParticipant.count({
           where: {
@@ -110,13 +116,20 @@ router.get('/unread-count', async (req: AuthRequest, res) => {
         prisma.timeAdjustment.count({
           where: { confirmedAt: null, user: { role: 'MEMBER' } },
         }),
+        prisma.request.findMany({
+          where: { approvalStatus: 'PENDING' },
+          select: { requestedTo: true },
+        }),
       ]);
 
       const consultationCount = openConsultations.filter((c) =>
         consultationMatchesStaff(c, userId, role)
       ).length;
+      const requestCount = pendingRequests.filter((r) =>
+        requestMatchesStaff(r, userId, role)
+      ).length;
 
-      count += scheduleCount + consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount + compensatoryLeaveCount + timeAdjustmentCount;
+      count += scheduleCount + consultationCount + expenseCount + weeklyReportCount + inspectionCount + monthlyReportCount + compensatoryLeaveCount + timeAdjustmentCount + requestCount;
     }
 
     unreadCountCache.set(cacheKey, {
@@ -144,6 +157,7 @@ router.get('/', async (req: AuthRequest, res) => {
     const monthlyReports: any[] = [];
     const compensatoryLeaves: any[] = [];
     const timeAdjustments: any[] = [];
+    const requests: any[] = [];
 
     if (role === 'MEMBER') {
       const invites = await prisma.scheduleParticipant.findMany({
@@ -249,11 +263,22 @@ router.get('/', async (req: AuthRequest, res) => {
         orderBy: { createdAt: 'desc' },
       });
       timeAdjustments.push(...adjustments);
+
+      const requestList = await prisma.request.findMany({
+        include: {
+          requester: { select: { id: true, name: true, avatarColor: true } },
+          requestee: { select: { id: true, name: true } },
+          project: { select: { id: true, projectName: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      requests.push(...requestList.filter((r) => requestMatchesStaff(r, userId, role)));
     }
 
     res.json({
       scheduleInvites,
       consultations,
+      requests,
       expenses,
       weeklyReports,
       inspections,

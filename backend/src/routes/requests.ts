@@ -19,7 +19,7 @@ const createRequestSchema = z.object({
 
 const respondSchema = z.object({
   approvalStatus: z.enum(['APPROVED', 'REJECTED']),
-  approvalNote: z.string().optional(),
+  approvalNote: z.string().optional().nullable(),
 });
 
 // 依頼一覧取得
