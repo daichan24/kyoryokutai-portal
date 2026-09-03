@@ -607,8 +607,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           await api.post('/api/schedules', {
             date: dueDate,
             endDate: endDate && endDate !== dueDate ? endDate : undefined,
-            startTime: '00:00',
-            endTime: '23:59',
+            startTime: isAllDay ? '00:00' : normalizeTimeValue(startTime),
+            endTime: isAllDay ? '23:59' : normalizeTimeValue(endTime, '17:30'),
             title: title.trim(),
             activityDescription: memo.trim() || title.trim(),
             freeNote: memo.trim() || null,
@@ -617,7 +617,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             locationText: null,
             projectId: null,
             linkKind: 'UNSET',
-            isAllDay: true,
+            isAllDay,
             isTimeUnspecified: false,
             reportable: false,
             isHolidayWork: false,
@@ -841,13 +841,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                         setIsTimeUnspecified(false);
                         setStartTime('00:00');
                         setEndTime('23:59');
+                      } else if (isDayOff) {
+                        // 休みを時間指定にする場合、分かりやすいデフォルト時間を入れておく
+                        setStartTime('09:00');
+                        setEndTime('12:00');
                       }
                     }}
                     className="h-4 w-4 rounded border-gray-300 text-primary"
-                    disabled={readOnly || isDayOff}
+                    disabled={readOnly}
                   />
                   終日予定
                 </label>
+                {!isDayOff && (
                 <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <input
                     type="checkbox"
@@ -861,10 +866,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                       }
                     }}
                     className="h-4 w-4 rounded border-gray-300 text-primary"
-                    disabled={readOnly || isDayOff}
+                    disabled={readOnly}
                   />
                   時間未定
                 </label>
+                )}
                 <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <input
                     type="checkbox"
