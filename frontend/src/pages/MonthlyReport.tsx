@@ -57,6 +57,7 @@ export const MonthlyReport: React.FC = () => {
       
       await saveBlobAsFile(new Blob([response.data]), `月次報告_${month}.pdf`, {
         description: '月次報告PDF',
+        saveLocationType: 'monthlyReport',
       });
     } catch (error) {
       console.error('PDF download failed:', error);

@@ -7,6 +7,7 @@ import { Input } from '../../components/common/Input';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Plus, X } from 'lucide-react';
 import type { Location } from '../../types';
+import { PdfSaveLocationSettings } from '../../components/settings/PdfSaveLocationSettings';
 
 interface SNSLink {
   platform: string;
@@ -455,6 +456,8 @@ export const ProfileSettings: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <PdfSaveLocationSettings />
 
       {/* 所属情報 */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">

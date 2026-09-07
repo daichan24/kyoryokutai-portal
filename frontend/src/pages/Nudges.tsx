@@ -365,7 +365,7 @@ export const Nudges: React.FC = () => {
                     await saveBlobAsFile(
                       new Blob([response.data]),
                       `協力隊細則_${selectedDoc.fiscalYear}年度_${format(new Date(), 'yyyyMMdd')}.pdf`,
-                      { description: '協力隊細則PDF' }
+                      { description: '協力隊細則PDF', saveLocationType: 'nudges' }
                     );
                   } catch (error) {
                     console.error('PDF download failed:', error);

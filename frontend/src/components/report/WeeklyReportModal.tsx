@@ -129,6 +129,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       
       await saveBlobAsFile(new Blob([response.data]), `週次報告_${targetReport.week}.pdf`, {
         description: '週次報告PDF',
+        saveLocationType: 'weeklyReport',
       });
       setShowPDFConfirm(false);
     } catch (error: unknown) {

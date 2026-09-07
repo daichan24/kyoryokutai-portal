@@ -177,6 +177,7 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
       });
       await saveBlobAsFile(new Blob([response.data]), `復命書_${inspection?.destination || inspectionId}.pdf`, {
         description: '復命書PDF',
+        saveLocationType: 'inspection',
       });
       setShowPDFConfirm(false);
     } catch (error) {

@@ -1,15 +1,29 @@
+import type { PdfSaveLocationType } from './pdfSaveLocations';
+import { trySaveToConfiguredDirectory } from './pdfSaveLocations';
+
 /**
- * PDFなどのファイルを保存する。File System Access API (showSaveFilePicker) が
- * 使えるブラウザ(Chrome/Edge等)では、保存先フォルダ・ファイル名を選べる
- * 「名前を付けて保存」ダイアログを出す。使えないブラウザ(Firefox/Safari等)や
- * ユーザーがキャンセルした場合は、従来通りダウンロードフォルダへの自動保存に
- * フォールバックする。
+ * PDFなどのファイルを保存する。
+ * `saveLocationType` を指定していて、ユーザー設定画面であらかじめ保存先
+ * フォルダを設定済みの場合は、ダイアログなしでそのフォルダへ直接保存する。
+ * 未設定の場合、File System Access API (showSaveFilePicker) が使えるブラウザ
+ * (Chrome/Edge等)では保存先フォルダ・ファイル名を選べる「名前を付けて保存」
+ * ダイアログを出す。使えないブラウザ(Firefox/Safari等)やユーザーがキャンセル
+ * した場合は、従来通りダウンロードフォルダへの自動保存にフォールバックする。
  */
 export async function saveBlobAsFile(
   blob: Blob,
   suggestedName: string,
-  options?: { description?: string; mimeType?: string; extension?: string }
+  options?: { description?: string; mimeType?: string; extension?: string; saveLocationType?: PdfSaveLocationType }
 ) {
+  if (options?.saveLocationType) {
+    const savedToConfiguredDirectory = await trySaveToConfiguredDirectory(
+      options.saveLocationType,
+      blob,
+      suggestedName,
+    );
+    if (savedToConfiguredDirectory) return;
+  }
+
   const picker = (window as unknown as { showSaveFilePicker?: (opts: unknown) => Promise<FileSystemFileHandle> })
     .showSaveFilePicker;
 

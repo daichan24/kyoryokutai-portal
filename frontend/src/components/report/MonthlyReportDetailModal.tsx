@@ -201,6 +201,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
       
       await saveBlobAsFile(new Blob([response.data]), `月次報告_${report?.month}.pdf`, {
         description: '月次報告PDF',
+        saveLocationType: 'monthlyReport',
       });
       setShowPDFConfirm(false);
     } catch (error) {
