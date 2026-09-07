@@ -9,7 +9,7 @@ import { SimpleRichTextEditor } from '../components/editor/SimpleRichTextEditor'
 import { Edit, History, X, FileDown, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useIsMobileBreakpoint } from '../hooks/useIsMobileBreakpoint';
-import { saveBlobAsFile } from '../utils/saveFile';
+import { saveBlobAsFile, describeDownloadError } from '../utils/saveFile';
 
 interface NudgeDocument {
   id: string;
@@ -344,7 +344,8 @@ export const Nudges: React.FC = () => {
                 onClick={async () => {
                   try {
                     const response = await api.get(`/api/nudges/${selectedDoc.fiscalYear}/pdf`, {
-                      responseType: 'blob'
+                      responseType: 'blob',
+                      timeout: 60_000, // PDF生成はサーバー側でブラウザエンジンを起動するため時間がかかることがある
                     });
 
                     if (response.data.type === 'application/json') {
@@ -366,10 +367,9 @@ export const Nudges: React.FC = () => {
                       `協力隊細則_${selectedDoc.fiscalYear}年度_${format(new Date(), 'yyyyMMdd')}.pdf`,
                       { description: '協力隊細則PDF' }
                     );
-                  } catch (error: any) {
+                  } catch (error) {
                     console.error('PDF download failed:', error);
-                    const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
-                    alert(errorMessage);
+                    alert(describeDownloadError(error));
                   }
                 }}
               >

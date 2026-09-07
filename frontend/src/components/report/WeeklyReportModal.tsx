@@ -10,7 +10,7 @@ import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { WeeklyReportPreview } from './WeeklyReportPreview';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
-import { saveBlobAsFile } from '../../utils/saveFile';
+import { saveBlobAsFile, describeDownloadError } from '../../utils/saveFile';
 
 interface WeeklyReportModalProps {
   report?: WeeklyReport | null;
@@ -116,7 +116,8 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
     
     try {
       const response = await api.get(`/api/weekly-reports/${targetReport.userId}/${targetReport.week}/pdf`, {
-        responseType: 'blob'
+        responseType: 'blob',
+        timeout: 60_000, // PDF生成はサーバー側でブラウザエンジンを起動するため時間がかかることがある
       });
       
       // エラーレスポンスのチェック
@@ -132,12 +133,7 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
       setShowPDFConfirm(false);
     } catch (error: unknown) {
       console.error('PDF download failed:', error);
-      const apiError = error as { response?: { data?: { error?: string } } };
-      const errorMessage =
-        apiError.response?.data?.error ||
-        (error instanceof Error ? error.message : null) ||
-        'PDF出力に失敗しました';
-      alert(errorMessage);
+      alert(describeDownloadError(error));
       setShowPDFConfirm(false);
     }
   };

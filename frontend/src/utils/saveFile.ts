@@ -46,3 +46,25 @@ export async function saveBlobAsFile(
   window.URL.revokeObjectURL(url);
   link.remove();
 }
+
+/**
+ * PDFダウンロードなど、時間のかかりうる通信のエラーを分かりやすい文言にする。
+ * サーバー側でPDF生成にブラウザエンジンを起動するため、混雑時やコールド
+ * スタート直後はタイムアウトすることがある。
+ */
+export function describeDownloadError(error: unknown): string {
+  const apiError = error as {
+    code?: string;
+    message?: string;
+    response?: { data?: { error?: string } };
+  };
+  const serverMessage = apiError?.response?.data?.error;
+  if (serverMessage) return serverMessage;
+
+  const isTimeout = apiError?.code === 'ECONNABORTED' || /timeout/i.test(apiError?.message || '');
+  if (isTimeout) {
+    return 'PDFの作成に時間がかかっており、タイムアウトしました。少し時間をおいて、もう一度お試しください。';
+  }
+
+  return (error instanceof Error ? error.message : null) || 'PDF出力に失敗しました';
+}

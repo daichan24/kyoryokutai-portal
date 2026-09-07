@@ -7,7 +7,7 @@ import { Button } from '../common/Button';
 import { useAuthStore } from '../../stores/authStore';
 import { InspectionPreview } from './InspectionPreview';
 import { InspectionAttachmentImage } from './InspectionAttachmentImage';
-import { saveBlobAsFile } from '../../utils/saveFile';
+import { saveBlobAsFile, describeDownloadError } from '../../utils/saveFile';
 
 interface InspectionAttachment {
   id: string;
@@ -171,14 +171,17 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
 
   const handleDownloadPDF = async () => {
     try {
-      const response = await api.get(`/api/inspections/${inspectionId}/pdf`, { responseType: 'blob' });
+      const response = await api.get(`/api/inspections/${inspectionId}/pdf`, {
+        responseType: 'blob',
+        timeout: 60_000, // PDF生成はサーバー側でブラウザエンジンを起動するため時間がかかることがある
+      });
       await saveBlobAsFile(new Blob([response.data]), `復命書_${inspection?.destination || inspectionId}.pdf`, {
         description: '復命書PDF',
       });
       setShowPDFConfirm(false);
     } catch (error) {
       console.error('Failed to download inspection PDF:', error);
-      alert('PDF出力に失敗しました');
+      alert(describeDownloadError(error));
       setShowPDFConfirm(false);
     }
   };

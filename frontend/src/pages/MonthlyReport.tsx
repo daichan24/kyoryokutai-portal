@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
 import { MonthlyReportDetailModal } from '../components/report/MonthlyReportDetailModal';
-import { saveBlobAsFile } from '../utils/saveFile';
+import { saveBlobAsFile, describeDownloadError } from '../utils/saveFile';
 
 interface MonthlyReport {
   id: string;
@@ -44,7 +44,8 @@ export const MonthlyReport: React.FC = () => {
   const downloadPDF = async (id: string, month: string) => {
     try {
       const response = await api.get(`/api/monthly-reports/${id}/pdf`, {
-        responseType: 'blob'
+        responseType: 'blob',
+        timeout: 60_000, // PDF生成はサーバー側でブラウザエンジンを起動するため時間がかかることがある
       });
       
       // エラーレスポンスのチェック
@@ -57,10 +58,9 @@ export const MonthlyReport: React.FC = () => {
       await saveBlobAsFile(new Blob([response.data]), `月次報告_${month}.pdf`, {
         description: '月次報告PDF',
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('PDF download failed:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
-      alert(errorMessage);
+      alert(describeDownloadError(error));
     }
   };
 

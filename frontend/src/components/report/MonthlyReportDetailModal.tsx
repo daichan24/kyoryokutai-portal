@@ -10,7 +10,7 @@ import { Input } from '../common/Input';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { MonthlyReportPreview } from './MonthlyReportPreview';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
-import { saveBlobAsFile } from '../../utils/saveFile';
+import { saveBlobAsFile, describeDownloadError } from '../../utils/saveFile';
 
 interface MonthlyReport {
   id: string;
@@ -189,6 +189,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
     try {
       const response = await api.get(`/api/monthly-reports/${reportId}/pdf`, {
         responseType: 'blob',
+        timeout: 60_000, // PDF生成はサーバー側でブラウザエンジンを起動するため時間がかかることがある
       });
       
       // エラーレスポンスのチェック
@@ -202,10 +203,9 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         description: '月次報告PDF',
       });
       setShowPDFConfirm(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('PDF download failed:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';
-      alert(errorMessage);
+      alert(describeDownloadError(error));
       setShowPDFConfirm(false);
     }
   };
