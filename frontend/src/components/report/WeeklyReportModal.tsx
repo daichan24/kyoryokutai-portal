@@ -10,6 +10,7 @@ import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { WeeklyReportPreview } from './WeeklyReportPreview';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
+import { saveBlobAsFile } from '../../utils/saveFile';
 
 interface WeeklyReportModalProps {
   report?: WeeklyReport | null;
@@ -125,14 +126,9 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
         throw new Error(errorData.error || 'PDF出力に失敗しました');
       }
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `週次報告_${targetReport.week}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      window.URL.revokeObjectURL(url);
-      link.remove();
+      await saveBlobAsFile(new Blob([response.data]), `週次報告_${targetReport.week}.pdf`, {
+        description: '週次報告PDF',
+      });
       setShowPDFConfirm(false);
     } catch (error: unknown) {
       console.error('PDF download failed:', error);

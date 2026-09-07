@@ -9,6 +9,7 @@ import { SimpleRichTextEditor } from '../components/editor/SimpleRichTextEditor'
 import { Edit, History, X, FileDown, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useIsMobileBreakpoint } from '../hooks/useIsMobileBreakpoint';
+import { saveBlobAsFile } from '../utils/saveFile';
 
 interface NudgeDocument {
   id: string;
@@ -360,14 +361,11 @@ export const Nudges: React.FC = () => {
                       return;
                     }
 
-                    const url = window.URL.createObjectURL(new Blob([response.data]));
-                    const link = window.document.createElement('a');
-                    link.href = url;
-                    link.setAttribute('download', `協力隊細則_${selectedDoc.fiscalYear}年度_${format(new Date(), 'yyyyMMdd')}.pdf`);
-                    window.document.body.appendChild(link);
-                    link.click();
-                    window.URL.revokeObjectURL(url);
-                    link.remove();
+                    await saveBlobAsFile(
+                      new Blob([response.data]),
+                      `協力隊細則_${selectedDoc.fiscalYear}年度_${format(new Date(), 'yyyyMMdd')}.pdf`,
+                      { description: '協力隊細則PDF' }
+                    );
                   } catch (error: any) {
                     console.error('PDF download failed:', error);
                     const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';

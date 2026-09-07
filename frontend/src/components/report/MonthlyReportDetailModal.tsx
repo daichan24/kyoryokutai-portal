@@ -10,6 +10,7 @@ import { Input } from '../common/Input';
 import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { MonthlyReportPreview } from './MonthlyReportPreview';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
+import { saveBlobAsFile } from '../../utils/saveFile';
 
 interface MonthlyReport {
   id: string;
@@ -197,14 +198,9 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         throw new Error(errorData.error || 'PDF出力に失敗しました');
       }
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `月次報告_${report?.month}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      window.URL.revokeObjectURL(url);
-      link.remove();
+      await saveBlobAsFile(new Blob([response.data]), `月次報告_${report?.month}.pdf`, {
+        description: '月次報告PDF',
+      });
       setShowPDFConfirm(false);
     } catch (error: any) {
       console.error('PDF download failed:', error);

@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
 import { MonthlyReportDetailModal } from '../components/report/MonthlyReportDetailModal';
+import { saveBlobAsFile } from '../utils/saveFile';
 
 interface MonthlyReport {
   id: string;
@@ -53,14 +54,9 @@ export const MonthlyReport: React.FC = () => {
         throw new Error(errorData.error || 'PDF出力に失敗しました');
       }
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `月次報告_${month}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      window.URL.revokeObjectURL(url);
-      link.remove();
+      await saveBlobAsFile(new Blob([response.data]), `月次報告_${month}.pdf`, {
+        description: '月次報告PDF',
+      });
     } catch (error: any) {
       console.error('PDF download failed:', error);
       const errorMessage = error.response?.data?.error || error.message || 'PDF出力に失敗しました';

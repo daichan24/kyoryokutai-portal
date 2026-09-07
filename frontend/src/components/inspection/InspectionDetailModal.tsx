@@ -7,6 +7,7 @@ import { Button } from '../common/Button';
 import { useAuthStore } from '../../stores/authStore';
 import { InspectionPreview } from './InspectionPreview';
 import { InspectionAttachmentImage } from './InspectionAttachmentImage';
+import { saveBlobAsFile } from '../../utils/saveFile';
 
 interface InspectionAttachment {
   id: string;
@@ -171,14 +172,9 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
   const handleDownloadPDF = async () => {
     try {
       const response = await api.get(`/api/inspections/${inspectionId}/pdf`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `復命書_${inspection?.destination || inspectionId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      window.URL.revokeObjectURL(url);
-      link.remove();
+      await saveBlobAsFile(new Blob([response.data]), `復命書_${inspection?.destination || inspectionId}.pdf`, {
+        description: '復命書PDF',
+      });
       setShowPDFConfirm(false);
     } catch (error) {
       console.error('Failed to download inspection PDF:', error);
