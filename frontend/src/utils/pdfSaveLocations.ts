@@ -18,6 +18,45 @@ export const PDF_SAVE_LOCATION_LABELS: Record<PdfSaveLocationType, string> = {
   nudges: '協力隊細則',
 };
 
+export const DEFAULT_PDF_FILE_NAME_TEMPLATE = '{name}_{date}_{type}';
+
+/** ファイル名テンプレートで使えるトークン一覧（設定画面の説明表示にも使う） */
+export const PDF_FILE_NAME_TOKENS: Array<{ token: string; description: string }> = [
+  { token: '{name}', description: '対象者の氏名' },
+  { token: '{date}', description: '対象の日付（例: 20260831）' },
+  { token: '{type}', description: '帳票の種類（例: 週次報告書）' },
+];
+
+export interface PdfFileNameTokens {
+  name?: string;
+  date?: string;
+  type?: string;
+}
+
+function sanitizeFileNameSegment(value: string): string {
+  // OS上で使えない文字をアンダースコアに置き換える
+  return value.replace(/[\\/:*?"<>|]/g, '_').trim();
+}
+
+/**
+ * ファイル名テンプレート（例: "{name}_{date}_{type}"）にトークンの値を埋め込み、
+ * ".pdf"付きのファイル名を組み立てる。テンプレート未設定時は既定のテンプレートを使う。
+ */
+export function renderPdfFileName(
+  template: string | undefined | null,
+  tokens: PdfFileNameTokens,
+): string {
+  const source = template && template.trim() ? template : DEFAULT_PDF_FILE_NAME_TEMPLATE;
+  const replaced = source.replace(/\{(name|date|type)\}/g, (_match, key: keyof PdfFileNameTokens) => {
+    const value = tokens[key];
+    return value ? sanitizeFileNameSegment(value) : '';
+  });
+  const cleaned = replaced
+    .replace(/[_\-\s]{2,}/g, '_')
+    .replace(/^[_\-\s]+|[_\-\s]+$/g, '');
+  return `${cleaned || tokens.type || 'PDF'}.pdf`;
+}
+
 interface WritableFileStreamLike {
   write: (data: Blob) => Promise<void>;
   close: () => Promise<void>;

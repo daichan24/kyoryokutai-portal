@@ -10,6 +10,7 @@ import { Edit, History, X, FileDown, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useIsMobileBreakpoint } from '../hooks/useIsMobileBreakpoint';
 import { saveBlobAsFile, describeDownloadError } from '../utils/saveFile';
+import { renderPdfFileName } from '../utils/pdfSaveLocations';
 
 interface NudgeDocument {
   id: string;
@@ -362,9 +363,14 @@ export const Nudges: React.FC = () => {
                       return;
                     }
 
+                    const fileName = renderPdfFileName(user?.pdfFileNameTemplates?.nudges, {
+                      name: user?.name,
+                      date: format(new Date(), 'yyyyMMdd'),
+                      type: '協力隊細則',
+                    });
                     await saveBlobAsFile(
                       new Blob([response.data]),
-                      `協力隊細則_${selectedDoc.fiscalYear}年度_${format(new Date(), 'yyyyMMdd')}.pdf`,
+                      fileName,
                       { description: '協力隊細則PDF', saveLocationType: 'nudges' }
                     );
                   } catch (error) {

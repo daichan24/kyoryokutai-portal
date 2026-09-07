@@ -11,6 +11,7 @@ import { Input } from '../common/Input';
 import { WeeklyReportPreview } from './WeeklyReportPreview';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 import { saveBlobAsFile, describeDownloadError } from '../../utils/saveFile';
+import { renderPdfFileName } from '../../utils/pdfSaveLocations';
 
 interface WeeklyReportModalProps {
   report?: WeeklyReport | null;
@@ -127,7 +128,12 @@ export const WeeklyReportModal: React.FC<WeeklyReportModalProps> = ({
         throw new Error(errorData.error || 'PDF出力に失敗しました');
       }
       
-      await saveBlobAsFile(new Blob([response.data]), `週次報告_${targetReport.week}.pdf`, {
+      const fileName = renderPdfFileName(user.pdfFileNameTemplates?.weeklyReport, {
+        name: targetReport.user?.name || user.name,
+        date: format(parseWeekString(targetReport.week), 'yyyyMMdd'),
+        type: '週次報告書',
+      });
+      await saveBlobAsFile(new Blob([response.data]), fileName, {
         description: '週次報告PDF',
         saveLocationType: 'weeklyReport',
       });

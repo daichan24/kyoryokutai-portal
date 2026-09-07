@@ -7,6 +7,7 @@ import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
 import { MonthlyReportDetailModal } from '../components/report/MonthlyReportDetailModal';
 import { saveBlobAsFile, describeDownloadError } from '../utils/saveFile';
+import { renderPdfFileName } from '../utils/pdfSaveLocations';
 
 interface MonthlyReport {
   id: string;
@@ -55,7 +56,12 @@ export const MonthlyReport: React.FC = () => {
         throw new Error(errorData.error || 'PDF出力に失敗しました');
       }
       
-      await saveBlobAsFile(new Blob([response.data]), `月次報告_${month}.pdf`, {
+      const fileName = renderPdfFileName(user?.pdfFileNameTemplates?.monthlyReport, {
+        name: user?.name,
+        date: `${month}-01`.replace(/-/g, ''),
+        type: '月次報告書',
+      });
+      await saveBlobAsFile(new Blob([response.data]), fileName, {
         description: '月次報告PDF',
         saveLocationType: 'monthlyReport',
       });

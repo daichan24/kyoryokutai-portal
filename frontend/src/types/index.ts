@@ -25,6 +25,8 @@ export interface User {
   emailNotificationsEnabled?: boolean;
   scheduleWeekStartsOn?: 0 | 1;
   scheduleHiddenLocationIds?: string[];
+  /** PDF出力時のファイル名テンプレート（帳票種別ごと。 例: {"weeklyReport":"{name}_{date}_{type}"}） */
+  pdfFileNameTemplates?: Record<string, string> | null;
   /** MASTER のユーザー一覧 API のみ */
   passwordUpdatedAt?: string | null;
   snsLinks?: any;

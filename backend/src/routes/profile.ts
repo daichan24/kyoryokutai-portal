@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
@@ -18,6 +19,7 @@ const updateProfileSchema = z.object({
   emailNotificationsEnabled: z.boolean().optional(),
   scheduleWeekStartsOn: z.union([z.literal(0), z.literal(1)]).optional(),
   scheduleHiddenLocationIds: z.array(z.string()).optional(),
+  pdfFileNameTemplates: z.record(z.string()).optional().nullable(),
 });
 
 /**
@@ -35,7 +37,7 @@ router.put('/', async (req: AuthRequest, res) => {
     }
     const data = raw.data;
 
-    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[] } = {};
+    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Prisma.InputJsonValue | typeof Prisma.JsonNull } = {};
     if (data.avatarColor !== undefined) updateData.avatarColor = data.avatarColor;
     if (data.avatarLetter !== undefined) {
       updateData.avatarLetter = (data.avatarLetter === '' || data.avatarLetter === null || data.avatarLetter === undefined) ? null : String(data.avatarLetter).slice(0, 1);
@@ -49,6 +51,9 @@ router.put('/', async (req: AuthRequest, res) => {
     if (data.emailNotificationsEnabled !== undefined) updateData.emailNotificationsEnabled = data.emailNotificationsEnabled;
     if (data.scheduleWeekStartsOn !== undefined) updateData.scheduleWeekStartsOn = data.scheduleWeekStartsOn;
     if (data.scheduleHiddenLocationIds !== undefined) updateData.scheduleHiddenLocationIds = [...new Set(data.scheduleHiddenLocationIds)];
+    if (data.pdfFileNameTemplates !== undefined) {
+      updateData.pdfFileNameTemplates = data.pdfFileNameTemplates === null ? Prisma.JsonNull : data.pdfFileNameTemplates;
+    }
 
     console.log('[API] Update data:', updateData);
 
@@ -67,6 +72,7 @@ router.put('/', async (req: AuthRequest, res) => {
         emailNotificationsEnabled: true,
         scheduleWeekStartsOn: true,
         scheduleHiddenLocationIds: true,
+        pdfFileNameTemplates: true,
       },
     });
 

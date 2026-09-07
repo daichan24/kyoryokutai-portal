@@ -34,6 +34,7 @@ model User {
   emailNotificationsEnabled Boolean @default(true) // メール通知の受信
   scheduleWeekStartsOn Int @default(0) // スケジュール週表示の開始曜日（0=日曜, 1=月曜）
   scheduleHiddenLocationIds String[] @default([]) // スケジュール入力で非表示にする活動場所ID
+  pdfFileNameTemplates Json? // PDF出力時のファイル名テンプレート（帳票種別ごと。 例: {"weeklyReport":"{name}_{date}_{type}"}）
 
   // Phase 1 Relations
   schedules             Schedule[]

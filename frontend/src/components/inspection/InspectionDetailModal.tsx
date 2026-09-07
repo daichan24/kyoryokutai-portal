@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { InspectionPreview } from './InspectionPreview';
 import { InspectionAttachmentImage } from './InspectionAttachmentImage';
 import { saveBlobAsFile, describeDownloadError } from '../../utils/saveFile';
+import { renderPdfFileName } from '../../utils/pdfSaveLocations';
 
 interface InspectionAttachment {
   id: string;
@@ -175,7 +176,12 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
         responseType: 'blob',
         timeout: 60_000, // PDF生成はサーバー側でブラウザエンジンを起動するため時間がかかることがある
       });
-      await saveBlobAsFile(new Blob([response.data]), `復命書_${inspection?.destination || inspectionId}.pdf`, {
+      const fileName = renderPdfFileName(user?.pdfFileNameTemplates?.inspection, {
+        name: inspection?.user?.name || user?.name,
+        date: inspection?.date ? format(new Date(inspection.date), 'yyyyMMdd') : undefined,
+        type: '複命書',
+      });
+      await saveBlobAsFile(new Blob([response.data]), fileName, {
         description: '復命書PDF',
         saveLocationType: 'inspection',
       });

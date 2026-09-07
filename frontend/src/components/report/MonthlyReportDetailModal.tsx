@@ -11,6 +11,7 @@ import { SimpleRichTextEditor } from '../editor/SimpleRichTextEditor';
 import { MonthlyReportPreview } from './MonthlyReportPreview';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 import { saveBlobAsFile, describeDownloadError } from '../../utils/saveFile';
+import { renderPdfFileName } from '../../utils/pdfSaveLocations';
 
 interface MonthlyReport {
   id: string;
@@ -199,7 +200,12 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
         throw new Error(errorData.error || 'PDF出力に失敗しました');
       }
       
-      await saveBlobAsFile(new Blob([response.data]), `月次報告_${report?.month}.pdf`, {
+      const fileName = renderPdfFileName(user?.pdfFileNameTemplates?.monthlyReport, {
+        name: user?.name,
+        date: report?.month ? `${report.month}-01`.replace(/-/g, '') : undefined,
+        type: '月次報告書',
+      });
+      await saveBlobAsFile(new Blob([response.data]), fileName, {
         description: '月次報告PDF',
         saveLocationType: 'monthlyReport',
       });

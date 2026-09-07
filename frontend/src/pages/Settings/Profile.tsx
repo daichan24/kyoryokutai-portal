@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Plus, X } from 'lucide-react';
 import type { Location } from '../../types';
 import { PdfSaveLocationSettings } from '../../components/settings/PdfSaveLocationSettings';
+import type { PdfSaveLocationType } from '../../utils/pdfSaveLocations';
 
 interface SNSLink {
   platform: string;
@@ -31,6 +32,7 @@ export const ProfileSettings: React.FC = () => {
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
   const [scheduleWeekStartsOn, setScheduleWeekStartsOn] = useState<0 | 1>(0);
   const [scheduleHiddenLocationIds, setScheduleHiddenLocationIds] = useState<string[]>([]);
+  const [pdfFileNameTemplates, setPdfFileNameTemplates] = useState<Partial<Record<PdfSaveLocationType, string>>>({});
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -48,8 +50,13 @@ export const ProfileSettings: React.FC = () => {
       setEmailNotificationsEnabled(user.emailNotificationsEnabled !== false);
       setScheduleWeekStartsOn(user.scheduleWeekStartsOn === 1 ? 1 : 0);
       setScheduleHiddenLocationIds(Array.isArray(user.scheduleHiddenLocationIds) ? user.scheduleHiddenLocationIds : []);
+      setPdfFileNameTemplates(user.pdfFileNameTemplates && typeof user.pdfFileNameTemplates === 'object' ? user.pdfFileNameTemplates : {});
     }
   }, [user]);
+
+  const handleFileNameTemplateChange = (type: PdfSaveLocationType, value: string) => {
+    setPdfFileNameTemplates((prev) => ({ ...prev, [type]: value }));
+  };
 
   const { data: currentLinks, isLoading } = useQuery<SNSLink[]>({
     queryKey: ['sns-links', user?.id],
@@ -74,7 +81,7 @@ export const ProfileSettings: React.FC = () => {
   }, [currentLinks]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[] }) => {
+    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Partial<Record<PdfSaveLocationType, string>> }) => {
       const response = await api.put('/api/me/profile', data);
       return response.data;
     },
@@ -156,6 +163,9 @@ export const ProfileSettings: React.FC = () => {
       emailNotificationsEnabled: emailNotificationsEnabled,
       scheduleWeekStartsOn,
       scheduleHiddenLocationIds,
+      pdfFileNameTemplates: Object.fromEntries(
+        Object.entries(pdfFileNameTemplates).filter(([, value]) => (value ?? '').trim() !== ''),
+      ),
     });
   };
 
@@ -457,7 +467,10 @@ export const ProfileSettings: React.FC = () => {
         </div>
       </div>
 
-      <PdfSaveLocationSettings />
+      <PdfSaveLocationSettings
+        fileNameTemplates={pdfFileNameTemplates}
+        onFileNameTemplateChange={handleFileNameTemplateChange}
+      />
 
       {/* 所属情報 */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-border dark:border-gray-700 p-6">

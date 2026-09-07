@@ -73,6 +73,7 @@ router.post('/register', registrationRateLimit, async (req, res) => {
         emailNotificationsEnabled: true,
         scheduleWeekStartsOn: true,
         scheduleHiddenLocationIds: true,
+        pdfFileNameTemplates: true,
         passwordUpdatedAt: true,
         createdAt: true,
       },
@@ -132,6 +133,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
           emailNotificationsEnabled: true,
           scheduleWeekStartsOn: true,
           scheduleHiddenLocationIds: true,
+          pdfFileNameTemplates: true,
           passwordUpdatedAt: true,
           createdAt: true,
         },
@@ -142,7 +144,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
         console.warn('Column does not exist, trying alternative query:', dbError.meta);
         // 基本的なフィールドのみで取得を試みる
         const result = await prisma.$queryRaw`
-          SELECT id, name, email, password, role, "missionType", department, "termStart", "termEnd", 
+          SELECT id, name, email, password, role, "missionType", department, "termStart", "termEnd",
                  "avatarColor", "avatarLetter", "darkMode", "passwordUpdatedAt", "createdAt"
           FROM "User"
           WHERE email = ${data.email}
@@ -193,6 +195,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
       emailNotificationsEnabled: user.emailNotificationsEnabled !== false,
       scheduleWeekStartsOn: user.scheduleWeekStartsOn === 1 ? 1 : 0,
       scheduleHiddenLocationIds: Array.isArray(user.scheduleHiddenLocationIds) ? user.scheduleHiddenLocationIds : [],
+      pdfFileNameTemplates: user.pdfFileNameTemplates ?? null,
       createdAt: user.createdAt,
     };
 
@@ -282,6 +285,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
           emailNotificationsEnabled: true,
           scheduleWeekStartsOn: true,
           scheduleHiddenLocationIds: true,
+          pdfFileNameTemplates: true,
           snsLinks: true,
           createdAt: true,
           updatedAt: true,
@@ -327,6 +331,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
       emailNotificationsEnabled: user.emailNotificationsEnabled !== false,
       scheduleWeekStartsOn: user.scheduleWeekStartsOn === 1 ? 1 : 0,
       scheduleHiddenLocationIds: Array.isArray(user.scheduleHiddenLocationIds) ? user.scheduleHiddenLocationIds : [],
+      pdfFileNameTemplates: user.pdfFileNameTemplates ?? null,
       snsLinks: user.snsLinks,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
