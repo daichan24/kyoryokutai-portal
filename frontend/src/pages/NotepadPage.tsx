@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { richTextToPlainText } from '../utils/richText';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NotebookPen, Plus, Trash2, Save } from 'lucide-react';
 import { api } from '../utils/api';
+import { useAuthStore } from '../stores/authStore';
+import { getAuthSession, isCurrentAuthSession } from '../utils/authSession';
+import { notepadKeys, NotepadSummary, NotepadDetail, useNotepadDrafts, getNotepadDraft, queueNotepadSave, flushNotepadSave, discardNotepadDraft } from '../utils/notepadAutosave';
 import { SimpleRichTextEditor } from '../components/editor/SimpleRichTextEditor';
 import { Button } from '../components/common/Button';
 import { format } from 'date-fns';
@@ -12,23 +16,9 @@ const MAX_PAGES = 30;
 // 日本語3000文字 ≒ HTML込みで余裕を持たせた文字数チェック用
 const MAX_CHARS = 3000;
 
-interface NotepadSummary {
-  id: string;
-  title: string;
-  order: number;
-  updatedAt: string;
-}
-
-interface NotepadDetail extends NotepadSummary {
-  content: string;
-  createdAt: string;
-}
-
 // HTMLタグを除いたテキスト文字数を計算
 function countChars(html: string): number {
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  return (div.textContent || div.innerText || '').length;
+  return richTextToPlainText(html).length;
 }
 
 export const NotepadPage: React.FC = () => {
@@ -36,74 +26,62 @@ export const NotepadPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [charCount, setCharCount] = useState(0);
-  const [isDirty, setIsDirty] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userId = useAuthStore(state => state.user?.id);
+  const session = getAuthSession();
+  useNotepadDrafts();
+  const draft = getNotepadDraft(userId, id);
 
   // メモ一覧
   const { data: notepads = [] } = useQuery<NotepadSummary[]>({
-    queryKey: ['notepads'],
-    queryFn: async () => {
-      const res = await api.get('/api/me/notepad');
+    queryKey: notepadKeys.list(userId),
+    queryFn: async ({ signal }) => {
+      const res = await api.get('/api/me/notepad', { signal, authSession: session });
       return res.data;
     },
+    enabled: !!userId,
   });
 
   // 選択中のメモ詳細
   const { data: noteDetail } = useQuery<NotepadDetail>({
-    queryKey: ['notepad', id],
-    queryFn: async () => {
-      const res = await api.get(`/api/me/notepad/${id}`);
+    queryKey: notepadKeys.detail(userId, id),
+    queryFn: async ({ signal }) => {
+      const res = await api.get(`/api/me/notepad/${id}`, { signal, authSession: session });
       return res.data;
     },
-    enabled: !!id,
+    enabled: !!userId && !!id,
   });
 
-  useEffect(() => {
-    if (noteDetail) {
-      setTitle(noteDetail.title);
-      setContent(noteDetail.content);
-      setCharCount(countChars(noteDetail.content));
-      setIsDirty(false);
-    }
-  }, [noteDetail]);
+  const title = draft?.dirty ? draft.title : (noteDetail?.title || '');
+  const content = draft?.dirty ? draft.content : (noteDetail?.content || '');
+  const charCount = countChars(content);
+  const isDirty = !!draft?.dirty;
+  const lastSaved = draft?.lastSaved;
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post('/api/me/notepad', { title: '', content: '' });
+      const res = await api.post('/api/me/notepad', { title: '', content: '' }, { authSession: session });
       return res.data as NotepadDetail;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['notepads'] });
+      if (!isCurrentAuthSession(session)) return;
+      queryClient.invalidateQueries({ queryKey: notepadKeys.list(userId) });
       navigate(`/notepad/${data.id}`);
     },
     onError: (err: any) => {
+      if (!isCurrentAuthSession(session)) return;
       alert(err.response?.data?.error || 'メモの作成に失敗しました');
-    },
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async ({ noteId, t, c }: { noteId: string; t: string; c: string }) => {
-      const res = await api.put(`/api/me/notepad/${noteId}`, { title: t, content: c });
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notepads'] });
-      queryClient.invalidateQueries({ queryKey: ['notepad', id] });
-      setIsDirty(false);
-      setLastSaved(new Date());
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (noteId: string) => {
-      await api.delete(`/api/me/notepad/${noteId}`);
+      await flushNotepadSave(userId, noteId, session, true);
+      await api.delete(`/api/me/notepad/${noteId}`, { authSession: session });
+      await discardNotepadDraft(userId, noteId, session);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notepads'] });
+      if (!isCurrentAuthSession(session)) return;
+      queryClient.invalidateQueries({ queryKey: notepadKeys.list(userId) });
       // 削除後は別のメモへ、なければ一覧へ
       const remaining = notepads.filter((n) => n.id !== id);
       if (remaining.length > 0) {
@@ -114,33 +92,15 @@ export const NotepadPage: React.FC = () => {
     },
   });
 
-  // 自動保存（2秒後）
-  const scheduleAutoSave = useCallback((noteId: string, t: string, c: string) => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      saveMutation.mutate({ noteId, t, c });
-    }, 2000);
-  }, []);
-
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTitle(e.target.value);
-    setIsDirty(true);
-    if (id) scheduleAutoSave(id, e.target.value, content);
+    if (userId && id) queueNotepadSave(userId, id, e.target.value, content);
   };
-
-  const handleContentChange = (val: string) => {
-    const chars = countChars(val);
-    if (chars > MAX_CHARS) return; // 超過時は更新しない
-    setContent(val);
-    setCharCount(chars);
-    setIsDirty(true);
-    if (id) scheduleAutoSave(id, title, val);
+  const handleContentChange = (value: string) => {
+    if (countChars(value) > MAX_CHARS) return;
+    if (userId && id) queueNotepadSave(userId, id, title, value);
   };
-
   const handleManualSave = () => {
-    if (!id) return;
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    saveMutation.mutate({ noteId: id, t: title, c: content });
+    if (userId && id) void flushNotepadSave(userId, id, session, true);
   };
 
   const handleDelete = () => {
@@ -148,12 +108,10 @@ export const NotepadPage: React.FC = () => {
     deleteMutation.mutate(id);
   };
 
-  // ページ離脱前に保存
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    };
-  }, []);
+  // Keep pending edits outside the route and flush when switching notes or leaving.
+  useEffect(() => () => {
+    if (userId && id) void flushNotepadSave(userId, id, session);
+  }, [userId, id, session.epoch]);
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
@@ -235,12 +193,13 @@ export const NotepadPage: React.FC = () => {
                     保存済 {format(lastSaved, 'HH:mm')}
                   </span>
                 )}
-                {isDirty && (
+                {draft?.error && <span role="alert" className="text-xs text-red-500">保存に失敗しました</span>}
+                {isDirty && !draft?.error && (
                   <span className="text-xs text-yellow-500 hidden sm:inline">未保存</span>
                 )}
-                <Button size="sm" onClick={handleManualSave} disabled={saveMutation.isPending || !isDirty}>
+                <Button size="sm" onClick={handleManualSave} disabled={draft?.saving || !isDirty}>
                   <Save className="h-3.5 w-3.5 mr-1" />
-                  {saveMutation.isPending ? '保存中' : '保存'}
+                  {draft?.saving ? '保存中' : draft?.error ? '再試行' : '保存'}
                 </Button>
                 <button
                   onClick={handleDelete}

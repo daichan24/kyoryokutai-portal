@@ -1,3 +1,4 @@
+import { sanitizeRichText } from '../utils/richText';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -357,7 +358,7 @@ export const SupportRecords: React.FC = () => {
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">支援内容:</span>
                 <div 
                   className="text-gray-900 dark:text-gray-100 mt-1 prose max-w-none dark:prose-invert text-sm"
-                  dangerouslySetInnerHTML={{ __html: record.supportContent }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichText(record.supportContent) }}
                 />
               </div>
               <div>

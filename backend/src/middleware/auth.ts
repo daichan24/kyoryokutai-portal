@@ -203,7 +203,7 @@ async function authenticateAiToken(req: AuthRequest, res: Response, token: strin
     return false;
   }
 
-  if (req.method === 'GET' && req.originalUrl.split('?')[0] === '/api/schedules') {
+  if (req.method === 'GET' && req.originalUrl.split('?')[0].replace(/\/+$/, '') === '/api/schedules') {
     const requestedUserId = typeof req.query.userId === 'string' ? req.query.userId : null;
     const requestsMultipleUsers = req.query.allMembers === 'true' || req.query.userIds !== undefined;
     if (requestsMultipleUsers || (requestedUserId && requestedUserId !== tokenRecord.userId)) {

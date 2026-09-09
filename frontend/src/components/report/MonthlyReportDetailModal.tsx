@@ -1,3 +1,4 @@
+import { sanitizeRichText } from '../../utils/richText';
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, FileDown, Edit2, Save, Trash2, Eye, Plus } from 'lucide-react';
@@ -525,7 +526,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
             </div>
             <div>
               <span className="text-gray-600 dark:text-gray-400">差出人:</span>
-              <div className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: report?.coverSender || coverSender || '未設定' }} />
+              <div className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: sanitizeRichText(report?.coverSender || coverSender || '未設定') }} />
             </div>
           </div>
         )}
@@ -667,25 +668,25 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
               {sheet.nextMonthPlan && (
                 <div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">来月の予定:</span>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.nextMonthPlan }} />
+                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sanitizeRichText(sheet.nextMonthPlan) }} />
                 </div>
               )}
               {sheet.reflectionNotes && (
                 <div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">振り返り・所感:</span>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.reflectionNotes }} />
+                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sanitizeRichText(sheet.reflectionNotes) }} />
                 </div>
               )}
               {sheet.workQuestions && (
                 <div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">業務上の質問・相談:</span>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.workQuestions }} />
+                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sanitizeRichText(sheet.workQuestions) }} />
                 </div>
               )}
               {sheet.lifeNotes && (
                 <div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">生活面の備考:</span>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sheet.lifeNotes }} />
+                  <div className="text-sm text-gray-700 dark:text-gray-300 prose max-w-none dark:prose-invert mt-1" dangerouslySetInnerHTML={{ __html: sanitizeRichText(sheet.lifeNotes) }} />
                 </div>
               )}
             </div>
@@ -824,7 +825,7 @@ export const MonthlyReportDetailModal: React.FC<MonthlyReportDetailModalProps> =
                       </div>
                       <div
                         className="text-gray-900 dark:text-gray-100 prose max-w-none dark:prose-invert"
-                        dangerouslySetInnerHTML={{ __html: record.supportContent }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeRichText(record.supportContent) }}
                       />
                     </div>
                   );

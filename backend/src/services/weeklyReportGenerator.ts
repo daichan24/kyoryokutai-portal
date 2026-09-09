@@ -321,6 +321,9 @@ export async function generateWeeklyReportDraft(userId: string, week: string): P
         gte: weekStart,
         lte: weekEnd,
       },
+      schedules: {
+        none: {},
+      },
     },
     include: {
       project: {

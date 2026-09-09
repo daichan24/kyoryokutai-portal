@@ -1,3 +1,4 @@
+import { publicUserSelect } from '../security/publicUser';
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
@@ -95,8 +96,8 @@ router.get('/:id', async (req: AuthRequest, res) => {
     const request = await prisma.request.findUnique({
       where: { id: req.params.id },
       include: {
-        requester: true,
-        requestee: true,
+        requester: { select: publicUserSelect },
+        requestee: { select: publicUserSelect },
         project: true,
         createdTask: true,
       },
@@ -159,8 +160,8 @@ router.post('/', async (req: AuthRequest, res) => {
         projectId: data.projectId,
       },
       include: {
-        requester: true,
-        requestee: true,
+        requester: { select: publicUserSelect },
+        requestee: { select: publicUserSelect },
         project: true,
       },
     });
@@ -233,8 +234,8 @@ router.post('/:id/respond', async (req: AuthRequest, res) => {
         createdTaskId,
       },
       include: {
-        requester: true,
-        requestee: true,
+        requester: { select: publicUserSelect },
+        requestee: { select: publicUserSelect },
         project: true,
         createdTask: true,
       },

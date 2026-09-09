@@ -1,3 +1,4 @@
+import { sanitizeRichText } from '../../utils/richText';
 import React, { useState, useEffect } from 'react';
 import { X, Edit2, Upload, Trash2, FileDown } from 'lucide-react';
 import { api } from '../../utils/api';
@@ -444,28 +445,28 @@ export const InspectionDetailModal: React.FC<InspectionDetailModalProps> = ({
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">1. 視察目的</h3>
                 <div 
                   className="prose max-w-none text-gray-700 dark:text-gray-300 dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: inspection.inspectionPurpose }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichText(inspection.inspectionPurpose) }}
                 />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">2. 視察内容</h3>
                 <div 
                   className="prose max-w-none text-gray-700 dark:text-gray-300 dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: inspection.inspectionContent }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichText(inspection.inspectionContent) }}
                 />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">3. 所感</h3>
                 <div 
                   className="prose max-w-none text-gray-700 dark:text-gray-300 dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: inspection.reflection }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichText(inspection.reflection) }}
                 />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">4. 今後のアクション</h3>
                 <div 
                   className="prose max-w-none text-gray-700 dark:text-gray-300 dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: inspection.futureAction }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichText(inspection.futureAction) }}
                 />
               </div>
             </>

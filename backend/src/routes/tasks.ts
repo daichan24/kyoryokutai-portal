@@ -615,8 +615,8 @@ router.put('/missions/:missionId/tasks/:id', async (req: AuthRequest, res) => {
         grantedAt: result.linkedSchedule.startDate || result.linkedSchedule.date,
         startTime: result.linkedSchedule.startTime,
         endTime: result.linkedSchedule.endTime,
-        leaveType: data.compensatoryLeaveType,
-        enabled: !!data.isHolidayWork && !!data.compensatoryLeaveRequired,
+        leaveType: result.linkedSchedule.compensatoryLeaveType,
+        enabled: !!result.linkedSchedule.isHolidayWork && !!result.linkedSchedule.compensatoryLeaveRequired,
         requesterRole: req.user!.role,
       }).catch((error) => console.error('Failed to sync compensatory leave for task schedule:', error));
     }

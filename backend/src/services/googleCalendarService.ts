@@ -299,6 +299,7 @@ function scheduleToGoogleEvent(schedule: any, connection: CalendarConnection) {
     clearbaseScheduleId: schedule.id,
     origin: 'CLEARBASE',
     connectionUserId: connection.userId,
+    clearbaseConnectionId: connection.id,
     lastSyncedBy: 'clearbase',
   };
 
@@ -417,14 +418,27 @@ export async function enqueueGoogleCalendarSyncJob(
   });
 }
 
+function stableGoogleEventId(scheduleId: string, connection: CalendarConnection): string {
+  // Hex is a valid subset of Google's base32hex event ID alphabet.
+  return crypto.createHash('sha256').update(JSON.stringify([connection.id, connection.calendarId, scheduleId])).digest('hex');
+}
+
+function ownsGoogleLink(
+  link: { userId: string; connectionId: string; googleCalendarId: string },
+  connection: CalendarConnection,
+): boolean {
+  return link.userId === connection.userId && link.connectionId === connection.id && link.googleCalendarId === connection.calendarId;
+}
+
 export async function syncScheduleToGoogle(scheduleId: string) {
   const schedule = await prisma.schedule.findUnique({ where: { id: scheduleId } });
   if (!schedule || schedule.deletedAt) return;
   const connection = await getActiveConnection(schedule.userId);
   if (!connection?.calendarId) return;
 
+  const existing = await prisma.googleCalendarEventLink.findUnique({ where: { scheduleId } });
+  if (existing && !ownsGoogleLink(existing, connection)) throw new Error('FORBIDDEN');
   try {
-    const existing = await prisma.googleCalendarEventLink.findUnique({ where: { scheduleId } });
     const body = scheduleToGoogleEvent(schedule, connection);
     const encodedCalendarId = encodeURIComponent(connection.calendarId);
 
@@ -447,26 +461,48 @@ export async function syncScheduleToGoogle(scheduleId: string) {
         },
       });
     } else {
-      const event = await googleFetch<GoogleEvent>(
-        connection,
-        `https://www.googleapis.com/calendar/v3/calendars/${encodedCalendarId}/events`,
-        { method: 'POST', body: JSON.stringify(body) },
-      );
-      await prisma.googleCalendarEventLink.create({
-        data: {
+      const eventId = stableGoogleEventId(scheduleId, connection);
+      const eventUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodedCalendarId}/events`;
+      let event: GoogleEvent;
+      try {
+        event = await googleFetch<GoogleEvent>(connection, eventUrl, {
+          method: 'POST', body: JSON.stringify({ ...body, id: eventId }),
+        });
+      } catch (error) {
+        if (!(error instanceof Error) || !('status' in error) || error.status !== 409) throw error;
+        // The previous POST may have succeeded before the response or DB save failed.
+        const recovered = await googleFetch<GoogleEvent>(connection, `${eventUrl}/${eventId}`);
+        const metadata = recovered.extendedProperties?.private;
+        if (recovered.id !== eventId || recovered.status === 'cancelled'
+          || metadata?.clearbaseScheduleId !== scheduleId
+          || metadata?.connectionUserId !== connection.userId
+          || metadata?.clearbaseConnectionId !== connection.id) throw new Error('FORBIDDEN');
+        // Apply any local edits made since the ambiguous create succeeded.
+        event = await googleFetch<GoogleEvent>(connection, `${eventUrl}/${eventId}`, {
+          method: 'PATCH', body: JSON.stringify(body),
+        });
+      }
+      const data = {
+        googleEventId: event.id,
+        googleEtag: event.etag || null,
+        googleUpdatedAt: event.updated ? new Date(event.updated) : null,
+        lastSyncedAt: new Date(),
+        lastPushedAt: new Date(),
+        lastSyncDirection: 'PUSH' as const,
+        syncStatus: 'SYNCED' as const,
+        lastError: null,
+      };
+      await prisma.googleCalendarEventLink.upsert({
+        where: { scheduleId },
+        create: {
           scheduleId,
           userId: schedule.userId,
           connectionId: connection.id,
           googleCalendarId: connection.calendarId,
-          googleEventId: event.id,
-          googleEtag: event.etag || null,
-          googleUpdatedAt: event.updated ? new Date(event.updated) : null,
           origin: 'CLEARBASE',
-          lastSyncedAt: new Date(),
-          lastPushedAt: new Date(),
-          lastSyncDirection: 'PUSH',
-          syncStatus: 'SYNCED',
+          ...data,
         },
+        update: data,
       });
     }
   } catch (error) {
@@ -559,14 +595,35 @@ async function pullGoogleEvents(connection: CalendarConnection, forceFull = fals
   });
 }
 
-async function upsertScheduleFromGoogleEvent(connection: CalendarConnection, event: GoogleEvent) {
+export async function upsertScheduleFromGoogleEvent(connection: CalendarConnection, event: GoogleEvent) {
   if (!connection.calendarId) return;
   const link = await prisma.googleCalendarEventLink.findUnique({
     where: { googleCalendarId_googleEventId: { googleCalendarId: connection.calendarId, googleEventId: event.id } },
   });
 
+  const metadata = event.extendedProperties?.private;
+  const clearbaseScheduleId = metadata?.clearbaseScheduleId;
+  if (link && !ownsGoogleLink(link, connection)) throw new Error('FORBIDDEN');
+  if ((metadata?.connectionUserId && metadata.connectionUserId !== connection.userId)
+    || (metadata?.clearbaseConnectionId && metadata.clearbaseConnectionId !== connection.id)
+    || (link && clearbaseScheduleId && link.scheduleId !== clearbaseScheduleId)) throw new Error('FORBIDDEN');
+
+  const linkedScheduleId = link?.scheduleId || clearbaseScheduleId;
+  const existing = linkedScheduleId
+    ? await prisma.schedule.findUnique({ where: { id: linkedScheduleId } })
+    : null;
+  if (existing && existing.userId !== connection.userId) throw new Error('FORBIDDEN');
+  if (linkedScheduleId && !link) {
+    const scheduleLink = await prisma.googleCalendarEventLink.findUnique({ where: { scheduleId: linkedScheduleId } });
+    if (scheduleLink && (!ownsGoogleLink(scheduleLink, connection)
+      || (scheduleLink.googleEventId !== event.id
+        && !(scheduleLink.googleEventId === `pending-${linkedScheduleId}` && event.id === stableGoogleEventId(linkedScheduleId, connection))))) {
+      throw new Error('FORBIDDEN');
+    }
+  }
+
   if (event.status === 'cancelled') {
-    if (link) {
+    if (link && existing) {
       await prisma.schedule.update({ where: { id: link.scheduleId }, data: { deletedAt: new Date() } });
       await prisma.googleCalendarEventLink.update({
         where: { id: link.id },
@@ -576,7 +633,6 @@ async function upsertScheduleFromGoogleEvent(connection: CalendarConnection, eve
     return;
   }
 
-  const clearbaseScheduleId = event.extendedProperties?.private?.clearbaseScheduleId;
   const scheduleData = googleEventToScheduleData(event);
   const baseData = {
     ...scheduleData,
@@ -586,9 +642,7 @@ async function upsertScheduleFromGoogleEvent(connection: CalendarConnection, eve
     freeNote: event.description || null,
   };
 
-  const linkedScheduleId = link?.scheduleId || clearbaseScheduleId;
   if (linkedScheduleId) {
-    const existing = await prisma.schedule.findUnique({ where: { id: linkedScheduleId } });
     if (existing) {
       const conflict = link?.lastSyncedAt && existing.updatedAt > link.lastSyncedAt && event.updated
         ? new Date(event.updated) > link.lastSyncedAt
@@ -617,6 +671,7 @@ async function upsertScheduleFromGoogleEvent(connection: CalendarConnection, eve
           syncStatus: conflict ? 'CONFLICT_RESOLVED' : 'SYNCED',
         },
         update: {
+          googleEventId: event.id,
           googleEtag: event.etag || null,
           googleUpdatedAt: event.updated ? new Date(event.updated) : null,
           lastSyncedAt: new Date(),

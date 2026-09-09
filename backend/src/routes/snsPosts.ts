@@ -1,3 +1,4 @@
+import { publicUserSelect } from '../security/publicUser';
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
@@ -203,7 +204,7 @@ router.post('/', async (req: AuthRequest, res) => {
       post = await prisma.sNSPost.update({
         where: { id: existing.id },
         data: { postedAt, url, note, ...(followerCount !== null ? { followerCount } : {}) },
-        include: { user: true },
+        include: { user: { select: publicUserSelect } },
       });
     } else {
       // 新規作成。P2002が発生した場合は再検索してupdate
@@ -211,7 +212,7 @@ router.post('/', async (req: AuthRequest, res) => {
         console.log('[API] Creating new post:', postType);
         post = await prisma.sNSPost.create({
           data: { userId, week: weekKey, postedAt, postType, accountId, url, note, followerCount },
-          include: { user: true },
+          include: { user: { select: publicUserSelect } },
         });
       } catch (createErr: any) {
         if (createErr?.code === 'P2002') {
@@ -224,7 +225,7 @@ router.post('/', async (req: AuthRequest, res) => {
             post = await prisma.sNSPost.update({
               where: { id: retry.id },
               data: { postedAt, url, note, ...(followerCount !== null ? { followerCount } : {}) },
-              include: { user: true },
+              include: { user: { select: publicUserSelect } },
             });
           } else {
             // userId+weekのみのunique制約に引っかかっている場合
@@ -252,7 +253,7 @@ router.post('/', async (req: AuthRequest, res) => {
               `);
               post = await prisma.sNSPost.create({
                 data: { userId, week: weekKey, postedAt, postType, accountId, url, note, followerCount },
-                include: { user: true },
+                include: { user: { select: publicUserSelect } },
               });
             } catch (fixErr: any) {
               console.error('[API] Fix attempt failed:', fixErr?.message);
@@ -336,7 +337,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       post = await prisma.sNSPost.update({
         where: { id },
         data: updateData,
-        include: { user: true },
+        include: { user: { select: publicUserSelect } },
       });
     } catch (updateError: any) {
       if (updateError?.code !== 'P2002') throw updateError;
@@ -358,7 +359,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       post = await prisma.sNSPost.update({
         where: { id: duplicate.id },
         data: updateData,
-        include: { user: true },
+        include: { user: { select: publicUserSelect } },
       });
       await prisma.sNSPost.delete({ where: { id: existingPost.id } });
     }

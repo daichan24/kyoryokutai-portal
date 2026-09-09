@@ -200,7 +200,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     // その他の更新権限チェック
     if (req.user!.role !== 'MASTER' && req.user!.id !== id) {
       // displayOrder以外の更新は本人またはMASTERのみ
-      if (req.body.displayOrder === undefined) {
+      if (req.body.displayOrder === undefined || Object.keys(req.body).some((key) => key !== 'displayOrder')) {
         return res.status(403).json({ error: 'Forbidden' });
       }
     }

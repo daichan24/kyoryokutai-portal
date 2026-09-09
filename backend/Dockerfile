@@ -1,5 +1,5 @@
 # Render / Linux 本番: システム Chromium で Puppeteer が動作するようにする
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \

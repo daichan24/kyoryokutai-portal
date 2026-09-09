@@ -1,6 +1,6 @@
+import { hasUnsavedNotepads } from './utils/notepadAutosave';
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from './stores/authStore';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { RoleProtectedRoute } from './components/common/RoleProtectedRoute';
@@ -60,7 +60,13 @@ const getDefaultAuthenticatedPath = () => '/schedule';
 
 const App: React.FC = () => {
   const { isLoading, error, fetchMe, logout, user } = useAuthStore();
-  const queryClient = useQueryClient();
+  useEffect(() => {
+    const guard = (event: BeforeUnloadEvent) => {
+      if (hasUnsavedNotepads()) { event.preventDefault(); event.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, []);
 
   useEffect(() => {
     fetchMe();
@@ -71,14 +77,10 @@ const App: React.FC = () => {
   }, [user?.darkMode]);
 
   useEffect(() => {
-    const handleUnauthorized = async () => {
-      await queryClient.cancelQueries();
-      queryClient.clear();
-      logout();
-    };
+    const handleUnauthorized = () => logout();
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-  }, [logout, queryClient]);
+  }, [logout]);
 
   if (isLoading) {
     return (

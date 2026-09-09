@@ -301,7 +301,8 @@ router.get('/:fiscalYear/pdf', async (req: AuthRequest, res) => {
     const pdf = await generateNudgePDF(fiscalYear);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="協力隊細則_${fiscalYear}年度_${format(new Date(), 'yyyyMMdd')}.pdf"`);
+    const filename = `協力隊細則_${fiscalYear}年度_${format(new Date(), 'yyyyMMdd')}.pdf`;
+    res.setHeader('Content-Disposition', `attachment; filename="nudges-${fiscalYear}.pdf"; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.send(pdf);
   } catch (error) {
     console.error('Generate nudge PDF error:', error);

@@ -1,4 +1,9 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, InternalAxiosRequestConfig, CanceledError } from 'axios';
+import { AuthSession, changeAuthSession, getAuthSession, isCurrentAuthSession } from './authSession';
+
+declare module 'axios' {
+  interface AxiosRequestConfig { authSession?: AuthSession }
+}
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const SAFE_RETRY_METHODS = new Set(['get', 'head', 'options']);
@@ -20,9 +25,13 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    config.authSession ??= getAuthSession();
+    if (!isCurrentAuthSession(config.authSession)) throw new CanceledError('Session ended');
+    const token = config.authSession.token;
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
     }
     return config;
   },
@@ -32,9 +41,13 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => response.config.authSession && !isCurrentAuthSession(response.config.authSession)
+    ? Promise.reject(new CanceledError('Session ended')) : response,
   async (error) => {
     const requestConfig = error.config as RetryableRequestConfig | undefined;
+    if (axios.isCancel(error) || (requestConfig?.authSession && !isCurrentAuthSession(requestConfig.authSession))) {
+      return Promise.reject(new CanceledError('Session ended'));
+    }
     const method = requestConfig?.method?.toLowerCase();
     const status = error.response?.status;
     const shouldRetry =
@@ -61,7 +74,6 @@ api.interceptors.response.use(
 
       // ログイン前の古い通信が、新しく発行されたトークンを消さないようにする。
       if (currentToken && (!requestToken || requestToken === currentToken)) {
-        localStorage.removeItem('token');
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
       }
     }
@@ -70,10 +82,4 @@ api.interceptors.response.use(
 );
 
 // setTokenメソッドを追加
-api.setToken = (token: string | null) => {
-  if (token) {
-    localStorage.setItem('token', token);
-  } else {
-    localStorage.removeItem('token');
-  }
-};
+api.setToken = changeAuthSession;

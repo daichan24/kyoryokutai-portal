@@ -1,3 +1,4 @@
+import { sanitizeRichText } from '../utils/richText';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
@@ -334,7 +335,7 @@ export const Nudges: React.FC = () => {
           <div className="prose max-w-none dark:prose-invert">
             <div 
               className="text-gray-700 dark:text-gray-300"
-              dangerouslySetInnerHTML={{ __html: selectedDoc.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeRichText(selectedDoc.content) }}
             />
           </div>
           
@@ -466,7 +467,7 @@ export const Nudges: React.FC = () => {
                     <div className="mt-3 prose prose-sm max-w-none dark:prose-invert border-t dark:border-gray-700 pt-3">
                       <div
                         className="text-gray-700 dark:text-gray-300"
-                        dangerouslySetInnerHTML={{ __html: revision.content }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeRichText(revision.content) }}
                       />
                     </div>
                   </div>

@@ -1,3 +1,4 @@
+import { publicUserSelect } from '../security/publicUser';
 import { Router } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
@@ -83,10 +84,10 @@ router.get('/:id', async (req, res) => {
     const contact = await prisma.contact.findUnique({
       where: { id: req.params.id },
       include: {
-        creator: true,
+        creator: { select: publicUserSelect },
         histories: {
           include: {
-            user: true,
+            user: { select: publicUserSelect },
             project: { select: { id: true, projectName: true } },
           },
           orderBy: { date: 'desc' },
@@ -126,7 +127,7 @@ router.post('/', async (req: AuthRequest, res) => {
         startYear: data.startYear || null,
         endYear: data.endYear || null,
       },
-      include: { creator: true },
+      include: { creator: { select: publicUserSelect } },
     });
 
     res.status(201).json(contact);
@@ -160,7 +161,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
         startYear: data.startYear || null,
         endYear: data.endYear || null,
       },
-      include: { creator: true },
+      include: { creator: { select: publicUserSelect } },
     });
 
     res.json(contact);
@@ -208,7 +209,7 @@ router.post('/:id/histories', async (req: AuthRequest, res) => {
         projectId: data.projectId,
       },
       include: {
-        user: true,
+        user: { select: publicUserSelect },
         project: { select: { id: true, projectName: true } },
       },
     });

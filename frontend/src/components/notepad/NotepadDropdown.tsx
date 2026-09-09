@@ -3,6 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NotebookPen, Plus, X, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
+import { useAuthStore } from '../../stores/authStore';
+import { getAuthSession, isCurrentAuthSession } from '../../utils/authSession';
+import { notepadKeys, useNotepadDrafts, failedNotepadDrafts, flushNotepadSave } from '../../utils/notepadAutosave';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -18,28 +21,34 @@ export const NotepadDropdown: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const userId = useAuthStore(state => state.user?.id);
+  const session = getAuthSession();
+  useNotepadDrafts();
+  const failed = failedNotepadDrafts(userId);
 
   const { data: notepads = [] } = useQuery<NotepadSummary[]>({
-    queryKey: ['notepads'],
-    queryFn: async () => {
-      const res = await api.get('/api/me/notepad');
+    queryKey: notepadKeys.list(userId),
+    queryFn: async ({ signal }) => {
+      const res = await api.get('/api/me/notepad', { signal, authSession: session });
       return res.data;
     },
-    enabled: open,
+    enabled: open && !!userId,
     staleTime: 30_000,
   });
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post('/api/me/notepad', { title: '', content: '' });
+      const res = await api.post('/api/me/notepad', { title: '', content: '' }, { authSession: session });
       return res.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['notepads'] });
+      if (!isCurrentAuthSession(session)) return;
+      queryClient.invalidateQueries({ queryKey: notepadKeys.list(userId) });
       setOpen(false);
       navigate(`/notepad/${data.id}`);
     },
     onError: (err: any) => {
+      if (!isCurrentAuthSession(session)) return;
       alert(err.response?.data?.error || 'メモの作成に失敗しました');
     },
   });
@@ -69,6 +78,12 @@ export const NotepadDropdown: React.FC = () => {
         <NotebookPen className="h-5 w-5" />
       </button>
 
+      {failed.length > 0 && (
+        <div role="alert" className="absolute right-0 top-full z-50 w-72 rounded border border-red-200 bg-white p-2 text-xs text-red-600 dark:bg-gray-800">
+          メモの保存に失敗しました
+          <button className="ml-2 underline" onClick={() => { failed.forEach(draft => { void flushNotepadSave(draft.userId, draft.id, draft.session, true); }); }}>再試行</button>
+        </div>
+      )}
       {open && (
         <div className="absolute right-0 top-full mt-1 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
           {/* ヘッダー */}

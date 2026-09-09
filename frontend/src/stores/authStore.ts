@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { User, AuthResponse } from '../types';
 import { api } from '../utils/api';
+import { getAuthSession, isCurrentAuthSession } from '../utils/authSession';
 
 interface AuthState {
   user: User | null;
@@ -26,15 +27,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   error: null,
 
   login: async (email: string, password: string) => {
+    const session = getAuthSession();
     set({ isLoading: true, error: null });
     try {
       const response = await api.post<AuthResponse>('/api/auth/login', {
         email,
         password,
       });
+      if (!isCurrentAuthSession(session)) return;
       api.setToken(response.data.token);
       set({ user: response.data.user, isAuthenticated: true, isLoading: false });
     } catch (error) {
+      if (!isCurrentAuthSession(session)) return;
       set({
         error: error instanceof Error ? error.message : 'Login failed',
         isLoading: false,
@@ -44,12 +48,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   register: async (data) => {
+    const session = getAuthSession();
     set({ isLoading: true, error: null });
     try {
       const response = await api.post<AuthResponse>('/api/auth/register', data);
+      if (!isCurrentAuthSession(session)) return;
       api.setToken(response.data.token);
       set({ user: response.data.user, isAuthenticated: true, isLoading: false });
     } catch (error) {
+      if (!isCurrentAuthSession(session)) return;
       set({
         error: error instanceof Error ? error.message : 'Registration failed',
         isLoading: false,
@@ -64,7 +71,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   fetchMe: async () => {
-    const token = localStorage.getItem('token');
+    const session = getAuthSession();
+    const token = session.token;
     if (!token) {
       set({ isAuthenticated: false, user: null, isLoading: false });
       return;
@@ -72,10 +80,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     set({ isLoading: true, error: null });
     try {
-      api.setToken(token);
-      const response = await api.get<User>('/api/auth/me');
+      const response = await api.get<User>('/api/auth/me', { authSession: session });
+      if (!isCurrentAuthSession(session)) return;
       set({ user: response.data, isAuthenticated: true, isLoading: false, error: null });
     } catch (error) {
+      if (!isCurrentAuthSession(session)) return;
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
 
       // 認証が実際に失効した場合だけトークンを消す。通信障害や一時的な5xxでは保持する。

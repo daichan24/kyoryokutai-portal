@@ -1,3 +1,4 @@
+import { publicUserSelect } from '../security/publicUser';
 import { Router } from 'express';
 import { z } from 'zod';
 import { format } from 'date-fns';
@@ -186,7 +187,7 @@ router.post('/', async (req: AuthRequest, res) => {
         scheduleId: data.scheduleId || null,
       },
       include: {
-        user: true,
+        user: { select: publicUserSelect },
         project: true,
         schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
       },
@@ -283,7 +284,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       where: { id },
       data: updateData,
       include: {
-        user: true,
+        user: { select: publicUserSelect },
         project: true,
         schedule: { select: { id: true, title: true, startDate: true, endDate: true, startTime: true, endTime: true, locationText: true } },
       },

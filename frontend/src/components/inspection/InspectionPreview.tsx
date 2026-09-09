@@ -1,3 +1,4 @@
+import { sanitizeRichText } from '../../utils/richText';
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -98,7 +99,7 @@ export const InspectionPreview: React.FC<InspectionPreviewProps> = ({ inspection
   // HTMLコンテンツをテキストに変換（簡易版）
   const stripHtml = (html: string) => {
     const tmp = document.createElement('DIV');
-    tmp.innerHTML = html;
+    tmp.innerHTML = sanitizeRichText(html);
     return tmp.textContent || tmp.innerText || '';
   };
 

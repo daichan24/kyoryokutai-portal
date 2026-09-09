@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer';
+import sanitizeHtml from 'sanitize-html';
 import prisma from '../lib/prisma';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -39,17 +40,29 @@ function renderPlainTextForPdf(value?: string | null): string {
   return escapeHtmlForPdf(value || '').replace(/\r\n/g, '\n').replace(/\n/g, '<br/>');
 }
 
-function renderRichTextForPdf(value?: string | null): string {
-  return (value || '')
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-    .replace(/\son\w+="[^"]*"/gi, '')
-    .replace(/\son\w+='[^']*'/gi, '')
-    .replace(/javascript:/gi, '');
+const cssSize = '(?:0|[0-9]+(?:\\.[0-9]+)?(?:px|em|rem|%|pt))';
+export function renderRichTextForPdf(value?: string | null): string {
+  return sanitizeHtml(value || '', {
+    allowedTags: ['p', 'div', 'span', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'sub', 'sup', 'font', 'a', 'hr', 'pre', 'code', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+    allowedAttributes: { '*': ['style', 'align', 'title'], font: ['size'], a: ['href'], th: ['colspan', 'rowspan'], td: ['colspan', 'rowspan'], ol: ['start', 'type'] },
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    allowProtocolRelative: false,
+    allowedStyles: { '*': {
+      'text-align': [/^(left|center|right|justify|start|end)$/i],
+      'font-size': [new RegExp(`^(?:${cssSize}|xx-small|x-small|small|medium|large|x-large|xx-large)$`, 'i')],
+      'font-weight': [/^(normal|bold|bolder|lighter|[1-9]00)$/i],
+      'font-style': [/^(normal|italic|oblique)$/i],
+      'text-decoration': [/^(none|underline|line-through|overline)( (underline|line-through|overline))*$/i],
+      'margin-left': [new RegExp(`^${cssSize}$`, 'i')],
+      'padding-left': [new RegExp(`^${cssSize}$`, 'i')],
+      margin: [new RegExp(`^${cssSize}( ${cssSize}){0,3}$`, 'i')],
+      'line-height': [/^(normal|[0-9]+(?:\.[0-9]+)?(?:px|em|rem|%|pt)?)$/i],
+    } },
+  });
 }
 
 function stripHtmlForPdf(value?: string | null): string {
-  return (value || '')
+  return sanitizeHtml(value || '', { allowedTags: ['br', 'p', 'div', 'li'], allowedAttributes: {} })
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
@@ -109,8 +122,6 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
         '--disable-dev-shm-usage',
         '--disable-gpu',
         '--disable-software-rasterizer',
-        '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process',
         '--font-render-hinting=none',
       ],
       timeout: 90000,
@@ -119,6 +130,14 @@ async function generatePDFFromHTML(html: string): Promise<Buffer> {
     console.log('Browser launched successfully');
 
     const page = await browser.newPage();
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      // Embedded fonts and raster attachments need no network or file reads.
+      if (request.resourceType() === 'font' && /^data:font\/(woff2?|ttf|otf);base64,/i.test(request.url())) void request.continue();
+      else if (request.resourceType() === 'image' && /^data:image\/(jpeg|png|webp|heic);base64,[a-z0-9+/=\s]+$/i.test(request.url())) void request.continue();
+      else void request.abort();
+    });
     
     // ページのエラーをキャッチ
     page.on('error', (error) => {
@@ -208,13 +227,7 @@ export async function generateNudgePDF(fiscalYear?: number): Promise<Buffer> {
   }
 
   // HTMLコンテンツからHTMLタグを除去し、改行を保持
-  const cleanContent = document.content
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/\n/g, '<br>');
+  const cleanContent = renderPlainTextForPdf(stripHtmlForPdf(document.content));
 
   const html = `
     <!DOCTYPE html>
@@ -286,10 +299,10 @@ export async function generateNudgePDF(fiscalYear?: number): Promise<Buffer> {
       <div class="header">
         <div>${format(new Date(), 'yyyy年M月d日')}</div>
       </div>
-      <h1>${document.title}</h1>
+      <h1>${escapeHtmlForPdf(document.title)}</h1>
       <div class="content">${cleanContent}</div>
       <div class="footer">
-        <div>${document.updater.name}</div>
+        <div>${escapeHtmlForPdf(document.updater.name)}</div>
       </div>
     </body>
     </html>
@@ -358,12 +371,17 @@ export async function generateInspectionPDF(inspectionId: string): Promise<Buffe
     || template?.inspectionItem7
     || '（参考: 所感や今後の予定を記入してください）';
 
-  const attachmentsHtml = inspection.attachments.length > 0
+  // Stored attachment metadata remains untrusted, even for legacy rows.
+  const rasterAttachments = inspection.attachments.filter((attachment) =>
+    /^image\/(jpeg|png|webp|heic)$/i.test(attachment.mimeType)
+    && /^[a-z0-9+/=\s]+$/i.test(attachment.dataBase64),
+  );
+  const attachmentsHtml = rasterAttachments.length > 0
     ? `
       <div class="section" style="margin-top: 30px;">
         <div class="label">添付資料</div>
         <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
-          ${inspection.attachments.map((a) => `
+          ${rasterAttachments.map((a) => `
             <img src="data:${a.mimeType};base64,${a.dataBase64}" alt="${escapeHtmlForPdf(a.fileName)}" style="width: 260px; height: 260px; border: 1px solid #ccc; object-fit: contain;" />
           `).join('')}
         </div>

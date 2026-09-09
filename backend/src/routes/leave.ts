@@ -108,17 +108,44 @@ async function upsertDayOffSchedule(args: {
   };
 
   if (args.scheduleId) {
-    const existing = await prisma.schedule.findUnique({ where: { id: args.scheduleId }, select: { id: true } });
+    const existing = await prisma.schedule.findUnique({ where: { id: args.scheduleId }, select: { id: true, userId: true, isDayOff: true, dayOffType: true } });
     if (existing) {
+      assertDayOffSchedule(existing, args.userId, args.dayOffType);
       return prisma.schedule.update({ where: { id: args.scheduleId }, data });
     }
   }
   return prisma.schedule.create({ data });
 }
 
-async function deleteLinkedSchedule(scheduleId?: string | null) {
+function assertDayOffSchedule(
+  schedule: { userId: string; isDayOff: boolean; dayOffType: string | null } | null,
+  userId: string,
+  dayOffType: string,
+) {
+  if (!schedule || schedule.userId !== userId || !schedule.isDayOff || schedule.dayOffType !== dayOffType) {
+    throw Object.assign(new Error('FORBIDDEN'), { status: 403 });
+  }
+}
+
+async function validateTimeAdjustmentLink(scheduleId: string, userId: string) {
+  const schedule = await prisma.schedule.findUnique({
+    where: { id: scheduleId }, select: { userId: true, isDayOff: true, dayOffType: true },
+  });
+  assertDayOffSchedule(schedule, userId, 'TIME_ADJUST');
+}
+
+async function deleteLinkedSchedule(scheduleId: string | null | undefined, userId: string, dayOffType: string) {
   if (!scheduleId) return;
-  await prisma.schedule.delete({ where: { id: scheduleId } }).catch(() => undefined);
+  try {
+    const schedule = await prisma.schedule.findUnique({
+      where: { id: scheduleId }, select: { userId: true, isDayOff: true, dayOffType: true },
+    });
+    // Legacy invalid links can be unlinked, but must never delete someone else's schedule.
+    if (!schedule || schedule.userId !== userId || !schedule.isDayOff || schedule.dayOffType !== dayOffType) return;
+    await prisma.schedule.delete({ where: { id: scheduleId } });
+  } catch {
+    // Cleanup remains best effort after primary record deletion, including concurrent removal.
+  }
 }
 
 async function remainingPaidDays(userId: string, fiscalYear: number) {
@@ -347,7 +374,7 @@ router.delete('/paid-leave/entries/:id', async (req: AuthRequest, res) => {
     const entry = await prisma.paidLeaveEntry.findUnique({ where: { id: req.params.id } });
     if (!entry) return res.status(404).json({ error: '見つかりません' });
     await prisma.paidLeaveEntry.delete({ where: { id: req.params.id } });
-    await deleteLinkedSchedule(entry?.scheduleId);
+    await deleteLinkedSchedule(entry.scheduleId, entry.userId, 'PAID');
     res.json({ ok: true });
   } catch (err: any) {
     console.error('Delete paid leave entry error:', err);
@@ -394,7 +421,7 @@ router.delete('/unpaid-leave/entries/:id', async (req: AuthRequest, res) => {
     if (!entry) return res.status(404).json({ error: '見つかりません' });
     if (req.user!.role === 'MEMBER' && entry.userId !== req.user!.id) return res.status(403).json({ error: '権限がありません' });
     await prisma.unpaidLeaveEntry.delete({ where: { id: req.params.id } });
-    await deleteLinkedSchedule(entry.scheduleId);
+    await deleteLinkedSchedule(entry.scheduleId, entry.userId, 'UNPAID');
     res.json({ ok: true });
   } catch (err: any) {
     console.error('Delete unpaid leave entry error:', err);
@@ -579,7 +606,7 @@ router.delete('/compensatory/usage/:usageId', async (req: AuthRequest, res) => {
     if (!usage) return res.status(404).json({ error: '見つかりません' });
     if (req.user!.role === 'MEMBER' && usage.compensatoryLeave.userId !== req.user!.id) return res.status(403).json({ error: '権限がありません' });
     await prisma.compensatoryLeaveUsage.delete({ where: { id: req.params.usageId } });
-    await deleteLinkedSchedule(usage.scheduleId);
+    await deleteLinkedSchedule(usage.scheduleId, usage.compensatoryLeave.userId, 'COMPENSATORY');
     // 使用済みステータスを戻す
     const remaining = await prisma.compensatoryLeaveUsage.findMany({ where: { compensatoryLeaveId: usage.compensatoryLeaveId } });
     const total = remaining.reduce((s, u) => s + u.days, 0);
@@ -635,6 +662,7 @@ router.post('/time-adjustments', async (req: AuthRequest, res) => {
   try {
     const body = timeAdjSchema.parse(req.body);
     const targetId = req.user!.role === 'MEMBER' ? req.user!.id : (body.userId ?? req.user!.id);
+    if (body.usedScheduleId) await validateTimeAdjustmentLink(body.usedScheduleId, targetId);
     const usedHours = body.usedAt && body.usedStartTime && body.usedEndTime
       ? hoursBetween(body.usedStartTime, body.usedEndTime)
       : 0;
@@ -666,7 +694,7 @@ router.post('/time-adjustments', async (req: AuthRequest, res) => {
         usedAt: body.usedAt ? dateOnly(body.usedAt) : null,
         usedStartTime: body.usedStartTime ?? null,
         usedEndTime: body.usedEndTime ?? null,
-        usedScheduleId: body.usedScheduleId ?? usedSchedule?.id ?? null,
+        usedScheduleId: usedSchedule?.id ?? body.usedScheduleId ?? null,
       },
       include: {
         compensatoryLeave: { select: { id: true, grantedAt: true } },
@@ -682,6 +710,7 @@ router.post('/time-adjustments', async (req: AuthRequest, res) => {
     res.json(entry);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+    if (err.status === 403) return res.status(403).json({ error: '権限がありません' });
     console.error('Create time adjustment error:', err);
     res.status(500).json({ error: '時間調整の作成に失敗しました' });
   }
@@ -693,6 +722,7 @@ router.put('/time-adjustments/:id', async (req: AuthRequest, res) => {
     if (!existing) return res.status(404).json({ error: '見つかりません' });
     if (req.user!.role === 'MEMBER' && existing.userId !== req.user!.id) return res.status(403).json({ error: '権限がありません' });
     const body = timeAdjSchema.partial().parse(req.body);
+    if (body.usedScheduleId) await validateTimeAdjustmentLink(body.usedScheduleId, existing.userId);
     const updateData: any = {};
     if (body.adjustedAt) updateData.adjustedAt = new Date(`${body.adjustedAt}T12:00:00.000Z`);
     if (body.hours !== undefined) updateData.hours = body.hours;
@@ -704,7 +734,7 @@ router.put('/time-adjustments/:id', async (req: AuthRequest, res) => {
     const nextEnd = body.usedEndTime !== undefined ? body.usedEndTime : existing.usedEndTime;
     const nextHours = body.hours !== undefined ? body.hours : existing.hours;
     if (isClearingUsage) {
-      await deleteLinkedSchedule(existing.usedScheduleId);
+      await deleteLinkedSchedule(existing.usedScheduleId, existing.userId, 'TIME_ADJUST');
       updateData.usedScheduleId = null;
     } else if ((nextUsedAt || nextStart || nextEnd) && (!nextUsedAt || !nextStart || !nextEnd)) {
       return res.status(400).json({ error: '時間調整の使用日は開始・終了時刻も指定してください' });
@@ -726,11 +756,12 @@ router.put('/time-adjustments/:id', async (req: AuthRequest, res) => {
     if (body.usedAt !== undefined) updateData.usedAt = body.usedAt ? dateOnly(body.usedAt) : null;
     if (body.usedStartTime !== undefined) updateData.usedStartTime = body.usedStartTime;
     if (body.usedEndTime !== undefined) updateData.usedEndTime = body.usedEndTime;
-    if (body.usedScheduleId !== undefined) updateData.usedScheduleId = body.usedScheduleId;
+    if (body.usedScheduleId !== undefined && updateData.usedScheduleId === undefined) updateData.usedScheduleId = body.usedScheduleId;
     const updated = await prisma.timeAdjustment.update({ where: { id: req.params.id }, data: updateData });
     res.json(updated);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+    if (err.status === 403) return res.status(403).json({ error: '権限がありません' });
     console.error('Update time adjustment error:', err);
     res.status(500).json({ error: '時間調整の更新に失敗しました' });
   }
@@ -742,7 +773,7 @@ router.delete('/time-adjustments/:id', async (req: AuthRequest, res) => {
     if (!existing) return res.status(404).json({ error: '見つかりません' });
     if (req.user!.role === 'MEMBER' && existing.userId !== req.user!.id) return res.status(403).json({ error: '権限がありません' });
     await prisma.timeAdjustment.delete({ where: { id: req.params.id } });
-    await deleteLinkedSchedule(existing.usedScheduleId);
+    await deleteLinkedSchedule(existing.usedScheduleId, existing.userId, 'TIME_ADJUST');
     res.json({ ok: true });
   } catch (err: any) {
     console.error('Delete time adjustment error:', err);

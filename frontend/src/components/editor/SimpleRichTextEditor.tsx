@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { sanitizeRichText, plainTextToRichText } from '../../utils/richText';
 import { 
   AlignLeft, 
   AlignCenter, 
@@ -31,24 +32,37 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
 
+  const lastEmitted = useRef<string | null>(null);
   useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value;
-    }
+    if (!editorRef.current || value === lastEmitted.current) return;
+    const safeValue = sanitizeRichText(value);
+    if (editorRef.current.innerHTML !== safeValue) editorRef.current.innerHTML = safeValue;
+    lastEmitted.current = null;
   }, [value]);
 
   const handleInput = () => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      const safeValue = sanitizeRichText(editorRef.current.innerHTML);
+      lastEmitted.current = safeValue;
+      onChange(safeValue);
     }
   };
 
   const executeCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      const safeValue = sanitizeRichText(editorRef.current.innerHTML);
+      lastEmitted.current = safeValue;
+      onChange(safeValue);
     }
     editorRef.current?.focus();
+  };
+
+  const insertSafeContent = (data: DataTransfer) => {
+    const html = data.getData('text/html');
+    const safe = html ? sanitizeRichText(html) : plainTextToRichText(data.getData('text/plain'));
+    document.execCommand('insertHTML', false, safe);
+    handleInput();
   };
 
   const handleHeading = (level: 1 | 2 | 3) => {
@@ -213,6 +227,8 @@ export const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         ref={editorRef}
         contentEditable={!disabled}
         onInput={handleInput}
+        onPaste={(event) => { event.preventDefault(); if (!disabled) insertSafeContent(event.clipboardData); }}
+        onDrop={(event) => { event.preventDefault(); if (!disabled) insertSafeContent(event.dataTransfer); }}
         className={`p-4 focus:outline-none prose max-w-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-b-lg dark:prose-invert ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         style={{
           wordBreak: 'break-word',

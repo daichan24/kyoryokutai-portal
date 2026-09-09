@@ -6,6 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { Schedule as ScheduleType } from '../../types';
 import { api } from '../../utils/api';
 import { isHolidayDate, isSaturday, isSunday } from '../../utils/date';
+import { getScheduleMove } from '../../utils/calendarMovement';
 import { addDaysToDateOnly } from '../../utils/dateOnly';
 import { useIsMobileBreakpoint } from '../../hooks/useIsMobileBreakpoint';
 
@@ -320,91 +321,11 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       info.revert();
       return;
     }
-    const oldStartDate = new Date(schedule.startDate || schedule.date);
-    const oldEndDate = new Date(schedule.endDate || schedule.date);
-    
-    // FullCalendar から取得した新しい開始・終了時刻
-    const newStart = event.start;
-    const newEnd = event.end || newStart;
-
     setIsUpdating(true);
 
     try {
-      // 月表示の場合は時刻を保持
-      const calendarApi = calendarRef.current?.getApi();
-      const currentView = calendarApi?.view.type;
-      const isMonthView = currentView === 'dayGridMonth';
-
-      let updateData: any = {};
-
-      if (isMonthView) {
-        // 月表示でtimed eventを移動した場合、時刻を保持
-        const oldStartTime = schedule.startTime;
-        const oldEndTime = schedule.endTime;
-        
-        // 新しい日付を JST で取得
-        const newDateStr = getJSTDateString(newStart);
-        
-        // 元の開始日と終了日の日数差を計算
-        oldStartDate.setHours(0, 0, 0, 0);
-        oldEndDate.setHours(0, 0, 0, 0);
-        const daysDiff = Math.round((oldEndDate.getTime() - oldStartDate.getTime()) / (1000 * 60 * 60 * 24));
-
-        // 新しい終了日を計算
-        let newEndDateStr = newDateStr;
-        if (daysDiff > 0) {
-          const newEndDate = new Date(newStart);
-          newEndDate.setDate(newEndDate.getDate() + daysDiff);
-          newEndDateStr = getJSTDateString(newEndDate);
-        }
-
-        updateData = {
-          date: newDateStr,
-          startTime: oldStartTime,
-          endTime: oldEndTime,
-        };
-        addPreservedScheduleFields(updateData, schedule);
-
-        // 複数日スケジュールの場合
-        if (daysDiff > 0) {
-          updateData.endDate = newEndDateStr;
-        }
-
-      } else {
-        // 週/日表示の場合: ブロックごと移動（開始・終了の両方が移動）
-        // 元の所要時間を計算
-        const oldStartMinutes = parseInt(schedule.startTime.split(':')[0]) * 60 + parseInt(schedule.startTime.split(':')[1]);
-        const oldEndMinutes = parseInt(schedule.endTime.split(':')[0]) * 60 + parseInt(schedule.endTime.split(':')[1]);
-        const duration = oldEndMinutes - oldStartMinutes;
-
-        // JST の時刻を取得
-        const newStartTime = getJSTTimeString(newStart);
-
-        const newEndTime = newEnd ? getJSTTimeString(newEnd) : (() => {
-          const [startHours, startMinutes] = newStartTime.split(':').map(Number);
-          const newStartMinutes = startHours * 60 + startMinutes;
-          const newEndMinutes = newStartMinutes + duration;
-          const newEndHours = Math.floor(newEndMinutes / 60) % 24;
-          const newEndMins = newEndMinutes % 60;
-          return `${String(newEndHours).padStart(2, '0')}:${String(newEndMins).padStart(2, '0')}`;
-        })();
-        
-        // 日付を JST で取得
-        const newDateStr = getJSTDateString(newStart);
-
-        updateData = {
-          date: newDateStr,
-          startTime: newStartTime,
-          endTime: newEndTime,
-        };
-        addPreservedScheduleFields(updateData, schedule);
-
-        if (newEnd && newStart.toDateString() !== newEnd.toDateString()) {
-          const newEndDateStr = getJSTDateString(newEnd);
-          updateData.endDate = newEndDateStr;
-        }
-
-      }
+      const updateData = getScheduleMove(schedule, event, calendarRef.current?.getApi().view.type || '');
+      addPreservedScheduleFields(updateData, schedule);
 
       await api.put(`/api/schedules/${schedule.id}`, updateData);
       

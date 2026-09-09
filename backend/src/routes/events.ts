@@ -1,3 +1,4 @@
+import { publicUserSelect } from '../security/publicUser';
 import { Router } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
@@ -161,7 +162,7 @@ router.post('/', async (req: AuthRequest, res) => {
         projectId: data.projectId || null,
         supportSlotsNeeded: data.supportSlotsNeeded ?? null,
       },
-      include: { creator: true, project: true },
+      include: { creator: { select: publicUserSelect }, project: true },
     });
 
     // 参加メンバーを追加（承認待ち状態で作成）
@@ -263,7 +264,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     await prisma.event.update({
       where: { id },
       data: updateData,
-      include: { creator: true, project: true, updater: true },
+      include: { creator: { select: publicUserSelect }, project: true, updater: { select: publicUserSelect } },
     });
 
     // 参加メンバーを更新（既存を削除して新規作成）
@@ -381,7 +382,7 @@ router.post('/:id/participate', async (req: AuthRequest, res) => {
         pointEarned,
         status: 'APPROVED', // 自分で参加登録する場合は承認済み
       },
-      include: { event: true, user: true },
+      include: { event: true, user: { select: publicUserSelect } },
     });
 
     // 自分で参加登録した場合は、スケジュールも自動追加
