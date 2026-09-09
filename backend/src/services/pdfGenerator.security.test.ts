@@ -3,7 +3,7 @@ const fixture = vi.hoisted(() => ({ html: '', javascript: true, intercept: false
 vi.mock('../lib/prisma', () => ({ default: { documentTemplate: { findFirst: async () => null }, inspection: { findUnique: async () => ({ date: new Date('2026-09-09'), destination: '検証会場', purpose: '検証', user: { name: '検証' }, participants: [], attachments: [
   { mimeType: 'image/png', dataBase64: 'AA==', fileName: '普通.png' },
   { mimeType: 'image/svg+xml', dataBase64: 'AA==', fileName: '危険.svg' },
-  { mimeType: 'image/png', dataBase64: 'AA==\" onerror=alert(1)', fileName: '注入.png' },
+  { mimeType: 'image/png', dataBase64: 'AA==" onerror=alert(1)', fileName: '注入.png' },
 ] }) }, nudgeDocument: { findUnique: async () => ({ title: '<img src=x onerror=alert(1)>題名', content: '<p>普通の本文</p>&lt;img src=x onerror=alert(1)&gt;', updater: { name: '<svg onload=alert(1)>名前' } }) } } }));
 vi.mock('puppeteer', () => ({ default: { executablePath: () => '/fixture/chrome', launch: async () => ({ newPage: async () => ({
   on: (event: string, handler: typeof fixture.requests) => { if (event === 'request') fixture.requests = handler; },
