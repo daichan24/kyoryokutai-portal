@@ -457,7 +457,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     });
   }, [filteredProjects]);
 
-  const effectiveMissionId = missionId || selectedMissionId || task?.missionId || '';
+  // ユーザーがミッションのプルダウンを変更した場合は、その選択を初期値(missionIdプロップ)より優先する
+  const effectiveMissionId = selectedMissionId || missionId || task?.missionId || '';
 
   const handleMissionChange = async (v: string) => {
     if (v === '__KYORYOKUTAI__') {
