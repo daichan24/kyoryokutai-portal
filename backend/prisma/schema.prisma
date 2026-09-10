@@ -35,6 +35,7 @@ model User {
   scheduleWeekStartsOn Int @default(0) // スケジュール週表示の開始曜日（0=日曜, 1=月曜）
   scheduleHiddenLocationIds String[] @default([]) // スケジュール入力で非表示にする活動場所ID
   pdfFileNameTemplates Json? // PDF出力時のファイル名テンプレート（帳票種別ごと。 例: {"weeklyReport":"{name}_{date}_{type}"}）
+  scheduleDefaultView String? // スケジュール画面を開いたときの初期表示("month"|"week"。未設定時は前回の表示を維持)
 
   // Phase 1 Relations
   schedules             Schedule[]

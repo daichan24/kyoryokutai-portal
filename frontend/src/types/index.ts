@@ -27,6 +27,8 @@ export interface User {
   scheduleHiddenLocationIds?: string[];
   /** PDF出力時のファイル名テンプレート（帳票種別ごと。 例: {"weeklyReport":"{name}_{date}_{type}"}） */
   pdfFileNameTemplates?: Record<string, string> | null;
+  /** スケジュール画面を開いたときの初期表示。未設定時は前回の表示を維持 */
+  scheduleDefaultView?: 'month' | 'week' | null;
   /** MASTER のユーザー一覧 API のみ */
   passwordUpdatedAt?: string | null;
   snsLinks?: any;

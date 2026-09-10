@@ -32,6 +32,7 @@ export const ProfileSettings: React.FC = () => {
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
   const [scheduleWeekStartsOn, setScheduleWeekStartsOn] = useState<0 | 1>(0);
   const [scheduleHiddenLocationIds, setScheduleHiddenLocationIds] = useState<string[]>([]);
+  const [scheduleDefaultView, setScheduleDefaultView] = useState<'month' | 'week' | ''>('');
   const [pdfFileNameTemplates, setPdfFileNameTemplates] = useState<Partial<Record<PdfSaveLocationType, string>>>({});
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -50,6 +51,7 @@ export const ProfileSettings: React.FC = () => {
       setEmailNotificationsEnabled(user.emailNotificationsEnabled !== false);
       setScheduleWeekStartsOn(user.scheduleWeekStartsOn === 1 ? 1 : 0);
       setScheduleHiddenLocationIds(Array.isArray(user.scheduleHiddenLocationIds) ? user.scheduleHiddenLocationIds : []);
+      setScheduleDefaultView(user.scheduleDefaultView === 'month' || user.scheduleDefaultView === 'week' ? user.scheduleDefaultView : '');
       setPdfFileNameTemplates(user.pdfFileNameTemplates && typeof user.pdfFileNameTemplates === 'object' ? user.pdfFileNameTemplates : {});
     }
   }, [user]);
@@ -81,7 +83,7 @@ export const ProfileSettings: React.FC = () => {
   }, [currentLinks]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Partial<Record<PdfSaveLocationType, string>> }) => {
+    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Partial<Record<PdfSaveLocationType, string>>; scheduleDefaultView?: 'month' | 'week' | null }) => {
       const response = await api.put('/api/me/profile', data);
       return response.data;
     },
@@ -163,6 +165,7 @@ export const ProfileSettings: React.FC = () => {
       emailNotificationsEnabled: emailNotificationsEnabled,
       scheduleWeekStartsOn,
       scheduleHiddenLocationIds,
+      scheduleDefaultView: scheduleDefaultView === '' ? null : scheduleDefaultView,
       pdfFileNameTemplates: Object.fromEntries(
         Object.entries(pdfFileNameTemplates).filter(([, value]) => (value ?? '').trim() !== ''),
       ),
@@ -378,6 +381,48 @@ export const ProfileSettings: React.FC = () => {
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
               <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{emailNotificationsEnabled ? 'ON' : 'OFF'}</span>
             </label>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">スケジュールを開いたときの表示</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">未指定の場合は前回開いていた表示（月/週）を引き継ぎます</p>
+            </div>
+            <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-0.5 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setScheduleDefaultView('')}
+                className={`h-8 px-3 rounded-md text-sm transition ${
+                  scheduleDefaultView === ''
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800'
+                }`}
+              >
+                指定なし
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleDefaultView('month')}
+                className={`h-8 px-3 rounded-md text-sm transition ${
+                  scheduleDefaultView === 'month'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800'
+                }`}
+              >
+                月表示
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleDefaultView('week')}
+                className={`h-8 px-3 rounded-md text-sm transition ${
+                  scheduleDefaultView === 'week'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800'
+                }`}
+              >
+                週表示
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

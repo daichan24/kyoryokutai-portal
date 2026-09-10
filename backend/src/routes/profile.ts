@@ -20,6 +20,7 @@ const updateProfileSchema = z.object({
   scheduleWeekStartsOn: z.union([z.literal(0), z.literal(1)]).optional(),
   scheduleHiddenLocationIds: z.array(z.string()).optional(),
   pdfFileNameTemplates: z.record(z.string()).optional().nullable(),
+  scheduleDefaultView: z.enum(['month', 'week']).optional().nullable(),
 });
 
 /**
@@ -37,7 +38,7 @@ router.put('/', async (req: AuthRequest, res) => {
     }
     const data = raw.data;
 
-    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Prisma.InputJsonValue | typeof Prisma.JsonNull } = {};
+    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Prisma.InputJsonValue | typeof Prisma.JsonNull; scheduleDefaultView?: 'month' | 'week' | null } = {};
     if (data.avatarColor !== undefined) updateData.avatarColor = data.avatarColor;
     if (data.avatarLetter !== undefined) {
       updateData.avatarLetter = (data.avatarLetter === '' || data.avatarLetter === null || data.avatarLetter === undefined) ? null : String(data.avatarLetter).slice(0, 1);
@@ -54,6 +55,7 @@ router.put('/', async (req: AuthRequest, res) => {
     if (data.pdfFileNameTemplates !== undefined) {
       updateData.pdfFileNameTemplates = data.pdfFileNameTemplates === null ? Prisma.JsonNull : data.pdfFileNameTemplates;
     }
+    if (data.scheduleDefaultView !== undefined) updateData.scheduleDefaultView = data.scheduleDefaultView;
 
     console.log('[API] Update data:', updateData);
 
@@ -73,6 +75,7 @@ router.put('/', async (req: AuthRequest, res) => {
         scheduleWeekStartsOn: true,
         scheduleHiddenLocationIds: true,
         pdfFileNameTemplates: true,
+        scheduleDefaultView: true,
       },
     });
 

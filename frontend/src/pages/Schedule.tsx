@@ -41,7 +41,30 @@ export const Schedule: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('month'); // デフォルトを月表示に変更
+  const getInitialViewMode = (): ViewMode => {
+    if (user?.scheduleDefaultView === 'month') return 'month';
+    if (user?.scheduleDefaultView === 'week') return 'week';
+    // 未指定の場合は前回開いていた表示(月/週)を引き継ぐ
+    try {
+      const saved = localStorage.getItem('scheduleLastViewMode');
+      if (saved === 'week' || saved === 'month') return saved;
+    } catch {
+      /* ignore */
+    }
+    return 'month';
+  };
+  const [viewMode, setViewModeState] = useState<ViewMode>(getInitialViewMode);
+  const setViewMode = (mode: ViewMode) => {
+    setViewModeState(mode);
+    // 「日」表示は一時的なドリルダウンのため、前回表示としては記憶しない
+    if (mode === 'week' || mode === 'month') {
+      try {
+        localStorage.setItem('scheduleLastViewMode', mode);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
   const [calendarViewMode] = useState<'individual' | 'all'>('individual'); // カレンダー表示モード
   const [useDraggable] = useState(true); // ドラッグ可能カレンダーを使用
   const [weekDates, setWeekDates] = useState<Date[]>([]);
