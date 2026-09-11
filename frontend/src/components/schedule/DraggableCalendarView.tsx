@@ -263,6 +263,40 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     }
   }, [viewMode]);
 
+  // 週・日表示を開いたとき、0時からではなく8時付近が見える位置までスクロールする。
+  // デスクトップはカレンダー自体の高さが可変(内部スクロールなし)でページ全体が
+  // スクロールするため、scrollTimeプロパティではなくDOM操作で対応する。
+  useEffect(() => {
+    // モバイルはカレンダー自体が内部スクロールするため、scrollTimeプロパティで対応済み
+    if (isMobile) return;
+    if (viewMode !== 'week' && viewMode !== 'day') return;
+    const timer = setTimeout(() => {
+      const slot = document.querySelector<HTMLElement>('.fc-timegrid-slot[data-time="08:00:00"]');
+      if (!slot) return;
+      // ページ本体はwindowではなく、レイアウトの<main>(overflow-y-auto)がスクロールするため、
+      // そのスクロール可能な祖先要素を探して直接scrollTopを調整する
+      let scrollContainer: HTMLElement | null = slot.parentElement;
+      while (scrollContainer && scrollContainer !== document.body) {
+        const style = window.getComputedStyle(scrollContainer);
+        if (
+          (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+          scrollContainer.scrollHeight > scrollContainer.clientHeight
+        ) {
+          break;
+        }
+        scrollContainer = scrollContainer.parentElement;
+      }
+      if (!scrollContainer || scrollContainer === document.body) return;
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const slotRect = slot.getBoundingClientRect();
+      // カレンダーの曜日ヘッダー(sticky)などに隠れないよう、少し余白を残す
+      const headerBuffer = 80;
+      const delta = slotRect.top - containerRect.top - headerBuffer;
+      scrollContainer.scrollTop = Math.max(scrollContainer.scrollTop + delta, 0);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [viewMode, currentDate]);
+
   // FullCalendar から返される Date オブジェクトを JST として扱うヘルパー関数
   // FullCalendar の timeZone: 'Asia/Tokyo' 設定により、Date オブジェクトは
   // ローカルタイムゾーンで返されるが、実際には JST として解釈する必要がある
@@ -470,6 +504,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         timeZone="local"
         slotMinTime="00:00:00"
         slotMaxTime="24:00:00"
+        scrollTime="08:00:00"
         slotDuration="00:30:00"
         slotLabelInterval="01:00:00"
         snapDuration="00:15:00"
