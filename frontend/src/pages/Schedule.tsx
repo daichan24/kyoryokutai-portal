@@ -372,126 +372,123 @@ export const Schedule: React.FC = () => {
     <div className="space-y-4 sm:space-y-6 -mx-3 sm:-mx-4 md:-mx-6">
       <div className="bg-white dark:bg-gray-800 shadow border-y border-border dark:border-gray-700 min-w-0 w-full">
         <div className="flex gap-4 px-0 sm:px-3 md:px-4 py-0 sm:py-6">
-          {/* メンバーサイドバー（すべてのビューモードで表示） */}
-          {showMemberSidebar && (
-            <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 pr-4 hidden lg:block">
-              <div className="sticky top-0">
-                <div className="flex items-center justify-between mb-3">
+          {/* メンバーサイドバー（すべてのビューモードで表示）。開閉ボタンはアプリ本体の
+              サイドバーと同じ位置・見た目に統一し、開閉どちらの状態でも同じ場所から
+              確実に操作できるようにする */}
+          <div
+            className={`hidden lg:flex flex-shrink-0 flex-col border-r border-gray-200 dark:border-gray-700 ${
+              showMemberSidebar ? 'w-56 pr-4' : 'w-10'
+            }`}
+          >
+            <div className="sticky top-0">
+              <div className={`flex items-center mb-3 ${showMemberSidebar ? 'justify-between' : 'justify-center'}`}>
+                {showMemberSidebar && (
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">メンバー</h3>
-                  <button
-                    onClick={() => setShowMemberSidebar(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    title="サイドバーを閉じる"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                
-                {/* 選択数表示 */}
-                <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                  {visibleMemberIds.size}人選択中
-                </div>
+                )}
+                <button
+                  onClick={() => setShowMemberSidebar(!showMemberSidebar)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+                  title={showMemberSidebar ? 'サイドバーを閉じる' : 'メンバーサイドバーを開く'}
+                  aria-label={showMemberSidebar ? 'サイドバーを閉じる' : 'メンバーサイドバーを開く'}
+                >
+                  {showMemberSidebar ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </button>
+              </div>
 
-                {/* クイックアクション */}
-                <div className="flex gap-1 mb-3">
-                  <button
-                    onClick={selectOnlyMe}
-                    className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                  >
-                    自分のみ
-                  </button>
-                  <button
-                    onClick={selectAllMembers}
-                    className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                  >
-                    全員
-                  </button>
-                  <button
-                    onClick={clearAllMembers}
-                    className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                  >
-                    クリア
-                  </button>
-                </div>
+              {showMemberSidebar && (
+                <>
+                  {/* 選択数表示 */}
+                  <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+                    {visibleMemberIds.size}人選択中
+                  </div>
 
-                {/* 自分 */}
-                {user && (
-                  <label
-                    className={`flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer mb-2 transition-shadow ${
-                      highlightedMemberId === user.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
-                    }`}
-                    onMouseEnter={() => handleHoverMember(user.id)}
-                    onMouseLeave={() => handleHoverMember(null)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={visibleMemberIds.has(user.id)}
-                      onChange={() => toggleMemberVisibility(user.id)}
-                      className="rounded border-gray-300 dark:border-gray-600"
-                    />
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-                      style={{ backgroundColor: user.avatarColor || '#6B7280' }}
+                  {/* クイックアクション */}
+                  <div className="flex gap-1 mb-3">
+                    <button
+                      onClick={selectOnlyMe}
+                      className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
                     >
-                      {(user.avatarLetter || user.name || '').charAt(0)}
-                    </div>
-                    <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
-                      {user.name} (自分)
-                    </span>
-                  </label>
-                )}
+                      自分のみ
+                    </button>
+                    <button
+                      onClick={selectAllMembers}
+                      className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                    >
+                      全員
+                    </button>
+                    <button
+                      onClick={clearAllMembers}
+                      className="flex-1 text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                    >
+                      クリア
+                    </button>
+                  </div>
 
-                {/* 区切り線 */}
-                {user && availableMembers.length > 0 && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
-                )}
-
-                {/* 他のメンバー */}
-                <div className="space-y-1 max-h-[60vh] overflow-y-auto">
-                  {availableMembers.map((member) => (
+                  {/* 自分 */}
+                  {user && (
                     <label
-                      key={member.id}
-                      className={`flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-shadow ${
-                        highlightedMemberId === member.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+                      className={`flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer mb-2 transition-shadow ${
+                        highlightedMemberId === user.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
                       }`}
-                      onMouseEnter={() => handleHoverMember(member.id)}
+                      onMouseEnter={() => handleHoverMember(user.id)}
                       onMouseLeave={() => handleHoverMember(null)}
                     >
                       <input
                         type="checkbox"
-                        checked={visibleMemberIds.has(member.id)}
-                        onChange={() => toggleMemberVisibility(member.id)}
+                        checked={visibleMemberIds.has(user.id)}
+                        onChange={() => toggleMemberVisibility(user.id)}
                         className="rounded border-gray-300 dark:border-gray-600"
                       />
                       <div
                         className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-                        style={{ backgroundColor: member.avatarColor || '#6B7280' }}
+                        style={{ backgroundColor: user.avatarColor || '#6B7280' }}
                       >
-                        {(member.avatarLetter || member.name || '').charAt(0)}
+                        {(user.avatarLetter || user.name || '').charAt(0)}
                       </div>
                       <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
-                        {member.name}
+                        {user.name} (自分)
                       </span>
                     </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+                  )}
 
-          {/* サイドバー開閉ボタン（閉じている時のみ表示。通常のフローに配置し、
-              左のアプリ本体サイドバーと重ならないようにする） */}
-          {!showMemberSidebar && (
-            <div className="hidden lg:flex w-8 flex-shrink-0 flex-col items-center pt-0.5">
-              <button
-                onClick={() => setShowMemberSidebar(true)}
-                className="p-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700"
-                title="メンバーサイドバーを開く"
-              >
-                <ChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-              </button>
+                  {/* 区切り線 */}
+                  {user && availableMembers.length > 0 && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+                  )}
+
+                  {/* 他のメンバー */}
+                  <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                    {availableMembers.map((member) => (
+                      <label
+                        key={member.id}
+                        className={`flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-shadow ${
+                          highlightedMemberId === member.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+                        }`}
+                        onMouseEnter={() => handleHoverMember(member.id)}
+                        onMouseLeave={() => handleHoverMember(null)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={visibleMemberIds.has(member.id)}
+                          onChange={() => toggleMemberVisibility(member.id)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                        />
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                          style={{ backgroundColor: member.avatarColor || '#6B7280' }}
+                        >
+                          {(member.avatarLetter || member.name || '').charAt(0)}
+                        </div>
+                        <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                          {member.name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </div>
 
           {/* カレンダー本体 */}
           <div className="flex-1 min-w-0">
