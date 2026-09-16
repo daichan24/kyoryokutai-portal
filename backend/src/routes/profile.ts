@@ -21,6 +21,7 @@ const updateProfileSchema = z.object({
   scheduleHiddenLocationIds: z.array(z.string()).optional(),
   pdfFileNameTemplates: z.record(z.string()).optional().nullable(),
   scheduleDefaultView: z.enum(['month', 'week']).optional().nullable(),
+  scheduleHoverHighlightEnabled: z.boolean().optional(),
 });
 
 /**
@@ -38,7 +39,7 @@ router.put('/', async (req: AuthRequest, res) => {
     }
     const data = raw.data;
 
-    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Prisma.InputJsonValue | typeof Prisma.JsonNull; scheduleDefaultView?: 'month' | 'week' | null } = {};
+    const updateData: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Prisma.InputJsonValue | typeof Prisma.JsonNull; scheduleDefaultView?: 'month' | 'week' | null; scheduleHoverHighlightEnabled?: boolean } = {};
     if (data.avatarColor !== undefined) updateData.avatarColor = data.avatarColor;
     if (data.avatarLetter !== undefined) {
       updateData.avatarLetter = (data.avatarLetter === '' || data.avatarLetter === null || data.avatarLetter === undefined) ? null : String(data.avatarLetter).slice(0, 1);
@@ -56,6 +57,7 @@ router.put('/', async (req: AuthRequest, res) => {
       updateData.pdfFileNameTemplates = data.pdfFileNameTemplates === null ? Prisma.JsonNull : data.pdfFileNameTemplates;
     }
     if (data.scheduleDefaultView !== undefined) updateData.scheduleDefaultView = data.scheduleDefaultView;
+    if (data.scheduleHoverHighlightEnabled !== undefined) updateData.scheduleHoverHighlightEnabled = data.scheduleHoverHighlightEnabled;
 
     console.log('[API] Update data:', updateData);
 
@@ -76,6 +78,7 @@ router.put('/', async (req: AuthRequest, res) => {
         scheduleHiddenLocationIds: true,
         pdfFileNameTemplates: true,
         scheduleDefaultView: true,
+        scheduleHoverHighlightEnabled: true,
       },
     });
 

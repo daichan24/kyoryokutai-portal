@@ -29,6 +29,8 @@ export interface User {
   pdfFileNameTemplates?: Record<string, string> | null;
   /** スケジュール画面を開いたときの初期表示。未設定時は前回の表示を維持 */
   scheduleDefaultView?: 'month' | 'week' | null;
+  /** カレンダーの予定にマウスオーバーした際の強調表示のON/OFF（デフォルトON） */
+  scheduleHoverHighlightEnabled?: boolean;
   /** MASTER のユーザー一覧 API のみ */
   passwordUpdatedAt?: string | null;
   snsLinks?: any;

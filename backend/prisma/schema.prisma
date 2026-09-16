@@ -36,6 +36,7 @@ model User {
   scheduleHiddenLocationIds String[] @default([]) // スケジュール入力で非表示にする活動場所ID
   pdfFileNameTemplates Json? // PDF出力時のファイル名テンプレート（帳票種別ごと。 例: {"weeklyReport":"{name}_{date}_{type}"}）
   scheduleDefaultView String? // スケジュール画面を開いたときの初期表示("month"|"week"。未設定時は前回の表示を維持)
+  scheduleHoverHighlightEnabled Boolean @default(true) // カレンダーの予定にマウスオーバーした際の強調表示のON/OFF
 
   // Phase 1 Relations
   schedules             Schedule[]

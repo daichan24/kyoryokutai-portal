@@ -33,6 +33,7 @@ export const ProfileSettings: React.FC = () => {
   const [scheduleWeekStartsOn, setScheduleWeekStartsOn] = useState<0 | 1>(0);
   const [scheduleHiddenLocationIds, setScheduleHiddenLocationIds] = useState<string[]>([]);
   const [scheduleDefaultView, setScheduleDefaultView] = useState<'month' | 'week' | ''>('');
+  const [scheduleHoverHighlightEnabled, setScheduleHoverHighlightEnabled] = useState(true);
   const [pdfFileNameTemplates, setPdfFileNameTemplates] = useState<Partial<Record<PdfSaveLocationType, string>>>({});
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -52,6 +53,7 @@ export const ProfileSettings: React.FC = () => {
       setScheduleWeekStartsOn(user.scheduleWeekStartsOn === 1 ? 1 : 0);
       setScheduleHiddenLocationIds(Array.isArray(user.scheduleHiddenLocationIds) ? user.scheduleHiddenLocationIds : []);
       setScheduleDefaultView(user.scheduleDefaultView === 'month' || user.scheduleDefaultView === 'week' ? user.scheduleDefaultView : '');
+      setScheduleHoverHighlightEnabled(user.scheduleHoverHighlightEnabled !== false);
       setPdfFileNameTemplates(user.pdfFileNameTemplates && typeof user.pdfFileNameTemplates === 'object' ? user.pdfFileNameTemplates : {});
     }
   }, [user]);
@@ -83,7 +85,7 @@ export const ProfileSettings: React.FC = () => {
   }, [currentLinks]);
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Partial<Record<PdfSaveLocationType, string>>; scheduleDefaultView?: 'month' | 'week' | null }) => {
+    mutationFn: async (data: { avatarColor?: string; avatarLetter?: string | null; darkMode?: boolean; department?: string | null; missionType?: 'FREE' | 'MISSION' | null; wishesEnabled?: boolean; notepadEnabled?: boolean; contactsSidebarEnabled?: boolean; emailNotificationsEnabled?: boolean; scheduleWeekStartsOn?: 0 | 1; scheduleHiddenLocationIds?: string[]; pdfFileNameTemplates?: Partial<Record<PdfSaveLocationType, string>>; scheduleDefaultView?: 'month' | 'week' | null; scheduleHoverHighlightEnabled?: boolean }) => {
       const response = await api.put('/api/me/profile', data);
       return response.data;
     },
@@ -166,6 +168,7 @@ export const ProfileSettings: React.FC = () => {
       scheduleWeekStartsOn,
       scheduleHiddenLocationIds,
       scheduleDefaultView: scheduleDefaultView === '' ? null : scheduleDefaultView,
+      scheduleHoverHighlightEnabled,
       pdfFileNameTemplates: Object.fromEntries(
         Object.entries(pdfFileNameTemplates).filter(([, value]) => (value ?? '').trim() !== ''),
       ),
@@ -423,6 +426,25 @@ export const ProfileSettings: React.FC = () => {
                 週表示
               </button>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">予定にマウスオーバーしたときの強調表示</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                全員表示で予定やメンバー一覧にカーソルを合わせると、その人の予定だけを強調します
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={scheduleHoverHighlightEnabled}
+                onChange={(e) => setScheduleHoverHighlightEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+              <span className="ms-3 text-sm text-gray-600 dark:text-gray-400">{scheduleHoverHighlightEnabled ? 'ON' : 'OFF'}</span>
+            </label>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
