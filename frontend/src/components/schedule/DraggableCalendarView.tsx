@@ -278,6 +278,30 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     }
   }, [viewMode]);
 
+  // 週・日表示では「終日」行も曜日ヘッダーの直下にスタック表示でsticky固定する。
+  // ヘッダーの高さは可変なので、実測してCSS変数として渡す(下のstyle参照)
+  const [headerHeight, setHeaderHeight] = useState(0);
+  useEffect(() => {
+    if (viewMode !== 'week' && viewMode !== 'day') {
+      setHeaderHeight(0);
+      return;
+    }
+    let observer: ResizeObserver | null = null;
+    const timer = setTimeout(() => {
+      const header = document.querySelector<HTMLElement>('.fc-col-header');
+      if (!header) return;
+      observer = new ResizeObserver((entries) => {
+        const h = entries[0]?.contentRect.height;
+        if (typeof h === 'number') setHeaderHeight(Math.round(h));
+      });
+      observer.observe(header);
+    }, 50);
+    return () => {
+      clearTimeout(timer);
+      observer?.disconnect();
+    };
+  }, [viewMode, stickyOffset]);
+
   // 週・日表示を開いたとき、0時からではなく8時付近が見える位置までスクロールする。
   // カレンダー自体は高さ可変(内部スクロールなし)で、実際にはページ側の祖先要素
   // (レイアウトの<main>など)がスクロールするため、DOM操作で対応する。
@@ -302,10 +326,11 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       if (!scrollContainer || scrollContainer === document.body) return;
       const containerRect = scrollContainer.getBoundingClientRect();
       const slotRect = slot.getBoundingClientRect();
-      // 曜日ヘッダー(sticky、モバイルではさらにページ側のツールバーも)に隠れないよう、
-      // その高さ分の余白を残す
+      // 曜日ヘッダー・終日行(いずれもsticky、モバイルではさらにページ側の
+      // ツールバーも)に隠れないよう、その高さ分の余白を残す
       const calendarHeaderHeight = document.querySelector('.fc-col-header')?.getBoundingClientRect().height ?? 32;
-      const headerBuffer = stickyOffset + calendarHeaderHeight;
+      const allDayRowHeight = document.querySelector('.fc-daygrid-body')?.getBoundingClientRect().height ?? 0;
+      const headerBuffer = stickyOffset + calendarHeaderHeight + allDayRowHeight;
       const delta = slotRect.top - containerRect.top - headerBuffer;
       scrollContainer.scrollTop = Math.max(scrollContainer.scrollTop + delta, 0);
     }, 50);
@@ -519,7 +544,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   return (
     <div
       className={`fullcalendar-wrapper ${isMobile ? 'fullcalendar-mobile' : ''}`}
-      style={{ '--schedule-sticky-offset': `${stickyOffset}px` } as React.CSSProperties}
+      style={{
+        '--schedule-sticky-offset': `${stickyOffset}px`,
+        '--schedule-header-height': `${headerHeight}px`,
+      } as React.CSSProperties}
     >
       <FullCalendar
         ref={calendarRef}

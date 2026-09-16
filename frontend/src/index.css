@@ -86,6 +86,21 @@
   top: var(--schedule-sticky-offset, 0px) !important;
 }
 
+/*
+ * 週・日表示の「終日」行も、曜日ヘッダーの直下に積み重なる形でsticky固定する。
+ * FullCalendar自体にはこの行をstickyにするオプションが無いため独自に指定する。
+ */
+.fullcalendar-wrapper .fc-scrollgrid-section-body:has(.fc-daygrid-body) > td {
+  position: sticky !important;
+  top: calc(var(--schedule-sticky-offset, 0px) + var(--schedule-header-height, 0px)) !important;
+  z-index: 4;
+  background: var(--fc-page-bg-color, white);
+}
+
+.dark .fullcalendar-wrapper .fc-scrollgrid-section-body:has(.fc-daygrid-body) > td {
+  background: #1f2937;
+}
+
 /* FullCalendarのテーブル幅を最大化 */
 .fc-view-harness {
   width: 100% !important;
