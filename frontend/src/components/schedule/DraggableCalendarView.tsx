@@ -33,6 +33,10 @@ interface DraggableCalendarViewProps {
   firstDay?: 0 | 1;
   /** ページ側で別途stickyなツールバーがある場合、その高さ(px)。曜日ヘッダーをその下に固定する */
   stickyOffset?: number;
+  /** マウスオーバー等でハイライトしたいユーザーID(サイドバーのメンバー一覧との連動用) */
+  highlightedUserId?: string | null;
+  /** カレンダー上の予定にマウスオーバー/アウトしたときに、そのユーザーIDを通知する */
+  onHoverUser?: (userId: string | null) => void;
 }
 
 const normalizeTimeValue = (value?: string | null, fallback = '00:00') => {
@@ -59,11 +63,19 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   onScheduleUpdate,
   firstDay = 0,
   stickyOffset = 0,
+  highlightedUserId = null,
+  onHoverUser,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const isMobile = useIsMobileBreakpoint();
   const isMobileMonth = isMobile && viewMode === 'month';
+
+  // 複数人のスケジュールが同時に表示されているか（色が近い人同士を見分けやすくする表示の出し分けに使う）
+  const isMultiPersonView = React.useMemo(() => {
+    const userIds = new Set(schedules.map((s) => s.userId).filter(Boolean));
+    return userIds.size > 1;
+  }, [schedules]);
 
   // 色のコントラストを計算して適切なテキスト色を返す
   const getTextColor = (backgroundColor: string): string => {
@@ -473,6 +485,15 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     }
   };
 
+  // 予定にマウスオーバー/アウトしたとき、誰の予定かをサイドバーのメンバー一覧に伝える
+  const handleEventMouseEnter = (info: any) => {
+    const schedule = info.event.extendedProps?.schedule as ScheduleType | undefined;
+    if (schedule?.userId) onHoverUser?.(schedule.userId);
+  };
+  const handleEventMouseLeave = () => {
+    onHoverUser?.(null);
+  };
+
   // 日付クリック処理（新規作成）
   const handleDateClick = (info: any) => {
     const calendarApi = calendarRef.current?.getApi();
@@ -522,6 +543,8 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
         eventClick={handleEventClick}
+        eventMouseEnter={handleEventMouseEnter}
+        eventMouseLeave={handleEventMouseLeave}
         dateClick={handleDateClick}
         height={isMobile ? 'calc(100dvh - 220px)' : 'auto'}
         contentHeight={isMobile ? 'auto' : undefined}
@@ -570,17 +593,35 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         eventDisplay="block"
         displayEventTime={!isMobileMonth}
         displayEventEnd={false}
+        eventClassNames={(arg) => {
+          if (!isMultiPersonView || !highlightedUserId) return [];
+          const schedule = arg.event.extendedProps?.schedule as ScheduleType | undefined;
+          if (!schedule) return [];
+          return schedule.userId === highlightedUserId ? ['cb-event-highlighted'] : ['cb-event-dimmed'];
+        }}
         eventContent={(arg) => {
           const schedule = arg.event.extendedProps?.schedule as ScheduleType | undefined;
           const isGoogle = !!schedule?.googleCalendarEventLink;
           const needsProject = schedule?.googleCalendarEventLink?.origin === 'GOOGLE' && !schedule.projectId;
           const needsLocation = schedule?.googleCalendarEventLink?.origin === 'GOOGLE' && !schedule.locationText;
+          // 複数人が同時表示されているときは、色が近い人同士でも一目で誰の予定か
+          // わかるよう、担当者の頭文字バッジを表示する
+          const ownerInitial = schedule?.user?.avatarLetter || schedule?.user?.name?.charAt(0);
+          const ownerColor = schedule?.user?.avatarColor || '#6B7280';
           return (
             <div className="min-w-0 overflow-hidden">
               <div className="flex min-w-0 items-center gap-1">
                 {isGoogle && (
                   <span className="shrink-0 rounded bg-white/80 px-1 text-[9px] font-bold leading-4 text-gray-700">
                     G
+                  </span>
+                )}
+                {isMultiPersonView && ownerInitial && (
+                  <span
+                    className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold leading-none text-white ring-1 ring-white/80"
+                    style={{ backgroundColor: ownerColor }}
+                  >
+                    {ownerInitial}
                   </span>
                 )}
                 <span className="truncate">{arg.event.title}</span>

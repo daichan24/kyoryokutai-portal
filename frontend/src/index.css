@@ -142,6 +142,21 @@
   @apply opacity-90;
 }
 
+/*
+ * 全員表示など複数人の予定が同時に表示されているとき、色が近い人同士でも
+ * 誰の予定にマウスオーバーしているか一目でわかるよう、対象の予定を強調し
+ * それ以外を薄くする。
+ */
+.fc-event.cb-event-highlighted {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 4px #2563eb;
+  z-index: 5;
+}
+
+.fc-event.cb-event-dimmed {
+  opacity: 0.35;
+}
+
 /* 今日の列（週・日表示）はごく薄いトーンだけ。セル全体を塗りつぶさない */
 .fc-timegrid-col.fc-day-today {
   @apply bg-blue-50/60;
