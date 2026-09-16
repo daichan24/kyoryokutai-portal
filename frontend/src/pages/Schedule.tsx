@@ -111,11 +111,12 @@ export const Schedule: React.FC = () => {
     if (!el) return;
     // 初回は描画前に同期的に測っておく(ResizeObserverのコールバックは非同期のため、
     // 待つと一瞬0pxの位置で描画されてから正しい位置へずれて見えてしまう)
-    setScheduleToolbarHeight(Math.round(el.getBoundingClientRect().height));
-    const observer = new ResizeObserver((entries) => {
-      const height = entries[0]?.contentRect.height;
-      if (typeof height === 'number') setScheduleToolbarHeight(Math.round(height));
-    });
+    const measure = () => setScheduleToolbarHeight(Math.round(el.getBoundingClientRect().height));
+    measure();
+    // ResizeObserverのcontentRectはpadding/borderを含まないcontent-boxの高さを返すため、
+    // このバー(py-2 + border-b分の余白がある)にそのまま使うと実際の高さより小さく
+    // 測ってしまう。実際の占有領域と一致させるため getBoundingClientRect を使う。
+    const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);

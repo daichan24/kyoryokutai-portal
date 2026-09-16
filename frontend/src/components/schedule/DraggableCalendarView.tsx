@@ -292,10 +292,11 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     const timer = setTimeout(() => {
       const header = document.querySelector<HTMLElement>('.fc-col-header');
       if (!header) return;
-      observer = new ResizeObserver((entries) => {
-        const h = entries[0]?.contentRect.height;
-        if (typeof h === 'number') setHeaderHeight(Math.round(h));
-      });
+      // ResizeObserverのcontentRectはpadding/borderを含まないcontent-boxの高さを
+      // 返すため、実際の占有領域(border-box)と一致させるためgetBoundingClientRectを使う
+      const measure = () => setHeaderHeight(Math.round(header.getBoundingClientRect().height));
+      measure();
+      observer = new ResizeObserver(measure);
       observer.observe(header);
     }, 50);
     return () => {
