@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { AnnouncementBanner } from './AnnouncementBanner';
@@ -19,6 +19,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       return false;
     }
   });
+  const location = useLocation();
+  // スケジュール画面はカレンダーの横幅を活かすため、他ページの中央寄せ幅制限を外す
+  const isFullWidthPage = location.pathname === '/schedule';
   const user = useAuthStore((s) => s.user);
   const hydrateForUser = useWorkspaceStore((s) => s.hydrateForUser);
   const clearHydration = useWorkspaceStore((s) => s.clearHydration);
@@ -75,7 +78,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         
         {/* メインコンテンツエリア（モバイル: 全画面、デスクトップ: サイドバー横） */}
         <main className="flex-1 overflow-y-auto bg-background dark:bg-gray-900 p-3 sm:p-4 md:p-6 w-full min-w-0">
-          <div className="max-w-7xl mx-auto w-full">{children ?? <Outlet />}</div>
+          <div className={isFullWidthPage ? 'w-full' : 'max-w-7xl mx-auto w-full'}>{children ?? <Outlet />}</div>
         </main>
       </div>
     </div>

@@ -9,6 +9,7 @@ import type { WeekStartsOn } from '../utils/date';
 import { Button } from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { TaskModal } from '../components/project/TaskModal';
+import { ScheduleReadOnlyPreviewModal } from '../components/schedule/ScheduleReadOnlyPreviewModal';
 import { TimeAxisView } from '../components/schedule/TimeAxisView';
 import { GovernmentAttendanceCalendar } from '../components/schedule/GovernmentAttendanceCalendar';
 import { GovernmentAttendanceModal } from '../components/schedule/GovernmentAttendanceModal';
@@ -91,6 +92,10 @@ export const Schedule: React.FC = () => {
   const [showMemberSidebar, setShowMemberSidebar] = useState(true);
   // カレンダーの予定とメンバー一覧を連動でハイライトするため(色が近い人同士でも誰の予定か分かるように)
   const [highlightedMemberId, setHighlightedMemberId] = useState<string | null>(null);
+  const hoverHighlightEnabled = user?.scheduleHoverHighlightEnabled !== false;
+  const handleHoverMember = (memberId: string | null) => {
+    if (hoverHighlightEnabled) setHighlightedMemberId(memberId);
+  };
   const scheduleWeekStartsOn: WeekStartsOn = user?.scheduleWeekStartsOn === 1 ? 1 : 0;
   const mobileToolbarRef = useRef<HTMLDivElement>(null);
   const [mobileToolbarHeight, setMobileToolbarHeight] = useState(0);
@@ -411,8 +416,8 @@ export const Schedule: React.FC = () => {
                     className={`flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer mb-2 transition-shadow ${
                       highlightedMemberId === user.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
                     }`}
-                    onMouseEnter={() => setHighlightedMemberId(user.id)}
-                    onMouseLeave={() => setHighlightedMemberId(null)}
+                    onMouseEnter={() => handleHoverMember(user.id)}
+                    onMouseLeave={() => handleHoverMember(null)}
                   >
                     <input
                       type="checkbox"
@@ -445,8 +450,8 @@ export const Schedule: React.FC = () => {
                       className={`flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-shadow ${
                         highlightedMemberId === member.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
                       }`}
-                      onMouseEnter={() => setHighlightedMemberId(member.id)}
-                      onMouseLeave={() => setHighlightedMemberId(null)}
+                      onMouseEnter={() => handleHoverMember(member.id)}
+                      onMouseLeave={() => handleHoverMember(null)}
                     >
                       <input
                         type="checkbox"
@@ -470,15 +475,18 @@ export const Schedule: React.FC = () => {
             </div>
           )}
 
-          {/* サイドバー開閉ボタン（閉じている時のみ表示） */}
+          {/* サイドバー開閉ボタン（閉じている時のみ表示。通常のフローに配置し、
+              左のアプリ本体サイドバーと重ならないようにする） */}
           {!showMemberSidebar && (
-            <button
-              onClick={() => setShowMemberSidebar(true)}
-              className="fixed left-4 top-32 z-10 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 hidden lg:block"
-              title="メンバーサイドバーを開く"
-            >
-              <ChevronRight className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-            </button>
+            <div className="hidden lg:flex w-8 flex-shrink-0 flex-col items-center pt-0.5">
+              <button
+                onClick={() => setShowMemberSidebar(true)}
+                className="p-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                title="メンバーサイドバーを開く"
+              >
+                <ChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
           )}
 
           {/* カレンダー本体 */}
@@ -577,8 +585,8 @@ export const Schedule: React.FC = () => {
               <button
                 type="button"
                 onClick={() => toggleMemberVisibility(user.id)}
-                onMouseEnter={() => setHighlightedMemberId(user.id)}
-                onMouseLeave={() => setHighlightedMemberId(null)}
+                onMouseEnter={() => handleHoverMember(user.id)}
+                onMouseLeave={() => handleHoverMember(null)}
                 className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition-shadow ${
                   visibleMemberIds.has(user.id)
                     ? 'border-primary bg-primary/10 text-primary'
@@ -594,8 +602,8 @@ export const Schedule: React.FC = () => {
                 key={member.id}
                 type="button"
                 onClick={() => toggleMemberVisibility(member.id)}
-                onMouseEnter={() => setHighlightedMemberId(member.id)}
-                onMouseLeave={() => setHighlightedMemberId(null)}
+                onMouseEnter={() => handleHoverMember(member.id)}
+                onMouseLeave={() => handleHoverMember(null)}
                 className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition-shadow ${
                   visibleMemberIds.has(member.id)
                     ? 'border-primary bg-primary/10 text-primary'
@@ -623,7 +631,7 @@ export const Schedule: React.FC = () => {
               currentUserId={user?.id}
               stickyOffset={isMobile ? mobileToolbarHeight : 0}
               highlightedUserId={highlightedMemberId}
-              onHoverUser={setHighlightedMemberId}
+              onHoverUser={handleHoverMember}
               onScheduleClick={(schedule) => {
                 if (isMobile && viewMode === 'month') {
                   setSelectedDateForDetail(new Date((schedule as any).startDate || schedule.date));
@@ -946,15 +954,19 @@ export const Schedule: React.FC = () => {
         />
       )}
 
-      {/* スケジュール編集（TaskModal で統一） */}
-      {isModalOpen && selectedSchedule && (
+      {/* スケジュール編集（自分の予定のみTaskModalで編集可能） */}
+      {isModalOpen && selectedSchedule && selectedSchedule.userId === user?.id && (
         <TaskModal
           missionId={selectedSchedule.task?.missionId || (missions.length > 0 ? missions[0].id : undefined)}
           schedule={selectedSchedule}
-          readOnly={selectedSchedule.userId !== user?.id}
           onClose={handleCloseModal}
           onSaved={handleSaved}
         />
+      )}
+
+      {/* 他人の予定はプレビュー専用表示 */}
+      {isModalOpen && selectedSchedule && selectedSchedule.userId !== user?.id && (
+        <ScheduleReadOnlyPreviewModal schedule={selectedSchedule} onClose={handleCloseModal} />
       )}
 
       {/* 日詳細表示モーダル */}
