@@ -377,7 +377,7 @@ export const Schedule: React.FC = () => {
               確実に操作できるようにする */}
           <div
             className={`hidden lg:flex flex-shrink-0 flex-col border-r border-gray-200 dark:border-gray-700 ${
-              showMemberSidebar ? 'w-56 pr-4' : 'w-10'
+              showMemberSidebar ? 'w-56 pr-4' : 'w-14'
             }`}
           >
             <div className="sticky top-0">
@@ -395,7 +395,7 @@ export const Schedule: React.FC = () => {
                 </button>
               </div>
 
-              {showMemberSidebar && (
+              {showMemberSidebar ? (
                 <>
                   {/* 選択数表示 */}
                   <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">
@@ -486,6 +486,61 @@ export const Schedule: React.FC = () => {
                     ))}
                   </div>
                 </>
+              ) : (
+                // 畳んだ状態: 名前は隠し、アイコンとチェックボックスだけを縦に並べて
+                // 表示幅を抑えつつ、表示/非表示の切り替え機能は維持する
+                <div className="space-y-1 max-h-[70vh] overflow-y-auto">
+                  {user && (
+                    <label
+                      className={`flex items-center justify-center gap-1 p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-shadow ${
+                        highlightedMemberId === user.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+                      }`}
+                      onMouseEnter={() => handleHoverMember(user.id)}
+                      onMouseLeave={() => handleHoverMember(null)}
+                      title={`${user.name} (自分)`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={visibleMemberIds.has(user.id)}
+                        onChange={() => toggleMemberVisibility(user.id)}
+                        className="rounded border-gray-300 dark:border-gray-600"
+                      />
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-medium flex-shrink-0"
+                        style={{ backgroundColor: user.avatarColor || '#6B7280' }}
+                      >
+                        {(user.avatarLetter || user.name || '').charAt(0)}
+                      </div>
+                    </label>
+                  )}
+                  {user && availableMembers.length > 0 && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                  )}
+                  {availableMembers.map((member) => (
+                    <label
+                      key={member.id}
+                      className={`flex items-center justify-center gap-1 p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-shadow ${
+                        highlightedMemberId === member.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+                      }`}
+                      onMouseEnter={() => handleHoverMember(member.id)}
+                      onMouseLeave={() => handleHoverMember(null)}
+                      title={member.name}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={visibleMemberIds.has(member.id)}
+                        onChange={() => toggleMemberVisibility(member.id)}
+                        className="rounded border-gray-300 dark:border-gray-600"
+                      />
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-medium flex-shrink-0"
+                        style={{ backgroundColor: member.avatarColor || '#6B7280' }}
+                      >
+                        {(member.avatarLetter || member.name || '').charAt(0)}
+                      </div>
+                    </label>
+                  ))}
+                </div>
               )}
             </div>
           </div>
