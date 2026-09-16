@@ -97,21 +97,21 @@ export const Schedule: React.FC = () => {
     if (hoverHighlightEnabled) setHighlightedMemberId(memberId);
   };
   const scheduleWeekStartsOn: WeekStartsOn = user?.scheduleWeekStartsOn === 1 ? 1 : 0;
-  const mobileToolbarRef = useRef<HTMLDivElement>(null);
-  const [mobileToolbarHeight, setMobileToolbarHeight] = useState(0);
+  const scheduleToolbarRef = useRef<HTMLDivElement>(null);
+  const [scheduleToolbarHeight, setScheduleToolbarHeight] = useState(0);
 
   useEffect(() => {
     setDetailFilterUserId('');
   }, [selectedDateForDetail]);
 
-  // モバイルでは日付/期間ナビゲーションのツールバー自体もsticky表示になるため、
+  // 日付/期間ナビゲーションのツールバー自体もsticky表示になるため、
   // カレンダー本体の曜日ヘッダーがその下に重ならず並んで固定されるよう高さを測っておく
   useEffect(() => {
-    const el = mobileToolbarRef.current;
+    const el = scheduleToolbarRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
       const height = entries[0]?.contentRect.height;
-      if (typeof height === 'number') setMobileToolbarHeight(Math.round(height));
+      if (typeof height === 'number') setScheduleToolbarHeight(Math.round(height));
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -492,8 +492,8 @@ export const Schedule: React.FC = () => {
           {/* カレンダー本体 */}
           <div className="flex-1 min-w-0">
         <div
-          ref={mobileToolbarRef}
-          className="sticky top-0 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur border-b border-gray-100 dark:border-gray-700 sm:static sm:border-b-0 px-3 sm:px-0 py-2 sm:py-0 mb-2"
+          ref={scheduleToolbarRef}
+          className="sticky top-0 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur border-b border-gray-100 dark:border-gray-700 px-3 sm:px-0 py-2 mb-2"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Button variant="outline" onClick={handlePrev} className="h-9 w-9 p-0">
@@ -629,7 +629,7 @@ export const Schedule: React.FC = () => {
               currentDate={currentDate}
               calendarViewMode={viewMode === 'month' ? 'all' : calendarViewMode}
               currentUserId={user?.id}
-              stickyOffset={isMobile ? mobileToolbarHeight : 0}
+              stickyOffset={scheduleToolbarHeight}
               highlightedUserId={highlightedMemberId}
               onHoverUser={handleHoverMember}
               onScheduleClick={(schedule) => {

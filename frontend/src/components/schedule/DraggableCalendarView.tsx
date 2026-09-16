@@ -568,6 +568,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         droppable={true}
         eventResizableFromStart={false}
         eventDurationEditable={true}
+        slotEventOverlap={false}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
         eventClick={handleEventClick}

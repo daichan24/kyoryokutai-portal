@@ -238,6 +238,15 @@
   visibility: hidden;
 }
 
+/*
+ * デスクトップの週・日表示は1コマ(30分)の高さが低く、9時〜17時半を見るだけでも
+ * スクロールが必要だった。縦方向にもう少し余裕を持たせる(モバイルは既存の
+ * 専用調整があるため対象外)。
+ */
+.fullcalendar-wrapper:not(.fullcalendar-mobile) .fc-timegrid-slot {
+  height: 42px;
+}
+
 /* 時間軸の罫線 - デフォルトは実線 */
 .fc-timegrid-slot {
   border-bottom: 1px solid #e5e7eb !important;
