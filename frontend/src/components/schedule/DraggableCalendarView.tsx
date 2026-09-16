@@ -279,11 +279,12 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   }, [viewMode]);
 
   // 週・日表示では「終日」行も曜日ヘッダーの直下にスタック表示でsticky固定する。
-  // ヘッダーの高さは可変なので、実測してCSS変数として渡す(下のstyle参照)
-  const [headerHeight, setHeaderHeight] = useState(0);
+  // ヘッダーの高さは可変なので、実測してCSS変数として渡す(下のstyle参照)。
+  // 初期値は実測値に近いデフォルトにしておき、測定完了までの間に終日行の
+  // 固定位置が大きくずれて見える(ジャンプする)のを防ぐ
+  const [headerHeight, setHeaderHeight] = useState(32);
   useEffect(() => {
     if (viewMode !== 'week' && viewMode !== 'day') {
-      setHeaderHeight(0);
       return;
     }
     let observer: ResizeObserver | null = null;

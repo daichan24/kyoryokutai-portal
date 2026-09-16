@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -106,9 +106,12 @@ export const Schedule: React.FC = () => {
 
   // 日付/期間ナビゲーションのツールバー自体もsticky表示になるため、
   // カレンダー本体の曜日ヘッダーがその下に重ならず並んで固定されるよう高さを測っておく
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scheduleToolbarRef.current;
     if (!el) return;
+    // 初回は描画前に同期的に測っておく(ResizeObserverのコールバックは非同期のため、
+    // 待つと一瞬0pxの位置で描画されてから正しい位置へずれて見えてしまう)
+    setScheduleToolbarHeight(Math.round(el.getBoundingClientRect().height));
     const observer = new ResizeObserver((entries) => {
       const height = entries[0]?.contentRect.height;
       if (typeof height === 'number') setScheduleToolbarHeight(Math.round(height));
@@ -493,7 +496,8 @@ export const Schedule: React.FC = () => {
           <div className="flex-1 min-w-0">
         <div
           ref={scheduleToolbarRef}
-          className="sticky top-0 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur border-b border-gray-100 dark:border-gray-700 px-3 sm:px-0 py-2 mb-2"
+          className="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-3 sm:px-0 py-2 mb-2"
+          style={{ transform: 'translateZ(0)' }}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Button variant="outline" onClick={handlePrev} className="h-9 w-9 p-0">

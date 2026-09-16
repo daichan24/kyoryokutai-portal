@@ -101,6 +101,16 @@
   background: #1f2937;
 }
 
+/*
+ * sticky固定した要素が、ブラウザによってはスクロール中にわずかに追従が
+ * 遅れて見える(ジッター)ことがある。GPUレイヤーに昇格させて描画を安定させる。
+ */
+.fullcalendar-wrapper .fc-scrollgrid-section-header.fc-scrollgrid-section-sticky > *,
+.fullcalendar-wrapper .fc-scrollgrid-section-body:has(.fc-daygrid-body) > td {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
 /* FullCalendarのテーブル幅を最大化 */
 .fc-view-harness {
   width: 100% !important;
