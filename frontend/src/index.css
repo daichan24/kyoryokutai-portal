@@ -76,6 +76,16 @@
   @apply w-full min-w-0;
 }
 
+/*
+ * スケジュール画面では、モバイル時にページ側の日付ナビゲーションツールバー自体も
+ * sticky (z-index高め)で画面上部に固定される。FullCalendarの曜日ヘッダーの
+ * sticky位置(既定はtop:0)をそのままにすると同じ位置に重なって隠れてしまうため、
+ * ツールバーの高さ(--schedule-sticky-offsetとしてJSから設定)ぶん下にずらす。
+ */
+.fullcalendar-wrapper .fc-scrollgrid-section-header.fc-scrollgrid-section-sticky > * {
+  top: var(--schedule-sticky-offset, 0px) !important;
+}
+
 /* FullCalendarのテーブル幅を最大化 */
 .fc-view-harness {
   width: 100% !important;

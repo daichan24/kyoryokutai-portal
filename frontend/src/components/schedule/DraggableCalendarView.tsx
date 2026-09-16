@@ -31,6 +31,8 @@ interface DraggableCalendarViewProps {
   onMoreClick?: (date: Date) => void;
   onScheduleUpdate: () => void;
   firstDay?: 0 | 1;
+  /** ページ側で別途stickyなツールバーがある場合、その高さ(px)。曜日ヘッダーをその下に固定する */
+  stickyOffset?: number;
 }
 
 const normalizeTimeValue = (value?: string | null, fallback = '00:00') => {
@@ -56,6 +58,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   onMoreClick,
   onScheduleUpdate,
   firstDay = 0,
+  stickyOffset = 0,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -264,11 +267,9 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   }, [viewMode]);
 
   // 週・日表示を開いたとき、0時からではなく8時付近が見える位置までスクロールする。
-  // デスクトップはカレンダー自体の高さが可変(内部スクロールなし)でページ全体が
-  // スクロールするため、scrollTimeプロパティではなくDOM操作で対応する。
+  // カレンダー自体は高さ可変(内部スクロールなし)で、実際にはページ側の祖先要素
+  // (レイアウトの<main>など)がスクロールするため、DOM操作で対応する。
   useEffect(() => {
-    // モバイルはカレンダー自体が内部スクロールするため、scrollTimeプロパティで対応済み
-    if (isMobile) return;
     if (viewMode !== 'week' && viewMode !== 'day') return;
     const timer = setTimeout(() => {
       const slot = document.querySelector<HTMLElement>('.fc-timegrid-slot[data-time="08:00:00"]');
@@ -289,13 +290,15 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
       if (!scrollContainer || scrollContainer === document.body) return;
       const containerRect = scrollContainer.getBoundingClientRect();
       const slotRect = slot.getBoundingClientRect();
-      // カレンダーの曜日ヘッダー(sticky)などに隠れないよう、少し余白を残す
-      const headerBuffer = 80;
+      // 曜日ヘッダー(sticky、モバイルではさらにページ側のツールバーも)に隠れないよう、
+      // その高さ分の余白を残す
+      const calendarHeaderHeight = document.querySelector('.fc-col-header')?.getBoundingClientRect().height ?? 32;
+      const headerBuffer = stickyOffset + calendarHeaderHeight;
       const delta = slotRect.top - containerRect.top - headerBuffer;
       scrollContainer.scrollTop = Math.max(scrollContainer.scrollTop + delta, 0);
     }, 50);
     return () => clearTimeout(timer);
-  }, [viewMode, currentDate]);
+  }, [viewMode, currentDate, stickyOffset]);
 
   // FullCalendar から返される Date オブジェクトを JST として扱うヘルパー関数
   // FullCalendar の timeZone: 'Asia/Tokyo' 設定により、Date オブジェクトは
@@ -493,7 +496,10 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   };
 
   return (
-    <div className={`fullcalendar-wrapper ${isMobile ? 'fullcalendar-mobile' : ''}`}>
+    <div
+      className={`fullcalendar-wrapper ${isMobile ? 'fullcalendar-mobile' : ''}`}
+      style={{ '--schedule-sticky-offset': `${stickyOffset}px` } as React.CSSProperties}
+    >
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -504,7 +510,6 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         timeZone="local"
         slotMinTime="00:00:00"
         slotMaxTime="24:00:00"
-        scrollTime="08:00:00"
         slotDuration="00:30:00"
         slotLabelInterval="01:00:00"
         snapDuration="00:15:00"
@@ -521,7 +526,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
         height={isMobile ? 'calc(100dvh - 220px)' : 'auto'}
         contentHeight={isMobile ? 'auto' : undefined}
         expandRows={true}
-        stickyHeaderDates={!isMobile}
+        stickyHeaderDates={true}
         dayMaxEvents={isMobileMonth ? 3 : isMobile ? 3 : 3}
         dayMaxEventRows={isMobileMonth ? 3 : isMobile ? 3 : 3}
         moreLinkContent={(arg) => `${arg.num} more`}
