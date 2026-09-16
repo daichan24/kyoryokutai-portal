@@ -67,6 +67,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
   onHoverUser,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const isMobile = useIsMobileBreakpoint();
   const isMobileMonth = isMobile && viewMode === 'month';
@@ -338,6 +339,49 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
     return () => clearTimeout(timer);
   }, [viewMode, currentDate, stickyOffset]);
 
+  // 終日行をsticky固定しているため、FullCalendar標準の「+N件」ポップオーバーの
+  // 位置計算(スクロール前の静的なレイアウト位置を基準にする)がずれてしまい、
+  // ページ上部(ヘッダーと重なる位置)に表示されてしまうことがある。ポップオーバーが
+  // DOMに追加されたタイミングで、実際にクリックされたリンクの表示位置を基準に
+  // position: fixed で正しい位置へ補正する。
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const repositionPopover = (popover: HTMLElement) => {
+      const date = popover.getAttribute('data-date');
+      const anchor = date
+        ? wrapper.querySelector<HTMLElement>(`.fc-daygrid-day[data-date="${date}"] .fc-daygrid-more-link`)
+        : null;
+      if (!anchor) return;
+      const anchorRect = anchor.getBoundingClientRect();
+      const popRect = popover.getBoundingClientRect();
+      const margin = 8;
+      let top = anchorRect.bottom + 4;
+      let left = anchorRect.left;
+      if (left + popRect.width > window.innerWidth - margin) {
+        left = window.innerWidth - popRect.width - margin;
+      }
+      left = Math.max(left, margin);
+      if (top + popRect.height > window.innerHeight - margin) {
+        top = Math.max(margin, anchorRect.top - popRect.height - 4);
+      }
+      popover.style.position = 'fixed';
+      popover.style.top = `${top}px`;
+      popover.style.left = `${left}px`;
+    };
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => {
+          if (!(node instanceof HTMLElement)) return;
+          const popover = node.classList.contains('fc-popover') ? node : node.querySelector<HTMLElement>('.fc-popover');
+          if (popover) repositionPopover(popover);
+        });
+      }
+    });
+    observer.observe(wrapper, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [viewMode]);
+
   // FullCalendar から返される Date オブジェクトを JST として扱うヘルパー関数
   // FullCalendar の timeZone: 'Asia/Tokyo' 設定により、Date オブジェクトは
   // ローカルタイムゾーンで返されるが、実際には JST として解釈する必要がある
@@ -544,6 +588,7 @@ export const DraggableCalendarView: React.FC<DraggableCalendarViewProps> = ({
 
   return (
     <div
+      ref={wrapperRef}
       className={`fullcalendar-wrapper ${isMobile ? 'fullcalendar-mobile' : ''}`}
       style={{
         '--schedule-sticky-offset': `${stickyOffset}px`,

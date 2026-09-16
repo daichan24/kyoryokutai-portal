@@ -497,7 +497,6 @@ export const Schedule: React.FC = () => {
         <div
           ref={scheduleToolbarRef}
           className="sticky top-0 z-20 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-3 sm:px-0 py-2 mb-2"
-          style={{ transform: 'translateZ(0)' }}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Button variant="outline" onClick={handlePrev} className="h-9 w-9 p-0">
