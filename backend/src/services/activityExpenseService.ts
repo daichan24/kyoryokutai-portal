@@ -52,6 +52,8 @@ export async function getActivityExpenseSummary(userId: string, recentLimit = 10
       spentAt: e.spentAt.toISOString(),
       description: e.description,
       amount: e.amount,
+      category: e.category,
+      counterparty: e.counterparty,
       status: e.status,
       rejectionReason: e.rejectionReason,
       createdAt: e.createdAt.toISOString(),

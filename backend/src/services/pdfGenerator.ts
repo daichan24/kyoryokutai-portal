@@ -5,6 +5,8 @@ import sanitizeHtml from 'sanitize-html';
 import prisma from '../lib/prisma';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { ActivityExpenseCategory } from '@prisma/client';
+import { ACTIVITY_EXPENSE_CATEGORIES } from '../constants/activityExpenseCategories';
 
 /** Puppeteer 用: ネットワーク不要で日本語表示（@fontsource/noto-sans-jp の japanese サブセットを base64 埋め込み） */
 let cachedEmbeddedNotoStyle: string | null = null;
@@ -825,6 +827,188 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
     }
+    throw error;
+  }
+}
+
+/** 指定が無い場合は「今日が属する年度（4/1〜翌3/31）」を返す（日本の自治体会計年度） */
+function resolveFiscalYearRange(fromStr?: string, toStr?: string): { from: Date; to: Date; label: string } {
+  if (fromStr && toStr) {
+    const from = new Date(`${fromStr}T00:00:00.000Z`);
+    const to = new Date(`${toStr}T23:59:59.999Z`);
+    return { from, to, label: `${fromStr}〜${toStr}` };
+  }
+  const now = new Date();
+  const fiscalYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; // 1〜3月は前年度扱い
+  const from = new Date(Date.UTC(fiscalYear, 3, 1, 0, 0, 0));
+  const to = new Date(Date.UTC(fiscalYear + 1, 2, 31, 23, 59, 59, 999));
+  return { from, to, label: `${fiscalYear}年度（${fiscalYear}年4月1日〜${fiscalYear + 1}年3月31日）` };
+}
+
+/**
+ * 活動経費報告書PDF生成（町の報告フォーマットに合わせて項目ごとに集計）
+ */
+export async function generateActivityExpenseReportPDF(
+  userId: string,
+  options?: { from?: string; to?: string },
+): Promise<Buffer> {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const { from, to, label } = resolveFiscalYearRange(options?.from, options?.to);
+
+    const entries = await prisma.activityExpenseEntry.findMany({
+      where: {
+        userId,
+        status: 'APPROVED',
+        spentAt: { gte: from, lte: to },
+      },
+      orderBy: [{ spentAt: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    type EntryRow = (typeof entries)[number];
+    const byCategory = new Map<ActivityExpenseCategory, EntryRow[]>();
+    const uncategorized: EntryRow[] = [];
+    for (const entry of entries) {
+      if (!entry.category) {
+        uncategorized.push(entry);
+        continue;
+      }
+      if (!byCategory.has(entry.category)) byCategory.set(entry.category, []);
+      byCategory.get(entry.category)!.push(entry);
+    }
+
+    const grandTotal = entries.reduce((sum, e) => sum + e.amount, 0);
+
+    const categoryRowsHtml = ACTIVITY_EXPENSE_CATEGORIES.map(({ value, label: categoryLabel, abbreviation }) => {
+      const categoryEntries = byCategory.get(value) || [];
+      const subtotal = categoryEntries.reduce((sum, e) => sum + e.amount, 0);
+      const rowCount = Math.max(categoryEntries.length, 1);
+
+      if (categoryEntries.length === 0) {
+        return `
+        <tr>
+          <td class="col-category">${escapeHtmlForPdf(categoryLabel)}</td>
+          <td class="col-content"></td>
+          <td class="col-date"></td>
+          <td class="col-no"></td>
+          <td class="col-counterparty"></td>
+          <td class="col-amount">0</td>
+          <td class="col-subtotal">0</td>
+        </tr>`;
+      }
+
+      return categoryEntries
+        .map((entry, index) => {
+          const spentAtLabel = format(entry.spentAt, 'M/d');
+          const expenseNo = `${abbreviation}－${index + 1}`;
+          const rowCells = `
+          <td class="col-content">${escapeHtmlForPdf(entry.description)}</td>
+          <td class="col-date">${escapeHtmlForPdf(spentAtLabel)}</td>
+          <td class="col-no">${escapeHtmlForPdf(expenseNo)}</td>
+          <td class="col-counterparty">${escapeHtmlForPdf(entry.counterparty || '')}</td>
+          <td class="col-amount">${entry.amount.toLocaleString('ja-JP')}</td>`;
+
+          if (index === 0) {
+            return `
+            <tr>
+              <td class="col-category" rowspan="${rowCount}">${escapeHtmlForPdf(categoryLabel)}</td>
+              ${rowCells}
+              <td class="col-subtotal" rowspan="${rowCount}">${subtotal.toLocaleString('ja-JP')}</td>
+            </tr>`;
+          }
+          return `<tr>${rowCells}</tr>`;
+        })
+        .join('');
+    }).join('');
+
+    const uncategorizedSubtotal = uncategorized.reduce((sum, e) => sum + e.amount, 0);
+    const uncategorizedRowsHtml = uncategorized
+      .map((entry, index) => {
+        const spentAtLabel = format(entry.spentAt, 'M/d');
+        const rowCells = `
+          <td class="col-content">${escapeHtmlForPdf(entry.description)}</td>
+          <td class="col-date">${escapeHtmlForPdf(spentAtLabel)}</td>
+          <td class="col-no">－</td>
+          <td class="col-counterparty">${escapeHtmlForPdf(entry.counterparty || '')}</td>
+          <td class="col-amount">${entry.amount.toLocaleString('ja-JP')}</td>`;
+
+        if (index === 0) {
+          return `
+          <tr>
+            <td class="col-category" rowspan="${uncategorized.length}">未分類</td>
+            ${rowCells}
+            <td class="col-subtotal" rowspan="${uncategorized.length}">${uncategorizedSubtotal.toLocaleString('ja-JP')}</td>
+          </tr>`;
+        }
+        return `<tr>${rowCells}</tr>`;
+      })
+      .join('');
+
+    const html = `
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      ${getEmbeddedNotoSansJpStyle()}
+      <style>
+        body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; font-size: 10pt; margin: 24px; color: #111; }
+        h1 { text-align: center; font-size: 15pt; margin-bottom: 18px; }
+        .meta-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; }
+        .meta-row .period { font-size: 10pt; }
+        .meta-row .unit { font-size: 9pt; color: #333; }
+        table.report { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        table.report th, table.report td { border: 1px solid #333; padding: 4px 6px; font-size: 9pt; vertical-align: middle; word-break: break-all; }
+        table.report thead th { background: #e8f0e4; text-align: center; font-weight: 700; }
+        .col-category { width: 13%; text-align: center; }
+        .col-content { width: 27%; }
+        .col-date { width: 9%; text-align: center; }
+        .col-no { width: 9%; text-align: center; }
+        .col-counterparty { width: 17%; }
+        .col-amount { width: 12%; text-align: right; }
+        .col-subtotal { width: 13%; text-align: right; background: #fdf3da; }
+        tfoot td { font-weight: 700; text-align: right; background: #f3f3f3; }
+      </style>
+    </head>
+    <body>
+      <h1>地域おこし協力隊活動経費実績報告書</h1>
+      <div class="meta-row">
+        <div class="period">隊員氏名：${escapeHtmlForPdf(user.name)}${IDEOGRAPHIC_SPACE}／${IDEOGRAPHIC_SPACE}対象期間：${escapeHtmlForPdf(label)}</div>
+        <div class="unit">（単位：円）</div>
+      </div>
+      <table class="report">
+        <thead>
+          <tr>
+            <th class="col-category">項目</th>
+            <th class="col-content">内容</th>
+            <th class="col-date">支出月日</th>
+            <th class="col-no">支出No</th>
+            <th class="col-counterparty">相手方</th>
+            <th class="col-amount">金額（税込）</th>
+            <th class="col-subtotal">補助対象経費総額</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${categoryRowsHtml}
+          ${uncategorizedRowsHtml}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6">合計</td>
+            <td class="col-subtotal">${grandTotal.toLocaleString('ja-JP')}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </body>
+    </html>
+  `;
+
+    return await generatePDFFromHTML(html);
+  } catch (error) {
+    console.error('Error in generateActivityExpenseReportPDF:', error);
     throw error;
   }
 }

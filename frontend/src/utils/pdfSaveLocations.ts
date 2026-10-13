@@ -9,13 +9,14 @@
  * （サーバー側のユーザー設定とは同期されない）。
  */
 
-export type PdfSaveLocationType = 'weeklyReport' | 'monthlyReport' | 'inspection' | 'nudges';
+export type PdfSaveLocationType = 'weeklyReport' | 'monthlyReport' | 'inspection' | 'nudges' | 'activityExpenseReport';
 
 export const PDF_SAVE_LOCATION_LABELS: Record<PdfSaveLocationType, string> = {
   weeklyReport: '週次報告書',
   monthlyReport: '月次報告書',
   inspection: '複命書',
   nudges: '協力隊細則',
+  activityExpenseReport: '活動経費報告書',
 };
 
 export const DEFAULT_PDF_FILE_NAME_TEMPLATE = '{name}_{date}_{type}';

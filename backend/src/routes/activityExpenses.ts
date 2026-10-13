@@ -5,9 +5,16 @@ import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { getActivityExpenseSummary } from '../services/activityExpenseService';
 import { notifyExpenseResult, notifyExpenseSubmitted } from '../services/approvalEmailService';
+import { generateActivityExpenseReportPDF } from '../services/pdfGenerator';
+import { ACTIVITY_EXPENSE_CATEGORIES, ACTIVITY_EXPENSE_CATEGORY_VALUES } from '../constants/activityExpenseCategories';
 
 const router = Router();
 router.use(authenticate);
+
+// 費用区分（項目）の選択肢
+router.get('/categories', (_req: AuthRequest, res) => {
+  res.json(ACTIVITY_EXPENSE_CATEGORIES.map(({ value, label }) => ({ value, label })));
+});
 
 function isStaff(role: string) {
   return role === 'MASTER' || role === 'SUPPORT' || role === 'GOVERNMENT';
@@ -52,6 +59,8 @@ const entryCreateSchema = z.object({
   spentAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   description: z.string().min(1).max(500),
   amount: z.number().int().min(1).max(50_000_000),
+  category: z.enum(ACTIVITY_EXPENSE_CATEGORY_VALUES),
+  counterparty: z.string().max(500).optional().nullable(),
   status: z.enum(['PENDING', 'PLANNED']).optional(),
 });
 
@@ -61,6 +70,8 @@ const entryUpdateSchema = z.object({
   spentAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   description: z.string().min(1).max(500).optional(),
   amount: z.number().int().min(1).max(50_000_000).optional(),
+  category: z.enum(ACTIVITY_EXPENSE_CATEGORY_VALUES).optional(),
+  counterparty: z.string().max(500).optional().nullable(),
   status: z.enum(['PENDING', 'PLANNED']).optional(),
 });
 
@@ -97,6 +108,41 @@ router.get('/summary', async (req: AuthRequest, res) => {
     }
     console.error('activity-expenses summary:', e);
     res.status(500).json({ error: '取得に失敗しました' });
+  }
+});
+
+// 活動経費報告書PDF（町の報告フォーマットに合わせて項目ごとに集計）
+router.get('/report-pdf', async (req: AuthRequest, res) => {
+  try {
+    const targetId = resolveTargetUserId(req, req.query.userId as string | undefined);
+    await assertTargetIsMember(targetId);
+
+    const from = typeof req.query.from === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.from) ? req.query.from : undefined;
+    const to = typeof req.query.to === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.to) ? req.query.to : undefined;
+
+    const targetUser = await prisma.user.findUnique({ where: { id: targetId }, select: { name: true } });
+    const pdf = await generateActivityExpenseReportPDF(targetId, { from, to });
+
+    const displayName = targetUser?.name?.trim() || 'user';
+    const asciiSafe = displayName.replace(/[^\w.-]+/g, '_').slice(0, 60) || 'user';
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    res.setHeader('Content-Type', 'application/pdf');
+    const utfName = encodeURIComponent(`活動経費報告書_${displayName}_${dateStr}.pdf`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="activity-expense-report_${asciiSafe}_${dateStr}.pdf"; filename*=UTF-8''${utfName}`,
+    );
+    res.send(pdf);
+  } catch (e: unknown) {
+    const err = e as Error & { status?: number };
+    if (err.message === 'USER_ID_REQUIRED') {
+      return res.status(400).json({ error: '隊員を userId で指定してください' });
+    }
+    if (err.message === 'MEMBER_NOT_FOUND') {
+      return res.status(404).json({ error: '隊員が見つかりません' });
+    }
+    console.error('activity-expenses report-pdf:', e);
+    res.status(500).json({ error: `PDF出力に失敗しました: ${err.message || 'Unknown error'}` });
   }
 });
 
@@ -205,6 +251,8 @@ router.post('/entries', async (req: AuthRequest, res) => {
         spentAt,
         description: data.description.trim(),
         amount: data.amount,
+        category: data.category,
+        counterparty: data.counterparty?.trim() || null,
         status,
         createdById: req.user!.id,
       },
@@ -234,7 +282,15 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
     const { id } = req.params;
     await loadEntryWithAccess(id, req);
     const data = entryUpdateSchema.parse(req.body);
-    if (!data.spentAt && !data.description && data.amount === undefined && data.projectId === undefined && data.scheduleId === undefined) {
+    if (
+      !data.spentAt &&
+      !data.description &&
+      data.amount === undefined &&
+      data.projectId === undefined &&
+      data.scheduleId === undefined &&
+      data.category === undefined &&
+      data.counterparty === undefined
+    ) {
       return res.status(400).json({ error: '更新内容がありません' });
     }
 
@@ -252,11 +308,15 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
       amount?: number;
       projectId?: string | null;
       scheduleId?: string | null;
+      category?: (typeof ACTIVITY_EXPENSE_CATEGORY_VALUES)[number];
+      counterparty?: string | null;
       updatedById: string;
     } = { updatedById: req.user!.id };
     if (data.spentAt) update.spentAt = new Date(`${data.spentAt}T12:00:00.000Z`);
     if (data.description !== undefined) update.description = data.description.trim();
     if (data.amount !== undefined) update.amount = data.amount;
+    if (data.category !== undefined) update.category = data.category;
+    if (data.counterparty !== undefined) update.counterparty = data.counterparty?.trim() || null;
     if (data.projectId !== undefined) {
       if (data.projectId === null) {
         return res.status(400).json({ error: 'プロジェクトの紐づけを外すことはできません' });

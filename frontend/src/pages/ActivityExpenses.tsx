@@ -9,6 +9,8 @@ import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { sortUsersByDisplayOrder } from '../utils/userSort';
+import { renderPdfFileName } from '../utils/pdfSaveLocations';
+import { saveBlobAsFile, describeDownloadError } from '../utils/saveFile';
 
 function formatYen(n: number) {
   return `¥${n.toLocaleString('ja-JP')}`;
@@ -19,11 +21,18 @@ type ExpenseStatus = 'PLANNED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 type ExpenseStatusFilter = 'ALL' | ExpenseStatus;
 type EntryMode = 'PENDING' | 'PLANNED';
 
+interface ExpenseCategoryOption {
+  value: string;
+  label: string;
+}
+
 interface ExpenseEntry {
   id: string;
   spentAt: string;
   description: string;
   amount: number;
+  category?: string | null;
+  counterparty?: string | null;
   projectId?: string | null;
   project?: { id: string; projectName: string; missionId?: string | null } | null;
   scheduleId?: string | null;
@@ -63,15 +72,31 @@ export const ActivityExpenses: React.FC = () => {
   const [spentAt, setSpentAt] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [categoryForEntry, setCategoryForEntry] = useState('');
+  const [counterpartyForEntry, setCounterpartyForEntry] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [entryMode, setEntryMode] = useState<EntryMode>('PENDING');
   const [projectIdForEntry, setProjectIdForEntry] = useState('');
   const [scheduleIdForEntry, setScheduleIdForEntry] = useState('');
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<ExpenseStatusFilter>('ALL');
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
   const scheduleIdFromQuery = searchParams.get('scheduleId') || '';
   const appliedScheduleParamsRef = React.useRef<string | null>(null);
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
+
+  const { data: expenseCategories = [] } = useQuery<ExpenseCategoryOption[]>({
+    queryKey: ['activity-expenses', 'categories'],
+    queryFn: async () => {
+      const r = await api.get<ExpenseCategoryOption[]>('/api/activity-expenses/categories');
+      return r.data || [];
+    },
+  });
+  const categoryLabelByValue = useMemo(
+    () => Object.fromEntries(expenseCategories.map((c) => [c.value, c.label])),
+    [expenseCategories]
+  );
+
 
   const { data: memberProjects = [] } = useQuery<ProjectOption[]>({
     queryKey: ['activity-expenses', 'projects', effectiveUserId],
@@ -163,6 +188,8 @@ export const ActivityExpenses: React.FC = () => {
         spentAt,
         description: description.trim(),
         amount: n,
+        category: categoryForEntry,
+        counterparty: counterpartyForEntry.trim() || undefined,
         status: entryMode,
       });
     },
@@ -172,6 +199,8 @@ export const ActivityExpenses: React.FC = () => {
       setAmount('');
       setProjectIdForEntry('');
       setScheduleIdForEntry('');
+      setCategoryForEntry('');
+      setCounterpartyForEntry('');
       setEntryMode('PENDING');
       setSpentAt(format(new Date(), 'yyyy-MM-dd'));
       clearScheduleParams();
@@ -186,6 +215,8 @@ export const ActivityExpenses: React.FC = () => {
         spentAt,
         description: description.trim(),
         amount: n,
+        category: categoryForEntry || undefined,
+        counterparty: counterpartyForEntry.trim() || null,
         status: entryMode,
       };
       if (projectIdForEntry) body.projectId = projectIdForEntry;
@@ -199,6 +230,8 @@ export const ActivityExpenses: React.FC = () => {
       setAmount('');
       setProjectIdForEntry('');
       setScheduleIdForEntry('');
+      setCategoryForEntry('');
+      setCounterpartyForEntry('');
       setEntryMode('PENDING');
     },
   });
@@ -224,6 +257,8 @@ export const ActivityExpenses: React.FC = () => {
     setAmount(String(e.amount));
     setProjectIdForEntry(e.projectId || '');
     setScheduleIdForEntry(e.scheduleId || '');
+    setCategoryForEntry(e.category || '');
+    setCounterpartyForEntry(e.counterparty || '');
     setEntryMode(e.status === 'PLANNED' ? 'PLANNED' : 'PENDING');
   };
 
@@ -233,10 +268,45 @@ export const ActivityExpenses: React.FC = () => {
     setAmount('');
     setProjectIdForEntry('');
     setScheduleIdForEntry('');
+    setCategoryForEntry('');
+    setCounterpartyForEntry('');
     setEntryMode('PENDING');
     setSpentAt(format(new Date(), 'yyyy-MM-dd'));
     clearScheduleParams();
   };
+
+  const handleDownloadReportPDF = async () => {
+    if (!effectiveUserId || !user) return;
+    setIsDownloadingReport(true);
+    try {
+      const response = await api.get('/api/activity-expenses/report-pdf', {
+        params: { userId: effectiveUserId },
+        responseType: 'blob',
+        timeout: 60_000,
+      });
+      if (response.data instanceof Blob && response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const errorData = JSON.parse(text);
+        throw new Error(errorData.error || 'PDF出力に失敗しました');
+      }
+      const targetMember = isStaff ? sortedMembers.find((m) => m.id === effectiveUserId) : user;
+      const fileName = renderPdfFileName(user.pdfFileNameTemplates?.activityExpenseReport, {
+        name: targetMember?.name || user.name,
+        date: format(new Date(), 'yyyyMMdd'),
+        type: '活動経費報告書',
+      });
+      await saveBlobAsFile(new Blob([response.data]), fileName, {
+        description: '活動経費報告書PDF',
+        saveLocationType: 'activityExpenseReport',
+      });
+    } catch (error: unknown) {
+      alert(describeDownloadError(error));
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  };
+
+
 
   const filteredEntries = useMemo(() => {
     const entries = summary?.entries || [];
@@ -554,6 +624,21 @@ export const ActivityExpenses: React.FC = () => {
                 )}
               </div>
               <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">項目（必須・報告書の費用区分）</label>
+                <select
+                  value={categoryForEntry}
+                  onChange={(e) => setCategoryForEntry(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
+                >
+                  <option value="">選択してください</option>
+                  {expenseCategories.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">内容</label>
                 <input
                   type="text"
@@ -561,6 +646,17 @@ export const ActivityExpenses: React.FC = () => {
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
                   placeholder="例：会議資料コピー代"
+                  maxLength={500}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">相手方（支払先・任意）</label>
+                <input
+                  type="text"
+                  value={counterpartyForEntry}
+                  onChange={(e) => setCounterpartyForEntry(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
+                  placeholder="例：〇〇商店"
                   maxLength={500}
                 />
               </div>
@@ -603,6 +699,10 @@ export const ActivityExpenses: React.FC = () => {
                         alert('プロジェクトを選択してください');
                         return;
                       }
+                      if (!categoryForEntry) {
+                        alert('項目（費用区分）を選択してください');
+                        return;
+                      }
                       const n = parseInt(amount.replace(/[,]/g, ''), 10);
                       if (Number.isNaN(n) || n < 1) {
                         alert('金額は1円以上の半角数字で入力してください');
@@ -631,6 +731,10 @@ export const ActivityExpenses: React.FC = () => {
                       alert('活動に紐づくプロジェクトを選んでください');
                       return;
                     }
+                    if (!categoryForEntry) {
+                      alert('項目（費用区分）を選択してください');
+                      return;
+                    }
                     const n = parseInt(amount.replace(/[,]/g, ''), 10);
                     if (Number.isNaN(n) || n < 1) {
                       alert('金額は1円以上の半角数字で入力してください');
@@ -648,7 +752,19 @@ export const ActivityExpenses: React.FC = () => {
 
           <section>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">一覧（新しい順）</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">一覧（新しい順）</h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-xs px-3 py-1.5"
+                  onClick={handleDownloadReportPDF}
+                  disabled={isDownloadingReport}
+                  title="当年度（4月〜翌3月）の承認済み支出を項目ごとに集計したPDFを出力します"
+                >
+                  {isDownloadingReport ? '作成中...' : '報告書PDFを出力'}
+                </Button>
+              </div>
               <div className="flex flex-wrap gap-1 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-900/40">
                 {[
                   ['ALL', 'すべて', statusCounts.ALL],
@@ -687,6 +803,7 @@ export const ActivityExpenses: React.FC = () => {
                     <thead className="bg-gray-50 dark:bg-gray-700/80">
                       <tr>
                         <th className="text-left px-3 py-2 font-medium">日付</th>
+                        <th className="text-left px-3 py-2 font-medium">項目</th>
                         <th className="text-left px-3 py-2 font-medium">プロジェクト</th>
                         <th className="text-left px-3 py-2 font-medium">内容</th>
                         <th className="text-center px-3 py-2 font-medium w-24">状態</th>
@@ -699,6 +816,11 @@ export const ActivityExpenses: React.FC = () => {
                         <tr key={row.id}>
                           <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200">
                             {format(parseISO(row.spentAt), 'yyyy年M月d日', { locale: ja })}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-200 text-sm">
+                            {row.category ? categoryLabelByValue[row.category] || row.category : (
+                              <span className="text-amber-600 dark:text-amber-400">未設定</span>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-gray-700 dark:text-gray-200 text-sm">
                             {row.project?.projectName || (
@@ -780,6 +902,9 @@ export const ActivityExpenses: React.FC = () => {
                           <p className="whitespace-nowrap text-base font-bold tabular-nums text-gray-900 dark:text-gray-100">{formatYen(row.amount)}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                          <span className="rounded bg-indigo-50 px-2 py-0.5 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
+                            {row.category ? categoryLabelByValue[row.category] || row.category : '項目未設定'}
+                          </span>
                           <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
                             {row.project?.projectName || 'プロジェクト未設定'}
                           </span>

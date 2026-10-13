@@ -809,25 +809,41 @@ enum ExpenseStatus {
   PLANNED
 }
 
+// 町の活動経費報告書フォーマットの「項目」列（費用区分）
+enum ActivityExpenseCategory {
+  TRAVEL // 旅費
+  SUPPLIES // 消耗品費
+  PRINTING // 印刷製本費
+  COMMUNICATION // 通信運搬費
+  ADVERTISING // 広告料
+  FEES // 手数料
+  INSURANCE // 保険料
+  RENTAL // 使用料、借上料
+  EQUIPMENT // 備品購入費
+  CONTRIBUTION // 負担金
+}
+
 model ActivityExpenseEntry {
-  id              String        @id @default(uuid())
+  id              String                   @id @default(uuid())
   userId          String
-  user            User          @relation("ActivityExpenseEntryMember", fields: [userId], references: [id], onDelete: Cascade)
+  user            User                     @relation("ActivityExpenseEntryMember", fields: [userId], references: [id], onDelete: Cascade)
   projectId       String?
-  project         Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  project         Project?                 @relation(fields: [projectId], references: [id], onDelete: SetNull)
   scheduleId      String?
-  schedule        Schedule?     @relation("ActivityExpenseEntrySchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
-  spentAt         DateTime      @db.Date
-  description     String        @db.VarChar(500)
+  schedule        Schedule?                @relation("ActivityExpenseEntrySchedule", fields: [scheduleId], references: [id], onDelete: SetNull)
+  spentAt         DateTime                 @db.Date
+  description     String                   @db.VarChar(500)
   amount          Int // 円（支出）
-  status          ExpenseStatus @default(PENDING)
-  rejectionReason String?       @db.Text
+  category        ActivityExpenseCategory? // 町の報告書フォーマットの「項目」。既存データ互換のためnullable、新規登録では必須にする
+  counterparty    String?                  @db.VarChar(500) // 「相手方」（支払先）
+  status          ExpenseStatus            @default(PENDING)
+  rejectionReason String?                  @db.Text
   createdById     String?
-  createdBy       User?         @relation("ActivityExpenseEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy       User?                    @relation("ActivityExpenseEntryCreator", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById     String?
-  updatedBy       User?         @relation("ActivityExpenseEntryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  updatedBy       User?                    @relation("ActivityExpenseEntryUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([userId, spentAt])
   @@index([projectId])
