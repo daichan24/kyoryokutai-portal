@@ -74,6 +74,8 @@ export const ActivityExpenses: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [categoryForEntry, setCategoryForEntry] = useState('');
   const [counterpartyForEntry, setCounterpartyForEntry] = useState('');
+  const [repeatMonthly, setRepeatMonthly] = useState(false);
+  const [repeatUntilMonth, setRepeatUntilMonth] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [entryMode, setEntryMode] = useState<EntryMode>('PENDING');
   const [projectIdForEntry, setProjectIdForEntry] = useState('');
@@ -84,6 +86,14 @@ export const ActivityExpenses: React.FC = () => {
   const appliedScheduleParamsRef = React.useRef<string | null>(null);
 
   const effectiveUserId = isStaff ? selectedMemberId : user?.id ?? null;
+
+  // 毎月くり返し登録: 日付の月から最終月までの件数（サーバー側と同じく最大24か月）
+  const repeatMonthCount = useMemo(() => {
+    if (!repeatMonthly || !/^\d{4}-\d{2}-\d{2}$/.test(spentAt) || !/^\d{4}-\d{2}$/.test(repeatUntilMonth)) return 0;
+    const [sy, sm] = spentAt.split('-').map(Number);
+    const [ey, em] = repeatUntilMonth.split('-').map(Number);
+    return (ey - sy) * 12 + (em - sm) + 1;
+  }, [repeatMonthly, spentAt, repeatUntilMonth]);
 
   const { data: expenseCategories = [] } = useQuery<ExpenseCategoryOption[]>({
     queryKey: ['activity-expenses', 'categories'],
@@ -191,6 +201,7 @@ export const ActivityExpenses: React.FC = () => {
         category: categoryForEntry,
         counterparty: counterpartyForEntry.trim() || undefined,
         status: entryMode,
+        repeatUntilMonth: repeatMonthly ? repeatUntilMonth : undefined,
       });
     },
     onSuccess: () => {
@@ -201,9 +212,15 @@ export const ActivityExpenses: React.FC = () => {
       setScheduleIdForEntry('');
       setCategoryForEntry('');
       setCounterpartyForEntry('');
+      setRepeatMonthly(false);
+      setRepeatUntilMonth('');
       setEntryMode('PENDING');
       setSpentAt(format(new Date(), 'yyyy-MM-dd'));
       clearScheduleParams();
+    },
+    onError: (error: unknown) => {
+      const message = (error as { response?: { data?: { error?: unknown } } })?.response?.data?.error;
+      alert(typeof message === 'string' ? message : '登録に失敗しました');
     },
   });
 
@@ -259,6 +276,7 @@ export const ActivityExpenses: React.FC = () => {
     setScheduleIdForEntry(e.scheduleId || '');
     setCategoryForEntry(e.category || '');
     setCounterpartyForEntry(e.counterparty || '');
+    setRepeatMonthly(false);
     setEntryMode(e.status === 'PLANNED' ? 'PLANNED' : 'PENDING');
   };
 
@@ -683,8 +701,51 @@ export const ActivityExpenses: React.FC = () => {
                   ))}
                 </div>
               </div>
+              {!editingId && !scheduleIdForEntry && (
+                <div className="sm:col-span-2 rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={repeatMonthly}
+                      onChange={(e) => {
+                        setRepeatMonthly(e.target.checked);
+                        if (e.target.checked && !repeatUntilMonth && /^\d{4}-\d{2}/.test(spentAt)) {
+                          // 既定は日付が属する年度の3月まで
+                          const [y, m] = spentAt.split('-').map(Number);
+                          setRepeatUntilMonth(`${m >= 4 ? y + 1 : y}-03`);
+                        }
+                      }}
+                    />
+                    毎月同じ金額で登録する（家賃・使用料など）
+                  </label>
+                  {repeatMonthly && (
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <span>{spentAt ? format(parseISO(spentAt), 'yyyy年M月', { locale: ja }) : '—'}から</span>
+                        <input
+                          type="month"
+                          value={repeatUntilMonth}
+                          onChange={(e) => setRepeatUntilMonth(e.target.value)}
+                          className="px-2 py-1 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm"
+                        />
+                        <span>まで毎月</span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {repeatMonthCount >= 1 && repeatMonthCount <= 24
+                          ? `毎月${spentAt ? Number(spentAt.slice(8, 10)) : ''}日付で${repeatMonthCount}件を登録します（合計 ${formatYen((parseInt(amount.replace(/[,]/g, ''), 10) || 0) * repeatMonthCount)}）。月末より後の日は月末日になります。承認は1件ずつ行います。`
+                          : '最終月は日付の月以降・最大24か月分までで選んでください。'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex gap-2 flex-wrap">
+              {editingId && (
+                <p className="w-full text-xs text-gray-500 dark:text-gray-400">
+                  項目・相手方だけの修正なら承認状態はそのまま残ります。日付・内容・金額・プロジェクトを変えると再申請（未承認）になります。
+                </p>
+              )}
               {editingId ? (
                 <>
                   <Button
@@ -739,6 +800,13 @@ export const ActivityExpenses: React.FC = () => {
                     if (Number.isNaN(n) || n < 1) {
                       alert('金額は1円以上の半角数字で入力してください');
                       return;
+                    }
+                    if (repeatMonthly) {
+                      if (repeatMonthCount < 1 || repeatMonthCount > 24) {
+                        alert('くり返しの最終月は、日付の月以降・最大24か月分までで選んでください');
+                        return;
+                      }
+                      if (!window.confirm(`${repeatMonthCount}件の経費をまとめて登録します。よろしいですか？`)) return;
                     }
                     createMut.mutate();
                   }}

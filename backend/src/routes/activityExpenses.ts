@@ -7,6 +7,7 @@ import { getActivityExpenseSummary } from '../services/activityExpenseService';
 import { notifyExpenseResult, notifyExpenseSubmitted } from '../services/approvalEmailService';
 import { generateActivityExpenseReportPDF } from '../services/pdfGenerator';
 import { ACTIVITY_EXPENSE_CATEGORIES, ACTIVITY_EXPENSE_CATEGORY_VALUES } from '../constants/activityExpenseCategories';
+import { buildMonthlySpentDates, MAX_RECURRING_MONTHS, resolveStatusAfterEdit } from '../utils/activityExpenseRules';
 
 const router = Router();
 router.use(authenticate);
@@ -62,6 +63,8 @@ const entryCreateSchema = z.object({
   category: z.enum(ACTIVITY_EXPENSE_CATEGORY_VALUES),
   counterparty: z.string().max(500).optional().nullable(),
   status: z.enum(['PENDING', 'PLANNED']).optional(),
+  // 毎月くり返し登録: この月（YYYY-MM）まで、spentAt と同じ日付で毎月1件ずつ作る
+  repeatUntilMonth: z.string().regex(/^\d{4}-\d{2}$/).optional().nullable(),
 });
 
 const entryUpdateSchema = z.object({
@@ -241,33 +244,56 @@ router.post('/entries', async (req: AuthRequest, res) => {
       }
     }
 
-    const spentAt = new Date(`${data.spentAt}T12:00:00.000Z`);
+    let spentDates = [data.spentAt];
+    if (data.repeatUntilMonth) {
+      if (data.scheduleId) {
+        return res.status(400).json({ error: '予定に紐づく経費は毎月くり返し登録できません' });
+      }
+      try {
+        spentDates = buildMonthlySpentDates(data.spentAt, data.repeatUntilMonth);
+      } catch (err) {
+        const message = (err as Error).message;
+        if (message === 'REPEAT_UNTIL_BEFORE_START') {
+          return res.status(400).json({ error: 'くり返しの最終月は、日付の月以降を選んでください' });
+        }
+        if (message === 'REPEAT_TOO_MANY') {
+          return res.status(400).json({ error: `毎月くり返しは最大${MAX_RECURRING_MONTHS}か月分までです` });
+        }
+        throw err;
+      }
+    }
+
     const status = data.status === 'PLANNED' ? ExpenseStatus.PLANNED : ExpenseStatus.PENDING;
-    const row = await prisma.activityExpenseEntry.create({
-      data: {
-        userId: targetUserId,
-        projectId: data.projectId,
-        scheduleId: data.scheduleId || null,
-        spentAt,
-        description: data.description.trim(),
-        amount: data.amount,
-        category: data.category,
-        counterparty: data.counterparty?.trim() || null,
-        status,
-        createdById: req.user!.id,
-      },
-      include: {
-        createdBy: { select: { id: true, name: true } },
-      },
-    });
+    const rows = await prisma.$transaction(
+      spentDates.map((date) =>
+        prisma.activityExpenseEntry.create({
+          data: {
+            userId: targetUserId!,
+            projectId: data.projectId,
+            scheduleId: data.scheduleId || null,
+            spentAt: new Date(`${date}T12:00:00.000Z`),
+            description: data.description.trim(),
+            amount: data.amount,
+            category: data.category,
+            counterparty: data.counterparty?.trim() || null,
+            status,
+            createdById: req.user!.id,
+          },
+          include: {
+            createdBy: { select: { id: true, name: true } },
+          },
+        }),
+      ),
+    );
 
     const summary = await getActivityExpenseSummary(targetUserId, 500);
     if (status === ExpenseStatus.PENDING) {
-      notifyExpenseSubmitted(row.id).catch((error) => {
+      // くり返し登録で同じ通知が何通も届かないよう、承認依頼の通知は1件目だけ送る
+      notifyExpenseSubmitted(rows[0].id).catch((error) => {
         console.error('Queue activity expense submitted email failed:', error);
       });
     }
-    res.status(201).json({ entry: row, summary });
+    res.status(201).json({ entry: rows[0], createdCount: rows.length, summary });
   } catch (e) {
     if (e instanceof z.ZodError) {
       return res.status(400).json({ error: e.errors });
@@ -296,7 +322,15 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
 
     const entryUser = await prisma.activityExpenseEntry.findUnique({
       where: { id },
-      select: { userId: true, status: true },
+      select: {
+        userId: true,
+        status: true,
+        spentAt: true,
+        description: true,
+        amount: true,
+        projectId: true,
+        scheduleId: true,
+      },
     });
     if (!entryUser) {
       return res.status(404).json({ error: '見つかりません' });
@@ -355,25 +389,33 @@ router.put('/entries/:id', async (req: AuthRequest, res) => {
       }
     }
 
-    const nextStatus = data.status === 'PLANNED'
-      ? ExpenseStatus.PLANNED
-      : data.status === 'PENDING'
-        ? ExpenseStatus.PENDING
-        : entryUser.status === ExpenseStatus.PLANNED
-          ? ExpenseStatus.PLANNED
-          : ExpenseStatus.PENDING;
+    const coreFieldsChanged =
+      // spentAt は日付型（DBからは 00:00Z で返る）ので日付部分だけで比べる
+      (data.spentAt !== undefined && data.spentAt !== entryUser.spentAt.toISOString().slice(0, 10)) ||
+      (update.description !== undefined && update.description !== entryUser.description) ||
+      (update.amount !== undefined && update.amount !== entryUser.amount) ||
+      (update.projectId !== undefined && update.projectId !== entryUser.projectId) ||
+      (update.scheduleId !== undefined && update.scheduleId !== entryUser.scheduleId);
+    const { status: nextStatus, keepApproval } = resolveStatusAfterEdit({
+      currentStatus: entryUser.status,
+      requestedStatus: data.status,
+      coreFieldsChanged,
+    });
 
     const row = await prisma.activityExpenseEntry.update({
       where: { id },
-      data: {
-        ...update,
-        status: nextStatus,
-        rejectionReason: null,
-      },
+      data: keepApproval
+        ? // 項目・相手方だけの補記: 承認状態と「対応した人」（承認者）をそのまま残す
+          { ...update, updatedById: undefined }
+        : {
+            ...update,
+            status: nextStatus,
+            rejectionReason: null,
+          },
     });
 
     const summary = await getActivityExpenseSummary(row.userId, 500);
-    if (nextStatus === ExpenseStatus.PENDING) {
+    if (!keepApproval && nextStatus === ExpenseStatus.PENDING) {
       notifyExpenseSubmitted(row.id).catch((error) => {
         console.error('Queue activity expense submitted email failed:', error);
       });

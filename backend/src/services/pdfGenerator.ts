@@ -883,15 +883,19 @@ export async function generateActivityExpenseReportPDF(
 
     const grandTotal = entries.reduce((sum, e) => sum + e.amount, 0);
 
-    const categoryRowsHtml = ACTIVITY_EXPENSE_CATEGORIES.map(({ value, label: categoryLabel, abbreviation }) => {
-      const categoryEntries = byCategory.get(value) || [];
+    /**
+     * 1つの項目（費用区分）の行を作る。項目名と補助対象経費総額は縦に結合し、
+     * 同じ項目内の明細どうしの区切り線は点線にする（報告書フォーマットに合わせる）。
+     * 支出Noは項目の頭文字＋連番（例: 旅－1、旅－2）。未分類は採番しない。
+     */
+    const renderCategoryRows = (categoryLabel: string, categoryEntries: EntryRow[], abbreviation: string | null) => {
       const subtotal = categoryEntries.reduce((sum, e) => sum + e.amount, 0);
-      const rowCount = Math.max(categoryEntries.length, 1);
+      const labelHtml = escapeHtmlForPdf(categoryLabel);
 
       if (categoryEntries.length === 0) {
         return `
         <tr>
-          <td class="col-category">${escapeHtmlForPdf(categoryLabel)}</td>
+          <td class="col-category">${labelHtml}</td>
           <td class="col-content"></td>
           <td class="col-date"></td>
           <td class="col-no"></td>
@@ -904,49 +908,37 @@ export async function generateActivityExpenseReportPDF(
       return categoryEntries
         .map((entry, index) => {
           const spentAtLabel = format(entry.spentAt, 'M/d');
-          const expenseNo = `${abbreviation}－${index + 1}`;
+          const expenseNo = abbreviation ? `${abbreviation}－${index + 1}` : '－';
+          const rowClasses = [
+            index > 0 ? 'detail-cont' : '',
+            index < categoryEntries.length - 1 ? 'detail-has-next' : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
           const rowCells = `
-          <td class="col-content">${escapeHtmlForPdf(entry.description)}</td>
-          <td class="col-date">${escapeHtmlForPdf(spentAtLabel)}</td>
-          <td class="col-no">${escapeHtmlForPdf(expenseNo)}</td>
-          <td class="col-counterparty">${escapeHtmlForPdf(entry.counterparty || '')}</td>
-          <td class="col-amount">${entry.amount.toLocaleString('ja-JP')}</td>`;
+          <td class="col-content detail">${escapeHtmlForPdf(entry.description)}</td>
+          <td class="col-date detail">${escapeHtmlForPdf(spentAtLabel)}</td>
+          <td class="col-no detail">${escapeHtmlForPdf(expenseNo)}</td>
+          <td class="col-counterparty detail">${escapeHtmlForPdf(entry.counterparty || '')}</td>
+          <td class="col-amount detail">${entry.amount.toLocaleString('ja-JP')}</td>`;
 
           if (index === 0) {
             return `
-            <tr>
-              <td class="col-category" rowspan="${rowCount}">${escapeHtmlForPdf(categoryLabel)}</td>
+            <tr class="${rowClasses}">
+              <td class="col-category" rowspan="${categoryEntries.length}">${labelHtml}</td>
               ${rowCells}
-              <td class="col-subtotal" rowspan="${rowCount}">${subtotal.toLocaleString('ja-JP')}</td>
+              <td class="col-subtotal" rowspan="${categoryEntries.length}">${subtotal.toLocaleString('ja-JP')}</td>
             </tr>`;
           }
-          return `<tr>${rowCells}</tr>`;
+          return `<tr class="${rowClasses}">${rowCells}</tr>`;
         })
         .join('');
-    }).join('');
+    };
 
-    const uncategorizedSubtotal = uncategorized.reduce((sum, e) => sum + e.amount, 0);
-    const uncategorizedRowsHtml = uncategorized
-      .map((entry, index) => {
-        const spentAtLabel = format(entry.spentAt, 'M/d');
-        const rowCells = `
-          <td class="col-content">${escapeHtmlForPdf(entry.description)}</td>
-          <td class="col-date">${escapeHtmlForPdf(spentAtLabel)}</td>
-          <td class="col-no">－</td>
-          <td class="col-counterparty">${escapeHtmlForPdf(entry.counterparty || '')}</td>
-          <td class="col-amount">${entry.amount.toLocaleString('ja-JP')}</td>`;
-
-        if (index === 0) {
-          return `
-          <tr>
-            <td class="col-category" rowspan="${uncategorized.length}">未分類</td>
-            ${rowCells}
-            <td class="col-subtotal" rowspan="${uncategorized.length}">${uncategorizedSubtotal.toLocaleString('ja-JP')}</td>
-          </tr>`;
-        }
-        return `<tr>${rowCells}</tr>`;
-      })
-      .join('');
+    const categoryRowsHtml = ACTIVITY_EXPENSE_CATEGORIES.map(({ value, label: categoryLabel, abbreviation }) =>
+      renderCategoryRows(categoryLabel, byCategory.get(value) || [], abbreviation),
+    ).join('');
+    const uncategorizedRowsHtml = uncategorized.length > 0 ? renderCategoryRows('未分類', uncategorized, null) : '';
 
     const html = `
     <!DOCTYPE html>
@@ -961,15 +953,19 @@ export async function generateActivityExpenseReportPDF(
         .meta-row .period { font-size: 10pt; }
         .meta-row .unit { font-size: 9pt; color: #333; }
         table.report { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        table.report th, table.report td { border: 1px solid #333; padding: 4px 6px; font-size: 9pt; vertical-align: middle; word-break: break-all; }
-        table.report thead th { background: #e8f0e4; text-align: center; font-weight: 700; }
-        .col-category { width: 13%; text-align: center; }
-        .col-content { width: 27%; }
-        .col-date { width: 9%; text-align: center; }
-        .col-no { width: 9%; text-align: center; }
+        table.report th, table.report td { border: 1px solid #333; padding: 4px 5px; font-size: 9pt; vertical-align: middle; word-break: break-all; }
+        table.report thead th { background: #e8f0e4; text-align: center; font-weight: 700; font-size: 8.5pt; line-height: 1.3; }
+        /* 同じ項目内の明細どうしの区切りは点線（上下両方を点線にしないと実線が優先される） */
+        table.report tr.detail-cont td.detail { border-top-style: dotted; }
+        table.report tr.detail-has-next td.detail { border-bottom-style: dotted; }
+        .col-category { width: 14%; text-align: center; }
+        table.report td.col-category { font-size: 8pt; word-break: keep-all; }
+        .col-content { width: 26%; }
+        .col-date { width: 8%; text-align: center; }
+        .col-no { width: 8%; text-align: center; white-space: nowrap; }
         .col-counterparty { width: 17%; }
         .col-amount { width: 12%; text-align: right; }
-        .col-subtotal { width: 13%; text-align: right; background: #fdf3da; }
+        .col-subtotal { width: 15%; text-align: right; background: #fdf3da; }
         tfoot td { font-weight: 700; text-align: right; background: #f3f3f3; }
       </style>
     </head>
@@ -984,11 +980,11 @@ export async function generateActivityExpenseReportPDF(
           <tr>
             <th class="col-category">項目</th>
             <th class="col-content">内容</th>
-            <th class="col-date">支出月日</th>
+            <th class="col-date">支出<br>月日</th>
             <th class="col-no">支出No</th>
             <th class="col-counterparty">相手方</th>
-            <th class="col-amount">金額（税込）</th>
-            <th class="col-subtotal">補助対象経費総額</th>
+            <th class="col-amount">金額<br>（税込）</th>
+            <th class="col-subtotal">補助対象<br>経費総額</th>
           </tr>
         </thead>
         <tbody>
