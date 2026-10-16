@@ -9,8 +9,7 @@ import type { User } from '../types';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { sortUsersByDisplayOrder } from '../utils/userSort';
-import { renderPdfFileName } from '../utils/pdfSaveLocations';
-import { saveBlobAsFile, describeDownloadError } from '../utils/saveFile';
+import { ActivityExpenseReportModal } from '../components/activityExpense/ActivityExpenseReportModal';
 
 function formatYen(n: number) {
   return `¥${n.toLocaleString('ja-JP')}`;
@@ -81,7 +80,7 @@ export const ActivityExpenses: React.FC = () => {
   const [projectIdForEntry, setProjectIdForEntry] = useState('');
   const [scheduleIdForEntry, setScheduleIdForEntry] = useState('');
   const [expenseStatusFilter, setExpenseStatusFilter] = useState<ExpenseStatusFilter>('ALL');
-  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const scheduleIdFromQuery = searchParams.get('scheduleId') || '';
   const appliedScheduleParamsRef = React.useRef<string | null>(null);
 
@@ -292,39 +291,6 @@ export const ActivityExpenses: React.FC = () => {
     setSpentAt(format(new Date(), 'yyyy-MM-dd'));
     clearScheduleParams();
   };
-
-  const handleDownloadReportPDF = async () => {
-    if (!effectiveUserId || !user) return;
-    setIsDownloadingReport(true);
-    try {
-      const response = await api.get('/api/activity-expenses/report-pdf', {
-        params: { userId: effectiveUserId },
-        responseType: 'blob',
-        timeout: 60_000,
-      });
-      if (response.data instanceof Blob && response.data.type === 'application/json') {
-        const text = await response.data.text();
-        const errorData = JSON.parse(text);
-        throw new Error(errorData.error || 'PDF出力に失敗しました');
-      }
-      const targetMember = isStaff ? sortedMembers.find((m) => m.id === effectiveUserId) : user;
-      const fileName = renderPdfFileName(user.pdfFileNameTemplates?.activityExpenseReport, {
-        name: targetMember?.name || user.name,
-        date: format(new Date(), 'yyyyMMdd'),
-        type: '活動経費報告書',
-      });
-      await saveBlobAsFile(new Blob([response.data]), fileName, {
-        description: '活動経費報告書PDF',
-        saveLocationType: 'activityExpenseReport',
-      });
-    } catch (error: unknown) {
-      alert(describeDownloadError(error));
-    } finally {
-      setIsDownloadingReport(false);
-    }
-  };
-
-
 
   const filteredEntries = useMemo(() => {
     const entries = summary?.entries || [];
@@ -826,11 +792,11 @@ export const ActivityExpenses: React.FC = () => {
                   type="button"
                   variant="outline"
                   className="text-xs px-3 py-1.5"
-                  onClick={handleDownloadReportPDF}
-                  disabled={isDownloadingReport}
-                  title="当年度（4月〜翌3月）の承認済み支出を項目ごとに集計したPDFを出力します"
+                  onClick={() => setIsReportModalOpen(true)}
+                  disabled={!effectiveUserId}
+                  title="年度ごとの承認済み支出を項目別に集計したPDFを出力します。出力前に項目・相手方を追記できます"
                 >
-                  {isDownloadingReport ? '作成中...' : '報告書PDFを出力'}
+                  報告書PDFを出力
                 </Button>
               </div>
               <div className="flex flex-wrap gap-1 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-900/40">
@@ -1036,6 +1002,16 @@ export const ActivityExpenses: React.FC = () => {
             )}
           </section>
         </>
+      )}
+      {effectiveUserId && user && (
+        <ActivityExpenseReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          targetUserId={isStaff ? effectiveUserId : undefined}
+          memberName={(isStaff ? sortedMembers.find((m) => m.id === effectiveUserId)?.name : user.name) || user.name}
+          categories={expenseCategories}
+          fileNameTemplate={user.pdfFileNameTemplates?.activityExpenseReport}
+        />
       )}
     </div>
   );

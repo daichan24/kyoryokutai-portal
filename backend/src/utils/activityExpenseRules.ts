@@ -50,3 +50,33 @@ export function resolveStatusAfterEdit(params: {
   if (requestedStatus === 'PENDING') return { status: 'PENDING', keepApproval: false };
   return { status: currentStatus === 'PLANNED' ? 'PLANNED' : 'PENDING', keepApproval: false };
 }
+
+/** 日本時間で見た「今日」が属する年度（4/1〜翌3/31）。1〜3月は前年度 */
+export function currentFiscalYear(now: Date = new Date()): number {
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return jst.getUTCMonth() >= 3 ? jst.getUTCFullYear() : jst.getUTCFullYear() - 1;
+}
+
+/**
+ * 報告書の対象期間。from/to があればそれを、fiscalYear があればその年度を、
+ * どちらも無ければ今日が属する年度を使う。
+ */
+export function resolveReportRange(options?: { from?: string; to?: string; fiscalYear?: number }, now: Date = new Date()): {
+  from: Date;
+  to: Date;
+  label: string;
+} {
+  if (options?.from && options?.to) {
+    return {
+      from: new Date(`${options.from}T00:00:00.000Z`),
+      to: new Date(`${options.to}T23:59:59.999Z`),
+      label: `${options.from}〜${options.to}`,
+    };
+  }
+  const fy = options?.fiscalYear ?? currentFiscalYear(now);
+  return {
+    from: new Date(Date.UTC(fy, 3, 1, 0, 0, 0)),
+    to: new Date(Date.UTC(fy + 1, 2, 31, 23, 59, 59, 999)),
+    label: `${fy}年度（${fy}年4月1日〜${fy + 1}年3月31日）`,
+  };
+}

@@ -7,7 +7,7 @@ import { getActivityExpenseSummary } from '../services/activityExpenseService';
 import { notifyExpenseResult, notifyExpenseSubmitted } from '../services/approvalEmailService';
 import { generateActivityExpenseReportPDF } from '../services/pdfGenerator';
 import { ACTIVITY_EXPENSE_CATEGORIES, ACTIVITY_EXPENSE_CATEGORY_VALUES } from '../constants/activityExpenseCategories';
-import { buildMonthlySpentDates, MAX_RECURRING_MONTHS, resolveStatusAfterEdit } from '../utils/activityExpenseRules';
+import { buildMonthlySpentDates, MAX_RECURRING_MONTHS, resolveReportRange, resolveStatusAfterEdit } from '../utils/activityExpenseRules';
 
 const router = Router();
 router.use(authenticate);
@@ -114,6 +114,89 @@ router.get('/summary', async (req: AuthRequest, res) => {
   }
 });
 
+function parseFiscalYear(value: unknown): number | undefined {
+  if (typeof value !== 'string' || !/^\d{4}$/.test(value)) return undefined;
+  return Number(value);
+}
+
+// 報告書に載る支出（対象年度の承認済み）。出力前に項目・相手方を確認・補記するための一覧
+router.get('/report-entries', async (req: AuthRequest, res) => {
+  try {
+    const targetId = resolveTargetUserId(req, req.query.userId as string | undefined);
+    await assertTargetIsMember(targetId);
+    const { from, to, label } = resolveReportRange({ fiscalYear: parseFiscalYear(req.query.fiscalYear) });
+    const entries = await prisma.activityExpenseEntry.findMany({
+      where: { userId: targetId, status: ExpenseStatus.APPROVED, spentAt: { gte: from, lte: to } },
+      orderBy: [{ spentAt: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, spentAt: true, description: true, amount: true, category: true, counterparty: true },
+    });
+    res.json({
+      periodLabel: label,
+      entries: entries.map((e) => ({ ...e, spentAt: e.spentAt.toISOString() })),
+    });
+  } catch (e: unknown) {
+    const err = e as Error;
+    if (err.message === 'USER_ID_REQUIRED') return res.status(400).json({ error: '隊員を userId で指定してください' });
+    if (err.message === 'MEMBER_NOT_FOUND') return res.status(404).json({ error: '隊員が見つかりません' });
+    console.error('activity-expenses report-entries:', e);
+    res.status(500).json({ error: '取得に失敗しました' });
+  }
+});
+
+/**
+ * 報告書用の補記（項目・相手方）だけを更新する。
+ * 金額・日付・内容などは受け付けず（strict）、承認状態・承認者も変えない。
+ * 承認フロー導入前の経費に、出力時に項目を付けるための入口。
+ */
+const reportFieldsSchema = z.object({
+  items: z
+    .array(
+      z
+        .object({
+          id: z.string().uuid(),
+          category: z.enum(ACTIVITY_EXPENSE_CATEGORY_VALUES).optional(),
+          counterparty: z.string().max(500).optional().nullable(),
+        })
+        .strict(),
+    )
+    .min(1)
+    .max(500),
+}).strict();
+
+router.patch('/entries/report-fields', async (req: AuthRequest, res) => {
+  try {
+    const { items } = reportFieldsSchema.parse(req.body);
+    const ids = [...new Set(items.map((i) => i.id))];
+    const rows = await prisma.activityExpenseEntry.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, userId: true },
+    });
+    if (rows.length !== ids.length) return res.status(404).json({ error: '見つからない経費が含まれています' });
+    if (req.user!.role === 'MEMBER' && rows.some((r) => r.userId !== req.user!.id)) {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+
+    await prisma.$transaction(
+      items.map((item) =>
+        prisma.activityExpenseEntry.update({
+          where: { id: item.id },
+          data: {
+            ...(item.category !== undefined ? { category: item.category } : {}),
+            ...(item.counterparty !== undefined ? { counterparty: item.counterparty?.trim() || null } : {}),
+          },
+        }),
+      ),
+    );
+    res.json({ ok: true, updatedCount: items.length });
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({ error: '項目と相手方以外は変更できません', details: e.errors });
+    }
+    console.error('activity-expenses report-fields:', e);
+    res.status(500).json({ error: '保存に失敗しました' });
+  }
+});
+
 // 活動経費報告書PDF（町の報告フォーマットに合わせて項目ごとに集計）
 router.get('/report-pdf', async (req: AuthRequest, res) => {
   try {
@@ -123,8 +206,10 @@ router.get('/report-pdf', async (req: AuthRequest, res) => {
     const from = typeof req.query.from === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.from) ? req.query.from : undefined;
     const to = typeof req.query.to === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.to) ? req.query.to : undefined;
 
+    const fiscalYear = parseFiscalYear(req.query.fiscalYear);
+
     const targetUser = await prisma.user.findUnique({ where: { id: targetId }, select: { name: true } });
-    const pdf = await generateActivityExpenseReportPDF(targetId, { from, to });
+    const pdf = await generateActivityExpenseReportPDF(targetId, { from, to, fiscalYear });
 
     const displayName = targetUser?.name?.trim() || 'user';
     const asciiSafe = displayName.replace(/[^\w.-]+/g, '_').slice(0, 60) || 'user';

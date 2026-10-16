@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ActivityExpenseCategory } from '@prisma/client';
 import { ACTIVITY_EXPENSE_CATEGORIES } from '../constants/activityExpenseCategories';
+import { resolveReportRange } from '../utils/activityExpenseRules';
 
 /** Puppeteer 用: ネットワーク不要で日本語表示（@fontsource/noto-sans-jp の japanese サブセットを base64 埋め込み） */
 let cachedEmbeddedNotoStyle: string | null = null;
@@ -831,26 +832,12 @@ export async function generateMonthlyReportPDF(reportId: string): Promise<Buffer
   }
 }
 
-/** 指定が無い場合は「今日が属する年度（4/1〜翌3/31）」を返す（日本の自治体会計年度） */
-function resolveFiscalYearRange(fromStr?: string, toStr?: string): { from: Date; to: Date; label: string } {
-  if (fromStr && toStr) {
-    const from = new Date(`${fromStr}T00:00:00.000Z`);
-    const to = new Date(`${toStr}T23:59:59.999Z`);
-    return { from, to, label: `${fromStr}〜${toStr}` };
-  }
-  const now = new Date();
-  const fiscalYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; // 1〜3月は前年度扱い
-  const from = new Date(Date.UTC(fiscalYear, 3, 1, 0, 0, 0));
-  const to = new Date(Date.UTC(fiscalYear + 1, 2, 31, 23, 59, 59, 999));
-  return { from, to, label: `${fiscalYear}年度（${fiscalYear}年4月1日〜${fiscalYear + 1}年3月31日）` };
-}
-
 /**
  * 活動経費報告書PDF生成（町の報告フォーマットに合わせて項目ごとに集計）
  */
 export async function generateActivityExpenseReportPDF(
   userId: string,
-  options?: { from?: string; to?: string },
+  options?: { from?: string; to?: string; fiscalYear?: number },
 ): Promise<Buffer> {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
@@ -858,7 +845,7 @@ export async function generateActivityExpenseReportPDF(
       throw new Error('User not found');
     }
 
-    const { from, to, label } = resolveFiscalYearRange(options?.from, options?.to);
+    const { from, to, label } = resolveReportRange(options);
 
     const entries = await prisma.activityExpenseEntry.findMany({
       where: {

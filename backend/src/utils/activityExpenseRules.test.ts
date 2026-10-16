@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMonthlySpentDates, resolveStatusAfterEdit } from './activityExpenseRules';
+import { buildMonthlySpentDates, currentFiscalYear, resolveReportRange, resolveStatusAfterEdit } from './activityExpenseRules';
 
 describe('buildMonthlySpentDates', () => {
   it('creates one date per month across the fiscal year boundary', () => {
@@ -54,5 +54,20 @@ describe('resolveStatusAfterEdit', () => {
   it('moves an approved entry to planned when explicitly requested', () => {
     expect(resolveStatusAfterEdit({ currentStatus: 'APPROVED', requestedStatus: 'PLANNED', coreFieldsChanged: false }))
       .toEqual({ status: 'PLANNED', keepApproval: false });
+  });
+});
+
+describe('resolveReportRange', () => {
+  it('uses the fiscal year of today in Japan time', () => {
+    // 2027-03-31 20:00 UTC = 2027-04-01 05:00 JST → 2027年度
+    expect(currentFiscalYear(new Date('2027-03-31T20:00:00Z'))).toBe(2027);
+    expect(currentFiscalYear(new Date('2027-03-31T10:00:00Z'))).toBe(2026);
+  });
+
+  it('returns April to March of the requested fiscal year', () => {
+    const r = resolveReportRange({ fiscalYear: 2025 });
+    expect(r.from.toISOString()).toBe('2025-04-01T00:00:00.000Z');
+    expect(r.to.toISOString()).toBe('2026-03-31T23:59:59.999Z');
+    expect(r.label).toBe('2025年度（2025年4月1日〜2026年3月31日）');
   });
 });
