@@ -59,7 +59,7 @@ const PrivateRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) =>
 const getDefaultAuthenticatedPath = () => '/schedule';
 
 const App: React.FC = () => {
-  const { isLoading, error, fetchMe, logout, user } = useAuthStore();
+  const { isLoading, error, fetchMe, logout, user, refreshSession } = useAuthStore();
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => {
       if (hasUnsavedNotepads()) { event.preventDefault(); event.returnValue = ''; }
@@ -71,6 +71,19 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchMe();
   }, []);
+
+  // 開きっぱなしのタブでもログイン期限が延びるよう、タブに戻ってきたときに（6時間に1回まで）確認する
+  useEffect(() => {
+    let lastRefreshedAt = Date.now();
+    const handleVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastRefreshedAt < 6 * 60 * 60 * 1000) return;
+      lastRefreshedAt = Date.now();
+      void refreshSession();
+    };
+    document.addEventListener('visibilitychange', handleVisible);
+    return () => document.removeEventListener('visibilitychange', handleVisible);
+  }, [refreshSession]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', !!user?.darkMode);

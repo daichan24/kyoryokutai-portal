@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { ensureDefaultInstagramAccount } from '../services/defaultSnsAccountService';
-import { getJwtSecret, isPublicRegistrationAllowed } from '../config/security';
+import { isPublicRegistrationAllowed } from '../config/security';
 import { loginRateLimit, registrationRateLimit } from '../middleware/authRateLimit';
+import { shouldRenewSessionToken, signSessionToken } from '../security/sessionToken';
 
 const router = Router();
 
@@ -85,16 +85,7 @@ router.post('/register', registrationRateLimit, async (req, res) => {
       await ensureDefaultInstagramAccount(user.id);
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        passwordUpdatedAt: user.passwordUpdatedAt?.getTime() ?? null,
-      },
-      getJwtSecret(),
-      { expiresIn: '7d' }
-    );
+    const token = signSessionToken(user);
 
     res.status(201).json({ user, token });
   } catch (error) {
@@ -169,16 +160,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        passwordUpdatedAt: user.passwordUpdatedAt?.getTime() ?? null,
-      },
-      getJwtSecret(),
-      { expiresIn: '7d' }
-    );
+    const token = signSessionToken(user);
 
     const userResponse: any = {
       id: user.id,
@@ -241,20 +223,22 @@ router.put('/me/password', authenticate, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: '現在のパスワードが正しくありません' });
     }
     const hashed = await bcrypt.hash(body.newPassword, 10);
-    await prisma.$transaction([
+    const [updatedUser] = await prisma.$transaction([
       prisma.user.update({
         where: { id: req.user!.id },
         data: {
           password: hashed,
           passwordUpdatedAt: new Date(),
         },
+        select: { id: true, email: true, role: true, passwordUpdatedAt: true },
       }),
       prisma.aiAccessToken.updateMany({
         where: { userId: req.user!.id, revokedAt: null },
         data: { revokedAt: new Date() },
       }),
     ]);
-    res.json({ message: 'パスワードを更新しました' });
+    // 他の端末のログインは無効になるが、変更した本人のこの端末はログインしたままにする
+    res.json({ message: 'パスワードを更新しました', token: signSessionToken(updatedUser) });
   } catch (error) {
     if (error instanceof z.ZodError) {
       const msg = error.issues[0]?.message || '入力内容に誤りがあります';
@@ -346,6 +330,16 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+
+    // 使っている間はログイン期限を延ばす（発行から1日以上たっていれば、新しい30日トークンを返す）
+    const currentToken = req.headers.authorization?.replace(/^Bearer\s+/i, '').trim();
+    if (req.authContext?.kind === 'SESSION' && currentToken && shouldRenewSessionToken(currentToken)) {
+      const sessionUser = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: { id: true, email: true, role: true, passwordUpdatedAt: true },
+      });
+      if (sessionUser) userResponse.sessionToken = signSessionToken(sessionUser);
+    }
 
     res.json(userResponse);
   } catch (error) {

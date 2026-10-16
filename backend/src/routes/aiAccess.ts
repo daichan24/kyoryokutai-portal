@@ -57,7 +57,8 @@ router.post('/access-tokens', aiTokenIssueRateLimit, async (req: AuthRequest, re
       select: { password: true },
     });
     if (!user || !(await bcrypt.compare(data.currentPassword, user.password))) {
-      return res.status(401).json({ error: '現在のパスワードが正しくありません' });
+      // 401 だと画面側が「ログイン切れ」と判断してログアウトさせてしまうため、入力ミスは 400 で返す
+      return res.status(400).json({ error: '現在のパスワードが正しくありません' });
     }
 
     const generated = createAiAccessTokenValue();

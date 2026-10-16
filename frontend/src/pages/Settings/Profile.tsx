@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../utils/api';
+import { renewSessionToken } from '../../utils/authSession';
 import { useAuthStore } from '../../stores/authStore';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
@@ -102,7 +103,9 @@ export const ProfileSettings: React.FC = () => {
 
   const passwordMutation = useMutation({
     mutationFn: async (payload: { currentPassword: string; newPassword: string }) => {
-      await api.put('/api/auth/me/password', payload);
+      const response = await api.put<{ token?: string }>('/api/auth/me/password', payload);
+      // パスワード変更で古いログインは無効になるため、この端末は新しいトークンに取り替えてログインを保つ
+      if (response.data?.token) renewSessionToken(response.data.token);
     },
     onSuccess: () => {
       setCurrentPassword('');

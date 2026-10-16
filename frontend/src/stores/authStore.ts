@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { User, AuthResponse } from '../types';
 import { api } from '../utils/api';
-import { getAuthSession, isCurrentAuthSession } from '../utils/authSession';
+import { getAuthSession, isCurrentAuthSession, renewSessionToken } from '../utils/authSession';
 
 interface AuthState {
   user: User | null;
@@ -18,6 +18,15 @@ interface AuthState {
   }) => Promise<void>;
   logout: () => void;
   fetchMe: () => Promise<void>;
+  /** 画面を出さずにログイン期限だけ延ばす（タブに戻ってきたときなど） */
+  refreshSession: () => Promise<void>;
+}
+
+/** /api/auth/me が期限延長用に返す新しいトークンを保存し、ユーザー情報から取り除く */
+function takeRenewedToken(data: User & { sessionToken?: string }): User {
+  const { sessionToken, ...user } = data;
+  if (sessionToken) renewSessionToken(sessionToken);
+  return user;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -80,9 +89,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const response = await api.get<User>('/api/auth/me', { authSession: session });
+      const response = await api.get<User & { sessionToken?: string }>('/api/auth/me', { authSession: session });
       if (!isCurrentAuthSession(session)) return;
-      set({ user: response.data, isAuthenticated: true, isLoading: false, error: null });
+      set({ user: takeRenewedToken(response.data), isAuthenticated: true, isLoading: false, error: null });
     } catch (error) {
       if (!isCurrentAuthSession(session)) return;
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
@@ -98,6 +107,18 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoading: false,
         error: 'サーバーに接続できませんでした。通信状況を確認して再試行してください。',
       });
+    }
+  },
+
+  refreshSession: async () => {
+    const session = getAuthSession();
+    if (!session.token) return;
+    try {
+      const response = await api.get<User & { sessionToken?: string }>('/api/auth/me', { authSession: session });
+      if (!isCurrentAuthSession(session)) return;
+      set({ user: takeRenewedToken(response.data) });
+    } catch {
+      // 失効していれば api 側の 401 処理でログアウトされる。通信エラーは次の機会に再試行する
     }
   },
 }));

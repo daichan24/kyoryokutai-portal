@@ -4,11 +4,24 @@ export interface AuthSession { epoch: number; token: string | null }
 let epoch = 0;
 const listeners = new Set<() => void>();
 export const getAuthSession = (): AuthSession => ({ epoch, token: localStorage.getItem('token') });
-export const isCurrentAuthSession = (session: AuthSession): boolean => session.epoch === epoch && session.token === localStorage.getItem('token');
+// 期限延長で取り替える前のトークン。同じログインの続きなので、通信中のリクエストを打ち切らない
+const renewedTokens = new Set<string>();
+export const isCurrentAuthSession = (session: AuthSession): boolean =>
+  session.epoch === epoch
+  && (session.token === localStorage.getItem('token') || (!!session.token && renewedTokens.has(session.token)));
+
+/** 同じユーザーのままトークンだけ新しいもの（期限延長・パスワード変更後）に取り替える */
+export const renewSessionToken = (token: string) => {
+  const current = localStorage.getItem('token');
+  if (!current || current === token) return;
+  renewedTokens.add(current);
+  localStorage.setItem('token', token);
+};
 export const onAuthSessionEnd = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 
 export const changeAuthSession = (token: string | null) => {
   epoch += 1;
+  renewedTokens.clear();
   if (token) localStorage.setItem('token', token);
   else localStorage.removeItem('token');
   // Cancellation is synchronous; do not await before clearing, as a new login may occur.
